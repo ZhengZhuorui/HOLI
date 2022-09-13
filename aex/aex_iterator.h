@@ -1,18 +1,17 @@
 #pragma once
 
-#include <bits/stdc++.h>
 
 namespace aex{
 
-template<typename _Key, typename _Val, typename traits> class aex_base_iterator;
-template<typename _Key, typename _Val, typename traits> class aex_base_const_iterator;
-template<typename _Key, typename _Val, typename traits> class aex_base_reverse_iterator;
-template<typename _Key, typename _Val, typename traits> class aex_base_reverse_const_iterator;
+template<typename _Key, typename _Val, typename traits> class aex_iterator;
+template<typename _Key, typename _Val, typename traits> class aex_const_iterator;
+template<typename _Key, typename _Val, typename traits> class aex_reverse_iterator;
+template<typename _Key, typename _Val, typename traits> class aex_const_reverse_iterator;
 
 template<typename _Key,
         typename _Val,
-        typename traits=aex_traits<_Key, _Val> >
-class aex_base_iterator{
+        typename traits>
+class aex_iterator{
 public:
 
     typedef _Key key_type;
@@ -27,94 +26,114 @@ public:
 
     typedef ptrdiff_t                  difference_type;
 
-    typedef aex_base_iterator<_Key, _Val, traits> self;
+    typedef aex_iterator<_Key, _Val, traits> self;
 
-    typedef aex_data_node<_Key, _Val, traits> node_type;
+    typedef aex_data_node<_Key, _Val, traits> data_node;
 
-    typedef node_type* node_ptr;
+    typedef data_node* data_node_ptr;
 
-    inline _aex_base_iterator() : _M_node(NULL), offset(0){}
+    inline aex_iterator() : _M_node(nullptr), offset(0){}
     
-    inline _aex_base_iterator(node_type* ptr, u_int8_t _offset):_M_node(ptr), offset(_offset){}
+    inline aex_iterator(data_node* ptr, unsigned char _offset):_M_node(ptr), offset(_offset){}
     
-    inline _aex_base_iterator(const aex_base_reverse_iterator &it) : _M_node(it._M_node), offset(it.offset){}    
+    inline aex_iterator(const aex_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
     
     reference operator*(){
-        return std::pair(_M_node->key[offset], _M_node->data[offset]);
+        return std::pair<key_type, value_type>(_M_node->key[offset], _M_node->data[offset]);
     }
 
     self& operator++(){
         ++offset;
-        if (offset >= DATA_NODE_SLOT_SIZE){
-            if (_M_node->next == NULL) return iterator(_M_node, traits::DATA_NODE_SLOT_SIZE);
-            offset = 0;
-            _M_node = _M_node->next;
+        if (offset >= _M_node->size){
+            if (_M_node->next != nullptr){
+                offset = 0;
+                _M_node = _M_node->next;
+            }
+            else{
+                offset = _M_node->size;
+            }
         }
         return *this;
     }
 
     self& operator++(int){
-        self _tmp = *this;
+        self tmp = *this;
         ++offset;
-        if (offset >= traits::DATA_NODE_SLOT_SIZE){
-            if (_M_node->next == NULL) return iterator(_M_node, traits::DATA_NODE_SLOT_SIZE);
-            offset = 0;
-            _M_node = _M_node->next;
+        if (offset >= _M_node->size){
+            if (_M_node->next != nullptr){
+                offset = 0;
+                _M_node = _M_node->next;
+            }
+            else{
+                offset = _M_node->size;
+            }
         }
-        return _tmp;
+        return tmp;
     }
 
     self& operator--(){
-        --offset;
-        if (offset < 0){
-            _M_node = _M_node->prev;
-            offset = _M_node->size;
+        if (offset > 0) --offset;
+        else{
+            if (_M_node != nullptr){
+                _M_node = _M_node->prev;
+                offset = _M_node->size - 1;
+            }
+            else{
+                offset = 0;
+            }
         }
         return *this;
     }
-    _Self& operator--(int){
-        self _tmp = *this;
-        --offset;
-        if (offset < 0){
-            _M_node = _M_node->prev;
-            offset = _M_node->size;
+    self& operator--(int){
+        self tmp = *this;
+        if (offset > 0) --offset;
+        else {
+            if (_M_node != nullptr){
+                _M_node = _M_node->prev;
+                offset = _M_node->size - 1;
+            }
+            else{
+                offset = 0;
+            }
         }
-        return _tmp;
+        return tmp;
     }
 
-    bool operator==(const _Self& x) const {
+    bool operator==(const self& x) const {
         return (_M_node == x._M_node) && (offset == x.offset);
     }
 
-    bool operator!=(const _Self& __x) const{ 
+    bool operator!=(const self& x) const{ 
+        //AEX_PRINT((unsigned int)offset << " " << (unsigned int)x.offset);
         return  (_M_node != x._M_node) || (offset != x.offset);
     }
 
-protected:
-    
     inline const key_type& key() const {
         return _M_node->key[offset];
     }
 
-    inline value_type& value() const {
+    inline value_type& data() const {
         return _M_node->data[offset];
     }
 
-    inline node_ptr get_node(){
+    inline data_node_ptr get_node(){
         return _M_node;
     }
 
+protected:
+
 private:
-    
-    u_int8_t offset;
-    
+
     data_node_ptr _M_node;
+
+    unsigned char offset;
+
 };
 
 template<typename _Key,
         typename _Val,
-        typename traits=aex_traits<_Key, _Val> >
-class aex_base_const_iterator{
+        typename traits>
+class aex_const_iterator{
 public:
 
     typedef _Key key_type;
@@ -129,102 +148,119 @@ public:
 
     typedef ptrdiff_t                  difference_type;
 
-    typedef typename aex_base_const_iterator<_Key, _Val> self;
+    typedef aex_const_iterator<_Key, _Val, traits> self;
 
-    typedef typename aex_data_node<_Key, _Val, traits> node_type;
+    typedef aex_data_node<_Key, _Val, traits> data_node;
 
-    typedef node_type* node_ptr;
+    typedef data_node* data_node_ptr;
 
-    inline aex_base_const_iterator() : _M_node(NULL), offset(0){}
+    inline aex_const_iterator() : _M_node(nullptr), offset(0){}
     
-    inline aex_base_const_iterator(const node_ptr ptr, u_int8_t _offset):_M_node(ptr), offset(_offset){}
+    inline aex_const_iterator(const data_node* ptr, unsigned char _offset):_M_node(ptr), offset(_offset){}
     
-    inline aex_base_const_iterator(const aex_base_iterator &it) : _M_node(it._M_node), offset(it.offset){}    
+    inline aex_const_iterator(const aex_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
     
-    inline aex_base_const_iterator(const aex_base_reverse_iterator &it) : _M_node(it._M_node), offset(it.offset){}    
+    inline aex_const_iterator(const aex_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
     
-    inline aex_base_const_iterator(const aex_base_reverse_const_iterator &it) : _M_node(it._M_node), offset(it.offset){}    
+    inline aex_const_iterator(const aex_const_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
 
     
     inline reference operator*() const{
         //return static_cast<_Link_ptr>(_M_node->item[offset]);
-        return std::pair(_M_node->key[offset], _M_node->data[offset]);
+        return std::pair<key_type, value_type>(_M_node->key[offset], _M_node->data[offset]);
     }
 
     self& operator++(){
         ++offset;
-        if (offset >= traits::DATA_NODE_SLOT_SIZE){
-            if (_M_node->next == NULL) return iterator(_M_node, traits::DATA_NODE_SLOT_SIZE);
-            offset = 0;
-            _M_node = _M_node->next;
+        if (offset >= _M_node->size){
+            if (_M_node->next != nullptr){
+                offset = 0;
+                _M_node = _M_node->next;
+            }
+            else{
+                offset = _M_node->size;
+            }
         }
         return *this;
     }
 
     self& operator++(int){
-        self _tmp = *this;
-
+        self tmp = *this;
         ++offset;
-        if (offset >= traits::DATA_NODE_SLOT_SIZE){
-            if (_M_node->next == NULL) return iterator(_M_node, traits::DATA_NODE_SLOT_SIZE);
-            offset = 0;
-            _M_node = _M_node->next;
+        if (offset >= _M_node->size){
+            if (_M_node->next != nullptr){
+                offset = 0;
+                _M_node = _M_node->next;
+            }
+            else{
+                offset = _M_node->size;
+            }
         }
-
-        return _tmp;
+        return tmp;
     }
 
     self& operator--(){
-        --offset;
-        if (offset < 0){
-            _M_node = _M_node->prev;
-            offset = _M_node->size;
+        if (offset > 0) --offset;
+        else {
+            if (_M_node != nullptr){
+                _M_node = _M_node->prev;
+                offset = _M_node->size - 1;
+            }
+            else{
+                offset = 0;
+            }
         }
         return *this;
     }
-    _Self& operator--(int){
-        self _tmp = *this;
-        --offset;
-        if (offset < 0){
-            _M_node = _M_node->prev;
-            offset = _M_node->size;
+    self& operator--(int){
+        self tmp = *this;
+        if (offset > 0)--offset;
+        else {
+            if (_M_node != nullptr){
+                _M_node = _M_node->prev;
+                offset = _M_node->size - 1;
+            }
+            else{
+                offset = 0;
+            }
         }
-        return _tmp;
+        return tmp;
     }
 
-    bool operator==(const _Self& x) const {
+    bool operator==(const self& x) const {
         return (_M_node == x._M_node) && (offset == x.offset);
     }
 
-    bool operator!=(const _Self& __x) const{ 
+    bool operator!=(const self& x) const{ 
         return  (_M_node != x._M_node) || (offset != x.offset);
     }
-
-protected:
     
     inline const key_type& key() const {
         return _M_node->key[offset];
     }
 
-    inline const value_type& value() const {
+    inline const value_type& data() const {
         return _M_node->data[offset];
     }
 
-    inline node_ptr get_node(){
+    inline data_node_ptr get_node(){
         return _M_node;
     }
+
+protected:
 
 private:
-    u_int8_t offset;
-    
+
     data_node_ptr _M_node;
+
+    unsigned char offset;
 
 };
 
 template<typename _Key,
         typename _Val,
-        typename traits=aex_traits<_Key, _Val> >
-class aex_base_reverse_iterator{
+        typename traits>
+class aex_reverse_iterator{
 public:
 
     typedef _Key key_type;
@@ -239,93 +275,112 @@ public:
 
     typedef ptrdiff_t                  difference_type;
 
-    typedef aex_base_iterator<_Key, _Val> self;
+    typedef aex_reverse_iterator<_Key, _Val, traits> self;
 
-    typedef aex_data_node<_Key, _Val> node_type;
+    typedef aex_data_node<_Key, _Val, traits> data_node;
 
-    typedef node_type* node_ptr;
+    typedef data_node* data_node_ptr;
 
-    u_int8_t offset;
-
-    data_node_ptr _M_node;
-
-    inline _aex_base_iterator() : _M_node(NULL), offset(0){}
+    inline aex_reverse_iterator() : _M_node(nullptr), offset(0){}
     
-    inline _aex_base_iterator(node_type* ptr, u_int8_t _offset):_M_node(ptr), offset(_offset){}
+    inline aex_reverse_iterator(const data_node* ptr, unsigned char _offset):_M_node(ptr), offset(_offset){}
     
-    inline _aex_base_iterator(const aex_base_iterator &it) : _M_node(it._M_node), offset(it.offset){}    
+    inline aex_reverse_iterator(const aex_iterator<key_type, value_type, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
     
     reference operator*(){
-        return std::pair(_M_node->key[offset], _M_node->data[offset]);
+        return std::pair<key_type, value_type>(_M_node->key[offset], _M_node->data[offset]);
     }
 
     self& operator--(){
         ++offset;
-        if (offset >= DATA_NODE_SLOT_SIZE){
-            if (_M_node->next == NULL) return iterator(_M_node, traits::DATA_NODE_SLOT_SIZE);
-            offset = 0;
-            _M_node = _M_node->next;
+        if (offset >= _M_node->size){
+            if (_M_node->next != nullptr){
+                offset = 0;
+                _M_node = _M_node->next;
+            }
+            else{
+                offset = _M_node->size;
+            }
         }
         return *this;
     }
 
     self& operator--(int){
-        self _tmp = *this;
+        self tmp = *this;
         ++offset;
-        if (offset >= traits::DATA_NODE_SLOT_SIZE){
-            if (_M_node->next == NULL) return iterator(_M_node, traits::DATA_NODE_SLOT_SIZE);
-            offset = 0;
-            _M_node = _M_node->next;
-        }
-        return _tmp;
-    }
-
-    self& operator++(){
-        --offset;
-        if (offset < 0){
-            _M_node = _M_node->prev;
-            offset = _M_node->size;
-        }
-        return *this;
-    }
-    _Self& operator++(int){
-        self _tmp = *this;
-        --offset;
-        if (offset < 0){
-            _M_node = _M_node->prev;
-            offset = _M_node->size;
+        if (offset >= _M_node->size){
+            if (_M_node->next != nullptr){
+                offset = 0;
+                _M_node = _M_node->next;
+            }
+            else{
+                offset = _M_node->size;
+            }
         }
         return tmp;
     }
 
-    inline bool operator==(const _Self& x) const {
+    self& operator++(){
+        if (offset > 0) --offset;
+        else {
+            if (_M_node != nullptr){
+                _M_node = _M_node->prev;
+                offset = _M_node->size - 1;
+            }
+            else{
+                offset = 0;
+            }
+        }
+        return *this;
+    }
+    self& operator++(int){
+        self tmp = *this;
+        if (offset > 0) --offset;
+        else {
+            if (_M_node != nullptr){
+                _M_node = _M_node->prev;
+                offset = _M_node->size - 1;
+            }
+            else{
+                offset = 0;
+            }
+        }
+        return tmp;
+    }
+
+    inline bool operator==(const self& x) const {
         return (_M_node == x._M_node) && (offset == x.offset);
     }
 
-    inline bool operator!=(const _Self& __x) const { 
+    inline bool operator!=(const self& x) const { 
         return  (_M_node != x._M_node) || (offset != x.offset);
     }
-
-protected:
     
     inline const key_type& key() const {
         return _M_node->key[offset];
     }
 
-    inline value_type& value() const{
+    inline value_type& data() const {
         return _M_node->data[offset];
     }
 
-    inline node_ptr get_node() const{
+    inline data_node_ptr get_node() const{
         return _M_node;
     }
 
+protected:
+
+private:
+
+    data_node_ptr _M_node;
+
+    unsigned char offset;
 };
 
 template<typename _Key,
         typename _Val,
-        typename traits=aex_traits<_Key, _Val> >
-class aex_base_reverse_const_iterator{
+        typename traits>
+class aex_const_reverse_iterator{
 public:
 
     typedef _Key key_type;
@@ -340,92 +395,111 @@ public:
 
     typedef ptrdiff_t                  difference_type;
 
-    typedef aex_base_iterator<_Key, _Val> self;
+    typedef aex_const_reverse_iterator<_Key, _Val, traits> self;
 
-    typedef aex_data_node<_Key, _Val> node_type;
+    typedef aex_data_node<_Key, _Val, traits> data_node;
 
-    typedef node_type* node_ptr;
+    typedef data_node* data_node_ptr;
 
-    u_int8_t offset;
-
-    data_node_ptr _M_node;
-
-    inline _aex_base_iterator() : _M_node(NULL), offset(0){}
+    inline aex_const_reverse_iterator() : _M_node(nullptr), offset(0){}
     
-    inline _aex_base_iterator(node_type* ptr, u_int8_t _offset):_M_node(ptr), offset(_offset){}
+    inline aex_const_reverse_iterator(const data_node* ptr, unsigned char _offset):_M_node(ptr), offset(_offset){}
     
-    inline _aex_base_iterator(const aex_base_iterator &it) : _M_node(it._M_node), offset(it.offset){}    
+    inline aex_const_reverse_iterator(const aex_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
 
-    inline _aex_base_iterator(const aex_base_const_iterator &it) : _M_node(it._M_node), offset(it.offset){}    
+    inline aex_const_reverse_iterator(const aex_const_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
 
-    inline _aex_base_iterator(const aex_base_reverse_iterator &it) : _M_node(it._M_node), offset(it.offset){}    
+    inline aex_const_reverse_iterator(const aex_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
     
     reference operator*(){
-        return std::pair(_M_node->key[offset], _M_node->data[offset]);
+        return std::pair<key_type, value_type>(_M_node->key[offset], _M_node->data[offset]);
     }
 
     self& operator--(){
         ++offset;
-        if (offset >= DATA_NODE_SLOT_SIZE){
-            if (_M_node->next == NULL) return iterator(_M_node, traits::DATA_NODE_SLOT_SIZE);
-            offset = 0;
-            _M_node = _M_node->next;
+        if (offset >= _M_node->size){
+            if (_M_node->next != nullptr){
+                offset = 0;
+                _M_node = _M_node->next;
+            }
+            else{
+                offset = _M_node->size;
+            }
         }
         return *this;
     }
 
     self& operator--(int){
-        self _tmp = *this;
+        self tmp = *this;
         ++offset;
-        if (offset >= traits::DATA_NODE_SLOT_SIZE){
-            if (_M_node->next == NULL) return iterator(_M_node, traits::DATA_NODE_SLOT_SIZE);
-            offset = 0;
-            _M_node = _M_node->next;
-        }
-        return _tmp;
-    }
-
-    self& operator++(){
-        --offset;
-        if (offset < 0){
-            _M_node = _M_node->prev;
-            offset = _M_node->size;
-        }
-        return *this;
-    }
-    _Self& operator++(int){
-        self _tmp = *this;
-        --offset;
-        if (offset < 0){
-            _M_node = _M_node->prev;
-            offset = _M_node->size;
+        if (offset >= _M_node->size){
+            if (_M_node->next != nullptr){
+                offset = 0;
+                _M_node = _M_node->next;
+            }
+            else{
+                offset = _M_node->size;
+            }
         }
         return tmp;
     }
 
-    inline bool operator==(const _Self& x) const {
+    self& operator++(){
+        if (offset > 0) --offset;
+        else {
+            if (_M_node != nullptr){
+                _M_node = _M_node->prev;
+                offset = _M_node->size - 1;
+            }
+            else{
+                offset = 0;
+            }
+        }
+        return *this;
+    }
+    self& operator++(int){
+        self tmp = *this;
+        if (offset > 0) --offset;
+        else {
+            if (_M_node != nullptr){
+                _M_node = _M_node->prev;
+                offset = _M_node->size - 1;
+            }
+            else{
+                offset = 0;
+            }
+        }
+        return tmp;
+    }
+
+    inline bool operator==(const self& x) const {
         return (_M_node == x._M_node) && (offset == x.offset);
     }
 
-    inline bool operator!=(const _Self& __x) const { 
+    inline bool operator!=(const self& x) const { 
         return  (_M_node != x._M_node) || (offset != x.offset);
     }
-
-protected:
     
     inline const key_type& key() const {
         return _M_node->key[offset];
     }
 
-    inline const value_type& value() const{
+    inline const value_type& data() const{
         return _M_node->data[offset];
     }
 
-    inline node_ptr get_node() const{
+    inline data_node_ptr get_node() const{
         return _M_node;
     }
 
-};
+protected:
 
+private:
+
+    data_node_ptr _M_node;
+
+    unsigned char offset;
+
+};
 
 }

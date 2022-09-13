@@ -1,0 +1,1 @@
+/usr/bin/c++  -g -Wall -march=native -fopenmp  -rdynamic CMakeFiles/generate_dataset.dir/benchmark/generate_dataset.cpp.o  -o generate_dataset 

@@ -1,0 +1,34 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/zzr/program/aex/benchmark/generate_dataset.cpp
+bits/stdc++.h
+-
+utils.h
+/home/zzr/program/aex/benchmark/utils.h
+generate_dataset.h
+/home/zzr/program/aex/benchmark/generate_dataset.h
+
+/home/zzr/program/aex/benchmark/generate_dataset.h
+bits/stdc++.h
+-
+
+/home/zzr/program/aex/benchmark/utils.h
+iostream
+-
+random
+-
+vector
+-
+utility
+-
+algorithm
+-
+map
+-
+

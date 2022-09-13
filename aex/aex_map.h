@@ -14,20 +14,20 @@ public:
 
     typedef std::pair<key_type, value_type> kv_type;
 
-    typedef aex::aex<key_type, value_type> aex_impl;
+    typedef aex_tree<key_type, value_type, aex_traits<key_type, value_type, std::false_type, std::false_type> > tree;
 
-    typedef typename aex<key_type, value_type> aex_impl;
+    typedef typename tree::size_type size_type;
 
-    typedef typename aex_impl::iterator iterator;
+    typedef typename tree::iterator iterator;
 
-    typedef typename aex_impl::const_iterator const_iterator;
+    typedef typename tree::const_iterator const_iterator;
 
-    typedef typename aex_impl::reverse_iterator reverse_iterator;
+    typedef typename tree::reverse_iterator reverse_iterator;
 
-    typedef typename aex_impl::const_reverse_iterator const_reverse_iterator;
+    typedef typename tree::const_reverse_iterator const_reverse_iterator;
 
 private:
-    aex_impl _m;
+    tree _m;
 
 public:
     explicit inline aex_map() : _m(){}
@@ -61,7 +61,7 @@ public:
 
     inline bool exists(const key_type &key) { return _m.exists(key); }
 
-    inline iterator find(const key_type &key) { return _m.exists(key); }
+    inline iterator find(const key_type &key) { return _m.find(key); }
 
     inline const_iterator find(const key_type &key) const { return _m.exists(key); }
 
@@ -83,6 +83,23 @@ public:
         return _m.upper_bound(key);
     }
 
+    inline std::pair<iterator, bool> insert(const std::pair<key_type, value_type> &x){
+        return _m.insert(x.first, x.second);
+    }
+
+    inline std::pair<iterator, bool> insert(const key_type &key, const value_type &data){
+        return _m.insert(key, data);
+    }
+
+    inline value_type& operator[](const key_type &key){
+        iterator iter = insert(std::pair<key_type, value_type>(key, value_type())).first;
+        return iter.value();
+    }
+
+    inline void bulk_load(const std::pair<key_type, value_type>* const data, const int nums){
+        _m.bulk_load(data, nums);
+    }
+    /*
     inline std::pair<iterator, iterator> equal_range(const key_type &key){
         return _m.equal_range(key);
     }
@@ -90,6 +107,18 @@ public:
     inline std::pair<const_iterator, const_iterator> equal_range(const key_type &key) const{
         return _m.equal_range(key);
     }
+    */
+
+    #ifdef AEX_DEBUG_MSG
+    void set_debug_level(int level){
+        _m.debug_level = level;
+    }
+
+    inline bool debug_error(){
+        return _m.debug_error();
+    }
+
+    #endif
 };
 
 } // namespace aex

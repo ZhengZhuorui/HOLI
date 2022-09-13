@@ -1,0 +1,1 @@
+/usr/bin/c++  -g -Wall -march=native -fopenmp  -rdynamic CMakeFiles/benchmark.dir/benchmark/benchmark.cpp.o CMakeFiles/benchmark.dir/benchmark/benchmark_insert.cpp.o CMakeFiles/benchmark.dir/benchmark/benchmark_query.cpp.o  -o benchmark 
