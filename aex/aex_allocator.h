@@ -118,41 +118,86 @@ public:
 
     typedef typename aex_bitmap_impl<traits>::bitmap bitmap;
 
-    inline static inner_node_ptr allocate_inner_node(size_t slot_size, int level, bool ml_node_flag=true){
+    // used memory size of key array, align 8 bytes
+    inline static size_type KEY_MEMORY_USED(size_type slot_size){
+        return align_8bytes((slot_size) * sizeof(key_type));
+    }
+
+    // used memory size of pointer array, align 8 bytes
+    inline static size_type PTR_MEMORY_USED(size_type slot_size){
+        return align_8bytes((slot_size) * sizeof(char*));
+    }
+
+    // used memory size of bitmap, align 8 bytes
+    inline static size_t BITMAP_MEMORY_USED(size_type slot_size){
+        return align_8bytes(((slot_size >> 6) + ((slot_size & 63) > 0)) * sizeof(unsigned long long));
+    }
+
+    // used memory size of data array, align 8 bytes
+    inline static size_type DATA_MEMORY_USED(size_type slot_size){
+        return align_8bytes((slot_size) * sizeof(value_type));
+    }
+    
+    inline static size_type INNER_NODE_MEMORY_USED(size_type slot_size){ 
+        return BITMAP_MEMORY_USED(slot_size) + KEY_MEMORY_USED(slot_size) + PTR_MEMORY_USED(slot_size) +
+        align_8bytes(sizeof(inner_node)) ;
+    }
+
+    inline static size_type DATA_NODE_MEMORY_USED(size_type slot_size){
+        return align_8bytes(sizeof(data_node)) + KEY_MEMORY_USED(slot_size) + DATA_MEMORY_USED(slot_size);
+    }
+
+    //enum {node_pool_num = 20;}
+    //enum {inner_node_level = 5;}
+
+    //union _obj{
+    //    union _obj* _next;
+    //    char data[1];
+    //};
+    //static _obj* inner_node_free_list[inner_node_level];
+    //static _obj* data_node_free_list;
+
+
+    //template <_Tp>
+    //inline static _obj* _M_refill(){
+    //    _obj* node_pool = (_obj*)malloc(node_pool_num * align_8bytes(sizeof(_Tp)));
+    //    _obj* ret = node_pool;
+    //    for (int i = 0; i < node_pool_num; ++i){
+    //        node_pool->next = reinterpret_cast<_obj*>(reinterpret_cast<char*>(node_pool) + align_8bytes(sizeof(_Tp)));
+    //    }
+    //    return ret;
+    //}
+
+    inline static inner_node_ptr allocate_inner_node(size_t slot_size, bool ml_node_flag=true){
         /*
         *   TODO: memory pool
         */
-
+       
         AEX_PRINT("ALLOCATE INNER NODE");
         size_t real_slot_size = traits::MIN_INNER_NODE_SLOT_SIZE;
         while (real_slot_size < slot_size) real_slot_size <<= 1;
-        inner_node_ptr node;
+        
+        real_slot_size += traits::ERROR_BOUND;
+        size_t memory_used = INNER_NODE_MEMORY_USED(real_slot_size + traits::ERROR_BOUND);   
+        inner_node_ptr node = static_cast<inner_node_ptr>(allocator::_allocate(memory_used));
+        node->slot_size = real_slot_size;
+        node->prop = node->size = 0;
 
-        if (real_slot_size > traits::MIN_ML_INNER_NODE_SLOT_SIZE && ml_node_flag){
-            AEX_PRINT("ALLOCATE ML INNER NODE");
-            real_slot_size += traits::ERROR_BOUND;
-            size_t memory_used = inner_node::ML_INNER_NODE_MEMORY_USED(real_slot_size);
-            
-            node = static_cast<inner_node_ptr>(allocator::_allocate(memory_used));
-            node->slot_size = real_slot_size;
-            node->prop = node->size = 0;
+        // offset: meta data
+        node->key_ptr = reinterpret_cast<key_type*>(align_8bytes(reinterpret_cast<size_t>(node) + sizeof(inner_node)));
+
+        // offset: meta data + key array
+        node->child_ptr = reinterpret_cast<node_ptr*>(align_8bytes(reinterpret_cast<size_t>(node) + sizeof(inner_node)) + KEY_MEMORY_USED(node->slot_size));
+
+        // offset: meta data + key array + pointer array
+        node->bitmap_ptr = reinterpret_cast<bitmap>(align_8bytes(reinterpret_cast<size_t>(node) + sizeof(inner_node)) + 
+                            KEY_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(node->slot_size));
+                        
+        memset(node->key_ptr, 0, node->slot_size);
+
+        if (real_slot_size > traits::MIN_ML_NODE_SLOT_SIZE && ml_node_flag){
             node->prop |= ML_NODE;
-            node->level = level;
-            //bm = node->bitmap_ptr();
             node->clear_bitmap();
-            
-            memset(node->key_ptr(), 0, inner_node::KEY_MEMORY_USED(real_slot_size));
-
-        }
-        else{
-            size_t memory_used = inner_node::ML_INNER_NODE_MEMORY_USED(real_slot_size);
-            AEX_PRINT("memory used=" << memory_used);
-            node = static_cast<inner_node_ptr>(allocator::_allocate(memory_used));
-            AEX_PRINT("node=" << node);
-            node->prop = node->size = 0;
-            node->level = level;
-            node->slot_size = real_slot_size;
-            memset(node->key_ptr(), 0, inner_node::KEY_MEMORY_USED(real_slot_size));
         }
 
         AEX_PRINT("node=" << node);
@@ -160,13 +205,38 @@ public:
         return node;
     }
     
-    inline static data_node_ptr allocate_data_node(){
+    inline static data_node_ptr allocate_data_node(size_t slot_size, bool ml_node_flag=true, bool complex_model=false){
         AEX_PRINT("ALLOCATE DATA NODE");
-        data_node_ptr node = static_cast<data_node_ptr>(allocator::_allocate(sizeof(data_node)));
+        ++data_node_nums;
+        //data_node_ptr node;
+        //if (data_node_free_list == nullptr){
+        //    data_node_free_list = _M_refill();
+        //}
+        
+        //node = reinterpret_cast<data_node_ptr>(data_node_free_list);
+        //data_node_free_list = data_node_free_list->_next;
+        size_type memory_used = DATA_MEMORY_USED(slot_size);   
+        data_node_ptr node = static_cast<data_node_ptr>(allocator::_allocate(memory_used));
+
+        // offset: metadata
+        node->key = reinterpret_cast<key_type*>(align_8bytes(reinterpret_cast<size_t>(node) + sizeof(data_node)));
+
+        // offset: metadata + key array
+        node->data = reinterpret_cast<key_type*>(align_8bytes(reinterpret_cast<size_t>(node) + sizeof(data_node)) + KEY_MEMORY_USED(node->slot_size));
+
+        // offset:
+        
         node->size = 0;
+        node->slot_size = slot_size;
         node->level = 1;
         node->prev = node->next = nullptr;
         node->prop = LEAF;
+        node->prop |= ML_NODE;
+        if (node->slot_size > traits::MIN_COMPLEX_ML_DATA_NODE_SLOT_SIZE)
+            node->prop |= COMPLEX_MODEL;
+
+        node->model.complex_model = nullptr;
+        
         AEX_PRINT("node=" << node);
         return node;
     }
@@ -175,6 +245,7 @@ public:
         /* 
         *   TODO: memory pool
         */
+       --inner_node_nums;
         if (p != nullptr)
             allocator::_free(p);
     }
@@ -184,16 +255,21 @@ public:
         *   TODO: memory pool
         */
         AEX_PRINT("FREE NODE");
+        --data_node_nums;
         if (p != nullptr)
             allocator::_free(p);
     }
 
-    inline static void free(node_ptr p){
+    inline static void free(node_ptr p){      
         if (p != nullptr){
             if (p->prop & LEAF) self::free(static_cast<data_node_ptr>(p));
-            else self::_free(static_cast<inner_node_ptr>(p));
+            else self::free(static_cast<inner_node_ptr>(p));
         }
     }
+
+private:
+    static unsigned long long inner_node_nums, data_node_nums;
+
 
 };
 

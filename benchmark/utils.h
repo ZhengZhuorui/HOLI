@@ -45,7 +45,7 @@ void read_bineary_file(FILE* file, vector<T> &data, size_t n){
         fflush(stdout);
         exit(0);
     }
-    printf("data num_keys=%lld\n", sz);
+    printf("data num_keys=%lu\n", sz);
     data.resize(n);
     fread(data.data(), sizeof(T), n, file);
 }

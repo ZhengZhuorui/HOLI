@@ -7,6 +7,12 @@
 #IncludeRegexTransform: 
 
 ../aex/aex.h
+cmath
+-
+cstring
+-
+cassert
+-
 iostream
 -
 vector
@@ -16,12 +22,6 @@ cstdint
 type_traits
 -
 utility
--
-cmath
--
-cstring
--
-cassert
 -
 aex/aex_traits.h
 ../aex/aex/aex_traits.h
@@ -35,8 +35,32 @@ aex/aex_allocator.h
 ../aex/aex/aex_allocator.h
 aex/aex_iterator.h
 ../aex/aex/aex_iterator.h
+aex/aex_init.hpp
+../aex/aex/aex_init.hpp
+aex/aex_find.hpp
+../aex/aex/aex_find.hpp
+aex/aex_insert.hpp
+../aex/aex/aex_insert.hpp
+aex/aex_erase.hpp
+../aex/aex/aex_erase.hpp
+aex/aex_operation.hpp
+../aex/aex/aex_operation.hpp
 
 ../aex/aex_allocator.h
+
+../aex/aex_erase.hpp
+aex/aex.h
+../aex/aex/aex.h
+
+../aex/aex_find.hpp
+aex/aex.h
+../aex/aex/aex.h
+
+../aex/aex_init.hpp
+
+../aex/aex_insert.hpp
+aex/aex.h
+../aex/aex/aex.h
 
 ../aex/aex_iterator.h
 
@@ -48,11 +72,15 @@ aex/aex.h
 
 ../aex/aex_node.h
 
+../aex/aex_operation.hpp
+aex/aex.h
+../aex/aex/aex.h
+
 ../aex/aex_traits.h
 
 ../aex/aex_utils.h
 
-/home/zzr/program/aex/examples/test.cpp
+/home/zzr/program/aex_remake/test/test.cpp
 iostream
 -
 algorithm
@@ -63,6 +91,8 @@ ctime
 -
 vector
 -
+cmath
+-
 aex_map.h
-/home/zzr/program/aex/examples/aex_map.h
+/home/zzr/program/aex_remake/test/aex_map.h
 

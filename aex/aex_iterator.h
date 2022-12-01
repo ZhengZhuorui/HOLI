@@ -2,7 +2,7 @@
 
 
 namespace aex{
-
+template<typename _Key, typename _Val, typename traits> class aex_tree;
 template<typename _Key, typename _Val, typename traits> class aex_iterator;
 template<typename _Key, typename _Val, typename traits> class aex_const_iterator;
 template<typename _Key, typename _Val, typename traits> class aex_reverse_iterator;
@@ -124,6 +124,14 @@ protected:
 
 private:
 
+    friend class aex_const_iterator<_Key, _Val, traits>;
+
+    friend class aex_reverse_iterator<_Key, _Val, traits>;
+    
+    friend class aex_const_reverse_iterator<_Key, _Val, traits>;
+
+    friend class aex_tree<_Key, _Val, traits>;
+    
     data_node_ptr _M_node;
 
     unsigned char offset;
@@ -251,6 +259,14 @@ protected:
 
 private:
 
+    friend class aex_iterator<_Key, _Val, traits>;
+
+    friend class aex_reverse_iterator<_Key, _Val, traits>;
+    
+    friend class aex_const_reverse_iterator<_Key, _Val, traits>;
+
+    friend class aex_tree<_Key, _Val, traits>;
+
     data_node_ptr _M_node;
 
     unsigned char offset;
@@ -371,6 +387,14 @@ public:
 protected:
 
 private:
+
+    friend class aex_iterator<_Key, _Val, traits>;
+
+    friend class aex_const_iterator<_Key, _Val, traits>;
+    
+    friend class aex_const_reverse_iterator<_Key, _Val, traits>;
+
+    friend class aex_tree<_Key, _Val, traits>;
 
     data_node_ptr _M_node;
 
@@ -495,6 +519,14 @@ public:
 protected:
 
 private:
+
+    friend class aex_iterator<_Key, _Val, traits>;
+
+    friend class aex_const_iterator<_Key, _Val, traits>;
+
+    friend class aex_reverse_iterator<_Key, _Val, traits>;
+
+    friend class aex_tree<_Key, _Val, traits>;
 
     data_node_ptr _M_node;
 

@@ -48,10 +48,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/zzr/program/aex
+CMAKE_SOURCE_DIR = /home/zzr/program/aex_remake
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/zzr/program/aex/build
+CMAKE_BINARY_DIR = /home/zzr/program/aex_remake/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -80,9 +80,9 @@ edit_cache/fast: edit_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/zzr/program/aex/build/CMakeFiles /home/zzr/program/aex/build/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/zzr/program/aex_remake/build/CMakeFiles /home/zzr/program/aex_remake/build/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/zzr/program/aex/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/zzr/program/aex_remake/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -111,32 +111,6 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named generate_dataset
-
-# Build rule for target.
-generate_dataset: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 generate_dataset
-.PHONY : generate_dataset
-
-# fast build rule for target.
-generate_dataset/fast:
-	$(MAKE) -f CMakeFiles/generate_dataset.dir/build.make CMakeFiles/generate_dataset.dir/build
-.PHONY : generate_dataset/fast
-
-#=============================================================================
-# Target rules for targets named benchmark
-
-# Build rule for target.
-benchmark: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 benchmark
-.PHONY : benchmark
-
-# fast build rule for target.
-benchmark/fast:
-	$(MAKE) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/build
-.PHONY : benchmark/fast
-
-#=============================================================================
 # Target rules for targets named test
 
 # Build rule for target.
@@ -149,140 +123,32 @@ test/fast:
 	$(MAKE) -f CMakeFiles/test.dir/build.make CMakeFiles/test.dir/build
 .PHONY : test/fast
 
-benchmark/benchmark.o: benchmark/benchmark.cpp.o
+test/test.o: test/test.cpp.o
 
-.PHONY : benchmark/benchmark.o
-
-# target to build an object file
-benchmark/benchmark.cpp.o:
-	$(MAKE) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark.cpp.o
-.PHONY : benchmark/benchmark.cpp.o
-
-benchmark/benchmark.i: benchmark/benchmark.cpp.i
-
-.PHONY : benchmark/benchmark.i
-
-# target to preprocess a source file
-benchmark/benchmark.cpp.i:
-	$(MAKE) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark.cpp.i
-.PHONY : benchmark/benchmark.cpp.i
-
-benchmark/benchmark.s: benchmark/benchmark.cpp.s
-
-.PHONY : benchmark/benchmark.s
-
-# target to generate assembly for a file
-benchmark/benchmark.cpp.s:
-	$(MAKE) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark.cpp.s
-.PHONY : benchmark/benchmark.cpp.s
-
-benchmark/benchmark_insert.o: benchmark/benchmark_insert.cpp.o
-
-.PHONY : benchmark/benchmark_insert.o
+.PHONY : test/test.o
 
 # target to build an object file
-benchmark/benchmark_insert.cpp.o:
-	$(MAKE) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark_insert.cpp.o
-.PHONY : benchmark/benchmark_insert.cpp.o
+test/test.cpp.o:
+	$(MAKE) -f CMakeFiles/test.dir/build.make CMakeFiles/test.dir/test/test.cpp.o
+.PHONY : test/test.cpp.o
 
-benchmark/benchmark_insert.i: benchmark/benchmark_insert.cpp.i
+test/test.i: test/test.cpp.i
 
-.PHONY : benchmark/benchmark_insert.i
-
-# target to preprocess a source file
-benchmark/benchmark_insert.cpp.i:
-	$(MAKE) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark_insert.cpp.i
-.PHONY : benchmark/benchmark_insert.cpp.i
-
-benchmark/benchmark_insert.s: benchmark/benchmark_insert.cpp.s
-
-.PHONY : benchmark/benchmark_insert.s
-
-# target to generate assembly for a file
-benchmark/benchmark_insert.cpp.s:
-	$(MAKE) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark_insert.cpp.s
-.PHONY : benchmark/benchmark_insert.cpp.s
-
-benchmark/benchmark_query.o: benchmark/benchmark_query.cpp.o
-
-.PHONY : benchmark/benchmark_query.o
-
-# target to build an object file
-benchmark/benchmark_query.cpp.o:
-	$(MAKE) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark_query.cpp.o
-.PHONY : benchmark/benchmark_query.cpp.o
-
-benchmark/benchmark_query.i: benchmark/benchmark_query.cpp.i
-
-.PHONY : benchmark/benchmark_query.i
+.PHONY : test/test.i
 
 # target to preprocess a source file
-benchmark/benchmark_query.cpp.i:
-	$(MAKE) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark_query.cpp.i
-.PHONY : benchmark/benchmark_query.cpp.i
+test/test.cpp.i:
+	$(MAKE) -f CMakeFiles/test.dir/build.make CMakeFiles/test.dir/test/test.cpp.i
+.PHONY : test/test.cpp.i
 
-benchmark/benchmark_query.s: benchmark/benchmark_query.cpp.s
+test/test.s: test/test.cpp.s
 
-.PHONY : benchmark/benchmark_query.s
-
-# target to generate assembly for a file
-benchmark/benchmark_query.cpp.s:
-	$(MAKE) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark_query.cpp.s
-.PHONY : benchmark/benchmark_query.cpp.s
-
-benchmark/generate_dataset.o: benchmark/generate_dataset.cpp.o
-
-.PHONY : benchmark/generate_dataset.o
-
-# target to build an object file
-benchmark/generate_dataset.cpp.o:
-	$(MAKE) -f CMakeFiles/generate_dataset.dir/build.make CMakeFiles/generate_dataset.dir/benchmark/generate_dataset.cpp.o
-.PHONY : benchmark/generate_dataset.cpp.o
-
-benchmark/generate_dataset.i: benchmark/generate_dataset.cpp.i
-
-.PHONY : benchmark/generate_dataset.i
-
-# target to preprocess a source file
-benchmark/generate_dataset.cpp.i:
-	$(MAKE) -f CMakeFiles/generate_dataset.dir/build.make CMakeFiles/generate_dataset.dir/benchmark/generate_dataset.cpp.i
-.PHONY : benchmark/generate_dataset.cpp.i
-
-benchmark/generate_dataset.s: benchmark/generate_dataset.cpp.s
-
-.PHONY : benchmark/generate_dataset.s
+.PHONY : test/test.s
 
 # target to generate assembly for a file
-benchmark/generate_dataset.cpp.s:
-	$(MAKE) -f CMakeFiles/generate_dataset.dir/build.make CMakeFiles/generate_dataset.dir/benchmark/generate_dataset.cpp.s
-.PHONY : benchmark/generate_dataset.cpp.s
-
-examples/test.o: examples/test.cpp.o
-
-.PHONY : examples/test.o
-
-# target to build an object file
-examples/test.cpp.o:
-	$(MAKE) -f CMakeFiles/test.dir/build.make CMakeFiles/test.dir/examples/test.cpp.o
-.PHONY : examples/test.cpp.o
-
-examples/test.i: examples/test.cpp.i
-
-.PHONY : examples/test.i
-
-# target to preprocess a source file
-examples/test.cpp.i:
-	$(MAKE) -f CMakeFiles/test.dir/build.make CMakeFiles/test.dir/examples/test.cpp.i
-.PHONY : examples/test.cpp.i
-
-examples/test.s: examples/test.cpp.s
-
-.PHONY : examples/test.s
-
-# target to generate assembly for a file
-examples/test.cpp.s:
-	$(MAKE) -f CMakeFiles/test.dir/build.make CMakeFiles/test.dir/examples/test.cpp.s
-.PHONY : examples/test.cpp.s
+test/test.cpp.s:
+	$(MAKE) -f CMakeFiles/test.dir/build.make CMakeFiles/test.dir/test/test.cpp.s
+.PHONY : test/test.cpp.s
 
 # Help Target
 help:
@@ -291,25 +157,11 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... rebuild_cache"
-	@echo "... generate_dataset"
-	@echo "... benchmark"
 	@echo "... edit_cache"
 	@echo "... test"
-	@echo "... benchmark/benchmark.o"
-	@echo "... benchmark/benchmark.i"
-	@echo "... benchmark/benchmark.s"
-	@echo "... benchmark/benchmark_insert.o"
-	@echo "... benchmark/benchmark_insert.i"
-	@echo "... benchmark/benchmark_insert.s"
-	@echo "... benchmark/benchmark_query.o"
-	@echo "... benchmark/benchmark_query.i"
-	@echo "... benchmark/benchmark_query.s"
-	@echo "... benchmark/generate_dataset.o"
-	@echo "... benchmark/generate_dataset.i"
-	@echo "... benchmark/generate_dataset.s"
-	@echo "... examples/test.o"
-	@echo "... examples/test.i"
-	@echo "... examples/test.s"
+	@echo "... test/test.o"
+	@echo "... test/test.i"
+	@echo "... test/test.s"
 .PHONY : help
 
 

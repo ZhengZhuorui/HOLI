@@ -4,7 +4,7 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/home/zzr/program/aex/examples/test.cpp" "/home/zzr/program/aex/build/CMakeFiles/test.dir/examples/test.cpp.o"
+  "/home/zzr/program/aex_remake/test/test.cpp" "/home/zzr/program/aex_remake/build/CMakeFiles/test.dir/test/test.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 

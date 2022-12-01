@@ -1,5 +1,3 @@
-/home/zzr/program/aex/build/CMakeFiles/rebuild_cache.dir
-/home/zzr/program/aex/build/CMakeFiles/generate_dataset.dir
-/home/zzr/program/aex/build/CMakeFiles/benchmark.dir
-/home/zzr/program/aex/build/CMakeFiles/edit_cache.dir
-/home/zzr/program/aex/build/CMakeFiles/test.dir
+/home/zzr/program/aex_remake/build/CMakeFiles/rebuild_cache.dir
+/home/zzr/program/aex_remake/build/CMakeFiles/edit_cache.dir
+/home/zzr/program/aex_remake/build/CMakeFiles/test.dir

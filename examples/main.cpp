@@ -14,7 +14,7 @@ int main(){
         values[i].first = i;
         values[i].second = random_values[i];
     }
-    for (int i = 0; i < 3*)
+    //lsfor (int i = 0; i < 3*)
     //for (int i = 0; i < num_keys; ++i) 
 
     aex::aex_map<KEY_TYPE, PAYLOAD_TYPE> index(values, values + num_keys + 1);

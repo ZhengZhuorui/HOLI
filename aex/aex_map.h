@@ -5,7 +5,7 @@
 namespace aex
 {
 
-template<typename _Key, typename _Val>
+template<typename _Key, typename _Val, typename _AllowMultiThread=false>
 class aex_map{
 public:
     typedef _Key key_type;
@@ -14,7 +14,7 @@ public:
 
     typedef std::pair<key_type, value_type> kv_type;
 
-    typedef aex_tree<key_type, value_type, aex_traits<key_type, value_type, std::false_type, std::false_type> > tree;
+    typedef aex_tree<key_type, value_type, aex_traits<key_type, value_type, std::false_type, std::false_type, _AllowMultiThread> > tree;
 
     typedef typename tree::size_type size_type;
 
@@ -63,15 +63,19 @@ public:
 
     inline iterator find(const key_type &key) { return _m.find(key); }
 
-    inline const_iterator find(const key_type &key) const { return _m.exists(key); }
+    inline const_iterator find(const key_type &key) { return _m.exists(key); }
 
-    inline size_t count(const key_type &key) const { return _m.count(key); }
+    inline size_type erase(const key_type &key){ return _m.erase(key);}
+    
+    inline iterator erase(const_iterator iter){ return _m.erase(iter);}
+
+    inline size_t count(const key_type &key) { return _m.count(key); }
 
     inline iterator lower_bound(const key_type &key) {
         return _m.lower_bound(key);
     }
 
-    inline const_iterator lower_bound(const key_type &key) const {
+    inline const_iterator lower_bound(const key_type &key) {
         return _m.lower_bound(key);
     }
 
@@ -79,12 +83,12 @@ public:
         return _m.upper_bound(key);
     }
 
-    inline const_iterator upper_bound(const key_type &key) const {
+    inline const_iterator upper_bound(const key_type &key) {
         return _m.upper_bound(key);
     }
 
     inline std::pair<iterator, bool> insert(const std::pair<key_type, value_type> &x){
-        return _m.insert(x.first, x.second);
+        return _m.insert(x);
     }
 
     inline std::pair<iterator, bool> insert(const key_type &key, const value_type &data){
@@ -98,6 +102,10 @@ public:
 
     inline void bulk_load(const std::pair<key_type, value_type>* const data, const int nums){
         _m.bulk_load(data, nums);
+    }
+
+    inline const struct aex& get_stats() const{
+        return _m.get_stats();
     }
     /*
     inline std::pair<iterator, iterator> equal_range(const key_type &key){
