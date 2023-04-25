@@ -1,145 +1,393 @@
-#pragma once
 //#include "aex/aex.h"
 namespace aex{
 
+
+template<typename _Key, typename _Val, typename traits>
+inline void aex_tree<_Key, _Val, traits>::update_node_frequency(node_ptr node) const{
+    double forget_rate = rapid_pow(this->lambda, this->m_stats.timestamp - node->base_stats.recent_update_timestamp);
+    node->base_stats.write_times = node->base_stats.write_times * forget_rate;
+    node->base_stats.train_times = node->base_stats.train_times * forget_rate;
+    node->base_stats.read_times = node->base_stats.read_times * forget_rate;
+    node->base_stats.recent_update_timestamp = this->m_stats.recent_update_timestamp;
+}
+
+
+template<typename _Key, typename _Val, typename traits>
+inline void aex_tree<_Key, _Val, traits>::update_tree_frequency(){
+    double forget_rate = rapid_pow(this->lambda, this->m_stats.timestamp - this->m_stats.recent_update_timestamp);
+    this->m_stats.write_times = this->m_stats.write_times * forget_rate;
+    this->m_stats.read_times = this->m_stats.read_times * forget_rate;
+    this->m_stats.recent_update_timestamp = this->m_stats.recent_update_timestamp;
+}
+
 template<typename _Key, typename _Val, typename traits>
 inline double aex_tree<_Key, _Val, traits>::estimate_cost() const {
-    return this->root->est_cost;
+    /* TODO */
+    return 0;
 }
 
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::check_merge(inner_node_ptr node){
-    double read_pro = 1.0 * node->size /  * this->read_times / (this->read_times + this->write_times);
-    double node_pro = node->write_times / this->write_times;
-    double write_pro = node->write_times / (this->read_times + this->write_times);
-    double delta_cost = write_pro * node->data_size / 2 + node_pro * read_pro - \
-                        (1.0 * node->data_size / this->m_traits.size);
+bool aex_tree<_Key, _Val, traits>::check_balance_merge(inner_node_ptr node){
+    // delta cost
+    // 1. delta write cost
+    // *2. delta node read cost
+    // 3. delta all read cost
+    if (this->level - node->level > 1)
+        return false;
+    update_node_frequency(node);
+    //double read_pro = 1.0 * read_times / (read_times + this->m_stats.write_times);
+    //double read_pro = 1 - (this->m_stats.write_times / this->m_stats.lambda_timestamp);
+    
+    //double merge_cost = node->m_stats.size * traits::LEARNING_COST / node->write_times;
 
-    double merge_cost = node->data_size / (this->write_times - this->pre_write_times);
+    double SMO_cost = node_train_pro(node) * traits::LEARNING_COST * node->slot_size;
 
-    if (delta_cost + merge_cost < 0) return true;
+    double delta_cost = + node_write_pro(node) * node->m_stats.size / 2 \
+                        - (1.0 * (node->m_stats.data_node - 1) / this->m_stats.data_node)
+                        + SMO_cost;
+    
+    AEX_FORMAT("balance cost: %.2f", delta_cost);
+    if (delta_cost < 0)
+        return true;
     return false;
 }
 
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::check_split(data_node_ptr node){
-    double read_pro = 1.0 * node->size /  * this->read_times / (this->read_times + this->write_times);
-    double node_pro = node->write_times / this->write_times;
-    double write_pro = node->write_times / (this->read_times + this->write_times);
-    double delta_cost = -(write_pro * node->data_size / 2 + node_pro * read_pro) + \
-                        (1.0 * node->data_node_size / this->m_traits.data_node);
-
-    double split_cost = node->data_size / (this->write_times - this->pre_write_times);
-
-    if (delta_cost + split_cost < 0) return true;
-    return false;
-}
-
-template<typename _Key, typename _Val, typename traits>
-double aex_tree<_Key, _Val, traits>::check_split(data_node_ptr node, size_type slot_size){
-    double read_pro = 1.0 * node->size /  * this->read_times / (this->read_times + this->write_times);
-    double node_pro = node->write_times / this->write_times;
-    double write_pro = node->write_times / (this->read_times + this->write_times);
-    double delta_cost = -(write_pro * node->data_size / 2 + node_pro * read_pro) + \
-                        ((1.0 * node->data_size / slot_size) / this->size);
-
-    return delta_cost;
-
-    return false;
-}
-
-template<typename _Key, typename _Val, typename traits>
-node_ptr aex_tree<_Key, _Val, traits>::balance_merge(inner_node_ptr node){
-    // check
-    if (node->prop & CHECK_MERGE) 
-        return node;
-    //mutex the write lock of the node
-    data_node_ptr new_node = node_allocator::allocate_data_node(node->m_stats.size, true);
-    data_node_ptr first_leaf = find_head_leaf(node), last_leaf = find_tail_leaf(node);
-    size_type cnt = 0;
-
-    for (auto i_leaf = first_leaf; i_leaf != last_leaf->next; i_leaf = i_leaf->next){
-        //copy_to_buffer(i_leaf, key_buffer + cnt);
-        copy_to_buffer(i_leaf->key, new_node->key + cnt);
-        if (traits::used_as_set == true)
-            data_memmove(i_leaf->data, new_node->data + cnt);
-        cnt += i_leaf->next;
+bool aex_tree<_Key, _Val, traits>::check_balance_merge(node_ptr* node_buffer, size_type size){
+    // delta cost
+    // 1. write cost 
+    // 2. merge cost
+    // 3. read cost
+    double write_times = 0, train_times = 0, delta_cost = 0;
+    size_type data_size = 0, data_node_size = 0, slot_size = 0;
+    for (size_type i = 0; i < size; ++i){
+        if (node_buffer[i]->prop & node_property::LEAF){
+            if (!(node_buffer[i]->prop & node_property::ML_NODE)) return false;
+        }
+        else{
+            if (node_buffer[i]->m_stats.rewired_cnt > 0)
+                return false;
+            double SMO_cost = node_buffer[i]->base_stats.train_times * traits::LEARNING_COST / this->m_stats.timestamp * node_buffer[i]->slot_size;
+            delta_cost += SMO_cost;
+        }
+        update_node_frequency(node_buffer[i]);
+        write_times += node_buffer[i]->base_stats.write_times;
+        train_times += node_buffer[i]->base_stats.train_times;
+        data_size += node_buffer[i]->data_size();
+        data_node_size += node_buffer[i]->data_node_size();
     }
-    new_node->size = cnt;
+    
 
-    if (cnt < traits::EASY_MODEL_SLOT_SIZE){
-        node->model.easy_model.train(new_node->key, cnt, cnt);
-        if (node->check_error() * 2 > log(cnt)){
-            node->prop ^= ML_NODE;
+    double write_pro = 1.0 * write_times / this->m_stats.lambda_timestamp;
+
+    double train_pro = 1.0 * train_times / this->m_stats.lambda_timestamp;
+
+    double read_pro = 1 - (this->m_stats.write_times / this->m_stats.lambda_timestamp);
+
+    delta_cost += train_pro * traits::LEARNING * size;
+
+    AEX_FORMAT("balance cost: %.2f", delta_cost);
+    if (delta_cost < 0)
+        return true;
+    return false;
+}
+
+template<typename _Key, typename _Val, typename traits>
+typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val, traits>::balance_merge_nodes(inner_node_ptr* node_buffer, size_type size){
+    size_type child_size = 0;
+    Model m;
+    for (size_type i = 0; i < size; ++i)
+        child_size += node_buffer[i]->size;
+    key_type* key_buffer = node_allocator.allocate_key_buffer(child_size);
+    
+    for (size_type i = 0, cnt = 0; i < size; cnt += node_buffer[i]->size, ++i){
+        copy_to_buffer(node_buffer[i], key_buffer + cnt);
+        node_buffer[i]->m_stats.train_times++;
+    }
+    size_type slot_size = traits::MIN_INNER_NODE_SLOT_SIZE;
+    while (slot_size * traits::INNER_NODE_FULL_RATIO < child_size) slot_size <<= 1;
+    
+    if (check_rewired(key_buffer, child_size, slot_size)){
+        inner_node_ptr new_node = node_allocator.allocate_inner_node(slot_size);
+        node_ptr* child_buffer = node_allocator.allocate_nodeptr_buffer(child_size);
+        for (size_type i = 0, cnt = 0; i < size; cnt += node_buffer[i]->size, ++i){
+            copy_to_buffer(node_buffer[i], child_buffer + cnt);
+            node_buffer[i]->m_stats.train_times++;
         }
     }
-    else{
-        node->model.complex_model->construct(new_node->key, cnt);
-        if (node->check_error() * 2 > log(cnt)){
-            node->model.complex_model->free();
-            node->prop ^= ML_NODE;
+    else
+        return nullptr;
+}
+
+
+template<typename _Key, typename _Val, typename traits>
+bool aex_tree<_Key, _Val, traits>::check_balance_split(size_type node_size, double node_write_pro, double train_pro, size_type slot_size){
+    // delta cost
+    // 1. delta write cost
+    // 2. delta node read cost
+    // 3. delta all read cost
+    // 4. average SMO cost
+    double node_pro = 1.0 * node_size / this->m_stats.size;
+    double read_pro = 1 - (this->m_stats.read_times / this->m_stats.lambda_timestamp);
+    double SMO_cost = train_pro * slot_size;
+    double delta_cost = - node_write_pro * (node_size - slot_size) / 2 \
+                        - read_pro * node_pro \
+                        + (1.0 * (node_size / slot_size - 1) / this->m_stats.data_node)
+                        + SMO_cost;
+
+    AEX_FORMAT("balance cost: %.2f",  delta_cost);
+    if (delta_cost < 0) 
+        return true;
+    return false;
+}
+
+template<typename _Key, typename _Val, typename traits>
+bool aex_tree<_Key, _Val, traits>::check_balance_split(data_node_ptr node, size_type slot_size){
+    // delta cost
+    // 1. delta write cost
+    // 2. delta node read cost
+    // 3. delta all read cost
+    // 4. average SMO cost
+    AEX_ASSERT(this->level - node->level == 0);
+    update_node_frequency(node);
+    update_tree_frequency();
+    return check_balance_split(node->slot_size, node_write_pro(node), node_train_pro(node), slot_size);
+    return false;
+}
+
+template<typename _Key, typename _Val, typename traits>
+typename aex_tree<_Key, _Val, traits>::size_type aex_tree<_Key, _Val, traits>::check_balance_split_best_slot_size(data_node_ptr node){
+    // delta cost
+    // 1. delta write cost
+    // 2. delta node read cost
+    // 3. delta all read cost
+    size_type slot_size = node->slot_size, best_slot_size = node->slot_size;
+    double best_delta_cost = 0, delta_cost;
+    for (; slot_size >= traits::MIN_DATA_NODE_SLOT_SIZE; slot_size >>= 1){
+        delta_cost = - node_write_pro(node) * (node->size - slot_size) / 2 \
+                     + (1.0 * (node->size / slot_size) / this->m_stats.data_node);
+        if (delta_cost < best_delta_cost){
+            best_delta_cost = delta_cost;
+            best_slot_size = slot_size;
+        }
+        else 
+            break;
+    }
+
+    delta_cost += node_train_pro(node) * traits::LEARNING_COST * node->slot_size;
+    AEX_FORMAT("balance cost: %.2f", delta_cost);
+    if (delta_cost < 0) 
+        return best_slot_size;
+    return slot_size;
+}
+
+template<typename _Key, typename _Val, typename traits>
+typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::balance_merge(inner_node_ptr __restrict__ node, inner_node_ptr __restrict__ parent){
+    // check
+    update_tree_frequency();
+    size_type cnt;
+
+    data_node_ptr new_node = node_allocator.allocate_data_node(node->m_stats.size, true);
+    {
+        // meta:
+        new_node->base_stats = node->base_stats;
+        cnt = 0;
+
+        for (auto i_leaf = node->child_ptr[0]; i_leaf != node->child_ptr[node->last()]->next; i_leaf = i_leaf->next){
+            copy_to_buffer(i_leaf->key, new_node->key + cnt);
+            data_memmove(i_leaf->data, new_node->data + cnt);
+            cnt += i_leaf->next;
+        }
+        new_node->size = cnt;
+
+        bool merge_flag = new_node->train_model();
+        if (merge_flag ==false){
+            update_node_frequency(node);
+            ++node->base_stats.train_times;
+            node_allocator.free_node(new_node);
+            return nullptr;
         }
     }
 
     // merge
     {
         cnt = 0;
-        data_node_ptr brother = (first_leaf->prev == nullptr) ? last_leaf->next : first_leaf->prev;
-        erase_recursive(node);
-        
-        if (brother == nullptr){
-            root = new_node;
-            this->m_traits.level = 1;
-        }
+        key_type last_key = node->key_ptr[node->last()];
+        if (parent != nullptr){
+            if (node != parent->child_ptr[parent->last()]){
+                inner_node_ptr brother = node->last;
+                bool flag = true;
+                if (isfull(brother)) 
+                    flag &= rescale(brother, parent, traits::EXPAND_RATIO);
+                if (flag){
+                    std::false_type fp;
+                    if (insert_node(brother, last_key, new_node, fp)){
+                        //
+                    }
+                    else if (rewired(brother, last_key, new_node) && insert_node(brother, last_key, new_node, fp)){
+                        //
+                    }
+                    else flag = false;
+                }
 
-        if (parent->last_key() < key){
-            for (inner_node_ptr node = parent->parent, son; node != nullptr; son = node, node = node->parent_node){
-                size_type pos = node->last();
-                update_childnode_key(node, son, key);
+                if (flag){
+                    data_node_ptr new_node = merge_to_node(node);
+                    if (new_node != nullptr){
+                        ++this->m_stats.data_node;
+                        node_ptr prev_head_leaf = node->child_ptr[0]->prev;
+                        node_ptr next_tail_leaf = node->child_ptr[node->last()]->next;
+                        if (prev_head_leaf != nullptr)
+                            prev_head_leaf->next = next_tail_leaf;
+                        if (next_tail_leaf != nullptr)
+                            next_tail_leaf->prev = prev_head_leaf;
+                        erase_son_node(parent, node);
+                    }
+                    else{
+                        return node;
+                    }
+                }
             }
         }
-        insert_recursive(parent, key, son);
+        else{
+            data_node_ptr new_node = merge_to_node(node);
+            if (new_node != nullptr){
+                root = new_node;
+                this->m_stats.level = 1;
+                return new_node;
+            }
+        }
+        this->erase_tree_recursive(node);
+    }
+}
+
+//template<typename _Key, typename _Val, typename traits>
+//inline bool aex_tree<_Key, _Val, traits>::check_insert_balance(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node){
+//    size_type size = left_node->size + right_node->size;
+//    update_node_frequency(left_node);
+//    update_node_frequency(right_node);
+//    update_tree_frequency();
+//    size_type node_slot_size = std::max(left_node->slot_size, right_node->slot_size);
+//    if (left_node->size + right_node->size > node_slot_size)
+//        node_slot_size <<= 1;
+//    return check_balance_split(node_slot_size, node_write_pro(left_node) + node_write_pro(right_node), std::min(left_node->slot_size, right_node->slot_size));
+//}
+
+//template<typename _Key, typename _Val, typename traits>
+//inline bool aex_tree<_Key, _Val, traits>::check_insert_balance(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node){
+//    if (left_node->m_stats.rewired_cnt > 0 || right_node->m_stats.rewired_cnt > 0)
+//        return false;
+//}
+
+template<typename _Key, typename _Val, typename traits>
+typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::balance_merge_to_left_node(inner_node_ptr __restrict__ parent, data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node){
+    if (check_insert_balance(left_node, right_node)){
+        size_type node_slot_size = std::max(left_node->slot_size, right_node->slot_size);
+        if (left_node->size + right_node->size > node_slot_size){
+            node_slot_size <<= 1;
+            data_node_ptr new_node = node_allocator.allocate_data_node(node_slot_size);
+            replace_node(left_node, new_node);
+            memcpy(new_node->key, left_node->key, left_node->size * sizeof(key_type));
+            memcpy(new_node->data, left_node->data, left_node->size * sizeof(value_type));
+            memcpy(new_node->key + left_node->size, right_node->key, right_node->size * sizeof(key_type));
+            memcpy(new_node->data + left_node->size, right_node->data, right_node->size * sizeof(value_type));
+            new_node->size = left_node->size + right_node->size;
+            new_node->train_model();
+            new_node->next = right_node->next;
+            if (right_node->next != nullptr) right_node->next->prev = new_node;
+            new_node->base_stats.write_times += right_node->base_stats.write_times;
+            new_node->base_stats.train_times += right_node->base_stats.train_times;
+            return new_node;
+        }
+        else{
+            if (left_node->slot_size >= right_node->slot_size){
+                merge_to_left_leaf(left_node, right_node);
+                return left_node;
+            }
+            else{
+                merge_to_right_leaf(left_node, right_node);
+                return right_node;
+            }
+        }
+        
+    }
+    return nullptr;
+}
+
+// Unused.
+template<typename _Key, typename _Val, typename traits>
+typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val, traits>::balance_merge_to_left_node(inner_node_ptr __restrict__ parent, inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node){
+    if (left_node->m_stats.rewired_cnt > 0 || right_node->m_stats.rewired_cnt > 0)
+        return nullptr;
+    Model m;
+    size_type size = left_node->size + right_node->size, slot_size = traits::MIN_INNER_NODE_SLOT_SIZE;
+    while (slot_size * traits::INNER_NODE_FULL_RATIO < size) slot_size <<= 1;
+    key_type* key_buffer = node_allocator.allocate_key_buffer(size);
+    copy_to_buffer(left_node, key_buffer);
+    copy_to_buffer(right_node, key_buffer + left_node->size);
+    if (check_rewired(key_buffer, size, slot_size, m)){
+        node_ptr* child_buffer = node_allocator.allocate_nodeptr_buffer(size);
+        if (slot_size > left_node->real_slot_size() && slot_size > left_node->real_slot_size()){
+            update_node_frequency(left_node);
+            update_node_frequency(right_node);
+            copy_to_buffer(left_node, child_buffer);
+            copy_to_buffer(right_node, child_buffer + left_node->size);
+            inner_node_ptr new_node = node_allocator.allocate_key_buffer(slot_size);
+            new_node->construct(key_buffer, child_buffer, m);
+            replace(left_node, new_node);
+            new_node->next = right_node->next;
+            if (right_node->next != nullptr) right_node->next->prev = new_node;
+            new_node->base_stats.write_times += right_node->base_stats.write_times;
+            new_node->base_stats.train_times += right_node->base_stats.train_times;
+            node_allocator.deallocate(child_buffer);
+            return new_node;
+        }
+        else if (slot_size <= left_node->real_slot_size()){
+            left_node->construct(key_buffer, child_buffer, size);
+            left_node->next = right_node->next;
+            if (right_node->next != nullptr) right_node->next->prev = left_node;
+            left_node->base_stats.write_times += right_node->base_stats.write_times;
+            left_node->base_stats.train_times += right_node->base_stats.train_times;
+            return left_node;
+        }
+        else{
+            right_node->construct(key_buffer, child_buffer, size);
+            right_node->prev = right_node->next;
+            if (left_node->prev != nullptr) left_node->prev->next = right_node;
+            right_node->base_stats.write_times += left_node->base_stats.write_times;
+            left_node->base_stats.train_times += right_node->base_stats.train_times;
+            return right_node;
+        }
+    }
+    else{
+        node_allocator.deallocate(key_buffer);
+        return nullptr;
     }
 }
 
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::balance_split(data_node_ptr node){
-    if (node->prop & CHECK_SPLIT) return false;
-    std::vector<key_type> key_buffer;
-    std::vecotr<node_ptr> node_buffer;
+void aex_tree<_Key, _Val, traits>::balance_split(const node_ptr* stack, const int top, data_node_ptr node, size_type slot_size){
 
-    size_type slot_size = traits::MIN_DATA_NODE_SLOT_SIZE;
-    double min_cost = 0;
-    for (size_type now_slot_size = traits::MIN_DATA_NODE_SLOT; now_slot_size <= traits::MIN_DATA_NODE_SLOT_SIZE; now_slot_size >>= 1){
-        double cost = check_split(node, slot_size);
-        if (min_cost < cost){
-            min_cost = cost;
-            slot_size = now_slot_size;
-        }
-    }
+    std::vector<key_type> key_buffer;
+    std::vector<node_ptr> node_buffer;
+
+    iterator res_iter;
+    //double min_cost = 0;
     size_type leaf_size = slot_size * traits::DATA_NODE_FEW_RATIO;
-    for (size_type i = 0; i < node->size; i += leaf_size){
-        data_node_ptr new_data_node = node_allocator::allocate_data_node(slot_size, false);
-        memcpy(new_data->key, node->key + offset);
-        data_memmove(new_data_node->value, node->data + offset);
+    for (size_type i_offset = 0; i_offset < node->size; i_offset += leaf_size){
+        data_node_ptr new_data_node = node_allocator.allocate_data_node(slot_size);
+        if (node->size - i_offset < slot_size) leaf_size = node->size - i_offset;
+        new_data_node->base_stats.write_times = 1.0 * node->base_stats.write_times * leaf_size / node->size;
+        new_data_node->base_stats.train_times = 1.0 * node->base_stats.train_times * leaf_size / node->size;
+        new_data_node->construct(node->key + i_offset, node->data + i_offset, leaf_size);
     }
-    if (node->parent == nullptr){
-        this->bulk_load_node(key_buffer, node_buffer);
+    if (top == 2){
+        this->build_tree(key_buffer, node_buffer);
     }
     else{
-        inner_node_ptr parent = node->parent;
-        insert_recursive(parent, key_buffer, node_buffer);
+        insert_many(stack, top, key_buffer, node_buffer);
     }
 
-    {
-        if (node->model.complex_model == nullptr){
-            node->model.complex_model->free();
-        }
-        allocator::free(node->model.complex_model);
-        node_allocator::free(node);
-    }
-    return true;
+    node_allocator.free_node(node);
 }
-
 
 }

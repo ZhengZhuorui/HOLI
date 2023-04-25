@@ -8,7 +8,7 @@
 using std::vector;
 using std::pair;
 typedef unsigned long long size_type;
-static const unsigned int seed = 0;
+static const unsigned int seed = 0; 
 
 std::map<std::string, std::string> parse_flags(int argc, char** argv) {
     std::map<std::string, std::string> flags;
@@ -38,21 +38,17 @@ std::map<std::string, std::string> parse_flags(int argc, char** argv) {
 template<typename T>
 void read_bineary_file(FILE* file, vector<T> &data, size_t n){
     printf("read data...\n");
-    size_t sz;
-    fread(&sz, sizeof(size_t), 1, file);
-    if (sz < n){
-        printf("file key nums less than insert key");
-        fflush(stdout);
-        exit(0);
-    }
-    printf("data num_keys=%lu\n", sz);
+    fflush(stdout);
     data.resize(n);
     fread(data.data(), sizeof(T), n, file);
+    printf("read data end\n");
 }
 
 template<typename T>
 void write_bineary_file(FILE* file, vector<T> &data){
+    printf("write data...\n");
+    fflush(stdout);
     size_t n = data.size();
-    fwrite(&n, sizeof(size_t), 1, file);
     fwrite(data.data(), sizeof(T), n, file);
+    printf("write data end\n");
 }

@@ -4,154 +4,31 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_head_leaf(node_ptr node) const{
-    ++m_stats.read_times;
-    while (!(node->prop & LEAF))
-        node = static_cast<inner_node_ptr>(node)->child_ptr[static_cast<inner_node_ptr>(node)->first()];
+typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_head_leaf(node_ptr node) const{
+    while (!(node->prop & node_property::LEAF))
+        node = static_cast<inner_node_ptr>(node)->child_ptr[0];
     return node;
 }
 
 template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_tail_leaf(node_ptr node) const {
-    ++m_stats.read_times;
-    while (!(node->prop & LEAF))
+typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_tail_leaf(node_ptr node) const {
+    while (!(node->prop & node_property::LEAF))
         node = static_cast<inner_node_ptr>(node)->child_ptr[static_cast<inner_node_ptr>(node)->last()];
     return node;
 }
 
-// if no item greater than or equal x, return node->slot_size (ml node) or node->size(otherwise)
 template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::size_type aex_tree<_Key, _Val, traits>::find_lower_pos(inner_node_ptr node, const key_type &x, std::true_type tp){
-    ++m_stats.read_times;
-    if (check_merge(node)){
-        data_node_ptr merged_node = merge(node);
-        return find_lower_pos(static_cast<data_node_ptr>(merged_node), x);
-    }
-    AEX_PRINT("BEGIN");
-    key_type* key = node->key_ptr;
-    if (node->prop & ML_NODE){
-        size_type pos = node->predict(x), upper_bound = std::min(pos + traits::ERROR_BOUND + 1, node->slot_size);
-        for (size_type i = pos; i < upper_bound; ++i)
-        if (key[i] >= x){
-            return i;
-        }
-        return node->slot_size;
-    }
-    else{
-        size_type ret = std::lower_bound(key, key + size, x) - key;
-        return ret;
-    }
-}
-
-template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::size_type aex_tree<_Key, _Val, traits>::find_lower_pos(const inner_node_ptr node, const key_type &x, std::false_type tp) const {
-    AEX_PRINT("BEGIN");
-    key_type* key = node->key_ptr;
-    if (node->prop & ML_NODE){
-        size_type pos = node->predict(x), upper_bound = std::min(pos + traits::ERROR_BOUND + 1, node->slot_size);
-        for (size_type i = pos; i < upper_bound; ++i)
-        if (key[i] >= x){
-            return i;
-        }
-        return node->slot_size;
-    }
-    else{
-        size_type ret = std::lower_bound(key, key + size, x) - key;
-        return ret;
-    }
-}
-
-// if no item greater than or equal x, return node->size
-template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::size_type aex_tree<_Key, _Val, traits>::find_lower_pos(const data_node_ptr node, const key_type &x) const {
-    ++m_stats.read_times;
-    if (check_merge(node))
-        merge(node);
-    size_type pos;
-    if (node->prop & ML_NODE){
-        if (node->prop & COMPLEX_MODEL){
-            pos = node->model.complex_model.predict(x);
-            pos = exponential_search_lower_bound(node->key, node->key + node->size, pos, x) - node->key;
-        }
-        else{
-            pos = node->model.easy_model.predict(x);
-            pos = exponential_search_lower_bound(node->key, node->key + node->size, pos, x) - node->key;
-        }
-    }
-    else{
-        pos = std::lower_bound(node->key, node->key + size, x) - node->key;
-        if (pos == size) pos = node->size;
-    }
-    return pos;
-    
-}
-
-// if no item greater than x, return node->slot_size (ml node) or node->size(otherwise)
-template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::size_type aex_tree<_Key, _Val, traits>::find_upper_pos(inner_node_ptr node, const key_type &x, std::true_type tp) {
-    ++m_stats.read_times;
-    if (check_merge(node)){
-        data_node_ptr merged_node = merge(node);
-        return find_upper_pos(merged_node);
-    }
-    key_type* key = node->key_ptr;
-    if (node->prop & ML_NODE){
-        size_type pos = node->predict(x), upper_bound = std::min(pos + traits::ERROR_BOUND + 1, node->slot_size);
-        for (size_type i = pos; i < upper_bound; ++i)
-        if (key[i] > x)
-            return i;
-        return node->slot_size;
-    }
-    else{
-        size_type ret = std::upper_bound(key, key + node->size, x) - key;
-        return ret;
-    }
-}
-
-// if no item greater than x, return node->size
-template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::size_type aex_tree<_Key, _Val, traits>::find_upper_pos(const data_node_ptr node, const key_type &x) {
-    AEX_PRINT("BEGIN");
-    size_type pos;
-    if (node->prop & ML_NODE){
-        if (node->prop & COMPLEX_MODEL){
-            pos = node->model.complex_model.predict(x);
-            pos = exponential_search_upper_bound(node->key, node->key + node->size, pos, x) - node->key;
-        }
-        else{
-            pos = node->model.easy_model.predict(x);
-            pos = exponential_search_upper_bound(node->key, node->key + node->size, pos, x) - node->key;
-        }
-    }
-    else{
-        pos = std::upper_bound(node->key, node->key + size, k) - node->key;
-        if (pos == size) pos = node->size;
-    }
-}
-
-// if no item greater than or equal x, return NULL
-template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_lower(inner_node_ptr node, const key_type &x, std::true_type tp) {
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_lower(const inner_node_ptr node, const key_type &x){
     node_ptr* child = node->child_ptr;
-    size_type pos = find_lower_pos(node, x, tp);
-    AEX_PRINT("pos=" << pos);
-    AEX_PRINT("child[pos]=" << child[pos]);
-    return (pos == node->slot_size) ? nullptr : child[pos];
-}
-
-template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_lower(const inner_node_ptr node, const key_type &x, std::false_type fp) const{
-    node_ptr* child = node->child_ptr;
-    size_type pos = find_lower_pos(node, x, fp);
-    AEX_PRINT("pos=" << pos);
-    AEX_PRINT("child[pos]=" << child[pos]);
+    size_type pos = node->find_lower_pos(x);
+    AEX_FORMAT("child[%llu]=%lld", pos, child[pos]); 
     return (pos == node->slot_size) ? nullptr : child[pos];
 }
 
 // if no item greater than or equal x, return end()
 template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::find_lower(const data_node_ptr node, const key_type &key) {
-    size_type pos = find_lower_pos(node, key);
+inline typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::find_lower(const data_node_ptr node, const key_type &x){
+    size_type pos = node->find_lower_pos(x);
     if (pos == node->slot_size)
         return end();
     return iterator(node, pos);
@@ -159,65 +36,171 @@ typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::fi
 
 // find the lowest item greater than or equal x, if no, return end()
 template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::find_lower(const key_type &key, std::true_type tp){
+typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::find_lower(const key_type &key, std::true_type AllowBalance){
+    //mutex timestamp
+    ++this->m_stats.timestamp;
+    node_ptr node;
+    bool flag;
+    //node_ptr stack[traits::MAX_LEVEL];
+    //int top = 1;
+    do{
+        flag = true;
+        node = root;
+        while (!(node->prop & node_property::LEAF)){
+            if (check_balance_merge(node)){
+                flag = false;
+                balance_merge(node);
+                break;
+            }
+            else 
+                node = find_lower(static_cast<inner_node_ptr>(node), key, AllowBalance);
+        }
+    }while(flag == false);
+    return find_lower(static_cast<data_node_ptr>(node), key);
+    //return iterator(node, key);
+}
+
+template<typename _Key, typename _Val, typename traits>
+typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::find_lower(const key_type &key, std::false_type AllowBalance){
+    //mutex timestamp
+    ++this->m_stats.timestamp;
     node_ptr node = root;
-    std::true_type tp;
-    while (!(node->prop & LEAF)){
-        node = find_lower(static_cast<inner_node_ptr>(node), key, tp);
+    while (!(node->prop & node_property::LEAF)){
+        node = find_lower(static_cast<inner_node_ptr>(node), key);
     }
+    iterator iter = find_lower(static_cast<data_node_ptr>(node), key);
+    return iter;
+}
+
+template<typename _Key, typename _Val, typename traits>
+typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::find_lower_with_trace(const key_type &key, node_ptr* stack, int &top, std::true_type AllowBalance){
+    //mutex timestamp
+    ++this->m_stats.timestamp;
+    bool flag;
+    node_ptr node;
+    stack[top = 0] = nullptr;
+    do{
+        top = 1;
+        flag = true;
+        node = root;
+        while (!(node->prop & node_property::LEAF)){
+            stack[top++] = node;
+            if (check_balance_merge(node)){
+                flag = false;
+                balance_merge(node, stack, top);
+                break;
+            }
+            else 
+                node = find_lower(static_cast<inner_node_ptr>(node), key, AllowBalance);
+        }
+    }while(flag == false);
+    stack[top++] = node;
     return find_lower(static_cast<data_node_ptr>(node), key);
 }
 
-
 template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::const_iterator aex_tree<_Key, _Val, traits>::find_lower(const key_type &key, std::false_type fp) const {
+typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::find_lower_with_trace(const key_type &key, node_ptr* stack, int &top, std::false_type AllowBalance){
+    //mutex timestamp
+    ++this->m_stats.timestamp;
     node_ptr node = root;
-    std::false_type fp;
-    while (!(node->prop & LEAF)){
-        node = find_lower(static_cast<inner_node_ptr>(node), key, fp);
+    stack[top = 0] = nullptr;
+    top++;
+    while (!(node->prop & node_property::LEAF)){
+        stack[top++] = node;
+        node = find_lower(static_cast<inner_node_ptr>(node), key);
     }
+    stack[top++] = node;
     return find_lower(static_cast<data_node_ptr>(node), key);
 }
 
 // find the lowest item greater than x, if no, return end()
 template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_upper(inner_node_ptr node, const key_type &x, std::true_type tp) {
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_upper(const inner_node_ptr node, const key_type &x){
     node_ptr* child = node->child_ptr;
-    size_type pos = find_upper_pos(node, x, tp);
-    return (pos == node->slot_size) ? nullptr : child[pos];
-}
-
-template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_upper(const inner_node_ptr node, const key_type &x, std::false_type tp) const{
-    node_ptr* child = node->child_ptr;
+    // TODO:
+    std::false_type fp;
+    //size_type pos = find_upper_pos(node, x, this->allow_balance);
     size_type pos = find_upper_pos(node, x, fp);
     return (pos == node->slot_size) ? nullptr : child[pos];
 }
 
 template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::find_upper(const data_node_ptr node, const key_type &x) {
-    for (size_type i = 0; i < node->size; ++i)
-    if (node->key[i] > x)
-        return iterator(node, i);
-    return end();
+inline typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::find_upper(const data_node_ptr node, const key_type &x){
+    value_type* data = node->data;
+    size_type pos = find_upper_pos(node, x);
+    if (pos == node->slot_size)
+        return end();
+    return iterator(node, pos);
 }
 
 template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::find_upper(const key_type &key, std::true_type tp) {
-    node_ptr node = root;
-    while (!(node & LEAF)){
-        node = find_upper(static_cast<inner_node_ptr>(node), key, tp);
-    }
-    return find_upper(static_cast<data_node_ptr>(node), key, tp);
+typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::find_upper(const key_type &key, std::true_type AllowBalance) {
+    ++this->m_stats.timestamp;
+    bool flag;
+    node_ptr node;
+    do{
+        flag = true;
+        node = root;
+        while (!(node->prop & node_property::LEAF)){
+            if (check_balance_merge(node)){
+                flag = false;
+                merge(node);
+                break;
+            }
+            else 
+                node = find_upper(static_cast<inner_node_ptr>(node), key);
+        }
+    }while(flag == false);
+    return find_upper(static_cast<data_node_ptr>(node), key);
 }
 
 template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::const_iterator aex_tree<_Key, _Val, traits>::find_upper(const key_type &key, std::false_type fp) const {
+typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::find_upper(const key_type &key, std::false_type AllowBalance) {
     node_ptr node = root;
-    while (!(node & LEAF)){
-        node = find_upper(static_cast<inner_node_ptr>(node), key, fp);
+    while (!(node->prop & node_property::LEAF)){
+        node = find_upper(static_cast<inner_node_ptr>(node), key);
     }
-    return find_upper(static_cast<data_node_ptr>(node), key, fp);
+    return find_upper(static_cast<data_node_ptr>(node), key);
 }
+
+template<typename _Key, typename _Val, typename traits>
+typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::find_upper_with_trace(const key_type &key, node_ptr* stack, int &top, std::true_type AllowBalance){
+    //mutex timestamp
+    ++this->m_stats.timestamp;
+    bool flag;
+    node_ptr node;
+    do{
+        top = 0;
+        flag = true;
+        node = root;
+        while (!(node->prop & node_property::LEAF)){
+            stack[top++] = node;
+            if (check_balance_merge(node)){
+                flag = false;
+                merge(node);
+                break;
+            }
+            else 
+                node = find_upper(static_cast<inner_node_ptr>(node), key);
+        }
+    }while(flag == false);
+    stack[top++] = node;
+    return find_upper(static_cast<data_node_ptr>(node), key);
+}
+
+template<typename _Key, typename _Val, typename traits>
+typename aex_tree<_Key, _Val, traits>::iterator aex_tree<_Key, _Val, traits>::find_upper_with_trace(const key_type &key, node_ptr* stack, int &top, std::false_type AllowBalance) {
+    //mutex timestamp
+    ++this->m_stats.timestamp;
+    node_ptr node = root;
+    top = 0;
+    while (!(node->prop & node_property::LEAF)){
+        stack[top++] = node;
+        node = find_upper(static_cast<inner_node_ptr>(node), key);
+    }
+    stack[top++] = node;
+    return find_upper(static_cast<data_node_ptr>(node), key);
+}
+
 
 }

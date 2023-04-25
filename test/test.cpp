@@ -4,82 +4,91 @@
 #include <ctime>
 #include <vector>
 #include <cmath>
+#include <utility>
 
-#include "aex_map.h"
+#include "aex/aex_map.h"
+#include "test.h"
+#include "utils.h"
+#include "generate_dataset.h"
+
 using namespace std;
 typedef long long LL;
 const int N = 10000000, M = 10000;
-void test_exponential_search_lower_bound(){
-    
-    vector<int> vec(N);
-    
-    for (int i = 0; i < N; ++i) vec[i] = random();
-    sort(vec.begin(), vec.end());
-    int min_value = vec[0], max_value = vec[N - 1];
 
-    for (int i = 0; i < N; ++i){
-        int x = random() % N;
-        int predict = max((int)0, min((int)N - 1, (int)(1.0 * (x - min_value) / (max_value - min_value) * N)));
-        int exp_search_pos = aex::exponential_search_lower_bound(vec.begin(), vec.end(), predict, x) - vec.begin();
-        int real = lower_bound(vec.begin(), vec.end(), x) - vec.begin();
-        if (predict != real){
-            printf("Error!, item %d, real position %d, predict position %d, expenential search position %d", x, real, predict, exp_search_pos);
-            break;
-        }
-    }
+/*
+ * Required flags:
+ * unit ("index", "function", "model")
+ * key_type: int or float
+ * input_file
+ * optional flags:
+ * func: (if unit==function)
+ * 
+ */
 
-}
-
-int main(){
+int main(int argc, char** argv){
     srand(0);
-    test_exponential_search_lower_bound();
-    aex::aex_map<LL, LL> mp;
-    cout << "?" << endl;
-    vector<LL> data, rank;
-    //vector<pair<LL, LL> > rank;
-    for (int i = 0; i < N; ++i) data.push_back(i);
-    //rank.resize(N);
-    random_shuffle(data.begin(), data.end());
-    //for (int i = 0; i < N; ++i)
-        //rank[i] = lower_bound(data.begin(), data.end(), data[i]) - data.begin();
-    
-    //cout << "data= ";
-    //for (int i = 0; i < N; ++i) 
-        //cout << data[i] << ", ";
-    //cout << endl;
-    //mp.set_debug_level(0);
-    {
-        // insert
-        for (int i = 0; i < N; ++i){
-            #ifdef AEX_DEBUG
-            if (false) mp.set_debug_level(1);
-            else mp.set_debug_level(0);
-            #endif 
-            auto y = mp.insert(std::pair<int, int>(data[i], i));
+    auto flags = parse_flags(argc, argv);
+    auto type = flags["unit"];
+    auto dataset = flags["dataset"];
+    auto key_type = flags["key_type"];
+    string file_name = flags["input_file"];
+    FILE* file = fopen(file_name.c_str(), "rb");
+    long long num_keys = stoll(flags["num_keys"]);
+    if (key_type == "int"){
+        vector<long long> bin_data;
+        read_bineary_file<long long>(file, bin_data, num_keys);
+        if (type == "index"){
+            vector<std::pair<long long, long long>> data;
+            pack_KV_dataset<long long, long long>(bin_data, data);
+            test_aex(data.data(), data.size());
         }
-        // find
-        for (int i = 0; i < M; ++i){
-            LL x = rand() % N;
-            auto y = mp.find(x);
-            if (data[y.data()] != x){
-                printf("Error!");
-            }
+        else if (type == "function"){
+            auto func = flags["function"];
+            if (func == "exp_find")
+                test_exponential_search_lower_bound(bin_data.data(), num_keys);
         }
-
-        // erase
-        random_shuffle(data.begin(), data.end());
-        for (int i = 0; i < M; ++i){
-            auto y = mp.erase(data[i]);
+        else if (type == "model"){
+            auto model_type = flags["model_type"];
+            if (model_type == "linear")
+                test_linear_model(bin_data.data(), num_keys);
+            else if (model_type == "exp")
+                test_exp_model(bin_data.data(), num_keys);
+            else if (model_type == "log")
+                test_log_model(bin_data.data(), num_keys);
+            else if (model_type == "all")
+                test_aex_model(bin_data.data(), num_keys);
         }
-        // bulk load
-        std::sort(data.begin(), data.end());
-        mp.bulk_load(data);
-    }   
-
-    //multi thread
-    {
-        
     }
+    else if (key_type == "float"){
+        vector<double> bin_data;
+        read_bineary_file<double>(file, bin_data, num_keys);
+        if (type == "index"){
+            vector<std::pair<double, double>> data;
+            pack_KV_dataset<double, double>(bin_data, data);
+            test_aex(data.data(), data.size());
+        }
+        else if (type == "function"){
+            auto func = flags["function"];
+            if (func == "exp_find")
+                test_exponential_search_lower_bound(bin_data.data(), num_keys);
+        }
+        else if (type == "model"){
+            auto model_type = flags["model_type"];
+            if (model_type == "linear")
+                test_linear_model(bin_data.data(), num_keys);
+            else if (model_type == "exp")
+                test_exp_model(bin_data.data(), num_keys);
+            else if (model_type == "log")
+                test_log_model(bin_data.data(), num_keys);
+            else if (model_type == "all")
+                test_aex_model(bin_data.data(), num_keys);
+        }
+    }
+
+    vector<pair<LL, LL> > data;
+
+    for (int i = 0; i < N; ++i) data.emplace_back(i, rand());
+
     cout << "test finish" << endl;
     
 }

@@ -3,17 +3,20 @@
         {
             "name": "Linux",
             "includePath": [
-                "/usr/include/x86_64-linux-gnu/c++/9",
-                "/home/zzr/program/aex_remake",
-                "${workspaceFolder}"
+                "${workspaceFolder}/",
+                "${workspaceFolder}/benchmark",
+                "${workspaceFolder}/test",
+                "${workspaceFolder}/thirdparty/stx-btree-0.9/include",
+                "${workspaceFolder}/thirdparty/PGM-index-master/include/pgm",
+                "${workspaceFolder}/thirdparty/ALEX/src/core"
             ],
             "defines": [],
-            "compilerPath": "/usr/bin/g++",
-            "cStandard": "gnu17",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
             "cppStandard": "c++17",
-            "intelliSenseMode": "linux-gcc-x64",
-            "configurationProvider": "ms-vscode.cmake-tools",
-            "compilerArgs": []
+            "intelliSenseMode": "clang-x64",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "configurationProvider": "ms-vscode.cmake-tools"
         }
     ],
     "version": 4

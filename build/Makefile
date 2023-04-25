@@ -48,10 +48,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/zzr/program/aex_remake
+CMAKE_SOURCE_DIR = /home/zzr/program/aex_remake_2
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/zzr/program/aex_remake/build
+CMAKE_BINARY_DIR = /home/zzr/program/aex_remake_2/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -80,9 +80,9 @@ edit_cache/fast: edit_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/zzr/program/aex_remake/build/CMakeFiles /home/zzr/program/aex_remake/build/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/zzr/program/aex_remake_2/build/CMakeFiles /home/zzr/program/aex_remake_2/build/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/zzr/program/aex_remake/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/zzr/program/aex_remake_2/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -123,6 +123,86 @@ test/fast:
 	$(MAKE) -f CMakeFiles/test.dir/build.make CMakeFiles/test.dir/build
 .PHONY : test/fast
 
+#=============================================================================
+# Target rules for targets named generate_dataset
+
+# Build rule for target.
+generate_dataset: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 generate_dataset
+.PHONY : generate_dataset
+
+# fast build rule for target.
+generate_dataset/fast:
+	$(MAKE) -f CMakeFiles/generate_dataset.dir/build.make CMakeFiles/generate_dataset.dir/build
+.PHONY : generate_dataset/fast
+
+#=============================================================================
+# Target rules for targets named benchmark
+
+# Build rule for target.
+benchmark: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 benchmark
+.PHONY : benchmark
+
+# fast build rule for target.
+benchmark/fast:
+	$(MAKE) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/build
+.PHONY : benchmark/fast
+
+benchmark/benchmark.o: benchmark/benchmark.cpp.o
+
+.PHONY : benchmark/benchmark.o
+
+# target to build an object file
+benchmark/benchmark.cpp.o:
+	$(MAKE) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark.cpp.o
+.PHONY : benchmark/benchmark.cpp.o
+
+benchmark/benchmark.i: benchmark/benchmark.cpp.i
+
+.PHONY : benchmark/benchmark.i
+
+# target to preprocess a source file
+benchmark/benchmark.cpp.i:
+	$(MAKE) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark.cpp.i
+.PHONY : benchmark/benchmark.cpp.i
+
+benchmark/benchmark.s: benchmark/benchmark.cpp.s
+
+.PHONY : benchmark/benchmark.s
+
+# target to generate assembly for a file
+benchmark/benchmark.cpp.s:
+	$(MAKE) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark.cpp.s
+.PHONY : benchmark/benchmark.cpp.s
+
+benchmark/generate_dataset.o: benchmark/generate_dataset.cpp.o
+
+.PHONY : benchmark/generate_dataset.o
+
+# target to build an object file
+benchmark/generate_dataset.cpp.o:
+	$(MAKE) -f CMakeFiles/generate_dataset.dir/build.make CMakeFiles/generate_dataset.dir/benchmark/generate_dataset.cpp.o
+.PHONY : benchmark/generate_dataset.cpp.o
+
+benchmark/generate_dataset.i: benchmark/generate_dataset.cpp.i
+
+.PHONY : benchmark/generate_dataset.i
+
+# target to preprocess a source file
+benchmark/generate_dataset.cpp.i:
+	$(MAKE) -f CMakeFiles/generate_dataset.dir/build.make CMakeFiles/generate_dataset.dir/benchmark/generate_dataset.cpp.i
+.PHONY : benchmark/generate_dataset.cpp.i
+
+benchmark/generate_dataset.s: benchmark/generate_dataset.cpp.s
+
+.PHONY : benchmark/generate_dataset.s
+
+# target to generate assembly for a file
+benchmark/generate_dataset.cpp.s:
+	$(MAKE) -f CMakeFiles/generate_dataset.dir/build.make CMakeFiles/generate_dataset.dir/benchmark/generate_dataset.cpp.s
+.PHONY : benchmark/generate_dataset.cpp.s
+
 test/test.o: test/test.cpp.o
 
 .PHONY : test/test.o
@@ -159,6 +239,14 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... test"
+	@echo "... generate_dataset"
+	@echo "... benchmark"
+	@echo "... benchmark/benchmark.o"
+	@echo "... benchmark/benchmark.i"
+	@echo "... benchmark/benchmark.s"
+	@echo "... benchmark/generate_dataset.o"
+	@echo "... benchmark/generate_dataset.i"
+	@echo "... benchmark/generate_dataset.s"
 	@echo "... test/test.o"
 	@echo "... test/test.i"
 	@echo "... test/test.s"

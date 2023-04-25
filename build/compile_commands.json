@@ -1,7 +1,0 @@
-[
-{
-  "directory": "/home/zzr/program/aex_remake/build",
-  "command": "/usr/bin/c++   -I/home/zzr/program/aex_remake/aex -I/home/zzr/program/aex_remake -I/home/zzr/program/aex_remake/test -I/home/zzr/program/aex_remake/thirdparty/stx-btree-0.9/include -I/home/zzr/program/aex_remake/thirdparty/ALEX/src/core -I/home/zzr/program/aex_remake/thirdparty/PGM-index-master/include/pgm -I/home/zzr/program/aex_remake/benchmark  -g -Wall -march=native -fopenmp -fmax-errors=10 -g   -std=gnu++17 -o CMakeFiles/test.dir/test/test.cpp.o -c /home/zzr/program/aex_remake/test/test.cpp",
-  "file": "/home/zzr/program/aex_remake/test/test.cpp"
-}
-]

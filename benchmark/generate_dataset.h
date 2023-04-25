@@ -1,36 +1,28 @@
 #pragma once
-//#include <random>
-//#include <cstdio>
-//#include <vector>
 #include <bits/stdc++.h>
-
+#include "zipf.h"
 using namespace std;
-template<typename T>
-void generate_uniform_data(vector<T> &data, const size_type n, const T a, const T b){
+
+template<typename T,
+        typename Distribution,
+        typename ArgsType>
+void generate_data(vector<T> &data, const size_type n, const ArgsType a, const ArgsType b){
     std::default_random_engine generator(seed);
-    std::uniform_int_distribution<T> distribution(a, b);
+    Distribution distribution(a, b);
     data.resize(n);
     for (size_type i = 0; i < n; ++i){
-        data[i] = distribution(generator);
+        data[i] = static_cast<T>(distribution(generator));
     }
 }
 
-template<typename T>
-void generate_normal_data(vector<T> &data, const size_type n, const T a, const T b){
-    std::default_random_engine generator(seed);
-    std::normal_distribution<T> distribution(a, b);
-    data.resize(n);
-    for (size_type i = 0; i < n; ++i){
-        data[i] = distribution(generator);
-    }
-}
-
-template<typename key_type, typename value_type>
-void generate_query(vector<pair<key_type, value_type>> &data, vector<key_type> &query, vector<value_type> &answer, const size_type m, const size_type n){
+template<typename key_type, 
+        typename value_type,
+        typename Distribution>
+void generate_query(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer, const size_type m){
     query.resize(m);
     answer.resize(m);
     vector<size_type> query_pos(m);
-    generate_uniform_data<size_type>(query_pos, m, 0LL, n - 1);
+    generate_data<size_type, Distribution, size_type>(query_pos, m, 0, data.size() - 1);
     for (size_type i = 0; i < m; ++i){
         size_type pos = query_pos[i];
         query[i] = data[pos].first;
@@ -39,28 +31,84 @@ void generate_query(vector<pair<key_type, value_type>> &data, vector<key_type> &
 }
 
 template<typename key_type,
-        typename value_type>
-void generate_uniform_unique_dataset
-    (vector<pair<key_type, value_type> > &data, const size_type n, key_type L, key_type R){}
-
-template<>
-void generate_uniform_unique_dataset<long long, long long>(vector<pair<long long, long long> > &data, const size_type n, long long L, long long R){
-    //std::cout << "generate uniform unique data" << std::endl;
-    printf("generate uniform unique data\n");
+        typename Distribution,
+        typename ArgsType>
+void generate_unique_dataset(vector<key_type> &data, const size_type n, ArgsType a, ArgsType b){
+    printf("generate unique data\n");
     fflush(stdout);
-    typedef long long key_type;
-    typedef long long value_type;
-    vector<key_type> key;
-    vector<value_type> value;
-    generate_uniform_data<key_type>(key, n, L, R);
-    //generate_uniform_int_data<value_type>(value, N, LONG_MIN, LONG_MAX);
-    value.resize(n);
-    for (size_type i = 0; i < n; ++i) value[i] = i;
-    data.resize(n);
-    for (size_type i = 0; i < n; ++i){
-        data[i] = std::pair<key_type, value_type>(key[i], value[i]);
+    generate_data<key_type, Distribution>(data, n, a, b);
+    
+    std::sort(data.begin(), data.end());
+    size_type num = std::unique(data.data(), data.data() + n) - data.data();
+    std::cout << "num=" << num << "\n";
+    std::default_random_engine generator(seed);
+    Distribution distribution(a, b);
+    if (num < n){
+        unordered_set<key_type> st;
+        for (size_type i = 0; i < num; ++i) st.insert(data[i]);
+        for (size_type i = num; i < n; ++i){
+            key_type random_x;
+            do{
+                random_x = static_cast<key_type>(distribution(generator));
+            }while(st.find(random_x) == st.end());
+            st.insert(random_x);
+        }
     }
-    std::sort(data.data(), data.data() + n);
-    for (size_type i = 0; i < n; ++i) data[i].first += i;
     std::random_shuffle(data.data(), data.data() + n);
+}
+
+template<typename key_type>
+inline void generate_normal_unique_dataset(vector<key_type> &data, const size_type n, double mean, double stddev){
+    generate_unique_dataset<key_type, std::normal_distribution<double>, double>(data, n, mean, stddev);
+}
+
+template<typename key_type>
+inline void generate_lognormal_unique_dataset(vector<key_type> &data, const size_type n, double mean, double stddev){
+    generate_unique_dataset<key_type, std::lognormal_distribution<double>, double>(data, n, mean, stddev);
+}
+
+template<typename key_type, 
+        typename value_type>
+void generate_query_zipf(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer, const size_type m){
+    query.resize(m);
+    answer.resize(m);
+    vector<size_type> query_pos(m);
+    {
+        ScrambledZipfianGenerator zipf_gen(data.size());
+        for (size_type i = 0; i < m; i++) {
+            query_pos[i] = zipf_gen.nextValue();
+        }
+    }
+    for (size_type i = 0; i < m; ++i){
+        size_type pos = query_pos[i];
+        query[i] = data[pos].first;
+        answer[i] = data[pos].second;
+    }
+}
+
+template<int structure_size>
+struct payload_structure{
+public:
+    char data[structure_size];
+    payload_structure(){}
+
+    template<typename key_type>
+    payload_structure(key_type &x){
+        key_type* ptr = reinterpret_cast<key_type>(this->data);
+        *ptr = x;
+    }
+    
+    template<typename key_type>
+    key_type value(){
+        return reinterpret_cast<key_type>(this->data);
+    }
+};
+
+template<typename key_type,
+        typename value_type>
+inline void pack_KV_dataset(vector<key_type> &data, vector<std::pair<key_type, value_type> > &pack_data){
+    pack_data.resize(data.size());
+    for (size_t i = 0; i < data.size(); ++i){
+        pack_data.push_back(make_pair(data[i], i));
+    }
 }

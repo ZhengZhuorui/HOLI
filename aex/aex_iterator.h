@@ -24,7 +24,7 @@ public:
 
     typedef std::bidirectional_iterator_tag iterator_category;
 
-    typedef ptrdiff_t                  difference_type;
+    typedef ptrdiff_t difference_type;
 
     typedef aex_iterator<_Key, _Val, traits> self;
 
@@ -37,6 +37,8 @@ public:
     inline aex_iterator(data_node* ptr, unsigned char _offset):_M_node(ptr), offset(_offset){}
     
     inline aex_iterator(const aex_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
+
+    
     
     reference operator*(){
         return std::pair<key_type, value_type>(_M_node->key[offset], _M_node->data[offset]);
@@ -104,7 +106,6 @@ public:
     }
 
     bool operator!=(const self& x) const{ 
-        //AEX_PRINT((unsigned int)offset << " " << (unsigned int)x.offset);
         return  (_M_node != x._M_node) || (offset != x.offset);
     }
 

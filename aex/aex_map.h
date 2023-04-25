@@ -1,11 +1,13 @@
-#pragma once
+ #pragma once
 
 #include "aex/aex.h"
 
 namespace aex
 {
 
-template<typename _Key, typename _Val, typename _AllowMultiThread=false>
+template<typename _Key, 
+        typename _Val, 
+        typename traits=aex_default_traits<_Key, _Val, std::false_type, std::false_type, std::false_type> >
 class aex_map{
 public:
     typedef _Key key_type;
@@ -14,7 +16,7 @@ public:
 
     typedef std::pair<key_type, value_type> kv_type;
 
-    typedef aex_tree<key_type, value_type, aex_traits<key_type, value_type, std::false_type, std::false_type, _AllowMultiThread> > tree;
+    typedef aex_tree<key_type, value_type, traits> tree;
 
     typedef typename tree::size_type size_type;
 
@@ -25,6 +27,8 @@ public:
     typedef typename tree::reverse_iterator reverse_iterator;
 
     typedef typename tree::const_reverse_iterator const_reverse_iterator;
+
+    typedef typename tree::aex_stats stats;
 
 private:
     tree _m;
@@ -63,7 +67,9 @@ public:
 
     inline iterator find(const key_type &key) { return _m.find(key); }
 
-    inline const_iterator find(const key_type &key) { return _m.exists(key); }
+    inline const_iterator find(const key_type &key) const { return _m.find(key); }
+
+    inline void range_query(const key_type &L, const key_type &R, std::vector<std::pair<key_type, value_type>>& answer){ return _m.range_query(L, R, answer);}
 
     inline size_type erase(const key_type &key){ return _m.erase(key);}
     
@@ -75,7 +81,7 @@ public:
         return _m.lower_bound(key);
     }
 
-    inline const_iterator lower_bound(const key_type &key) {
+    inline const_iterator lower_bound(const key_type &key) const{
         return _m.lower_bound(key);
     }
 
@@ -83,7 +89,7 @@ public:
         return _m.upper_bound(key);
     }
 
-    inline const_iterator upper_bound(const key_type &key) {
+    inline const_iterator upper_bound(const key_type &key) const{
         return _m.upper_bound(key);
     }
 
@@ -104,7 +110,7 @@ public:
         _m.bulk_load(data, nums);
     }
 
-    inline const struct aex& get_stats() const{
+    inline const stats& get_stats() const{
         return _m.get_stats();
     }
     /*

@@ -1,1 +1,1 @@
-/usr/bin/c++  -g -Wall -march=native -fopenmp -fmax-errors=10 -g  -rdynamic CMakeFiles/test.dir/test/test.cpp.o  -o test 
+/usr/bin/c++  -g -Wall -march=native -fopenmp -fmax-errors=3 -std=c++17  -rdynamic CMakeFiles/test.dir/test/test.cpp.o  -o test 
