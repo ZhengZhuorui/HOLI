@@ -4,9 +4,7 @@
 #include "benchmark/utils.h"
 #include "benchmark/generate_dataset.h"
 
-#define TEST_ITER 10
-
-using namespace std;
+using std::string;
 /*
  * Required flags:
  * input_file
@@ -23,7 +21,7 @@ using namespace std;
 
 template<typename key_type,
         typename value_type>
-void benchmark_query(FILE* file, long long num_keys, long long num_ops, string index_name, string query_dis){
+void benchmark_lookup(FILE* file, long long num_keys, long long num_ops, string &index_name, string &query_dis){
     vector<key_type> bin_data;
     vector<pair<key_type, value_type> > data;
     read_bineary_file<key_type>(file, bin_data, num_keys);
@@ -32,8 +30,15 @@ void benchmark_query(FILE* file, long long num_keys, long long num_ops, string i
     vector<value_type> answer;
     if (query_dis == "uniform")
         generate_query<key_type, value_type, std::uniform_int_distribution<long long> >(data, query, answer, num_ops);
-    else
+    else if (query_dis == "zipfian")
         generate_query_zipf<key_type, value_type>(data, query, answer, num_ops);
+
+    std::sort(data.begin(), data.end(), [](auto const &a, auto const &b){return a.first < b.first;});
+
+    for (int i = 0; i < 100; ++i){
+        std::cout << data[i].first << " " << data[i].second << " | ";
+    }
+    std::cout << std::endl;
 
     if (index_name == "aex"){
         aex_query_bench(data, query, answer);
@@ -54,7 +59,7 @@ void benchmark_query(FILE* file, long long num_keys, long long num_ops, string i
 
 template<typename key_type,
         typename value_type>
-void benchmark_insert(FILE* file, key_type num_keys, value_type num_ops, string index_name){
+void benchmark_insert(FILE* file, long long num_keys, long long num_ops, string &index_name){
     vector<key_type> bin_data;
     vector<pair<key_type, value_type> > data;
     read_bineary_file<key_type>(file, bin_data, num_keys + num_ops);
@@ -83,23 +88,50 @@ void benchmark_insert(FILE* file, key_type num_keys, value_type num_ops, string 
 
 template<typename key_type,
         typename value_type>
-void benchmark(FILE* file, long long num_keys, long long num_ops, string index_name, string func, string query_dis){
-    if (func == "query")
-        benchmark_query<key_type, value_type>(file, num_keys, num_ops, index_name, query_dis);
+void benchmark_depth(FILE* file, long long num_keys, string &index_name){
+    vector<key_type> bin_data;
+    read_bineary_file<key_type>(file, bin_data, num_keys);
+    vector<pair<key_type, value_type> > data;
+    pack_KV_dataset(bin_data, data);
+    if (index_name == "alex")
+        benchmark_alex_depth<key_type, value_type>(data);
+    else if (index_name == "aex"){
+
+    }
+}
+
+template<typename key_type,
+        typename value_type>
+void benchmark(FILE* file, long long num_keys, long long num_ops, string &index_name, string &func, string &query_dis){
+    if (func == "lookup")
+        benchmark_lookup<key_type, value_type>(file, num_keys, num_ops, index_name, query_dis);
     else if (func == "insert")
         benchmark_insert<key_type, value_type>(file, num_keys, num_ops, index_name);
+    else if (func == "depth")
+        benchmark_depth<key_type, value_type>(file, num_keys, index_name);
+    else if (func == "insert_lookup"){
+
+    }
+    else if (func == "erase"){
+        
+    }
 }
+
+
+#include <sys/time.h>
+#include <unistd.h>
 
 int main(int argc, char** argv){
     //auto flags = parse_flags(argc, argv);
     auto flags = parse_flags(argc, argv);
-    auto data_type = flags["data_type"];
+    auto key_type = flags["key_type"];
     auto input_files = flags["input_file"];
     FILE *file = fopen(input_files.c_str(), "rb");
-    auto dataset = flags["dataset"];
     auto func = flags["function"];
     long long num_keys = stoll(flags["num_keys"]);
-    long long num_ops = stoll(flags["num_ops"]);
+    long long num_ops = 0;
+    if (flags.find("num_ops") != flags.end())
+        num_ops = stoll(flags["num_ops"]);
     string index_name = flags["index"];
     string query_dis = "uniform";
     if (flags.find("query_dis") != flags.end())
@@ -108,8 +140,7 @@ int main(int argc, char** argv){
     //double write_ratio = 0.5;
     //if (flags.find("write_ratio") != flags.end())
     //    write_ratio = stod(flags["write_ratio"]);
-    
 
-    if (data_type == "int") benchmark<long long, long long>(file, num_keys, num_ops, index_name, func, query_dis);
+    if (key_type == "int") benchmark<long long, long long>(file, num_keys, num_ops, index_name, func, query_dis);
     else benchmark<double, double>(file, num_keys, num_ops, index_name, func, query_dis);
 }

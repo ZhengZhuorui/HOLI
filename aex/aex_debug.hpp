@@ -5,12 +5,13 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-std::pair<typename aex_tree<_Key, _Val, traits>::key_type, bool> aex_tree<_Key, _Val, traits>::_debug(node_ptr node){
+std::pair<typename aex_tree<_Key, _Val, traits>::key_type, bool> aex_tree<_Key, _Val, traits>::_debug(node_ptr node, aex_stats &msg){
     bool flag = true;
-    key_type last_key;
+    key_type first_key;
     if (node->prop & node_property::LEAF){
+        ++msg.data_node;
         data_node_ptr dn = static_cast<data_node_ptr>(node);
-        last_key = dn->key[dn->size - 1];
+        first_key = dn->key[0];
         for (size_type i = 0; i < dn->size; ++i){
             if (i > 0 && dn->key[i] < dn->key[i - 1]){
                 AEX_DEBUG_PRINT("Error! node[" << i-1 << "]=" << dn->key[i - 1] << " node[" << i << "]=" << dn->key[i]);
@@ -19,6 +20,7 @@ std::pair<typename aex_tree<_Key, _Val, traits>::key_type, bool> aex_tree<_Key, 
         }
     }
     else{
+        ++msg.inner_node;
         inner_node_ptr in = static_cast<inner_node_ptr>(node);
         key_type* node_key = in->key_ptr;
         node_ptr* node_child = in->child_ptr;
@@ -26,7 +28,7 @@ std::pair<typename aex_tree<_Key, _Val, traits>::key_type, bool> aex_tree<_Key, 
             size_type cnt = 0;
             bitmap bm = in->bitmap_ptr;
             size_type last = in->last();
-            last_key = node_key[in->last()];
+            first_key = node_key[0];
             for (size_type i = 0; i <= last; ++i){
                 // check if the key is larger than prev position key
                 if (i > 0 && node_key[i] < node_key[i - 1]){
@@ -53,7 +55,7 @@ std::pair<typename aex_tree<_Key, _Val, traits>::key_type, bool> aex_tree<_Key, 
             }
         }
         else{
-            last_key = node_key[in->last()];
+            first_key = node_key[0];
             for (size_type i = 0; i < in->last(); ++i){
                 // check if the key is larger than prev position key 
                 if (i > 0 && node_key[i] < node_key[i - 1]){
@@ -71,13 +73,26 @@ std::pair<typename aex_tree<_Key, _Val, traits>::key_type, bool> aex_tree<_Key, 
             }
         }
     }
-    return std::make_pair(last_key, flag);
+    return std::make_pair(first_key, flag);
 }
 
 template<typename _Key, typename _Val, typename traits>
 bool aex_tree<_Key, _Val, traits>::debug_error(){
-    AEX_DEBUG_FORMAT("size=%llu, root->size=%llu", this->m_stats.size, root->size);
-    std::pair<key_type, bool> res = (this->root == nullptr)? std::make_pair(0LL, true) : _debug(this->root);
+    AEX_DEBUG_FORMAT("size=%lld, root->size=%lld", this->m_stats.size, root->size);
+    aex_stats debug_stats;
+    std::pair<key_type, bool> res = (this->root == nullptr)? std::make_pair(0LL, true) : _debug(this->root, debug_stats);
+    if (debug_stats.inner_node != this->m_stats.inner_node){
+        AEX_DEBUG_PRINT("Inner node num error!, debug.inner_node=" << debug_stats.inner_node << "tree.inner_node=" << this->m_stats.inner_node);
+    }
+    if (debug_stats.data_node != this->m_stats.data_node){
+        AEX_DEBUG_PRINT("Data node num error!, debug.data_node=" << debug_stats.data_node << "tree.data_node=" << this->m_stats.data_node);
+    }
+    if (this->node_allocator.inner_node_nums != this->m_stats.inner_node){
+        AEX_DEBUG_PRINT("Inner node no free!, allocator.inner_node=" << this->node_allocator.inner_node_nums << "tree.inner_node=" << this->m_stats.inner_node);
+    }
+    if (this->node_allocator.data_node_nums != this->m_stats.data_node){
+        AEX_DEBUG_PRINT("Data node no free!, allocator.data_node=" << this->node_allocator.data_node_nums << "tree.data_node=" << this->m_stats.data_node);
+    }
     size_type cnt = 0;
     bool flag = res.second;
     key_type prev_key;

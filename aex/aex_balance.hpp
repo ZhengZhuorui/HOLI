@@ -1,6 +1,6 @@
 //#include "aex/aex.h"
+#pragma once
 namespace aex{
-
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::update_node_frequency(node_ptr node) const{
@@ -27,7 +27,7 @@ inline double aex_tree<_Key, _Val, traits>::estimate_cost() const {
 }
 
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::check_balance_merge(inner_node_ptr node){
+bool aex_tree<_Key, _Val, traits>::check_balance_merge_subtree(inner_node_ptr node){
     // delta cost
     // 1. delta write cost
     // *2. delta node read cost
@@ -53,7 +53,7 @@ bool aex_tree<_Key, _Val, traits>::check_balance_merge(inner_node_ptr node){
 }
 
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::check_balance_merge(node_ptr* node_buffer, size_type size){
+bool aex_tree<_Key, _Val, traits>::check_balance_merge_nodes(node_ptr* node_buffer, size_type size){
     // delta cost
     // 1. write cost 
     // 2. merge cost
@@ -93,32 +93,61 @@ bool aex_tree<_Key, _Val, traits>::check_balance_merge(node_ptr* node_buffer, si
 }
 
 template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val, traits>::balance_merge_nodes(inner_node_ptr* node_buffer, size_type size){
+typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::balance_merge_nodes(node_ptr* node_buffer, size_type size){
+    node_ptr ret = nullptr;
     size_type child_size = 0;
-    Model m;
+    size_type level = node_buffer[0]->level;
     for (size_type i = 0; i < size; ++i)
         child_size += node_buffer[i]->size;
     key_type* key_buffer = node_allocator.allocate_key_buffer(child_size);
-    
-    for (size_type i = 0, cnt = 0; i < size; cnt += node_buffer[i]->size, ++i){
-        copy_to_buffer(node_buffer[i], key_buffer + cnt);
-        node_buffer[i]->m_stats.train_times++;
-    }
-    size_type slot_size = traits::MIN_INNER_NODE_SLOT_SIZE;
-    while (slot_size * traits::INNER_NODE_FULL_RATIO < child_size) slot_size <<= 1;
-    
-    if (check_rewired(key_buffer, child_size, slot_size)){
-        inner_node_ptr new_node = node_allocator.allocate_inner_node(slot_size);
-        node_ptr* child_buffer = node_allocator.allocate_nodeptr_buffer(child_size);
+
+    if (node_buffer[0]->prop & LEAF){
+        data_node_model m;
         for (size_type i = 0, cnt = 0; i < size; cnt += node_buffer[i]->size, ++i){
-            copy_to_buffer(node_buffer[i], child_buffer + cnt);
+            //copy_to_buffer(node_buffer[i], key_buffer + cnt);
+            memcpy(key_buffer + cnt, static_cast<data_node_ptr>(node_buffer[i])->data, node_buffer[i]->size * sizeof(value_type));
             node_buffer[i]->m_stats.train_times++;
         }
+        m.train(key_buffer, child_size);
+        if (m.RMSE(key_buffer, child_size) < traits::MAX_ALLOW_ERROR){
+            data_node_ptr new_node = node_allocator.allocate_data_node(child_size);
+            value_type data_buffer = node_allocator.allocate_nodeptr_buffer(child_size);
+            for (size_type i = 0, cnt = 0; i < size; cnt += node_buffer[i]->size, ++i){
+                memcpy(data_buffer + cnt, static_cast<data_node_ptr>(node_buffer[i])->data, node_buffer[i]->size * sizeof(value_type));
+                node_buffer[i]->m_stats.train_times++;
+            }
+            new_node->construct(key_buffer, data_buffer, m);
+            ret = new_node;
+            node_allocator.deallocate(data_buffer);
+        }
     }
-    else
-        return nullptr;
+    else{
+        
+        inner_node_model m;
+        for (size_type i = 0, cnt = 0; i < size; cnt += node_buffer[i]->size, ++i){
+            copy_to_buffer(node_buffer[i], key_buffer + cnt);
+            node_buffer[i]->base.train_times++;
+        }
+        
+        size_type slot_size = traits::MIN_INNER_NODE_SLOT_SIZE;
+        while (slot_size * this->inner_node_full_ratio[level] < child_size) slot_size <<= 1;
+        
+        if (check_rewired(key_buffer, child_size, slot_size, m)){
+            inner_node_ptr new_node = node_allocator.allocate_inner_node(slot_size);
+            ++this->m_stats.inner_node;
+            node_ptr* child_buffer = node_allocator.allocate_nodeptr_buffer(child_size);
+            for (size_type i = 0, cnt = 0; i < size; cnt += node_buffer[i]->size, ++i){
+                copy_to_buffer(node_buffer[i], child_buffer + cnt);
+                node_buffer[i]->m_stats.train_times++;
+            }
+            new_node->construct(key_buffer, child_buffer, m);
+            ret = new_node; 
+            node_allocator.deallocate(child_buffer);
+        }
+    }
+    node_allocator.deallocate(key_buffer);
+    return ret;
 }
-
 
 template<typename _Key, typename _Val, typename traits>
 bool aex_tree<_Key, _Val, traits>::check_balance_split(size_type node_size, double node_write_pro, double train_pro, size_type slot_size){
@@ -148,7 +177,7 @@ bool aex_tree<_Key, _Val, traits>::check_balance_split(data_node_ptr node, size_
     // 2. delta node read cost
     // 3. delta all read cost
     // 4. average SMO cost
-    AEX_ASSERT(this->level - node->level == 0);
+    AEX_ASSERT(this->m_stats.height - node->level == 0);
     update_node_frequency(node);
     update_tree_frequency();
     return check_balance_split(node->slot_size, node_write_pro(node), node_train_pro(node), slot_size);
@@ -156,7 +185,7 @@ bool aex_tree<_Key, _Val, traits>::check_balance_split(data_node_ptr node, size_
 }
 
 template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::size_type aex_tree<_Key, _Val, traits>::check_balance_split_best_slot_size(data_node_ptr node){
+typename traits::size_type aex_tree<_Key, _Val, traits>::check_balance_split_best_slot_size(data_node_ptr node){
     // delta cost
     // 1. delta write cost
     // 2. delta node read cost
@@ -182,21 +211,23 @@ typename aex_tree<_Key, _Val, traits>::size_type aex_tree<_Key, _Val, traits>::c
 }
 
 template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::balance_merge(inner_node_ptr __restrict__ node, inner_node_ptr __restrict__ parent){
+typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::balance_merge_subtree(inner_node_ptr __restrict__ node, inner_node_ptr __restrict__ parent){
     // check
     update_tree_frequency();
     size_type cnt;
 
     data_node_ptr new_node = node_allocator.allocate_data_node(node->m_stats.size, true);
+    ++this->m_stats.data_node;
     {
         // meta:
         new_node->base_stats = node->base_stats;
         cnt = 0;
+        data_node_ptr last_node = static_cast<data_node_ptr>(node->child_ptr[node->last()]);
 
-        for (auto i_leaf = node->child_ptr[0]; i_leaf != node->child_ptr[node->last()]->next; i_leaf = i_leaf->next){
+        for (data_node_ptr i_leaf = static_cast<data_node_ptr>(node->child_ptr[0]); i_leaf != last_node->next; i_leaf = i_leaf->next){
             copy_to_buffer(i_leaf->key, new_node->key + cnt);
-            data_memmove(i_leaf->data, new_node->data + cnt);
-            cnt += i_leaf->next;
+            memcpy(i_leaf->data, new_node->data + cnt);
+            cnt += i_leaf->size;
         }
         new_node->size = cnt;
 
@@ -205,6 +236,7 @@ typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::ba
             update_node_frequency(node);
             ++node->base_stats.train_times;
             node_allocator.free_node(new_node);
+            --this->m_stats.data_node;
             return nullptr;
         }
     }
@@ -212,19 +244,18 @@ typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::ba
     // merge
     {
         cnt = 0;
-        key_type last_key = node->key_ptr[node->last()];
+        key_type first_key = node->key_ptr[first_key];
         if (parent != nullptr){
-            if (node != parent->child_ptr[parent->last()]){
-                inner_node_ptr brother = node->last;
+            if (node != parent->child_ptr[0]){
+                inner_node_ptr brother = node->next;
                 bool flag = true;
                 if (isfull(brother)) 
                     flag &= rescale(brother, parent, traits::EXPAND_RATIO);
                 if (flag){
-                    std::false_type fp;
-                    if (insert_node(brother, last_key, new_node, fp)){
+                    if (brother->insert(first_key, new_node)){
                         //
                     }
-                    else if (rewired(brother, last_key, new_node) && insert_node(brother, last_key, new_node, fp)){
+                    else if (rewired(brother, first_key, new_node) && brother->insert_node(first_key, new_node)){
                         //
                     }
                     else flag = false;
@@ -318,9 +349,9 @@ template<typename _Key, typename _Val, typename traits>
 typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val, traits>::balance_merge_to_left_node(inner_node_ptr __restrict__ parent, inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node){
     if (left_node->m_stats.rewired_cnt > 0 || right_node->m_stats.rewired_cnt > 0)
         return nullptr;
-    Model m;
+    inner_node_model m;
     size_type size = left_node->size + right_node->size, slot_size = traits::MIN_INNER_NODE_SLOT_SIZE;
-    while (slot_size * traits::INNER_NODE_FULL_RATIO < size) slot_size <<= 1;
+    while (slot_size * this->inner_node_full_ratio[left_node->level] < size) slot_size <<= 1;
     key_type* key_buffer = node_allocator.allocate_key_buffer(size);
     copy_to_buffer(left_node, key_buffer);
     copy_to_buffer(right_node, key_buffer + left_node->size);
@@ -366,7 +397,6 @@ typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val, trait
 
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::balance_split(const node_ptr* stack, const int top, data_node_ptr node, size_type slot_size){
-
     std::vector<key_type> key_buffer;
     std::vector<node_ptr> node_buffer;
 
@@ -375,6 +405,7 @@ void aex_tree<_Key, _Val, traits>::balance_split(const node_ptr* stack, const in
     size_type leaf_size = slot_size * traits::DATA_NODE_FEW_RATIO;
     for (size_type i_offset = 0; i_offset < node->size; i_offset += leaf_size){
         data_node_ptr new_data_node = node_allocator.allocate_data_node(slot_size);
+        ++this->m_stats.data_node;
         if (node->size - i_offset < slot_size) leaf_size = node->size - i_offset;
         new_data_node->base_stats.write_times = 1.0 * node->base_stats.write_times * leaf_size / node->size;
         new_data_node->base_stats.train_times = 1.0 * node->base_stats.train_times * leaf_size / node->size;
@@ -388,6 +419,7 @@ void aex_tree<_Key, _Val, traits>::balance_split(const node_ptr* stack, const in
     }
 
     node_allocator.free_node(node);
+    --this->m_stats.data_node;
 }
 
 }

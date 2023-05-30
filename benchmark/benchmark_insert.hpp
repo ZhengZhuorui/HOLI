@@ -8,8 +8,7 @@
 #include "utils.h"
 #include "generate_dataset.h"
 
-using namespace std;
-using namespace chrono;
+using namespace std::chrono;
 typedef unsigned long long size_type;
 
 
@@ -25,12 +24,12 @@ void aex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key
     fflush(stdout);
     long long delta = 0;
     for (size_type i = 0; i < times; ++i){
-        t1 = system_clock::now();
+        t1 = std::chrono::high_resolution_clock::now();
         aex::aex_map<key_type, value_type> index(data.begin(), data.end());
         for (const auto& x : insert_data){
             index.insert(x);
         }
-        t2 = system_clock::now();
+        t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
     
@@ -54,11 +53,11 @@ void stlmap_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<
     long long delta = 0;
     for (size_type i = 0; i < times; ++i){
         std::map<key_type, value_type> index(data.begin(), data.end());
-        t1 = system_clock::now();    
+        t1 = std::chrono::high_resolution_clock::now();    
         for (const auto& x : insert_data){
             index.insert(x);
         }
-        t2 = system_clock::now();
+        t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
     float QPS = 1000.0 * M * times / delta;
@@ -83,11 +82,11 @@ void stx_btree_insert_bench(vector<pair<key_type, value_type> > &data, vector<pa
     long long delta = 0;
     for (size_type i = 0; i < times; ++i){
         stx::btree_map<key_type, value_type> index(data.begin(), data.end());
-        t1 = system_clock::now();    
+        t1 = std::chrono::high_resolution_clock::now();    
         for (const auto& x : insert_data){
             index.insert(x);
         }
-        t2 = system_clock::now();
+        t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
     float QPS = 1000.0 * M * times / delta;
@@ -112,11 +111,11 @@ void alex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<ke
     long long delta = 0;
     for (size_type i = 0; i < times; ++i){
         alex::Alex<key_type, value_type> index(data.begin(), data.end());
-        t1 = system_clock::now();    
+        t1 = std::chrono::high_resolution_clock::now();    
         for (const auto& x : insert_data){
             index.insert(x);
         }
-        t2 = system_clock::now();
+        t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
     float QPS = 1000.0 * M * times / delta;
@@ -141,11 +140,11 @@ void pgm_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key
     long long delta = 0;
     for (size_type i = 0; i < times; ++i){
         pgm::DynamicPGMIndex<key_type, value_type> index(data.begin(), data.end());
-        t1 = system_clock::now();    
+        t1 = std::chrono::high_resolution_clock::now();    
         for (const auto& x : insert_data){
             index.insert_or_assign(x.first, x.second);
         }
-        t2 = system_clock::now();
+        t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
     float QPS = 1000.0 * M * times / delta;

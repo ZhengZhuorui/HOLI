@@ -1,52 +1,76 @@
 #pragma once
 #include <bits/stdc++.h>
-#include "zipf.h"
-using namespace std;
+#include "benchmark/zipf.h"
+#include "benchmark/utils.h"
+#include "aex/aex_utils.h"
 
 template<typename T,
         typename Distribution,
         typename ArgsType>
-void generate_data(vector<T> &data, const size_type n, const ArgsType a, const ArgsType b){
+void generate_data(vector<T> &data, const long long n, const ArgsType a, const ArgsType b){
     std::default_random_engine generator(seed);
     Distribution distribution(a, b);
     data.resize(n);
-    for (size_type i = 0; i < n; ++i){
+    for (long long i = 0; i < n; ++i){
         data[i] = static_cast<T>(distribution(generator));
     }
 }
 
+//generate lookup and erase dataset
 template<typename key_type, 
         typename value_type,
-        typename Distribution>
-void generate_query(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer, const size_type m){
+        typename Distribution=std::uniform_int_distribution<long long> >
+void generate_query(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer, const long long m){
     query.resize(m);
     answer.resize(m);
-    vector<size_type> query_pos(m);
-    generate_data<size_type, Distribution, size_type>(query_pos, m, 0, data.size() - 1);
-    for (size_type i = 0; i < m; ++i){
-        size_type pos = query_pos[i];
+    vector<long long> query_pos(m);
+    generate_data<long long, Distribution, long long>(query_pos, m, 0, data.size() - 1);
+    for (long long i = 0; i < m; ++i){
+        long long pos = query_pos[i];
         query[i] = data[pos].first;
         answer[i] = data[pos].second;
     }
 }
 
+template<typename key_type, 
+        typename value_type,
+        typename Distribution=std::uniform_int_distribution<long long> >
+void generate_query(std::pair<key_type, value_type> *data, const long long n, vector<key_type> &query, vector<value_type> &answer, const long long m){
+    query.resize(m);
+    answer.resize(m);
+    vector<long long> query_pos(m);
+    generate_data<long long, Distribution, long long>(query_pos, m, 0, n - 1);
+    for (long long i = 0; i < m; ++i){
+        long long pos = query_pos[i];
+        query[i] = data[pos].first;
+        answer[i] = data[pos].second;
+    }
+}
+
+//generate lookup and erase dataset
+template<typename key_type>
+void split_dataset(vector<key_type> &data, vector<key_type> &split_data, const long long m){
+    split_data.resize(m);
+    std::random_shuffle(data.begin(), data.end());
+    std::copy(data.data() + data.size() - m, data.data() + data.size(), split_data.data());
+    data.resize(data.size() - m);
+}
+
 template<typename key_type,
         typename Distribution,
         typename ArgsType>
-void generate_unique_dataset(vector<key_type> &data, const size_type n, ArgsType a, ArgsType b){
-    printf("generate unique data\n");
-    fflush(stdout);
+void generate_unique_dataset(vector<key_type> &data, const long long n, ArgsType a, ArgsType b){
+    AEX_HINT("[generate unique data]");
     generate_data<key_type, Distribution>(data, n, a, b);
     
     std::sort(data.begin(), data.end());
-    size_type num = std::unique(data.data(), data.data() + n) - data.data();
-    std::cout << "num=" << num << "\n";
+    long long num = std::unique(data.data(), data.data() + n) - data.data();
     std::default_random_engine generator(seed);
     Distribution distribution(a, b);
     if (num < n){
-        unordered_set<key_type> st;
-        for (size_type i = 0; i < num; ++i) st.insert(data[i]);
-        for (size_type i = num; i < n; ++i){
+        std::unordered_set<key_type> st;
+        for (long long i = 0; i < num; ++i) st.insert(data[i]);
+        for (long long i = num; i < n; ++i){
             key_type random_x;
             do{
                 random_x = static_cast<key_type>(distribution(generator));
@@ -58,29 +82,29 @@ void generate_unique_dataset(vector<key_type> &data, const size_type n, ArgsType
 }
 
 template<typename key_type>
-inline void generate_normal_unique_dataset(vector<key_type> &data, const size_type n, double mean, double stddev){
+inline void generate_normal_unique_dataset(vector<key_type> &data, const long long n, double mean, double stddev){
     generate_unique_dataset<key_type, std::normal_distribution<double>, double>(data, n, mean, stddev);
 }
 
 template<typename key_type>
-inline void generate_lognormal_unique_dataset(vector<key_type> &data, const size_type n, double mean, double stddev){
+inline void generate_lognormal_unique_dataset(vector<key_type> &data, const long long n, double mean, double stddev){
     generate_unique_dataset<key_type, std::lognormal_distribution<double>, double>(data, n, mean, stddev);
 }
 
 template<typename key_type, 
         typename value_type>
-void generate_query_zipf(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer, const size_type m){
+void generate_query_zipf(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer, const long long m){
     query.resize(m);
     answer.resize(m);
-    vector<size_type> query_pos(m);
+    vector<long long> query_pos(m);
     {
         ScrambledZipfianGenerator zipf_gen(data.size());
-        for (size_type i = 0; i < m; i++) {
+        for (long long i = 0; i < m; i++) {
             query_pos[i] = zipf_gen.nextValue();
         }
     }
-    for (size_type i = 0; i < m; ++i){
-        size_type pos = query_pos[i];
+    for (long long i = 0; i < m; ++i){
+        long long pos = query_pos[i];
         query[i] = data[pos].first;
         answer[i] = data[pos].second;
     }
@@ -109,6 +133,6 @@ template<typename key_type,
 inline void pack_KV_dataset(vector<key_type> &data, vector<std::pair<key_type, value_type> > &pack_data){
     pack_data.resize(data.size());
     for (size_t i = 0; i < data.size(); ++i){
-        pack_data.push_back(make_pair(data[i], i));
+        pack_data[i] = std::make_pair(data[i], i);
     }
 }

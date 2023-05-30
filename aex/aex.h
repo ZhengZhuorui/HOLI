@@ -10,48 +10,9 @@
 #include <utility>
 #include <queue>
 
-//#define AEX_DEBUG
-
-#define AEX_DEBUG_MSG
-
-#ifdef AEX_DEBUG
-
-#define private public
-
-#define AEX_PRINT(x)  do { std::cout << "[DEBUG] File:" << __FILE__ << ", Line:" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << std::endl; } while(0)
-
-#define AEX_FORMAT(FORMAT, ...) do{ printf("[DEBUG] File: %s, Line: %d, Function: %s, output: ", __FILE__, __LINE__, __FUNCTION__); printf(FORMAT, ##__VAR_ARGS__); printf("\n"); fflush(stdout);} while(0);
-
-#define AEX_ASSERT(x) do { assert(x); } while(0)
-
-#define AEX_PRINT_ELEMENT(x) do { AEX_PRINT(##x << "=" << x); } while(0)
-
-#else
-
-#define AEX_PRINT(x) do { } while(0)
-
-#define AEX_FORMAT(FORMAT, ...)  do { } while(0)
-
-#define AEX_ASSERT(x) do { } while(0)
-
-#define AEX_PRINT_ELEMENT(x) do { } while(0)
-
+#ifndef AEX_DEBUG
+#define AEX_DEBUG
 #endif
-
-#define AEX_DEBUG_MSG
-
-#ifdef AEX_DEBUG_MSG
-
-#define AEX_DEBUG_PRINT(x)  do { std::cout << "[DEBUG] File:" << __FILE__ << ", Line:" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << std::endl; } while(0)
-
-#define AEX_DEBUG_FORMAT(FORMAT, ...) do{ printf("[DEBUG] File: %s, Line: %d, Function: %s, output: ", __FILE__, __LINE__, __FUNCTION__); printf(FORMAT, __VAR_ARGS__); printf("\n"); fflush(stdout);} while(0);
-
-#else 
-
-#define AEX_DEBUG_PRINT() do {} while(0)
-
-#endif
-
 
 #include "aex/aex_traits.h"
 #include "aex/aex_utils.h"
@@ -64,27 +25,26 @@ namespace aex{
 
 template<typename _Key, 
         typename _Val,
-        //typename Alloc = std::allocator<_Key, _Val>,
         typename traits>
 class aex_tree{
 public:
 
     static_assert(std::is_arithmetic<_Key>::value, "key types must be numeric.");
 
+    typedef aex_tree<_Key, _Val, traits> self;
+
+    // type traits
     typedef typename traits::key_type key_type;
 
     typedef typename traits::value_type value_type;
 
     typedef typename traits::used_as_set used_as_set;
 
-    //typedef typename traits::AllowMultiKey AllowMultiKey;
-
     typedef typename traits::size_type size_type;
 
     typedef typename traits::version_type version_type;
 
-    typedef aex_tree self;
-
+    // iterator:
     typedef aex_iterator<_Key, _Val, traits> iterator;
 
     typedef aex_const_iterator<_Key, _Val, traits> const_iterator;
@@ -96,33 +56,42 @@ public:
     typedef aex_node_base<_Key, _Val, traits> base_node;
 
     typedef base_node* node_ptr;
-    
+
+    // inner_node:    
     typedef aex_inner_node<_Key, _Val, traits> inner_node;
 
     typedef inner_node* inner_node_ptr;
 
-    typedef typename inner_node::Model Model;
+    typedef typename inner_node::Model inner_node_model;
 
+    // data_node:
     typedef aex_data_node<_Key, _Val, traits> data_node;
 
     typedef data_node* data_node_ptr;
+    
+    typedef typename data_node::Model data_node_model;
 
+    // bitmap:
     typedef aex_bitmap_impl<traits> bitmap_impl;
 
     typedef typename traits::bitmap bitmap;
 
     struct aex_stats{
-        size_type data_node, inner_node, size, height;
+        size_type data_node, inner_node; //debug
+        size_type size, height;
         size_type timestamp, recent_update_timestamp;
         double write_times, read_times, lambda_timestamp;
+        key_type max_key, min_key;
         aex_stats(){data_node = inner_node = size = height = write_times = read_times = timestamp = lambda_timestamp = 0;}
     };
 
-    #ifdef AEX_DEBUG
-    int debug_level; 
-    #endif
+    //#ifdef AEX_DEBUG
+    static int debug_level; 
+    //#endif
 
+#ifndef AEX_TEST
 private:
+#endif
 
     node_ptr root;
 
@@ -138,15 +107,14 @@ private:
 
     aex_node_allocator<_Key, _Val, traits> node_allocator;
 
-    key_type max_key, min_key;
-
-    size_type max_inner_node_slot_size[8];
+    //size_type max_inner_node_slot_size[8];
+    double inner_node_few_ratio[traits::MAX_DEPTH], inner_node_full_ratio[traits::MAX_DEPTH];
 
     typename traits::AllowBalance allow_balance;
 
     typename std::false_type fp;
 
-    double lambda;
+    constexpr static double lambda = 1 - 1.0 / traits::LAMBDA_;
 
 public:
 
@@ -160,6 +128,11 @@ public:
     aex_tree(self&& _index);
 
     ~aex_tree();
+
+    void clear(){
+        this->deconstruct(this->root);
+        this->m_stats = aex_stats();
+    }
 
     // con
 
@@ -192,7 +165,7 @@ public:
         }
     }
 
-    size_type count(const key_type &x){
+    size_t count(const key_type &x){
         if (find(x) != end()) return 1;
         return 0;
     }
@@ -223,7 +196,7 @@ public:
     }
 
     /* erase one key*/
-    size_type erase(const key_type &x){
+    size_t erase(const key_type &x){
         //if (root == nullptr) return 0;
         //size_type cnt = 0;
         //while (erase_one(x)){
@@ -231,12 +204,12 @@ public:
         //    if (!traits::AllowMultiKey::value) break;
         //}
         size_type cnt = erase_one(x);
-        return cnt;
+        return static_cast<size_t>(cnt);
     }
 
     bool erase_one(const key_type &x){
         //std::true_type tp;
-        node_ptr stack[traits::MAX_LEVEL];
+        node_ptr stack[traits::MAX_DEPTH];
         int top;
         iterator find_iter = find_lower_with_trace(x, stack, top, this->allow_balance);
         if (find_iter == end()) return false;
@@ -254,7 +227,7 @@ public:
 
     inline void erase(const_iterator &iter){
         if (root == nullptr) return end();
-        node_ptr stack[traits::MAX_LEVEL];
+        node_ptr stack[traits::MAX_DEPTH];
         int top;
         key_type x = iter._M_node->key[iter.offset];
         iterator find_iter = find_lower_with_trace(x, stack, top, this->allow_balance);
@@ -302,8 +275,8 @@ public:
         return reverse_iterator(begin());
     }
 
-    inline size_type size() const{
-        return m_stats.size;
+    inline size_t size() const{
+        return static_cast<size_t>(m_stats.size);
     }
 
     inline bool empty() const {
@@ -317,9 +290,12 @@ public:
         return m_stats;
     }
 
+#ifndef AEX_TEST
 protected:
 
+
 private:    
+#endif
      
     void construct(node_ptr node, node_ptr &new_node);
 
@@ -327,11 +303,6 @@ private:
     void deconstruct(node_ptr node);
 
     // ========== 0. utils ==========
-    inline bool is_in_one_subtree(inner_node_ptr __restrict__ parent, node_ptr __restrict__ node){
-        if (node->key_ptr[0] > parent->key_ptr[parent->last()]) return false;
-        if (node->key_ptr[parent->last()] < node->key_ptr[0]) return false;
-        return true;
-    }
 
     // ========== 1. find ==========
 
@@ -355,17 +326,8 @@ private:
     iterator find_lower_with_trace(const key_type &key, node_ptr* stack, int &top, std::true_type AllowBalance);
     iterator find_lower_with_trace(const key_type &key, node_ptr* stack, int &top, std::false_type AllowBalance);
 
-    // find the lowest item greater than x, if no, return end()     
-    node_ptr find_upper(const inner_node_ptr node, const key_type &x);
-
-    iterator find_upper(const data_node_ptr node, const key_type &x);
-    //const_iterator find_upper(const data)
-
     iterator find_upper(const key_type &key, std::true_type AllowBalance);
     iterator find_upper(const key_type &key, std::false_type AllowBalance);
-
-    iterator find_upper_with_trace(const key_type &key, node_ptr* stack, int &top, std::true_type AllowBalance);
-    iterator find_upper_with_trace(const key_type &key, node_ptr* stack, int &top, std::false_type AllowBalance);
 
     // layout: [a, old_node, b] -> [a, old_node, new_node, b]
     void split(data_node_ptr __restrict__ old_node, data_node_ptr __restrict__ new_node);
@@ -389,15 +351,16 @@ private:
     //double merge_cost(inner_node_ptr node) const;
 
     data_node_ptr merge_to_node(inner_node_ptr node);
-    bool check_balance_merge(inner_node_ptr node);
-    bool check_balance_merge(node_ptr* node_buffer, size_type size);
+    bool check_balance_merge_subtree(inner_node_ptr node);
+    bool check_balance_merge_nodes(node_ptr* node_buffer, size_type size);
 
     data_node_ptr balance_merge_to_left_node(inner_node_ptr __restrict__ parent, data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node);
 
     inner_node_ptr balance_merge_to_left_node(inner_node_ptr __restrict__ parent, inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node);
 
-    inner_node_ptr balance_merge_nodes(inner_node_ptr* node_buffer, size_type buffer_size);
-    data_node_ptr balance_merge_nodes(data_node_ptr* node_buffer, size_type buffer_size);
+    //inner_node_ptr balance_merge_nodes(inner_node_ptr* node_buffer, size_type buffer_size);
+    //data_node_ptr balance_merge_nodes(data_node_ptr* node_buffer, size_type buffer_size);
+    node_ptr balance_merge_nodes(node_ptr* node_buffer, size_type buffer_size);
 
     bool check_balance_split(size_type node_slot_size, double node_write_pro, double train_pro, size_type slot_size);
 
@@ -405,7 +368,7 @@ private:
     
     size_type check_balance_split_best_slot_size(data_node_ptr node);
 
-    node_ptr balance_merge(inner_node_ptr __restrict__ node, inner_node_ptr __restrict__ parent);
+    node_ptr balance_merge_subtree(inner_node_ptr __restrict__ node, inner_node_ptr __restrict__ parent);
 
     void balance_split(const node_ptr* stack, const int top, data_node_ptr node, size_type slot_size);
 
@@ -418,11 +381,11 @@ private:
                const unsigned int n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
 
     // insert an item(<key, data>) to data node
-    size_type insert_data(data_node_ptr node, const key_type &key, const value_type &data);
+    // please use node->insert(key, data);
+    // size_type insert_data(data_node_ptr node, const key_type &key, const value_type &data);
 
     // try to insert an node to inner node. If no position to insert, return false
     bool insert_node(inner_node_ptr __restrict__ node, const key_type &key, const node_ptr __restrict__ child, std::false_type allow_balance);
-    
     bool insert_node(inner_node_ptr __restrict__ node, const key_type &key, const node_ptr __restrict__ child, std::true_type allow_balance);
 
     // A part of bulk load.
@@ -434,6 +397,7 @@ private:
     // insert some items to node(stack[top - 1]) from bottom to up
 
     void insert_many(const node_ptr* stack, const int top, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
+
     // ========== 4. erase ==========
 
     // erase subtree of the node.
@@ -462,13 +426,17 @@ private:
     void split(const key_type* const __restrict__ key, const node_ptr* const __restrict__ child, const unsigned int n, const unsigned int level, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
     // split a ordered key array with data array to inner node array.
     void split(const key_type* const __restrict__ key, const value_type* const __restrict__ data, const unsigned int n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
+    // split a ordered key array with data array to inner node array. Use linear probe(use greedy).
+    void split_with_linear_probe(const key_type* const __restrict__ key, const value_type* const __restrict__ data, const unsigned int n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
+
+    size_type linear_probe(const key_type* const key, const size_type n, data_node_model &m);
 
     // change the parent key of the child node.
-    // not test the node->max_key == key
+    // need no key of item between old key and new key.
     bool update_childnode_key(inner_node_ptr __restrict__ parent, const node_ptr __restrict__ node, const key_type &key);
 
-    // change the parent node ptr with same key. The old_node->max_key must equal to the new_node->max_key.
-    bool update_childnode_ptr(inner_node_ptr __restrict__ parent, const node_ptr __restrict__ old_node, const node_ptr __restrict__ new_node);
+    // change the parent node ptr with same key. The old_node->key[0] must equal to the new_node->key[0].
+    bool update_childnode_ptr(inner_node_ptr __restrict__ parent, const node_ptr old_node, const node_ptr new_node);
 
     // Unused. Please use insert directly.
     // check if a node can insert the key.
@@ -482,7 +450,7 @@ private:
     }
 
     // check if key buffer can put in a node with slot_size slot size. The model m will be trained if the answer is true
-    static bool check_rewired(const key_type* const __restrict__ key, const size_type size, const size_type slot_size, Model &m);
+    static bool check_rewired(const key_type* const __restrict__ key, const size_type size, const size_type slot_size, inner_node_model &m);
 
     // rewired the <key, node_ptr> array of a node. Return true if <K, P> array can be rewired. Otherwise return false.
     bool rewired(inner_node_ptr node);
@@ -537,9 +505,9 @@ private:
         data_memmove(dest, src, n, s);
     }
 
-    inline size_type max_inner_slot_size_func(size_type level) const {
-        return (level < 7)?this->max_inner_node_slot_size[level]:this->max_inner_node_slot_size[6];
-    }
+    //inline size_type max_inner_slot_size_func(size_type level) const {
+    //    return (level < 7)?this->max_inner_node_slot_size[level]:this->max_inner_node_slot_size[6];
+    //}
 
     inline bool isfull(const data_node_ptr node) const {
         return node->size >= node->slot_size;
@@ -550,11 +518,11 @@ private:
     }
 
     inline bool isfull(const inner_node_ptr node) const {
-        return (node->prop & node_property::ML_NODE) ? (node->size >= node->slot_size * traits::INNER_NODE_FULL_RATIO) : (node->size >= node->slot_size * traits::DATA_NODE_FULL_RATIO);
+        return (node->prop & node_property::ML_NODE) ? (node->size >= node->slot_size * this->inner_node_full_ratio[node->level]) : (node->size >= node->slot_size * traits::DATA_NODE_FULL_RATIO);
     }
     
     inline bool isfew(const inner_node_ptr node) const {
-        return (node->prop & node_property::ML_NODE) ? (node->size < node->slot_size * traits::INNER_NODE_FEW_RATIO) : (node->size < node->slot_size * traits::DATA_NODE_FEW_RATIO);
+        return (node->prop & node_property::ML_NODE) ? (node->size < node->slot_size * this->inner_node_few_ratio[node->level]) : (node->size < node->slot_size * traits::DATA_NODE_FEW_RATIO);
     }
 
     inline bool isfew(const node_ptr node) const{
@@ -577,7 +545,7 @@ private:
     void init();
 
 // debug
-#ifdef AEX_DEBUG_MSG
+#ifdef AEX_DEBUG
 public:
 
     // debug the subtree of a node
@@ -586,17 +554,34 @@ public:
     // debug 
     bool debug_error();
 
+    void print_stats(){
+        AEX_IMPORTANT("data size=" << m_stats.size << ", tree height=" << m_stats.height << ", data node size=" << m_stats.data_node \
+                    << ", inner node size=" << m_stats.inner_node << ", max key=" << m_stats.max_key << ", min_key=" << m_stats.min_key);
+    }
+
+    void print_msg(){
+
+    }
+
 friend inner_node;
 
 friend data_node;
+#endif
 
+#ifndef AEX_TEST
 private:
     //ostream 
-
 #endif
 
 
 };
+
+#ifdef AEX_DEBUG
+template<typename _Key,
+        typename _Val,
+        typename traits>
+int aex_tree<_Key, _Val, traits>::debug_level = 0;
+#endif
 
 };
 

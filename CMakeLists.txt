@@ -8,7 +8,8 @@ set(AEX_VERSION_STRING ${AEX_VERSION_MAJOR}.${AEX_VERSION_MINOR}.${AEX_VERSION_P
 
 #set(CMAKE_CXX_STANDARD 17)
 
-set(CMAKE_CXX_FLAGS "-g -Wall -march=native -fopenmp -fmax-errors=3 -std=c++17")
+set(CMAKE_CXX_FLAGS "-O3 -Wall -march=native -fopenmp -fmax-errors=3 -std=c++17")
+#set(CMAKE_CXX_FLAGS "-g -Wall -march=native -fopenmp -fmax-errors=3 -std=c++17")
 
 include_directories(${CMAKE_SOURCE_DIR})
 
@@ -30,7 +31,6 @@ include_directories(${PGM_DIR}/include/pgm)
 
 # benchmark
 set(BENCHMARK_DIR ${CMAKE_SOURCE_DIR}/benchmark)
-include_directories(${BENCHMARK_DIR})
 file(GLOB_RECURSE BENCHMARK_SRC ${CMAKE_SOURCE_DIR}/benchmark/benchmark_*.cpp ${CMAKE_SOURCE_DIR}/benchmark/benchmark.cpp)
 add_executable(benchmark ${BENCHMARK_SRC})
 
@@ -39,6 +39,8 @@ add_executable(generate_dataset ${BENCHMARK_DIR}/generate_dataset.cpp)
 
 # test
 set(TEST_DIR ${CMAKE_SOURCE_DIR}/test)
-include_directories(${TEST_DIR})
-file(GLOB_RECURSE TEST_SRC ${TEST_DIR}/*.cpp)
-add_executable(test ${TEST_SRC})
+# file(GLOB_RECURSE TEST_SRC ${TEST_DIR}/*.cpp)
+add_executable(test ${TEST_DIR}/test.cpp)
+
+# test tmp
+# add_executable(test_tmp ${TEST_DIR}/test_tmp.cpp)

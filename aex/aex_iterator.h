@@ -49,7 +49,7 @@ public:
         if (offset >= _M_node->size){
             if (_M_node->next != nullptr){
                 offset = 0;
-                _M_node = _M_node->next;
+                _M_node = static_cast<data_node_ptr>(_M_node->next);
             }
             else{
                 offset = _M_node->size;
@@ -64,7 +64,7 @@ public:
         if (offset >= _M_node->size){
             if (_M_node->next != nullptr){
                 offset = 0;
-                _M_node = _M_node->next;
+                _M_node = static_cast<data_node_ptr>(_M_node->next);
             }
             else{
                 offset = _M_node->size;
@@ -77,7 +77,7 @@ public:
         if (offset > 0) --offset;
         else{
             if (_M_node != nullptr){
-                _M_node = _M_node->prev;
+                _M_node = static_cast<data_node_ptr>(_M_node->prev);
                 offset = _M_node->size - 1;
             }
             else{
@@ -91,7 +91,7 @@ public:
         if (offset > 0) --offset;
         else {
             if (_M_node != nullptr){
-                _M_node = _M_node->prev;
+                _M_node = static_cast<data_node_ptr>(_M_node->prev);
                 offset = _M_node->size - 1;
             }
             else{
@@ -184,7 +184,7 @@ public:
         if (offset >= _M_node->size){
             if (_M_node->next != nullptr){
                 offset = 0;
-                _M_node = _M_node->next;
+                _M_node = static_cast<data_node_ptr>(_M_node->next);
             }
             else{
                 offset = _M_node->size;
@@ -199,7 +199,7 @@ public:
         if (offset >= _M_node->size){
             if (_M_node->next != nullptr){
                 offset = 0;
-                _M_node = _M_node->next;
+                _M_node = static_cast<data_node_ptr>(_M_node->next);
             }
             else{
                 offset = _M_node->size;
@@ -212,7 +212,7 @@ public:
         if (offset > 0) --offset;
         else {
             if (_M_node != nullptr){
-                _M_node = _M_node->prev;
+                _M_node = static_cast<data_node_ptr>(_M_node->prev);
                 offset = _M_node->size - 1;
             }
             else{
@@ -226,7 +226,7 @@ public:
         if (offset > 0)--offset;
         else {
             if (_M_node != nullptr){
-                _M_node = _M_node->prev;
+                _M_node = static_cast<data_node_ptr>(_M_node->prev);
                 offset = _M_node->size - 1;
             }
             else{
@@ -313,7 +313,7 @@ public:
         if (offset >= _M_node->size){
             if (_M_node->next != nullptr){
                 offset = 0;
-                _M_node = _M_node->next;
+                _M_node = static_cast<data_node_ptr>(_M_node->next);
             }
             else{
                 offset = _M_node->size;
@@ -328,7 +328,7 @@ public:
         if (offset >= _M_node->size){
             if (_M_node->next != nullptr){
                 offset = 0;
-                _M_node = _M_node->next;
+                _M_node = static_cast<data_node_ptr>(_M_node->next);
             }
             else{
                 offset = _M_node->size;
@@ -341,7 +341,7 @@ public:
         if (offset > 0) --offset;
         else {
             if (_M_node != nullptr){
-                _M_node = _M_node->prev;
+                _M_node = static_cast<data_node_ptr>(_M_node->prev);
                 offset = _M_node->size - 1;
             }
             else{
@@ -355,7 +355,7 @@ public:
         if (offset > 0) --offset;
         else {
             if (_M_node != nullptr){
-                _M_node = _M_node->prev;
+                _M_node = static_cast<data_node_ptr>(_M_node->prev);
                 offset = _M_node->size - 1;
             }
             else{
@@ -445,7 +445,7 @@ public:
         if (offset >= _M_node->size){
             if (_M_node->next != nullptr){
                 offset = 0;
-                _M_node = _M_node->next;
+                _M_node = static_cast<data_node_ptr>(_M_node->next);
             }
             else{
                 offset = _M_node->size;
@@ -460,7 +460,7 @@ public:
         if (offset >= _M_node->size){
             if (_M_node->next != nullptr){
                 offset = 0;
-                _M_node = _M_node->next;
+                _M_node = static_cast<data_node_ptr>(_M_node->next);
             }
             else{
                 offset = _M_node->size;
@@ -473,7 +473,7 @@ public:
         if (offset > 0) --offset;
         else {
             if (_M_node != nullptr){
-                _M_node = _M_node->prev;
+                _M_node = static_cast<data_node_ptr>(_M_node->prev);
                 offset = _M_node->size - 1;
             }
             else{
@@ -487,7 +487,7 @@ public:
         if (offset > 0) --offset;
         else {
             if (_M_node != nullptr){
-                _M_node = _M_node->prev;
+                _M_node = static_cast<data_node_ptr>(_M_node->prev);
                 offset = _M_node->size - 1;
             }
             else{

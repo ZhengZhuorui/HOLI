@@ -4,6 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/",
+                "${workspaceFolder}/aex",
                 "${workspaceFolder}/benchmark",
                 "${workspaceFolder}/test",
                 "${workspaceFolder}/thirdparty/stx-btree-0.9/include",

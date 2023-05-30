@@ -11,6 +11,7 @@
 //using namespace std;
 #include "benchmark_insert.hpp"
 #include "benchmark_query.hpp"
+#include "benchmark_other.hpp"
 /*
 template<typename key_type, typename value_type>
 void aex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, value_type> > &insert_data);

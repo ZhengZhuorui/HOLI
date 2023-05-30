@@ -5,6 +5,8 @@
 // https://github.com/brianfrankcooper/YCSB/blob/master/core/src/main/java/site/ycsb/generator/ScrambledZipfianGenerator.java
 // https://github.com/brianfrankcooper/YCSB/blob/master/core/src/main/java/site/ycsb/generator/ZipfianGenerator.java
 
+#pragma once
+
 class ScrambledZipfianGenerator {
  public:
   static constexpr double ZETAN = 26.46902820178302;

@@ -18,11 +18,13 @@ CMakeFiles/test.dir/test/test.cpp.o
  ../aex/aex_traits.h
  ../aex/aex_utils.h
  ../benchmark/generate_dataset.h
+ ../benchmark/utils.h
  ../benchmark/zipf.h
  ../test/test.h
- /home/zzr/program/aex_remake_2/test/test.cpp
- /home/zzr/program/aex_remake_2/test/test.h
- /home/zzr/program/aex_remake_2/test/test_function.hpp
- /home/zzr/program/aex_remake_2/test/test_index.hpp
- /home/zzr/program/aex_remake_2/test/test_model.hpp
- /home/zzr/program/aex_remake_2/test/utils.h
+ ../test/test_SMO.hpp
+ ../test/test_function.hpp
+ ../test/test_index.hpp
+ ../test/test_mock.hpp
+ ../test/test_model.hpp
+ ../test/test_node.hpp
+ /home/zzr/aex/test/test.cpp

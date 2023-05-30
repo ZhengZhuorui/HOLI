@@ -1,4 +1,4 @@
-
+#pragma once
 template<typename _Tp,
         int K>
 unsigned char find_lower_avx(const _Tp* const key, const _Tp &x){

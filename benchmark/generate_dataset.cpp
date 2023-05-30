@@ -3,7 +3,6 @@
 #include "utils.h"
 #include "generate_dataset.h"
 
-using namespace std;
 const long long LONG_MAX_VALUE = (1LL << 62) - 1, LONG_MIN_VALUE = - ((1LL << 62) - 1);
 
 /*
@@ -45,19 +44,6 @@ int main(int argc, char** argv){
             generate_unique_dataset<long long, std::uniform_int_distribution<long long>, long long>(data, num_keys, lower, upper);
             write_bineary_file(file, data);
         }
-        //if (distribution == "uniform_float"){
-        //    vector<double> data;
-        //    double lower = LONG_MIN_VALUE, upper = LONG_MAX_VALUE;
-        //    if (flags.find("lower") == flags.end()){
-        //        lower = stod(flags["lower"]);
-        //    }
-        //    if (flags.find("upper") == flags.end()){
-        //        upper = stod(flags["upper"]);
-        //    }
-        //    
-        //    generate_unique_dataset<double, std::uniform_real_distribution<double>, double>(data, num_keys, lower, upper);
-        //    write_bineary_file(file, data);
-        //}
         else if (distribution == "normal"){
             double mean = stod(flags["mean"]);
             double stddev = stod(flags["stddev"]);
@@ -65,13 +51,6 @@ int main(int argc, char** argv){
             generate_normal_unique_dataset<long long>(data, num_keys, mean, stddev);
             write_bineary_file(file, data);
         }
-        //else if (dataset == "normal_float"){
-        //    double mean = stod(flags["mean"]);
-        //    double stddev = stod(flags["stddev"]);
-        //    vector<double> data;
-        //    generate_normal_unique_dataset<double>(data, num_keys, mean, stddev);
-        //    write_bineary_file(file, data);
-        //}
         else if (distribution == "lognormal"){
             double mean = stod(flags["mean"]);
             double stddev = stod(flags["stddev"]);
@@ -79,13 +58,38 @@ int main(int argc, char** argv){
             generate_lognormal_unique_dataset<long long>(data, num_keys, mean, stddev);
             write_bineary_file(file, data);
         }
-        //else if (dataset == "lognormal_float"){
-        //    double mean = stod(flags["mean"]);
-        //    double stddev = stod(flags["stddev"]);
-        //    vector<double> data;
-        //    generate_lognormal_unique_dataset<double>(data, num_keys, mean, stddev);
-        //    write_bineary_file(file, data);
-        //}
+    }
+    else if (key_type == "float"){
+        if (distribution == "uniform"){
+            vector<double> data;
+            data.resize(num_keys);
+            long long lower = LONG_MIN_VALUE, upper = LONG_MAX_VALUE;
+            if (flags.find("lower") != flags.end()){
+                lower = stoll(flags["lower"]);
+            }
+            if (flags.find("lower") != flags.end()){
+                upper = stoll(flags["upper"]);
+            }
+            generate_unique_dataset<double, std::uniform_real_distribution<double>, double>(data, num_keys, lower, upper);
+            write_bineary_file(file, data);
+        }
+        else if (distribution == "normal"){
+            double mean = stod(flags["mean"]);
+            double stddev = stod(flags["stddev"]);
+            vector<double> data;
+            generate_normal_unique_dataset<double>(data, num_keys, mean, stddev);
+            for (long long i = 0; i < std::min(100LL, num_keys); ++i)
+                std::cout << data[i] << " ";
+            std::cout << std::endl;
+            write_bineary_file(file, data);
+        }
+        else if (distribution == "lognormal"){
+            double mean = stod(flags["mean"]);
+            double stddev = stod(flags["stddev"]);
+            vector<double> data;
+            generate_lognormal_unique_dataset<double>(data, num_keys, mean, stddev);
+            write_bineary_file(file, data);
+        }
     }
     fclose(file);
 }

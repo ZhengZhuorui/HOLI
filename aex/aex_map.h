@@ -7,7 +7,8 @@ namespace aex
 
 template<typename _Key, 
         typename _Val, 
-        typename traits=aex_default_traits<_Key, _Val, std::false_type, std::false_type, std::false_type> >
+        typename _Alloc = std::allocator<unsigned char>,
+        typename traits=aex_default_traits<_Key, _Val, std::false_type, std::false_type> >
 class aex_map{
 public:
     typedef _Key key_type;
@@ -59,7 +60,7 @@ public:
 
     inline iterator rend() const { return _m.rend(); }
 
-    inline size_type size() const { return _m.size(); }
+    inline size_t size() const { return _m.size(); }
 
     inline bool empty() const { return _m.empty(); }
 
@@ -71,7 +72,7 @@ public:
 
     inline void range_query(const key_type &L, const key_type &R, std::vector<std::pair<key_type, value_type>>& answer){ return _m.range_query(L, R, answer);}
 
-    inline size_type erase(const key_type &key){ return _m.erase(key);}
+    inline size_t erase(const key_type &key){ return _m.erase(key);}
     
     inline iterator erase(const_iterator iter){ return _m.erase(iter);}
 
@@ -123,15 +124,18 @@ public:
     }
     */
 
-    #ifdef AEX_DEBUG_MSG
+    #ifdef AEX_DEBUG
     void set_debug_level(int level){
-        _m.debug_level = level;
+        tree::debug_level = level;
     }
 
     inline bool debug_error(){
         return _m.debug_error();
     }
 
+    inline void print_stats(){
+        return _m.print_stats();
+    }
     #endif
 };
 

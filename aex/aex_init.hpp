@@ -5,9 +5,9 @@ namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
 aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(){
-    AEX_FORMAT("BEGIN");
+    AEX_HINT("BEGIN");
     this->init();
-    AEX_FORMAT("END");
+    AEX_HINT("END");
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -49,32 +49,41 @@ aex_tree<_Key, _Val, traits>::aex_tree(self&& _index){
 
 template<typename _Key, typename _Val, typename traits>
 aex_tree<_Key, _Val, traits>::~aex_tree(){
-    AEX_FORMAT("BEGIN");
-    AEX_FORMAT("root->size=%llu, root->prop=%llu", this->root->size, this->root->prop);
+    AEX_HINT("BEGIN");
+    if (this->root != nullptr){
+        //AEX_FORMAT("root->size=%lld, root->prop=%u", this->root->size, this->root->prop);
+        AEX_ERROR("root->size=" << this->root->size << ", root->prop=" << this->root->prop);
+    }
     //this->deconstruct(this->root);
     this->erase_tree_recursive(this->root);
     this->root = this->head_leaf = this->tail_leaf = nullptr;
-    AEX_FORMAT("END");
+    AEX_HINT("END");
 }
 
 
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::init(){
-    AEX_FORMAT("BEGIN");
-    this->max_key = std::numeric_limits<key_type>::min();
-    this->min_key = std::numeric_limits<key_type>::max();
-    this->lambda = 1 - 1.0 / traits::LAMBDA_;
-    AEX_FORMAT("END");
+    AEX_HINT("BEGIN");
+    this->m_stats.max_key = std::numeric_limits<key_type>::min();
+    this->m_stats.min_key = std::numeric_limits<key_type>::max();
+    this->inner_node_few_ratio[0] = traits::DATA_NODE_FEW_RATIO, this->inner_node_full_ratio[0] = traits::DATA_NODE_FULL_RATIO;
+    for (size_type i = 1; i < traits::MAX_DEPTH; ++i){
+        this->inner_node_few_ratio[i] = this->inner_node_few_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
+        this->inner_node_full_ratio[i] = this->inner_node_full_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
+    }
+    //this->lambda = 1 - 1.0 / traits::LAMBDA_;
+    AEX_HINT("END");
 }
 
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::construct(node_ptr node, node_ptr &new_node){
-    if (node->prop&LEAF){
+    if (node->prop & node_property::LEAF){
         new_node = node_allocator.allocate_data_node(new_node->slot_size);
         static_cast<data_node>(new_node)->copy(node);
     }
     else{
-        new_node = node_allocator.allocate_inner_node(node->slot_size, this->m_stats.timestamp, ((node->prop & node_property::ML_NODE) > 0));
+        new_node = node_allocator.allocate_inner_node(node->slot_size);
+        ++this->m_stats.inner_node;
         static_cast<inner_node_ptr>(new_node)->copy(node);
         bitmap bm = static_cast<inner_node_ptr>(new_node)->bitmap_ptr;
         node_ptr* child = static_cast<inner_node_ptr>(node)->child_ptr;
@@ -99,7 +108,7 @@ void aex_tree<_Key, _Val, traits>::construct(node_ptr node, node_ptr &new_node){
 }
 
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::deconstruct(node_ptr node){
+inline void aex_tree<_Key, _Val, traits>::deconstruct(node_ptr node){
     erase_tree_recursive(node);
 }
 

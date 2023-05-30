@@ -55,8 +55,6 @@ aex/aex_con.hpp
 ../aex/aex/aex_con.hpp
 
 ../aex/aex_SMO.hpp
-aex/aex.h
-../aex/aex/aex.h
 
 ../aex/aex_allocator.h
 
@@ -111,6 +109,8 @@ benchmark_insert.hpp
 ../benchmark/benchmark_insert.hpp
 benchmark_query.hpp
 ../benchmark/benchmark_query.hpp
+benchmark_other.hpp
+../benchmark/benchmark_other.hpp
 
 ../benchmark/benchmark_insert.hpp
 bits/stdc++.h
@@ -129,6 +129,8 @@ utils.h
 ../benchmark/utils.h
 generate_dataset.h
 ../benchmark/generate_dataset.h
+
+../benchmark/benchmark_other.hpp
 
 ../benchmark/benchmark_query.hpp
 bits/stdc++.h
@@ -149,8 +151,12 @@ pgm_index_dynamic.hpp
 ../benchmark/generate_dataset.h
 bits/stdc++.h
 -
-zipf.h
-../benchmark/zipf.h
+benchmark/zipf.h
+../benchmark/benchmark/zipf.h
+benchmark/utils.h
+../benchmark/benchmark/utils.h
+aex/aex_utils.h
+../benchmark/aex/aex_utils.h
 
 ../benchmark/utils.h
 iostream
@@ -332,13 +338,17 @@ iostream
 stx/btree.h
 -
 
-/home/zzr/program/aex_remake_2/benchmark/benchmark.cpp
+/home/zzr/aex/benchmark/benchmark.cpp
 bits/stdc++.h
 -
 benchmark/benchmark.h
-/home/zzr/program/aex_remake_2/benchmark/benchmark/benchmark.h
+/home/zzr/aex/benchmark/benchmark/benchmark.h
 benchmark/utils.h
-/home/zzr/program/aex_remake_2/benchmark/benchmark/utils.h
+/home/zzr/aex/benchmark/benchmark/utils.h
 benchmark/generate_dataset.h
-/home/zzr/program/aex_remake_2/benchmark/benchmark/generate_dataset.h
+/home/zzr/aex/benchmark/benchmark/generate_dataset.h
+sys/time.h
+-
+unistd.h
+-
 

@@ -6,21 +6,11 @@
 
 #IncludeRegexTransform: 
 
-/home/zzr/program/aex_remake_2/benchmark/generate_dataset.cpp
-bits/stdc++.h
+../aex/aex_utils.h
+atomic
 -
-utils.h
-/home/zzr/program/aex_remake_2/benchmark/utils.h
-generate_dataset.h
-/home/zzr/program/aex_remake_2/benchmark/generate_dataset.h
 
-/home/zzr/program/aex_remake_2/benchmark/generate_dataset.h
-bits/stdc++.h
--
-zipf.h
-/home/zzr/program/aex_remake_2/benchmark/zipf.h
-
-/home/zzr/program/aex_remake_2/benchmark/utils.h
+../benchmark/utils.h
 iostream
 -
 random
@@ -34,5 +24,37 @@ algorithm
 map
 -
 
-/home/zzr/program/aex_remake_2/benchmark/zipf.h
+../benchmark/zipf.h
+
+/home/zzr/aex/benchmark/generate_dataset.cpp
+bits/stdc++.h
+-
+utils.h
+/home/zzr/aex/benchmark/utils.h
+generate_dataset.h
+/home/zzr/aex/benchmark/generate_dataset.h
+
+/home/zzr/aex/benchmark/generate_dataset.h
+bits/stdc++.h
+-
+benchmark/zipf.h
+/home/zzr/aex/benchmark/benchmark/zipf.h
+benchmark/utils.h
+/home/zzr/aex/benchmark/benchmark/utils.h
+aex/aex_utils.h
+/home/zzr/aex/benchmark/aex/aex_utils.h
+
+/home/zzr/aex/benchmark/utils.h
+iostream
+-
+random
+-
+vector
+-
+utility
+-
+algorithm
+-
+map
+-
 

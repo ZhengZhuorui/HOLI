@@ -7,7 +7,7 @@
 #include <map>
 using std::vector;
 using std::pair;
-typedef unsigned long long size_type;
+
 static const unsigned int seed = 0; 
 
 std::map<std::string, std::string> parse_flags(int argc, char** argv) {
@@ -37,18 +37,36 @@ std::map<std::string, std::string> parse_flags(int argc, char** argv) {
 
 template<typename T>
 void read_bineary_file(FILE* file, vector<T> &data, size_t n){
-    printf("read data...\n");
-    fflush(stdout);
+    std::cout << "read data...\n";
     data.resize(n);
-    fread(data.data(), sizeof(T), n, file);
-    printf("read data end\n");
+    [[maybe_unused]] size_t data_size = fread(data.data(), sizeof(T), n, file);
+    std::cout << "read data end\n";
+}
+
+template<typename T>
+void read_bineary_file(FILE* file, T* &data, size_t n){
+    std::cout << "read data...\n" ;
+    [[maybe_unused]] size_t data_size = fread(data, sizeof(T), n, file);
+    std::cout << "read data end\n";
 }
 
 template<typename T>
 void write_bineary_file(FILE* file, vector<T> &data){
-    printf("write data...\n");
-    fflush(stdout);
+
+    std::cout << "write data...\n";
     size_t n = data.size();
     fwrite(data.data(), sizeof(T), n, file);
-    printf("write data end\n");
+    std::cout << "write data end\n";
+}
+
+template<typename T>
+void change_small2big_endian(vector<T> &data, size_t n){
+    int sz = sizeof(T);
+    char buf[sizeof(T)], buf1[sizeof(T)];
+    for (size_t i = 0; i < n; ++i){
+        memcpy(buf1, data.data() + i, sizeof(T));
+        for (int j = 0; j < sz; ++j)
+            buf[j] = buf1[sz - j - 1];
+        data[i] = *(reinterpret_cast<T*>(buf));
+    }
 }

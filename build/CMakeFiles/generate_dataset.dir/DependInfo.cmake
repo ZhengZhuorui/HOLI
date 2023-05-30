@@ -4,7 +4,7 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/home/zzr/program/aex_remake_2/benchmark/generate_dataset.cpp" "/home/zzr/program/aex_remake_2/build/CMakeFiles/generate_dataset.dir/benchmark/generate_dataset.cpp.o"
+  "/home/zzr/aex/benchmark/generate_dataset.cpp" "/home/zzr/aex/build/CMakeFiles/generate_dataset.dir/benchmark/generate_dataset.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 
@@ -14,8 +14,6 @@ set(CMAKE_CXX_TARGET_INCLUDE_PATH
   "../thirdparty/stx-btree-0.9/include"
   "../thirdparty/ALEX/src/core"
   "../thirdparty/PGM-index-master/include/pgm"
-  "../benchmark"
-  "../test"
   )
 
 # Targets to which this target links.

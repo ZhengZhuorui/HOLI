@@ -2,6 +2,81 @@
 #include <atomic>
 namespace aex{
 
+#define UNF 0xFFFFFFFFFFFFFFFFLL
+//#define RED_FONT(str) ("\033[31m"+(str)+"\033[0m")
+//#define GREEN_FONT(str) ("\033[32m"+(str)+"\033[0m")
+//#define YELLOW_FONT(str) ("\033[33m"+(str)+"\033[0m")
+//#define BLUE_FONT(str) ("\033[34m"+(str)+"\033[0m")
+
+#define WHITE_FONT_TAG "\033[0m"
+#define RED_FONT_TAG "\033[31m"
+#define GREEN_FONT_TAG "\033[32m"
+#define YELLOW_FONT_TAG "\033[33m"
+#define BLUE_FONT_TAG "\033[34m"
+#define PURPLE_FONT_TAG "\033[35m"
+
+inline std::string RED_FONT(std::string str){ return RED_FONT_TAG + str + WHITE_FONT_TAG; }
+inline std::string GREEN_FONT(std::string str){ return GREEN_FONT_TAG + str + WHITE_FONT_TAG; }
+inline std::string YELLOW_FONT(std::string str){ return YELLOW_FONT_TAG + str + WHITE_FONT_TAG; }
+inline std::string BLUE_FONT(std::string str){ return BLUE_FONT_TAG + str + WHITE_FONT_TAG; }
+//inline std::string DARK_GREEN_FONT(std::string str){ return DARK_GREEN_FONT_TAG + str + WHITE_FONT_TAG; }
+inline std::string PURPLE_GREEN_FONT(std::string str){ return PURPLE_FONT_TAG + str + WHITE_FONT_TAG; }
+
+#ifdef AEX_DEBUG
+
+//#define private public
+
+#define AEX_PRINT(x)  do { std::cout << "File: " << __FILE__ << ":" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << std::endl; } while(0)
+
+//#define AEX_PRINT_TAG(x, TAG)  do { std::cout << TAG << "File: " << __FILE__ << ":" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << WHITE_FONT_TAG << std::endl; } while(0)
+
+#define AEX_PRINT_TAG(x, TAG_FONT, TAG_NAME)  do { std::cout << TAG_FONT << TAG_NAME << " File: " << __FILE__ << ":" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << WHITE_FONT_TAG << std::endl; } while(0)
+
+#define AEX_FORMAT(FORMAT, ...) do{ printf("File: %s:%d, Function: %s, output: ", __FILE__, __LINE__, __FUNCTION__); printf(FORMAT, ##__VA_ARGS__); printf("\n"); fflush(stdout);} while(0);
+
+#define AEX_ASSERT(x) do { assert(x); } while(0)
+
+#define AEX_PRINT_ELEMENT(x) do { AEX_PRINT(##x << "=" << x); } while(0)
+
+#else
+
+#define AEX_PRINT(x) 
+
+#define AEX_PRINT_TAG(x, TAG_FONT, TAG_NAME) 
+
+#define AEX_FORMAT(FORMAT, ...) 
+
+#define AEX_ASSERT(x) 
+
+#define AEX_PRINT_ELEMENT(x) 
+
+#endif
+
+#define AEX_WARNING(x) AEX_PRINT_TAG(x, YELLOW_FONT_TAG, "[WARNING]")
+
+#define AEX_ERROR(x) AEX_PRINT_TAG(x, RED_FONT_TAG, "[ERROR]")
+
+#define AEX_SUCCESS(x) AEX_PRINT_TAG(x, GREEN_FONT_TAG, "[SUCCESS]")
+
+#define AEX_HINT(x) AEX_PRINT_TAG(x, BLUE_FONT_TAG, "[HINT]")
+
+#define AEX_IMPORTANT(x) AEX_PRINT_TAG(x, PURPLE_FONT_TAG, "[IMPORTANT]")
+
+
+#define AEX_DEBUG_DETAIL
+
+#ifdef AEX_DEBUG_DETAIL
+
+#define AEX_DEBUG_PRINT(x)  do { std::cout << "[DEBUG] File:" << __FILE__ << ":" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << std::endl; } while(0)
+
+#define AEX_DEBUG_FORMAT(FORMAT, ...) do{ printf("[DEBUG] File: %s:%d, Function: %s, output: ", __FILE__, __LINE__, __FUNCTION__); printf(FORMAT, __VAR_ARGS__); printf("\n"); fflush(stdout);} while(0);
+
+#else 
+
+#define AEX_DEBUG_PRINT() do {} while(0)
+
+#endif
+
 enum node_property{
     LEAF=0x1,
     ML_NODE=0x2,
@@ -10,8 +85,6 @@ enum node_property{
     COMPLEX_MODEL=0x10,
     SORTED_NODE=0x20
 };
-
-#define UNF 0xFFFFFFFFFFFFFFFFLL
 
 template<typename _Tp>
 inline _Tp rapid_pow(_Tp base, unsigned long long x){
@@ -136,63 +209,47 @@ private:
     std::atomic_int counter{0};
 };
 
-template<typename RandomIter, typename _Val, typename _Comp>
-inline RandomIter exponential_search_lower_bound(RandomIter first, RandomIter last, RandomIter predict, _Val& key, _Comp comp){
-    size_t offset = 1;
-    if (comp(key, *predict)){
-        for (; predict - offset >= first && !comp(*(predict - offset), key); offset <<= 1);
-        offset >>= 1;
-        predict -= offset;
-        for (offset <<= 1; offset; offset <<= 1)
-            if (predict - offset >= first && !comp(*(predict - offset), key) ) predict -= offset;
-    }
-    else{
-        for (; predict + offset < last && !comp(*(predict + offset), key); offset <<= 1);
-        offset >>= 1;
-        predict += offset;
-        for (offset <<= 1; offset; offset <<= 1)
-            if (predict + offset < last && !comp(*(predict + offset), key))
-                predict += offset <<= 1;
-        if (comp(key, *predict)) ++predict;
-    }
-    return predict;
-}
-
 template<typename RandomIter, typename _Val>
 inline RandomIter exponential_search_lower_bound(RandomIter first, RandomIter last, RandomIter predict, _Val& key){
-    //using _Comp = bool* (_Val&, _Val&);
-    return exponential_search_lower_bound<RandomIter, _Val>(first, last, predict, key, std::less<_Val>());
-}
-
-// TODO: change lower bound to upper bound
-template<typename RandomIter, typename _Val, typename _Comp>
-inline RandomIter exponential_search_upper_bound(RandomIter first, RandomIter last, RandomIter predict, _Val& key, _Comp comp=std::less<_Val>()){
-    //if (*predict == key) return predict;
-    //bool flag = (key < *predict) ? -1 : 1;
+    AEX_ASSERT(first <= predict);
+    AEX_ASSERT(predict < last);
     size_t offset = 1;
-    if (comp(key, *predict)){
-        for (; predict - offset >= first && !comp(*(predict - offset), key); offset <<= 1);
-        offset >>= 1;
-        predict -= offset;
-        for (offset <<= 1; offset; offset <<= 1)
-            if (predict - offset >= first && !comp(*(predict - offset), key) ) predict -= offset;
+    if (key <= *predict){
+        for (; predict - offset >= first && key <= *(predict - offset); offset <<= 1);
+        for (offset >>= 1; offset; offset >>= 1)
+            if (predict - offset >= first && key <= *(predict - offset)) predict -= offset;
     }
-    else{
-        for (; predict + offset < last && !comp(*(predict + offset), key); offset <<= 1);
-        offset >>= 1;
-        predict += offset;
-        for (offset <<= 1; offset; offset <<= 1)
-            if (predict + offset < last && !comp(*(predict + offset), key))
-                predict += offset <<= 1;
-        if (comp(key, *predict)) ++predict;
+    else {
+        for (; predict + offset < last && *(predict + offset) < key; offset <<= 1);
+        for (offset >>= 1; offset; offset >>= 1)
+            if (predict + offset < last && *(predict + offset) < key)
+                predict += offset;
+        ++predict;
     }
     return predict;
 }
 
 template<typename RandomIter, typename _Val>
 inline RandomIter exponential_search_upper_bound(RandomIter first, RandomIter last, RandomIter predict, _Val& key){
-    return exponential_search_upper_bound(first, last, predict, key, std::less<_Val>());
+    size_t offset = 1;
+    AEX_ASSERT(first <= predict);
+    AEX_ASSERT(predict < last);
+    if (key < *predict){
+        for (; predict - offset >= first && key < *(predict - offset); offset <<= 1);
+        for (offset >>= 1; offset; offset >>= 1)
+            if (predict - offset >= first && key < *(predict - offset)) predict -= offset;
+    }
+    else {
+        for (; predict + offset < last && *(predict + offset) <= key; offset <<= 1);
+        for (offset >>= 1; offset; offset >>= 1)
+            if (predict + offset < last && *(predict + offset) <= key) predict += offset;
+        ++predict;
+    }
+    return predict;
 }
 
+inline double cross_product(double x0, double y0, double x1, double y1, double x2, double y2){
+    return (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
+}
 
 }
