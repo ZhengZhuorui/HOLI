@@ -20,7 +20,7 @@ CMakeFiles/test.dir/test/test.cpp.o: ../benchmark/generate_dataset.h
 CMakeFiles/test.dir/test/test.cpp.o: ../benchmark/utils.h
 CMakeFiles/test.dir/test/test.cpp.o: ../benchmark/zipf.h
 CMakeFiles/test.dir/test/test.cpp.o: ../test/test.h
-CMakeFiles/test.dir/test/test.cpp.o: ../test/test_SMO.hpp
+CMakeFiles/test.dir/test/test.cpp.o: ../test/test_SMO_split.hpp
 CMakeFiles/test.dir/test/test.cpp.o: ../test/test_function.hpp
 CMakeFiles/test.dir/test/test.cpp.o: ../test/test_index.hpp
 CMakeFiles/test.dir/test/test.cpp.o: ../test/test_mock.hpp

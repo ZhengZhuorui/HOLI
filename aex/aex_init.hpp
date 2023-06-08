@@ -26,8 +26,6 @@ template<typename _Key, typename _Val, typename traits>
 aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(){
     this->init();
     this->construct(_index.root, root);
-    this->head_leaf = find_head_leaf(root);
-    this->tail_leaf = find_tail_leaf(root);
     this->m_stats.size = _index.m_stats.size;
     this->m_stats.height = _index.m_stats.height;
 }
@@ -43,7 +41,6 @@ aex_tree<_Key, _Val, traits>::aex_tree(self&& _index){
     _index.head_leaf = nullptr;
     this->tail_leaf = _index.tail_leaf;
     this->m_stats = _index.m_stats;
-    //memcpy(this->m_stats, _)
 
 }
 
@@ -51,10 +48,15 @@ template<typename _Key, typename _Val, typename traits>
 aex_tree<_Key, _Val, traits>::~aex_tree(){
     AEX_HINT("BEGIN");
     if (this->root != nullptr){
-        //AEX_FORMAT("root->size=%lld, root->prop=%u", this->root->size, this->root->prop);
         AEX_ERROR("root->size=" << this->root->size << ", root->prop=" << this->root->prop);
     }
     //this->deconstruct(this->root);
+    if (this->m_stats.data_node != this->node_allocator.data_node_nums){
+        AEX_ERROR("data node number error! tree data node=" << this->m_stats.data_node << ", allocator data node number=" << this->node_allocator.data_node_nums);
+    }
+    if (this->m_stats.inner_node != this->node_allocator.inner_node_nums){
+        AEX_ERROR("inner node number no free! tree inner node=" << this->m_stats.inner_node << ", allocator inner node number=" << this->node_allocator.inner_node_nums);
+    }
     this->erase_tree_recursive(this->root);
     this->root = this->head_leaf = this->tail_leaf = nullptr;
     AEX_HINT("END");
@@ -67,7 +69,7 @@ void aex_tree<_Key, _Val, traits>::init(){
     this->m_stats.max_key = std::numeric_limits<key_type>::min();
     this->m_stats.min_key = std::numeric_limits<key_type>::max();
     this->inner_node_few_ratio[0] = traits::DATA_NODE_FEW_RATIO, this->inner_node_full_ratio[0] = traits::DATA_NODE_FULL_RATIO;
-    for (size_type i = 1; i < traits::MAX_DEPTH; ++i){
+    for (int i = 1; i < traits::MAX_DEPTH; ++i){
         this->inner_node_few_ratio[i] = this->inner_node_few_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
         this->inner_node_full_ratio[i] = this->inner_node_full_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
     }
@@ -89,18 +91,18 @@ void aex_tree<_Key, _Val, traits>::construct(node_ptr node, node_ptr &new_node){
         node_ptr* child = static_cast<inner_node_ptr>(node)->child_ptr;
         node_ptr* new_child = static_cast<inner_node_ptr>(new_node)->child_ptr;
         if (node->prop & node_property::ML_NODE){
-            size_type prev = 0;
-            for (size_type i = 0; i < node->slot_size; ++i)
+            pos_type prev = 0;
+            for (pos_type i = 0; i < node->slot_size; ++i)
             if (bitmap_impl::at(bm, i)){
                 construct(child[i], new_child[i]);
-                memcpy(new_child + prev, child + prev, (i - prev) * sizeof(node_ptr));
+                std::fill(new_child + prev, new_child + i, new_child[i]);
                 prev = i;
             }
             if (prev != node->slot_size - 1)
-                memcpy(new_child + prev, child + prev, (node->slot_size - prev) * sizeof(node_ptr));
+                std::fill(new_child + prev, new_child + node->slot_size, new_child[prev]);
         }
         else{
-            for (size_type i = 0; i < node->size; ++i){
+            for (pos_type i = 0; i < node->size; ++i){
                 construct(child[i], new_child[i]);
             }
         }

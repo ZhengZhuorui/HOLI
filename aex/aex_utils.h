@@ -62,28 +62,14 @@ inline std::string PURPLE_GREEN_FONT(std::string str){ return PURPLE_FONT_TAG + 
 
 #define AEX_IMPORTANT(x) AEX_PRINT_TAG(x, PURPLE_FONT_TAG, "[IMPORTANT]")
 
-
-#define AEX_DEBUG_DETAIL
-
-#ifdef AEX_DEBUG_DETAIL
-
-#define AEX_DEBUG_PRINT(x)  do { std::cout << "[DEBUG] File:" << __FILE__ << ":" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << std::endl; } while(0)
-
-#define AEX_DEBUG_FORMAT(FORMAT, ...) do{ printf("[DEBUG] File: %s:%d, Function: %s, output: ", __FILE__, __LINE__, __FUNCTION__); printf(FORMAT, __VAR_ARGS__); printf("\n"); fflush(stdout);} while(0);
-
-#else 
-
-#define AEX_DEBUG_PRINT() do {} while(0)
-
-#endif
-
 enum node_property{
     LEAF=0x1,
     ML_NODE=0x2,
     CHECK_MERGE=0x4,
     CHECK_SPLIT=0x8,
-    COMPLEX_MODEL=0x10,
-    SORTED_NODE=0x20
+    APPEND_NODE=0x10,
+    SORTED_NODE=0x20,
+    
 };
 
 template<typename _Tp>
@@ -120,17 +106,19 @@ public:
 
     typedef typename traits::bitmap bitmap;
 
-    static inline void set_one(bitmap text, const unsigned long long x) {
+    typedef typename traits::pos_type pos_type;
+
+    static inline void set_one(bitmap text, const pos_type x) {
         text[x >> 6] |= (1LL << (x & 63));
     }
-    static inline void set_zero(bitmap text, const unsigned long long x){
+    static inline void set_zero(bitmap text, const pos_type x){
         text[x >> 6] &= ~(1LL << (x & 63));
     }
-    static inline char at(const bitmap text, const unsigned long long x){
+    static inline char at(const bitmap text, const pos_type x){
         return ((text[x >> 6] >> (x & 63)) & 1);
     }
 
-    static inline size_type next_empty_slot(ULL* text, size_type x){
+    static inline pos_type next_empty_slot(ULL* text, size_type x){
         /*
         //lower bound: 4
         int p = x >> 6, q = x & 64;
@@ -144,7 +132,7 @@ public:
         }
         else return -1;
         */
-        for (size_type i = x; i < x + traits::ERROR_BOUND; ++i)
+        for (pos_type i = x; i < x + traits::ERROR_BOUND; ++i)
         if (!at(text, i)){
             return i;
         }

@@ -142,18 +142,19 @@ bool test_exponential_search_upper_bound(_Tp* data, size_t n){
 
 template<typename key_type, 
         typename value_type,
-        typename traits=aex::aex_default_traits<key_type, value_type> >
+        typename traits>
 bool test_linear_probe(key_type* data, size_t n){
     AEX_HINT("[test linear probe]");
     mock_aex_tree<key_type, value_type, traits> tree;
     typedef typename traits::size_type size_type;
+    typedef typename traits::pos_type pos_type;
     std::sort(data, data + n);
     typename mock_aex_tree<key_type, value_type, traits>::data_node_model m;
-    size_type ret = tree.linear_probe(data, n, m);
-    AEX_PRINT("ret=" << ret << ", start=" << m.args.start << ", slope=" << m.args.slope << ", inter=" << m.args.inter);
-    double ERROR = traits::MAX_ALLOW_ERROR * log(std::max(static_cast<size_type>(traits::MIN_ML_DATA_NODE_SLOT_SIZE), ret));
-    for (size_type i = 0; i < ret; ++i){
-        size_type pred_pos = m.predict(data[i]) * (ret - 1);
+    pos_type ret = tree.linear_probe(data, n, m);
+    AEX_PRINT("ret=" << ret << ", end=" << m.args.end << ", slope=" << m.args.slope << ", inter=" << m.args.inter);
+    double ERROR = traits::MAX_LINEAR_PROBE_ALLOW_ERROR * log(std::max(traits::MIN_ML_DATA_NODE_SLOT_SIZE, ret));
+    for (pos_type i = 0; i < ret; ++i){
+        pos_type pred_pos = static_cast<pos_type>(m.predict(data[i]) * (ret - 1));
         if (std::abs(pred_pos - i) > ERROR){
             AEX_ERROR("error wrong! predict pos=" << pred_pos << ", real pos=" << i << "ERROR=" << ERROR);
             return false;

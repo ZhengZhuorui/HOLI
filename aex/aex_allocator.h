@@ -112,57 +112,14 @@ public:
 
     typedef typename aex_bitmap_impl<traits>::bitmap bitmap;
 
-    /*
+    aex_node_allocator():inner_node_nums(0), data_node_nums(0), free_cnt(0), alloc_cnt(0), timer(), _memory_used(0){}
 
-    static std::vector<data_node_ptr> data_node_pool[traits::MEMORY_POOL_LEVEL];
-
-    static std::vector<inner_node_ptr> inner_node_pool[traits::MEMORY_POOL_LEVEL];
-
-    inline static void init(){
-        for (size_type )
-
-        for (size_type slot_size = traits::MIN_DATA_NODE_SLOT_SIZE, j = 0; ) {
-            allocate_data_node_pool(slot_size);
-
-
-        for (size_type slot_size = traits::MIN_INNER_NODE_SLOT_SIZE, j = 0; j < 2; i <<= 1){
-            size_type one_node_memory = INNER_NODE_MEMORY_USED();
-        }
-            
+    ~aex_node_allocator(){
+        #ifdef AEX_DEBUG
+        AEX_HINT("allocate inner node used time=" << timer.allocate_inner_node_time << "ms");
+        AEX_HINT("allocate data node used time=" << timer.allocate_data_node_time << "ms");
+        #endif
     }
-
-    inline static void allocate_data_node_pool(size_type slot_size){
-        if (slot_size / traits::MIN_DATA_NODE_SLOT_SIZE > (1 << traits::MEMORY_POOL_LEVEL)){
-            size_type memory_used = DATA_MEMORY_USED(slot_size);
-            data_node_ptr* pool = allocator::_allocate(traits::MEMORY_POOL_NODE_SIZE);
-            for (size_type i = 0; i < traits::MEMORY_POOL_NODE_SIZE; ++i)
-                
-
-        }
-    }
-
-    inline static data_node_ptr allocate_data_node_from_pool(size_type slot_size){
-        if (slot_size / traits::MIN_DATA_NODE_SLOT_SIZE > (1 << traits::MEMORY_POOL_LEVEL)){
-            return allocator::_allocate(DATA_MEMORY_USED(slot_size));
-        }
-        else{
-            size_type level = 0, p = slot_size / traits::MIN_DATA_NODE_SLOT_SIZE;
-            while (p > 1){
-                ++level;
-                p >>= 1;
-            }
-            if (data_node_pool[p].empty())
-                allocate_data_node_pool(p);
-            data_node_ptr node = data_node_pool[p].back();
-            data_node_pool[p].pop_back();
-            return node;
-        }
-    }
-    */
-
-    aex_node_allocator():inner_node_nums(0), data_node_nums(0), free_cnt(0), alloc_cnt(0), st_buffer_flag(0), key_buffer_flag(0), nodeptr_buffer_flag(0){}
-
-    ~aex_node_allocator(){}
 
    inline void* _allocate(size_type size){
         /* 
@@ -179,15 +136,7 @@ public:
         #ifdef AEX_DEBUG
             ++alloc_cnt;
         #endif
-        if (!key_buffer_flag){
-            if (static_cast<size_type>(key_buffer.size()) < size)
-                key_buffer.resize(size);
-            ++key_buffer_flag;
-            return key_buffer.data();
-        }
-        else 
-            return nullptr;
-        //return static_cast<key_type*>(malloc(size * sizeof(_Key)));
+        return static_cast<key_type*>(malloc(size * sizeof(key_type)));
     }
 
 
@@ -195,30 +144,14 @@ public:
         #ifdef AEX_DEBUG
             ++alloc_cnt;
         #endif
-        if (!nodeptr_buffer_flag){
-            if (static_cast<size_type>(nodeptr_buffer.size()) < size)
-                nodeptr_buffer.resize(size);
-            ++nodeptr_buffer_flag;
-            return nodeptr_buffer.data();
-        }
-        else 
-            return nullptr;
-        //return static_cast<node_ptr*>(malloc(size * sizeof(node_ptr*)));
+        return static_cast<node_ptr*>(malloc(size * sizeof(node_ptr)));
     }
 
-    inline std::pair<size_type*, size_type*> allocate_size_type_buffer(size_type n){
+    inline value_type* allocate_data_buffer(size_type size){
         #ifdef AEX_DEBUG
             ++alloc_cnt;
         #endif
-        if (!st_buffer_flag){
-            ++st_buffer_flag;
-            if (static_cast<size_type>(st_buffer.size()) < 2 * n){
-                st_buffer.resize(2 * n);
-            }
-            std::pair<size_type*, size_type*> ret = std::make_pair(st_buffer.data(), st_buffer.data() + n);        
-            return ret;
-        }
-        else return std::make_pair(nullptr, nullptr);
+        return static_cast<value_type*>(malloc(size * sizeof(value_type)));
     }
 
     // used memory size of key array, align 8 bytes
@@ -263,14 +196,17 @@ public:
         /*
         *   TODO: memory pool
         */
+        #ifdef AEX_EXPERIMENT
+        std::chrono::system_clock::time_point t1, t2;
+        t1 = std::chrono::high_resolution_clock::now();
+        #endif
         ++inner_node_nums;
-        AEX_HINT("[ALLOCATE INNER NODE]");
         size_type real_slot_size = traits::MIN_INNER_NODE_SLOT_SIZE;
         while (real_slot_size < slot_size) real_slot_size <<= 1;
         
         real_slot_size += traits::ERROR_BOUND;
         size_type memory_used = INNER_NODE_MEMORY_USED(real_slot_size);
-
+        this->_memory_used += memory_used;
         //if (slot_size / traits::MIN_INNER_NODE_SLOT_SIZE)
 
         inner_node_ptr node = static_cast<inner_node_ptr>(this->_allocate(memory_used));
@@ -297,18 +233,26 @@ public:
         }
 
         //AEX_FORMAT("node=%p", node);
-        
+        #ifdef AEX_EXPERIMENT
+        t2 = std::chrono::high_resolution_clock::now();
+        timer.allocate_inner_node_time += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+        #endif
         return node;
     }
     
     inline data_node_ptr allocate_data_node(size_type slot_size, bool ml_node_flag=true){
         //AEX_FORMAT("ALLOCATE DATA NODE");
+        #ifdef AEX_EXPERIMENT
+        std::chrono::system_clock::time_point t1, t2;
+        t1 = std::chrono::high_resolution_clock::now();
+        #endif
         ++data_node_nums;
         size_type real_slot_size = traits::MIN_INNER_NODE_SLOT_SIZE;
         while (real_slot_size < slot_size) real_slot_size <<= 1;
         slot_size = real_slot_size;
-        
+
         size_type memory_used = DATA_NODE_MEMORY_USED(slot_size);
+        this->_memory_used += memory_used;
         data_node_ptr node = static_cast<data_node_ptr>(this->_allocate(memory_used));
         //data_node_ptr node = request_data_node(slot_size);
         
@@ -328,13 +272,13 @@ public:
         
         if (ml_node_flag == true && node->slot_size > traits::MIN_ML_DATA_NODE_SLOT_SIZE){
             node->prop |= node_property::ML_NODE;
-            //if (node->slot_size > traits::MIN_COMPLEX_ML_DATA_NODE_SLOT_SIZE)
-            //    node->prop |= COMPLEX_MODEL;
+        
         }
 
-        //node->model.complex_model = nullptr;
-        
-        //AEX_FORMAT("node=%p", node);
+        #ifdef AEX_EXPERIMENT
+        t2 = std::chrono::high_resolution_clock::now();
+        timer.allocate_data_node_time += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+        #endif
         return node;
     }
 
@@ -342,36 +286,32 @@ public:
         #ifdef AEX_DEBUG
         ++free_cnt;
         #endif
-        key_buffer_flag = 0;
+        if (p != nullptr)
+            free(p);
     }
 
     inline void deallocate(node_ptr* p){
         #ifdef AEX_DEBUG
         ++free_cnt;
         #endif
-        nodeptr_buffer_flag = 0;
+        if (p != nullptr)
+            free(p);
     }
 
-    inline void deallocate(std::pair<size_type*, size_type*> p){
-        #ifdef AEX_DEBUG
-        ++free_cnt;
-        #endif
-        st_buffer_flag = 0;
-    }
 
     inline void deallocate(void* p){
         #ifdef AEX_DEBUG
         ++free_cnt;
         #endif
-        //if (p != nullptr)
-        //    free(p);
+        if (p != nullptr)
+            free(p);
     }
 
     inline void free_node(inner_node_ptr p){
         /* 
         *   TODO: memory pool
         */
-       AEX_FORMAT("FREE INNER NODE");
+       _memory_used -= INNER_NODE_MEMORY_USED(p->slot_size);
        --inner_node_nums;
         if (p != nullptr)
             free(p);
@@ -381,7 +321,7 @@ public:
         /* 
         *   TODO: memory pool
         */
-        AEX_FORMAT("FREE DATA NODE");
+        _memory_used -= INNER_NODE_MEMORY_USED(p->slot_size);
         --data_node_nums;
         if (p != nullptr){
             p->free();
@@ -397,14 +337,24 @@ public:
     }
 
 
+#ifndef AEX_EXPERIMENT
 private:
-    long long inner_node_nums, data_node_nums, free_cnt, alloc_cnt;
+#endif
+    size_type inner_node_nums, data_node_nums, free_cnt, alloc_cnt;
 
-    std::vector<size_type> st_buffer;
-    std::vector<key_type> key_buffer;
-    std::vector<node_ptr> nodeptr_buffer;
+    unsigned char sta_buffer_flag, key_buffer_flag, nodeptr_buffer_flag;
 
-    unsigned char st_buffer_flag, key_buffer_flag, nodeptr_buffer_flag;
+    #ifdef AEX_EXPERIMENT
+    struct Timer{
+        Timer():allocate_inner_node_time(0), allocate_data_node_time(0){}
+        double allocate_inner_node_time, allocate_data_node_time;
+    }timer;
+    
+    #endif
+public:
+    // status
+    size_type _memory_used;
+
 };
 
 } // namespace name

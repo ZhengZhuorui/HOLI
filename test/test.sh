@@ -109,11 +109,11 @@
 # =================================================================================================
 # test inner node(few) (gap array) and data node(dense array) insertion accuracy and performance
 # (Y)
-./test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=72 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
 # (Y)
-./test --unit=node --key_type=float --node_type=data_node --function=insert --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./test --unit=node --key_type=float --node_type=data_node --function=insert --num_keys=72 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
 #(Y)
-./test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=128 --batch=16 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=144 --batch=16 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
 
 # Dataset uniform
 # result(QPS, failed ratio):
@@ -127,7 +127,7 @@
 ./test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
 # (Y)
 ./test --unit=node --key_type=float --node_type=data_node --function=query --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
-
+./test --unit=node --key_type=float --node_type=data_node --function=query --num_keys=128 --batch=16 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
 
 # Datset: uniform
 # result(us):
@@ -171,14 +171,17 @@
 # linear_probe(4*log(n)): 475, 484237ms, 2.16e7
 
 # test inner node split
-# (X)
-./test --unit=SMO --key_type=float --function=inner_node_split --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-
-
+# (Y)
+./test --unit=SMO --key_type=float --function=node_split --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+# Result: (node size, time, NPS)
+# 645, 1.56e6 ms, 1.28e7
 
 # =================================================================================================
 # test index construction accuracy and performance
+# ()
 ./test --unit=index --key_type=float --function=bulk_load --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+# Result:
+# 
 
 # test index insert accuracy
 

@@ -21,7 +21,7 @@ CMakeFiles/test.dir/test/test.cpp.o
  ../benchmark/utils.h
  ../benchmark/zipf.h
  ../test/test.h
- ../test/test_SMO.hpp
+ ../test/test_SMO_split.hpp
  ../test/test_function.hpp
  ../test/test_index.hpp
  ../test/test_mock.hpp

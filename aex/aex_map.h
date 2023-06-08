@@ -8,7 +8,7 @@ namespace aex
 template<typename _Key, 
         typename _Val, 
         typename _Alloc = std::allocator<unsigned char>,
-        typename traits=aex_default_traits<_Key, _Val, std::false_type, std::false_type> >
+        typename traits=aex_default_traits<_Key, _Val, std::false_type> >
 class aex_map{
 public:
     typedef _Key key_type;
@@ -114,6 +114,14 @@ public:
     inline const stats& get_stats() const{
         return _m.get_stats();
     }
+
+    inline void print_stats(){
+        return _m.print_stats();
+    }
+
+    inline void print_detail(){
+        return _m.print_detail();
+    }
     /*
     inline std::pair<iterator, iterator> equal_range(const key_type &key){
         return _m.equal_range(key);
@@ -131,10 +139,6 @@ public:
 
     inline bool debug_error(){
         return _m.debug_error();
-    }
-
-    inline void print_stats(){
-        return _m.print_stats();
     }
     #endif
 };

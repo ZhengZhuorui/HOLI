@@ -25,12 +25,7 @@ bool test(map<string, string> &flags){
 
     vector<T> bin_data;
     read_bineary_file<T>(file, bin_data, num_keys);
-    if (unit == "index"){
-        vector<std::pair<T, T>> data;
-        pack_KV_dataset<T, T>(bin_data, data);
-        return test_index(data.data(), data.size());
-    }
-    else if (unit == "function"){
+    if (unit == "function"){
         auto func = flags["function"];
         if (func == "exp_lower_bound")
             return test_exponential_search_lower_bound(bin_data.data(), num_keys);
@@ -39,7 +34,7 @@ bool test(map<string, string> &flags){
         if (func == "exp_lower_bound_perf")
             return test_exponential_search_lower_bound_perf(bin_data.data(), num_keys);
         if (func == "linear_probe")
-            return test_linear_probe<T, T>(bin_data.data(), num_keys);        
+            return test_linear_probe<T, T, aex_default_traits<T, T> >(bin_data.data(), num_keys);        
     }
     else if (unit == "model"){
         auto model_type = flags["model_type"];
@@ -111,18 +106,39 @@ bool test(map<string, string> &flags){
             return test_SMO_data_split_with_linear_probe_perf<T, T>(bin_data.data(), value.data(), num_keys);
         }
         if (func == "node_split") {
-            test_SMO_node_split_perf<T, T>(bin_data.data(), num_keys);
+            return test_SMO_node_split_perf<T, T>(bin_data.data(), num_keys);
         }
         if (func == "update_key") {}
     }
     else if (unit == "index"){
-        auto func = flags["fucntion"];
+        auto func = flags["function"];
         if (func == "bulk_load"){
             vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
             std::sort(data.begin(), data.end());
             return test_index_bulk_load_perf<T, T>(data.data(), num_keys);
         }
+        if (func == "insert"){
+
+        }
+        if (func == "lookup"){
+
+        }
+        if (func == "range_query"){
+
+        }
+        if (func == "erase"){
+
+        }
+        if (func == "mix"){
+
+        }
+        if (func == "demo"){
+            vector<std::pair<T, T> > data;
+            pack_KV_dataset(bin_data, data);
+            return test_index(data.data(), data.size());
+        }
+        
     }
     return false;
 }

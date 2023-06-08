@@ -135,10 +135,10 @@ test/test_model.hpp
 ../test/test/test_model.hpp
 test/test_node.hpp
 ../test/test/test_node.hpp
-test/test_SMO.hpp
-../test/test/test_SMO.hpp
+test/test_SMO_split.hpp
+../test/test/test_SMO_split.hpp
 
-../test/test_SMO.hpp
+../test/test_SMO_split.hpp
 
 ../test/test_function.hpp
 bits/stdc++.h

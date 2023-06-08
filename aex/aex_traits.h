@@ -28,6 +28,7 @@ class aex_type_traits<double>{
 
 template<typename _Key, 
         typename _Val,
+        typename _AllowMultiKey=std::false_type,
         typename _AllowMultiThread=std::false_type,
         typename _AllowBalance=std::false_type>
 struct aex_default_traits{
@@ -36,7 +37,9 @@ struct aex_default_traits{
 
     typedef _Val value_type;
 
-    typedef long long size_type;
+    typedef unsigned long long size_type;
+
+    typedef int pos_type;
 
     typedef unsigned long long bitmap_base;
 
@@ -48,23 +51,25 @@ struct aex_default_traits{
 
     typedef std::false_type used_as_set;
 
+    typedef _AllowMultiKey AllowMultiKey;
+
     typedef _AllowMultiThread AllowMultiThread;
 
     typedef _AllowBalance AllowBalance;
     
     static const int ERROR_BOUND = 8;
 
-    static const size_type MIN_INNER_NODE_SLOT_SIZE = 8;
+    static const pos_type MIN_INNER_NODE_SLOT_SIZE = 8;
 
-    static const size_type MIN_ML_INNER_NODE_SLOT_SIZE = 32;
+    static const pos_type MIN_ML_INNER_NODE_SLOT_SIZE = 32;
 
-    static const size_type MAX_INNER_NODE_SLOT_SIZE = 1 << 20;
+    static const pos_type MAX_NODE_SLOT_SIZE = 1 << 25;
 
-    static const size_type MIN_DATA_NODE_SLOT_SIZE = 8;
+    static const pos_type MIN_DATA_NODE_SLOT_SIZE = 8;
 
-    static const size_type MAX_DATA_NODE_SLOT_SIZE= 1 << 20;
+    static const pos_type MAX_DATA_NODE_SLOT_SIZE= 1 << 20;
 
-    static const size_type MIN_ML_DATA_NODE_SLOT_SIZE = 32;
+    static const pos_type MIN_ML_DATA_NODE_SLOT_SIZE = 32;
     
     static constexpr float DATA_NODE_FEW_RATIO = 0.5;
         
@@ -72,7 +77,7 @@ struct aex_default_traits{
 
     static constexpr float DENSITY_NARROW_RATIO = 0.875;
     
-    static constexpr float EXPAND_RATIO = 2.0;
+    static constexpr float EXPAND_RATIO = DATA_NODE_FULL_RATIO / DATA_NODE_FEW_RATIO;
 
     static constexpr float NARROW_RATIO = 0.5;
 
@@ -99,6 +104,8 @@ struct aex_default_traits{
     static constexpr float MAX_LINEAR_PROBE_ALLOW_ERROR = 4.0 / log(2);
 
     static const bool debug = true;
+
+    static const size_type MAX_SEGMENT_NUM = 8;
     
 };
 

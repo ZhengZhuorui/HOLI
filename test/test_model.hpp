@@ -8,7 +8,7 @@ bool test_linear_model(T* data, size_t n, bool spec_flag){
     mock_aex_tree<T, T> tree;
     aex::linear_model<T, aex::aex_default_traits<T, T>> m;
     m.train(data, n);
-    std::cout << "slope=" << m.args.slope << "inter=" << m.args.inter << "start=" <<  m.args.start << std::endl;
+    std::cout << "slope=" << m.args.slope << "inter=" << m.args.inter << "end=" <<  m.args.end << std::endl;
     printf("RMSE=%.4f\n", m.RMSE(data, n));
     size_t slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE;
     while (slot_size * tree.inner_node_few_ratio[1] < n) slot_size <<= 1;
@@ -30,7 +30,7 @@ bool test_log_model(T* data, size_t n, bool spec_flag){
     }
     aex::logarithmic_model<T, aex::aex_default_traits<T, T>> m;
     m.train(data, n);
-    std::cout << "slope=" << m.args.slope << "inter=" << m.args.inter << "start=" <<  m.args.start << std::endl;
+    std::cout << "slope=" << m.args.slope << "inter=" << m.args.inter << "end=" <<  m.args.end << std::endl;
     printf("RMSE=%.4f\n", m.RMSE(data, n));
     for (size_t i = 0; i < n; ++i)
         std::cout << "key=" << data[i] << ", pos=" << i << ", predict=" << m.predict(data[i]) * n << " | ";
@@ -87,7 +87,7 @@ bool test_quad_model(T* data, size_t n, bool spec_flag){
     if (m.train(data, n) == false){
         printf("train failed.");
     }
-    std::cout << "quad=" << m.args.quad << ", linear=" << m.args.lin << ", inter=" << m.args.inter << ", start=" <<  m.args.start << std::endl;
+    std::cout << "quad=" << m.args.quad << ", linear=" << m.args.lin << ", inter=" << m.args.inter << ", end=" <<  m.args.end << std::endl;
     printf("RMSE=%.4f\n", m.RMSE(data, n));
     for (size_t i = 0; i < n; ++i)
         std::cout << "key=" << data[i] << ", pos=" << i << ", predict=" << m.predict(data[i]) * n << " | ";
@@ -103,7 +103,7 @@ bool test_gap_array_linear_model(T* data, size_t n, bool spec_flag){
     size_t slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE;
     while (slot_size * tree.inner_node_full_ratio[1] < n) slot_size <<= 1;
     m.train(data, n);
-    std::cout << "slope=" << m.args.slope << "start=" <<  m.args.start << std::endl;
+    std::cout << "slope=" << m.args.slope << "end=" <<  m.args.end << std::endl;
     long long max_error = m.max_error(data, n, slot_size);
     printf("max error=%lld\n", max_error);
     double RMSE = m.RMSE(data, n);
