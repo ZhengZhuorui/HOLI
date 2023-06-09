@@ -8,7 +8,6 @@
 #include "pgm_index.hpp"
 #include "pgm_index_dynamic.hpp"
 
-//using namespace std;
 #include "benchmark_insert.hpp"
 #include "benchmark_query.hpp"
 #include "benchmark_other.hpp"

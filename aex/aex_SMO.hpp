@@ -234,7 +234,7 @@ void aex_tree<_Key, _Val, traits>::split(const key_type* const key, const value_
 
 template<typename _Key, typename _Val, typename traits>
 typename traits::pos_type aex_tree<_Key, _Val, traits>::linear_probe(const key_type* const key, const size_type n, data_node_model &m){
-    static_assert(std::is_same<data_node_model, linear_model<key_type, traits> >::value == true);
+    //static_assert(std::is_same<data_node_model, linear_model<key_type, traits> >::value,);
     if (n <= traits::MIN_DATA_NODE_SLOT_SIZE)
         return traits::MIN_DATA_NODE_SLOT_SIZE;
     std::vector<size_type> sta1(2), sta2(2);

@@ -231,7 +231,7 @@ bool aex_tree<_Key, _Val, traits>::insert_split(inner_node_ptr __restrict__ node
         node_allocator.free_node(node);
         --this->m_stats.inner_node;
     }
-    [[maybe_unused]] bool flag = update_childnode_key(parent, new_child.back(), new_key.back());
+    bool flag = update_childnode_key(parent, new_child.back(), new_key.back());
     AEX_ASSERT(flag == true);
 
     new_key.pop_back();
