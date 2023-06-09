@@ -1,1 +1,0 @@
-/usr/bin/c++  -O3 -Wall -march=native -fopenmp -fmax-errors=3 -std=c++17  -rdynamic CMakeFiles/benchmark.dir/benchmark/benchmark.cpp.o  -o benchmark 
