@@ -581,7 +581,7 @@ public:
     }
 
     bool train(const key_type* const key, const pos_type n, const pos_type slot_size){
-        AEX_HINT("train...");
+        AEX_HINT("[train]");
         const double density = n / slot_size;
 
         AEX_ASSERT(n > 1);
@@ -600,11 +600,11 @@ public:
         std::vector<double> f(traits::MAX_SEGMENT_NUM * n);
         std::vector<pos_type> g(traits::MAX_SEGMENT_NUM * n);
         
-        std::fill(windows_slope.begin(), windows_slope.end(), max_slope);
+        std::fill(windows_slope.begin(), windows_slope.end(), std::numeric_limits<double>::max());
         
         for (pos_type i = n - 2; i >= 0; --i){
-            // slope[i] = std::min(k_i, offset_th(k_(i+1), k_(i+2), ... , k(i + windows)))
             double k = gap / (key[i + 1] - key[i]);
+            AEX_PRINT("slope " << i << " = " << k);
             slope[i] = k;
             std::move_backward(windows_slope.data(), windows_slope.data() + windows_size - 1, windows_slope.data() + windows_size);
             windows_slope[0] = k;
@@ -617,9 +617,10 @@ public:
                         max_windows_slope[k] = windows_slope[j];
                         break;
                     }
-                
+                AEX_PRINT("max_windows_slope[" << static_cast<pos_type>(floor((j + 1) * (1 - max_density))) << "]=" << max_windows_slope[static_cast<pos_type>(floor((j + 1) * (1 - max_density)))]);
                 slope[i] = std::min(slope[i], max_windows_slope[static_cast<pos_type>(floor((j + 1) * (1 - max_density)))]);
             }
+            
         }
 
         // Dynamic Programing:
@@ -659,7 +660,7 @@ public:
                 f[j * n + i] = f[(j - 1) * n + sta[head]] + slope[sta[head]] * (key[sta[head + 1]] - key[i]);
                 //g[j][i] = sta[head];
                 g[j * n + i] = sta[head];
-                std::cout << "f[" << j "][" << i << "]=" << f[j * n + i]
+                std::cout << "f[" << j << "][" << i << "]=" << f[j * n + i] << ", g[" << j << "][" << i << "]=" << g[j * n + i] << std::endl;
             }
         }
 
