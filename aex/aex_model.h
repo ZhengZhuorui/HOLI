@@ -697,7 +697,7 @@ public:
         pos_type error = 0;
         for (pos_type i = 0, start = 0; i < n; ++i){
             pos_type pos = std::max(0, static_cast<pos_type>(this->predict(key[i]) * slot_size));
-            start = std::max(start, pos);
+1            start = std::max(start, pos);
             //AEX_PRINT("key=" << key[i] << ", pos=" << pos << ", start=" << start);
             error = std::max(error, start - pos);
             ++start;
