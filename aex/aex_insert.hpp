@@ -260,7 +260,6 @@ void aex_tree<_Key, _Val, traits>::build_tree(std::vector<key_type> &key_buf, st
         }
         key_buf = std::move(new_key_buf);
         child_buf = std::move(new_child_buf);
-        AEX_PRINT(new_key_buf.size());
     }
 
     root = child_buf[0];
@@ -286,7 +285,7 @@ void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, value_typ
     this->m_stats.min_key = key_buf[0];
     this->m_stats.max_key = key_buf[nums - 1];
     
-    split(key_buf.data(), data_buf.data(), nums, new_key_buf, new_child_buf);
+    split_with_linear_probe(key_buf.data(), data_buf.data(), nums, new_key_buf, new_child_buf);
     
     size_type m = new_child_buf.size();
     new_child_buf[0]->prev = nullptr;

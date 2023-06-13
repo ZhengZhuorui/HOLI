@@ -2,8 +2,8 @@
 
 template<typename key_type,
         typename value_type,
-        typename traits=aex::aex_default_traits<key_type, value_type>>
-bool test_SMO_data_split_perf(key_type* key, value_type* data, size_t num_keys){
+        typename traits=aex::aex_default_traits<key_type, value_type> >
+bool test_SMO_data_split_with_exponential_probe_perf(key_type* key, value_type* data, size_t num_keys){
     AEX_HINT("[test SMO--data split ]");
     typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
     [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
@@ -15,7 +15,7 @@ bool test_SMO_data_split_perf(key_type* key, value_type* data, size_t num_keys){
     std::vector<key_type> key_buf;
     std::vector<node_ptr> data_node_buf;
     std::sort(key, key + num_keys);
-    tree.split(key, data, num_keys, key_buf, data_node_buf);
+    tree.split_with_exponential_probe(key, data, num_keys, key_buf, data_node_buf);
     AEX_IMPORTANT("split data node size=" << data_node_buf.size());
     size_type cnt = 0;
     std::vector<value_type> node_data;
@@ -45,7 +45,7 @@ bool test_SMO_data_split_perf(key_type* key, value_type* data, size_t num_keys){
     for (int i = 0; i < ITER; ++i){
         key_buf.clear();
         data_node_buf.clear();
-        tree.split(key, data, num_keys, key_buf, data_node_buf);
+        tree.split_with_exponential_probe(key, data, num_keys, key_buf, data_node_buf);
     }
     t2 = std::chrono::high_resolution_clock::now();
     delta = duration_cast<microseconds>(t2 - t1).count();

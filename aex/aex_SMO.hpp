@@ -204,7 +204,7 @@ void aex_tree<_Key, _Val, traits>::split(const key_type* const key, const node_p
 
 // split a ordered key array with data array to inner node array.
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::split(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child){
+void aex_tree<_Key, _Val, traits>::split_with_exponential_probe(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child){
     size_type start = 0, end = n;
     data_node_model model;
     while (start < end){

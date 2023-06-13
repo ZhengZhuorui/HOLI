@@ -105,7 +105,7 @@ struct aex_default_traits{
 
     static const bool debug = true;
 
-    static const size_type MAX_SEGMENT_NUM = 8;
+    static const int MAX_SEGMENT_NUM = 8;
     
 };
 

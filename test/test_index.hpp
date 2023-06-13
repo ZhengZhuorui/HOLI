@@ -89,8 +89,8 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
     }
     
     size_type i = 0;
+    //AEX_PRINT("slot_size=" << index.begin()._M_node->slot_size);
     for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
-        //std::cout << iter.key() << " " ;
         if (data[i].first != iter.key()){
             AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << data[i].first);
             return false;
@@ -130,7 +130,7 @@ template<typename key_type,
         typename value_type,
         typename traits=aex::aex_default_traits<key_type, value_type>>
 bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
-    AEX_HINT("[test index bulk load]");
+    AEX_HINT("[test index lookup]");
     typedef typename aex::aex_map<key_type, value_type, traits> Index;
     [[maybe_unused]] typedef typename traits::size_type size_type;
     vector<key_type> query;

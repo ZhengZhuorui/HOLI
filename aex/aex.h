@@ -90,7 +90,11 @@ public:
         double write_times, read_times, lambda_timestamp;
         unsigned int height;
         key_type max_key, min_key;
-        aex_stats(){data_node = inner_node = size = height = write_times = read_times = timestamp = lambda_timestamp = 0;}
+        aex_stats(){
+            data_node = inner_node = size = height = write_times = read_times = timestamp = lambda_timestamp = 0;
+            max_key = std::numeric_limits<key_type>::min();
+            min_key = std::numeric_limits<key_type>::max();
+        }
     };
 
     //#ifdef AEX_DEBUG
@@ -140,9 +144,9 @@ public:
     void clear(){
         this->deconstruct(this->root);
         this->m_stats = aex_stats();
+        this->root = this->head_leaf = this->tail_leaf = nullptr;
     }
 
-    // con
 
     std::pair<iterator, bool> insert(const std::pair<key_type, value_type> &x){
         return insert(x.first, x.second);
@@ -490,7 +494,7 @@ private:
     // split a ordered key array with child pointers array to inner node array.
     void split(const key_type* const key, const node_ptr* const child, const size_type n, const unsigned int level, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
     // split a ordered key array with data array to inner node array.
-    void split(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
+    void split_with_exponential_probe(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
     // split a ordered key array with data array to inner node array. Use linear probe(use greedy).
     void split_with_linear_probe(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
 
@@ -616,7 +620,6 @@ friend data_node;
 private:
     //ostream 
 #endif
-
 
 };
 

@@ -34,7 +34,7 @@ bool test(map<string, string> &flags){
         if (func == "exp_lower_bound_perf")
             return test_exponential_search_lower_bound_perf(bin_data.data(), num_keys);
         if (func == "linear_probe")
-            return test_linear_probe<T, T, aex_default_traits<T, T> >(bin_data.data(), num_keys);        
+            return test_linear_probe<T, T, aex_default_traits<T, T> >(bin_data.data(), num_keys);    
     }
     else if (unit == "model"){
         auto model_type = flags["model_type"];
@@ -52,6 +52,8 @@ bool test(map<string, string> &flags){
             return test_quad_model(bin_data.data(), num_keys, spec_flag);
         else if (model_type == "gap_linear")
             return test_gap_array_linear_model(bin_data.data(), num_keys, spec_flag);
+        else if (model_type == "piecewise_linear")
+            return test_piecewise_linear_model(bin_data.data(), num_keys);
         else if (model_type == "all")
             return test_aex_model(bin_data.data(), num_keys, spec_flag);
     }
@@ -93,11 +95,11 @@ bool test(map<string, string> &flags){
     }
     else if (unit == "SMO"){
         auto func = flags["function"];
-        if (func == "data_split") {
+        if (func == "data_split_with_exponential_probe") {
             std::vector<T> value(num_keys);
             for (int i = 0; i < num_keys; ++i)
                 value[i] = i;            
-            return test_SMO_data_split_perf<T, T>(bin_data.data(), value.data(), num_keys);
+            return test_SMO_data_split_with_exponential_probe_perf<T, T>(bin_data.data(), value.data(), num_keys);
         }
         if (func == "data_split_with_linear_probe"){
             std::vector<T> value(num_keys);
@@ -113,7 +115,7 @@ bool test(map<string, string> &flags){
     else if (unit == "index"){
         auto func = flags["function"];
         if (func == "bulk_load"){
-            vector<std::pair<T, T> > data;
+            std::vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
             std::sort(data.begin(), data.end());
             return test_index_bulk_load_perf<T, T>(data.data(), num_keys);
@@ -122,7 +124,10 @@ bool test(map<string, string> &flags){
 
         }
         if (func == "lookup"){
-
+            long long batch = stoll(flags["batch"]);
+            std::vector<std::pair<T, T> > data;
+            pack_KV_dataset(bin_data, data);
+            return test_index_lookup_perf(data.data(), num_keys, batch);
         }
         if (func == "range_query"){
 

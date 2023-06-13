@@ -22,9 +22,9 @@ public:
 
     typedef value_type* pointer;
 
-    typedef std::bidirectional_iterator_tag iterator_category;
+    typedef typename traits::pos_type pos_type;
 
-    typedef ptrdiff_t difference_type;
+    typedef std::bidirectional_iterator_tag iterator_category;
 
     typedef aex_iterator<_Key, _Val, traits> self;
 
@@ -36,9 +36,7 @@ public:
     
     inline aex_iterator(data_node* ptr, unsigned char _offset):_M_node(ptr), offset(_offset){}
     
-    inline aex_iterator(const aex_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
-
-    
+    inline aex_iterator(const aex_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}        
     
     reference operator*(){
         return std::pair<key_type, value_type>(_M_node->key[offset], _M_node->data[offset]);
@@ -121,10 +119,11 @@ public:
         return _M_node;
     }
 
+#ifndef AEX_DEBUG
 protected:
 
 private:
-
+#endif
     friend class aex_const_iterator<_Key, _Val, traits>;
 
     friend class aex_reverse_iterator<_Key, _Val, traits>;
@@ -135,7 +134,7 @@ private:
     
     data_node_ptr _M_node;
 
-    unsigned char offset;
+    pos_type offset;
 
 };
 
@@ -153,9 +152,9 @@ public:
 
     typedef value_type* pointer;
 
-    typedef std::bidirectional_iterator_tag iterator_category;
+    typedef typename traits::pos_type pos_type;
 
-    typedef ptrdiff_t                  difference_type;
+    typedef std::bidirectional_iterator_tag iterator_category;
 
     typedef aex_const_iterator<_Key, _Val, traits> self;
 
@@ -256,10 +255,11 @@ public:
         return _M_node;
     }
 
+#ifndef AEX_DEBUG
 protected:
 
 private:
-
+#endif
     friend class aex_iterator<_Key, _Val, traits>;
 
     friend class aex_reverse_iterator<_Key, _Val, traits>;
@@ -270,7 +270,7 @@ private:
 
     data_node_ptr _M_node;
 
-    unsigned char offset;
+    pos_type offset;
 
 };
 
@@ -288,9 +288,9 @@ public:
 
     typedef value_type* pointer;
 
-    typedef std::bidirectional_iterator_tag iterator_category;
+    typedef typename traits::pos_type pos_type;
 
-    typedef ptrdiff_t                  difference_type;
+    typedef std::bidirectional_iterator_tag iterator_category;
 
     typedef aex_reverse_iterator<_Key, _Val, traits> self;
 
@@ -385,9 +385,11 @@ public:
         return _M_node;
     }
 
+#ifndef AEX_DEBUG
 protected:
 
 private:
+#endif
 
     friend class aex_iterator<_Key, _Val, traits>;
 
@@ -399,7 +401,7 @@ private:
 
     data_node_ptr _M_node;
 
-    unsigned char offset;
+    pos_type offset;
 };
 
 template<typename _Key,
@@ -416,9 +418,9 @@ public:
 
     typedef value_type* pointer;
 
-    typedef std::bidirectional_iterator_tag iterator_category;
+    typedef typename traits::pos_type pos_type;
 
-    typedef ptrdiff_t                  difference_type;
+    typedef std::bidirectional_iterator_tag iterator_category;
 
     typedef aex_const_reverse_iterator<_Key, _Val, traits> self;
 
@@ -517,9 +519,11 @@ public:
         return _M_node;
     }
 
+#ifndef AEX_DEBUG
 protected:
 
 private:
+#endif
 
     friend class aex_iterator<_Key, _Val, traits>;
 
@@ -531,7 +535,7 @@ private:
 
     data_node_ptr _M_node;
 
-    unsigned char offset;
+    pos_type offset;
 
 };
 

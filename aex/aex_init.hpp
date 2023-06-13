@@ -42,22 +42,19 @@ aex_tree<_Key, _Val, traits>::aex_tree(self&& _index){
     this->tail_leaf = _index.tail_leaf;
     this->m_stats = _index.m_stats;
 
+    this->split = self::split_with_exponential_probe;
 }
 
 template<typename _Key, typename _Val, typename traits>
 aex_tree<_Key, _Val, traits>::~aex_tree(){
     AEX_HINT("BEGIN");
-    if (this->root != nullptr){
-        AEX_ERROR("root->size=" << this->root->size << ", root->prop=" << this->root->prop);
-    }
-    //this->deconstruct(this->root);
+    this->erase_tree_recursive(this->root);
     if (this->m_stats.data_node != this->node_allocator.data_node_nums){
         AEX_ERROR("data node number error! tree data node=" << this->m_stats.data_node << ", allocator data node number=" << this->node_allocator.data_node_nums);
     }
     if (this->m_stats.inner_node != this->node_allocator.inner_node_nums){
         AEX_ERROR("inner node number no free! tree inner node=" << this->m_stats.inner_node << ", allocator inner node number=" << this->node_allocator.inner_node_nums);
     }
-    this->erase_tree_recursive(this->root);
     this->root = this->head_leaf = this->tail_leaf = nullptr;
     AEX_HINT("END");
 }

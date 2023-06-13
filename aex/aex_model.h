@@ -84,7 +84,7 @@ public:
     inline pos_type max_error(const key_type* const key, const pos_type n, const pos_type slot_size){
         pos_type error = 0;
         for (pos_type i = 0, start = 0; i < n; ++i){
-            pos_type pos = std::max(0, static_cast<pos_type>(round(this->predict(key[i]) * slot_size)));
+            pos_type pos = std::max(0, static_cast<pos_type>(this->predict(key[i]) * slot_size));
             start = std::max(start, pos);
             //AEX_PRINT("key=" << key[i] << ", pos=" << pos << ", start=" << start);
             error = std::max(error, start - pos);
@@ -315,7 +315,7 @@ public:
     inline pos_type max_error(const key_type* const key, const pos_type n, const pos_type slot_size){
         pos_type error = 0;
         for (pos_type i = 0, start = 0; i < n; ++i){
-            pos_type pos = std::max(0, static_cast<pos_type>(round(this->predict(key[i]) * slot_size)));
+            pos_type pos = std::max(0, static_cast<pos_type>(this->predict(key[i]) * slot_size));
             start = std::max(start, pos);
             AEX_PRINT("key=" << key[i] << ", pos=" << pos << ", start=" << start);
             error = std::max(error, start - pos);
@@ -575,33 +575,31 @@ public:
     inline double predict(const key_type &key) const {
         //return static_cast<pos_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
         double ret = 0;
-        for (pos_type i = 0; i < args.seg_num; ++i)
+        for (unsigned int i = 0; i < args.seg_nums; ++i)
             ret += (key < args.end[i]) * (key - args.end[i]) * args.slope[i];
         return ret;
     }
 
-    bool train(const key_type* const key, const pos_type n, double density){
+    bool train(const key_type* const key, const pos_type n, const pos_type slot_size){
+        AEX_HINT("train...");
+        const double density = n / slot_size;
+
         AEX_ASSERT(n > 1);
         AEX_ASSERT(density <= 0.5);
 
         double max_density = (1 + density) / 2;
-        double gap = max_density / (n - 1);
+        double gap = 1.0 / max_density / slot_size;
+        
+        AEX_PRINT("n=" << n << ", slot size=" << slot_size);
 
         const pos_type max_offset = traits::ERROR_BOUND / 2;
         const pos_type windows_size = ceil(max_offset / (1 - max_density));
-        std::vector<double> slope(n), windows_slope(windows_size), max_windows_slope(max_offset), sta(n);
-        slope.resize(n);
+        std::vector<double> slope(n), windows_slope(windows_size), max_windows_slope(max_offset);
+        std::vector<pos_type> sta(n);
 
         std::vector<double> f(traits::MAX_SEGMENT_NUM * n);
         std::vector<pos_type> g(traits::MAX_SEGMENT_NUM * n);
         
-        double max_slope = slope[n - 2];
-        for (pos_type i = n - 2; i >= 0; --i){
-            max_slope = std::max(max_slope, slope[i]);
-            f[i] = max_slope * (key[n - 1] - key[i]);
-            g[i] = n - 1;
-        }
-
         std::fill(windows_slope.begin(), windows_slope.end(), max_slope);
         
         for (pos_type i = n - 2; i >= 0; --i){
@@ -632,44 +630,54 @@ public:
         //     for k = i+1 to n-1 do
         //       f[j][i] = min(f[j][i], f[j][k] + max(slope[i], ... , slope[k-1]) * (key[k] - key[i]))
         // use Monotonic Stack improve it
-
-        if (f[0] > 1)
+        this->args.seg_nums = 0;
+        {
+            double max_segment_slope = 0;
+            for (pos_type i = n - 2; i >= 0; --i){
+                max_segment_slope = std::max(max_segment_slope, slope[i]);
+                f[i] = max_segment_slope * (key[n - 1] - key[i]);
+                std::cout << "f[0][" << i << "]=" << f[i] << " ";
+            }
+            
+        }
+        
         for (pos_type j = 1; j < traits::MAX_SEGMENT_NUM; ++j){
+            std::cout << std::endl;
+            if (f[(j - 1) * n] < 1){
+                this->args.seg_nums = j;
+                break;
+            }
             pos_type head = 0, tail = 1;
             sta[0] = n - 1;
             for (pos_type i = n - 2; i < n - 2; ++i){
                 while (tail >= head && slope[sta[tail]] < slope[i]) --tail;
                 sta[++tail] = slope[i];
+                // while (head < tail - 1 && f[j-1][sta[head]] + slope[sta[head + 1]] * (key[sta[head]] - key[i]) > ) ++head;
                 while (head < tail - 1 && f[(j - 1) * n + sta[head]] + slope[sta[head + 1]] * (key[sta[head]] - key[i]) >
                                         f[(j - 1) * n + sta[head + 1]] + slope[sta[head + 2]] * (key[sta[head + 1]] - key[i])  ) ++head;
                 // f[j][i] = f[j - 1][sta[head]] + slope[sta[head]] * (key[sta[head] + 1] - key[i]);
                 f[j * n + i] = f[(j - 1) * n + sta[head]] + slope[sta[head]] * (key[sta[head + 1]] - key[i]);
                 //g[j][i] = sta[head];
                 g[j * n + i] = sta[head];
+                std::cout << "f[" << j "][" << i << "]=" << f[j * n + i]
             }
         }
 
+        if (f[(traits::MAX_SEGMENT_NUM - 1) * n] < 1) this->args.seg_nums = traits::MAX_SEGMENT_NUM;
 
-        if (f[(traits::MAX_SEGMENT_NUM - 1) * n] > 1){
+        if (this->args.seg_nums == 0) 
             return false;
+
+        for (pos_type j = 0, i = this->args.seg_nums - 1; i >= 0; j = g[i * n + j], --i){
+            double max_seg_slope = 0;
+            for (pos_type k = j; k < g[i * n + j]; ++k)
+                max_seg_slope = std::max(max_seg_slope, slope[k]);
+            this->args.slope[this->args.seg_nums - i - 1] = 1.0 / slot_size * max_seg_slope;
+            this->args.end[this->args.seg_nums - i - 1] = key[g[i * n + j]];
         }
 
-        for (pos_type i = 0; i < traits::MAX_SEGMENT_NUM; ++i)
-        if (f[i * n] < 1){
-            this->args.seg_num = i + 1;
-            break;
-        }
-
-        for (pos_type j = 0, i = 0; i < this->args.seg_num; j = g[i * n + j], ++i){
-            this->args.slope[this->seg_num - i - 1] = 0;
-            this->args.end[this->seg_num - i - 1] = key[g[i * n + j]];
-        }
-
-        double prefix = 0;
-        for (pos_type i = this->seg_num - 1; i >= 0; --i){
-            this->args.slope[i] -= prefix;
-
-        }
+        for (unsigned int i = 0; i < this->args.seg_nums - 1; ++i)
+            this->args.slope[i] -= this->args.slope[i + 1];
 
         return true;
     }
@@ -688,7 +696,7 @@ public:
     inline pos_type max_error(const key_type* const key, const pos_type n, const pos_type slot_size){
         pos_type error = 0;
         for (pos_type i = 0, start = 0; i < n; ++i){
-            pos_type pos = std::max(0LL, static_cast<pos_type>(round(this->predict(key[i]) * slot_size)));
+            pos_type pos = std::max(0, static_cast<pos_type>(this->predict(key[i]) * slot_size));
             start = std::max(start, pos);
             //AEX_PRINT("key=" << key[i] << ", pos=" << pos << ", start=" << start);
             error = std::max(error, start - pos);
