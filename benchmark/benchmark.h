@@ -3,10 +3,10 @@
 #include <utility>
 
 #include "aex/aex_map.h"
-#include "stx/btree_map.h"
-//#include "alex_map.h"
 #include "pgm_index.hpp"
 #include "pgm_index_dynamic.hpp"
+#include "stx/btree_map.h"
+//#include "alex_map.h"
 
 #include "benchmark_insert.hpp"
 #include "benchmark_query.hpp"

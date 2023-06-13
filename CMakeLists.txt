@@ -41,6 +41,3 @@ add_executable(generate_dataset ${BENCHMARK_DIR}/generate_dataset.cpp)
 set(TEST_DIR ${CMAKE_SOURCE_DIR}/test)
 # file(GLOB_RECURSE TEST_SRC ${TEST_DIR}/*.cpp)
 add_executable(unit_test ${TEST_DIR}/test.cpp)
-
-# test tmp
-# add_executable(test_tmp ${TEST_DIR}/test_tmp.cpp)
