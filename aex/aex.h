@@ -498,8 +498,8 @@ private:
     // ========== 4. Structure Modify Operation(SMO) ==========
 
     // split a ordered key array with child pointers array to inner node array. Support the old node firstly.
-    bool split_with_old_node(const key_type* const __restrict__ key, const node_ptr* const __restrict__ child, const size_type n, 
-                std::vector<key_type> &new_key, std::vector<node_ptr> &new_child, inner_node_ptr __restrict__ node);
+    //bool split_with_old_node(const key_type* const __restrict__ key, const node_ptr* const __restrict__ child, const size_type n, 
+    //            std::vector<key_type> &new_key, std::vector<node_ptr> &new_child, inner_node_ptr __restrict__ node);
     
     // split a ordered key array with child pointers array to inner node array.
     void split(const key_type* const key, const node_ptr* const child, const size_type n, const unsigned int level, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);

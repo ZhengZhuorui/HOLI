@@ -226,13 +226,16 @@ void aex_tree<_Key, _Val, traits>::insert_split(inner_node_ptr __restrict__ node
     //  ...\                         ...\.
     //  ....old_node                 ....[back_node]
     int m = new_child.size();
-    update_childnode_ptr(parent, node, new_child[m - 1]);
     node_ptr next_node = node->next;
-    node = std::move(new_child[0]);
-    node_allocator.free(new_child[0]);
-    for(size_type i = 0; i < m - 1; ++i)
+    node = std::move(new_child[m - 1]);
+    node_allocator.free(new_child[m - 1]);
+    for(size_type i = 0; i < m - 1; ++i){
         new_child[i]->next = new_child[i + 1];
+        new_child[i + 1]->prev = new_child[i];
+    }
     new_child[m - 1]->next = next_node;
+    new_key.pop_back();
+    new_child.pop_back();
     AEX_PRINT("END");
 }
 

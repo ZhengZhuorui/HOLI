@@ -1,4 +1,5 @@
 #pragma once
+#include "aex/aex_node.h"
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits> class aex_tree;
@@ -62,7 +63,9 @@ public:
     
     typedef inner_node* inner_node_ptr;
 
-    typedef aex_inner_node<_Key, _Val, traits> parent;
+    typedef aex_inner_node<_Key, _Val, traits> base_inner_node;
+
+    typedef base_inner_node* base_inner_node;
 
     typedef aex_read_write_lock rw_lock;
     
@@ -72,38 +75,38 @@ public:
 
     ~aex_inner_node_con(){}
 
-    aex_inner_node_con(inner_node &other_node):parent(other_node){}
+    aex_inner_node_con(inner_node &other_node):base_inner_node(other_node){}
 
-    aex_inner_node_con(inner_node &&other_node):parent(other_node){}
+    aex_inner_node_con(inner_node &&other_node):base_inner_node(other_node){}
 
     inline void clear_bitmap(){
         node_lock.lock_writer();
-        this->parent::clear_bitmap();
+        this->base_inner_node::clear_bitmap();
         node_lock.unlock_writer();
     }
 
     inline void clear_key_array(){
         node_lock.lock_writer();
-        this->parent::clear_key_array();
+        this->base_inner_node::clear_key_array();
         node_lock.unlock_writer();
     }
 
     inline void inplace_construct(){
         node_lock.lock_writer();
-        this->parent::inplace_construct();
+        this->base_inner_node::inplace_construct();
         node_lock.unlock_writer();
     }
 
     inline void construct(const key_type* const key, const node_ptr* const child, const pos_type n, const Model &m){
         node_lock.lock_writer();
-        this->parent::construct(key, child, n, m);
+        this->base_inner_node::construct(key, child, n, m);
         node_lock.unlock_writer();
     }
 
     bool insert(const key_type &key, const node_ptr child){
         if (!(this->prop & node_property::ML_NODE)) {
             node_lock.lock_writer();
-            this->parent::insert(key, child);
+            this->base_inner_node::insert(key, child);
             node_lock.unlock_writer();
             return true;
         }
@@ -124,15 +127,6 @@ public:
                 node_lock.unlock_reader();
                 return false;
             }
-
-            #ifdef AEX_DEBUG
-            //if (Tree::debug_level >= 1){
-            //    for (size_type i = 0; i < this->slot_size; ++i){
-            //        AEX_PRINT("pos=" << i << " key=" << this->key_ptr[i] << " child=" << this->child_ptr[i]);
-            //    }
-            //    AEX_PRINT("key=" << key << " pos=" << inserted_pos << " predict=" << this->predict(key));
-            //}
-            #endif
 
             // the distance between insert position of shift item and the predict position should be less than ERROR_BOUND
             pos_type max_slot = std::min(pred_pos + traits::ERROR_BOUND, this->slot_size);
@@ -159,13 +153,13 @@ public:
                     ++this->size; 
                     this->m_stats.data_size += child->data_size();
                     this->m_stats.data_node += child->data_node_size();
+                    node_lock.unlock_reader();
+                    for (pos_type i = start_lock_pos; i <= end_lock_pos; ++i)
+                        rw_lock_array.unlock_writer();
                     return true;
                 }
             }
-            //AEX_PRINT("inserted_pos=" << inserted_pos << ", pred_pos=" << pred_pos << ", max_slot=" << max_slot);
-            //for (size_type i = pred_pos; i < max_slot; ++i){
-            //    AEX_PRINT("key_ptr[" << i << "]=" << key_ptr[i] << ", b" << (bitmap_impl::at(this->bitmap_ptr, i) > 0));
-            //}
+
             // if need shift move more than ERROR_BOUND item, return false
 
             for (pos_type i = start_lock_pos; i <= end_lock_pos; ++i)
@@ -175,26 +169,46 @@ public:
     }
 
     bool erase(node_ptr node){
-        
+        node_lock.lock_reader();
         pos_type pos = this->at(node);
-        if (pos == this->slot_size)
+        if (pos == this->slot_size){
+            node_lock.unlock_reader();
             return false;
+        }
+        node_lock.lock_writer();
         this->m_stats.data_size -= node->data_size();
         this->m_stats.data_node -= node->data_node_size();
         --this->size;
         if (this->prop & node_property::ML_NODE){
-            bitmap_impl::set_zero(this->bitmap_ptr, pos);
+            node_lock.unlock_writer();
             pos_type prev_pos = this->prev_item(pos);
+            pos_type start_lock_pos = static_cast<pos_type>(prev_pos / traits::SLOT_PER_LOCK), end_lock_pos = static_cast<pos_type>(pos / traits::SLOT_PER_LOCK);
+            for (pos_type i = start_lock_pos; i <= end_lock_pos; ++i)
+                rw_lock_array.lock_writer();
+
+            bitmap_impl::set_zero(this->bitmap_ptr, pos);
             if (pos < this->slot_size - 1){
                 std::fill(this->key_ptr + prev_pos + 1, this->key_ptr + pos + 1, this->key_ptr[pos + 1]);
                 std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + pos + 1, this->child_ptr[pos + 1]);
             }
+
+            for (pos_type i = start_lock_pos; i <= end_lock_pos; ++i)
+                rw_lock_array.unlock_writer();
         }
         else{
             std::move(this->key_ptr + pos + 1, this->key_ptr + this->size, this->key_ptr + pos);
             std::move(this->child_ptr + pos + 1, this->child_ptr + this->size, this->child_ptr + pos);
+            node_lock.unlock_writer();
         }
         return true;
+    }
+
+    inline void copy(inner_node_ptr node){
+        node->node_lock.lock_reader();
+        this->node_lock.lock_writer();
+        this->base_inner_node::copy(static_cast<base_inner_node_ptr>(node));
+        this->node_lock.unlock_writer();
+        node->node_lock.unlock_reader();
     }
 
 public:
@@ -209,11 +223,15 @@ public:
 template<typename _Key,
         typename _Val,
         typename traits>
-class aex_data_node : public aex_node_base<_Key, _Val, traits>{
+class aex_data_node_con : public aex_data_node<_Key, _Val, traits>{
 public:
-    typedef aex_data_node<_Key, _Val, traits> data_node;
+    typedef aex_data_node_con<_Key, _Val, traits> data_node;
 
     typedef data_node* data_node_ptr;
+
+    typedef aex_data_node<_Key, _Val, traits> base_data_node;
+
+    typedef base_data_node* base_data_node_ptr;
     
     typedef _Key key_type;
 
@@ -233,53 +251,29 @@ public:
 
     //typedef linear_model<key_type, traits> Model;
 
-    aex_data_node(){
-        //model.complex_model = nullptr;
-    }
-    ~aex_data_node(){
-        //if ((this->prop & COMPLEX_MODEL) & this->model.complex_model == nullptr){
-        //    delete this->model.complex_model;
-        //}
-    }
+    aex_data_node_con(){
 
-    inline void free(){
-        //if ((this->prop & COMPLEX_MODEL) & this->model.complex_model == nullptr){
-        //    delete this->model.complex_model;
-        //}
     }
+    ~aex_data_node_con(){
 
-
-    // only node_property::ML_NODE can use it. check if node_property::ML_NODE first
-    // position range [0, slot_size)
-    inline pos_type predict(const key_type& key) const {
-        return std::max((pos_type)0, std::min(static_cast<pos_type>(model.predict(key) * this->size), this->size - 1));
     }
 
     void construct(const std::pair<key_type, value_type>* _data, pos_type nums){
-        AEX_ASSERT(this->slot_size >= nums);
-        for (pos_type j = 0; j < nums; ++j){
-            key[j] = _data[j].first;
-            data[j] = _data[j].second;
-        }
-        this->size = nums;
-        this->base_stats.write_times = this->base_stats.train_times = this->base_stats.read_times = 0;
-        this->train_model();
+        this->node_lock.lock_writer();
+        this->base_data_node::construct(_data, nums);
+        this->node_lock.unlock_writer();
     }
 
     void construct(const key_type *_key, const value_type *_data, pos_type nums){
-        std::move(_key, _key + nums, this->key);
-        std::move(_data, _data + nums, this->data);
-        this->size = nums;
-        this->base_stats.write_times = this->base_stats.train_times = this->base_stats.read_times = 0;
-        this->train_model();
+        this->node_lock.lock_writer();
+        this->base_data_node::construct(_key, _data, nums);
+        this->node_lock.unlock_writer();
     }
 
     void construct(const key_type *_key, const value_type *_data, pos_type nums, Model &m){
-        std::move(_key, _key + nums, this->key);
-        std::move(_data, _data + nums, this->data);
-        this->size = nums;
-        this->base_stats.write_times = this->base_stats.train_times = this->base_stats.read_times = 0;
-        this->model = m;
+        this->node_lock.lock_writer();
+        this->base_data_node::construct(_key, _data, nums, m);
+        this->node_lock.unlock_writer();
     }
 
     // insert a item

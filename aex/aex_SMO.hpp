@@ -134,45 +134,45 @@ void aex_tree<_Key, _Val, traits>::split(data_node_ptr __restrict__ old_node, da
 }
 
 // split a ordered key array with child pointers array. Support the old node firstly.
-template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::split_with_old_node(const key_type* const __restrict__ key, const node_ptr* const __restrict__ child, const size_type n, 
-                std::vector<key_type> &new_key, std::vector<node_ptr> &new_child, inner_node_ptr __restrict__ node){
-    size_type start = 0, end = n;
-    inner_node_model model;
-    bool replace_flag = true;
-    AEX_PRINT("split with old node, node->slot_size=<<" << node->slot_size);
-    if (end >= node->real_slot_size() * this->inner_node_few_ratio[node->level]){
-        size_type size = static_cast<size_type>(node->real_slot_size() * this->inner_node_few_ratio[node->level]);
-        if (check_rewired(key, size, node->real_slot_size(), model)){
-            AEX_FORMAT("target 1 size=%lld", size);
-            replace_flag = false;
-            if (node->real_slot_size() >= traits::MIN_ML_INNER_NODE_SLOT_SIZE) 
-                node->prop |= node_property::ML_NODE;
-            node->construct(key + end - size, child + end - size, size, model);
-            end -= size;
-        }
-    }
-
-    split(key, child, end - start, node->level, new_key, new_child);
-    if (replace_flag){
-        new_key.push_back(key[n - 1]);
-        new_child.push_back(node);
-    }
-
-    //meta:
-    size_type m = new_child.size();
-    node_ptr prev_node = node->prev, next_node = node->next;
-
-    if (prev_node != nullptr) prev_node->next = new_child[0];
-    new_child[0]->prev = prev_node;
-    if (next_node != nullptr) next_node->prev = new_child[m  - 1];
-    new_child[m - 1]->next = next_node;
-    for(size_type i = 0; i < m - 1; ++i){
-        new_child[i + 1]->prev = new_child[i];
-        new_child[i]->next = new_child[i + 1];
-    }
-    return replace_flag;
-}
+//template<typename _Key, typename _Val, typename traits>
+//bool aex_tree<_Key, _Val, traits>::split_with_old_node(const key_type* const __restrict__ key, const node_ptr* const __restrict__ child, const size_type n, 
+//                std::vector<key_type> &new_key, std::vector<node_ptr> &new_child, inner_node_ptr __restrict__ node){
+//    size_type start = 0, end = n;
+//    inner_node_model model;
+//    bool replace_flag = true;
+//    AEX_PRINT("split with old node, node->slot_size=<<" << node->slot_size);
+//    if (end >= node->real_slot_size() * this->inner_node_few_ratio[node->level]){
+//        size_type size = static_cast<size_type>(node->real_slot_size() * this->inner_node_few_ratio[node->level]);
+//        if (check_rewired(key, size, node->real_slot_size(), model)){
+//            AEX_FORMAT("target 1 size=%lld", size);
+//            replace_flag = false;
+//            if (node->real_slot_size() >= traits::MIN_ML_INNER_NODE_SLOT_SIZE) 
+//                node->prop |= node_property::ML_NODE;
+//            node->construct(key + end - size, child + end - size, size, model);
+//            end -= size;
+//        }
+//    }
+//
+//    split(key, child, end - start, node->level, new_key, new_child);
+//    if (replace_flag){
+//        new_key.push_back(key[n - 1]);
+//        new_child.push_back(node);
+//    }
+//
+//    //meta:
+//    size_type m = new_child.size();
+//    node_ptr prev_node = node->prev, next_node = node->next;
+//
+//    if (prev_node != nullptr) prev_node->next = new_child[0];
+//    new_child[0]->prev = prev_node;
+//    if (next_node != nullptr) next_node->prev = new_child[m  - 1];
+//    new_child[m - 1]->next = next_node;
+//    for(size_type i = 0; i < m - 1; ++i){
+//        new_child[i + 1]->prev = new_child[i];
+//        new_child[i]->next = new_child[i + 1];
+//    }
+//    return replace_flag;
+//}
 
 // split a ordered key array with child pointers array.
 template<typename _Key, typename _Val, typename traits>

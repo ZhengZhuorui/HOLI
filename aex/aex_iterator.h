@@ -5,8 +5,8 @@ namespace aex{
 template<typename _Key, typename _Val, typename traits> class aex_tree;
 template<typename _Key, typename _Val, typename traits> class aex_iterator;
 template<typename _Key, typename _Val, typename traits> class aex_const_iterator;
-//template<typename _Key, typename _Val, typename traits> class aex_reverse_iterator;
-//template<typename _Key, typename _Val, typename traits> class aex_const_reverse_iterator;
+template<typename _Key, typename _Val, typename traits> class aex_reverse_iterator;
+template<typename _Key, typename _Val, typename traits> class aex_const_reverse_iterator;
 
 template<typename _Key,
         typename _Val,
@@ -71,33 +71,33 @@ public:
         return tmp;
     }
 
-    //self& operator--(){
-    //    if (offset > 0) --offset;
-    //    else{
-    //        if (_M_node != nullptr){
-    //            _M_node = static_cast<data_node_ptr>(_M_node->prev);
-    //            offset = _M_node->size - 1;
-    //        }
-    //        else{
-    //            offset = 0;
-    //        }
-    //    }
-    //    return *this;
-    //}
-    //self& operator--(int){
-    //    self tmp = *this;
-    //    if (offset > 0) --offset;
-    //    else {
-    //        if (_M_node != nullptr){
-    //            _M_node = static_cast<data_node_ptr>(_M_node->prev);
-    //            offset = _M_node->size - 1;
-    //        }
-    //        else{
-    //            offset = 0;
-    //        }
-    //    }
-    //    return tmp;
-    //}
+    self& operator--(){
+        if (offset > 0) --offset;
+        else{
+            if (_M_node != nullptr){
+                _M_node = static_cast<data_node_ptr>(_M_node->prev);
+                offset = _M_node->size - 1;
+            }
+            else{
+                offset = 0;
+            }
+        }
+        return *this;
+    }
+    self& operator--(int){
+        self tmp = *this;
+        if (offset > 0) --offset;
+        else {
+            if (_M_node != nullptr){
+                _M_node = static_cast<data_node_ptr>(_M_node->prev);
+                offset = _M_node->size - 1;
+            }
+            else{
+                offset = 0;
+            }
+        }
+        return tmp;
+    }
 
     bool operator==(const self& x) const {
         return (_M_node == x._M_node) && (offset == x.offset);
@@ -206,34 +206,34 @@ public:
         }
         return tmp;
     }
-
-    //self& operator--(){
-    //    if (offset > 0) --offset;
-    //    else {
-    //        if (_M_node != nullptr){
-    //            _M_node = static_cast<data_node_ptr>(_M_node->prev);
-    //            offset = _M_node->size - 1;
-    //        }
-    //        else{
-    //            offset = 0;
-    //        }
-    //    }
-    //    return *this;
-    //}
-    //self& operator--(int){
-    //    self tmp = *this;
-    //    if (offset > 0)--offset;
-    //    else {
-    //        if (_M_node != nullptr){
-    //            _M_node = static_cast<data_node_ptr>(_M_node->prev);
-    //            offset = _M_node->size - 1;
-    //        }
-    //        else{
-    //            offset = 0;
-    //        }
-    //    }
-    //    return tmp;
-    //}
+    
+    self& operator--(){
+        if (offset > 0) --offset;
+        else {
+            if (_M_node != nullptr){
+                _M_node = static_cast<data_node_ptr>(_M_node->prev);
+                offset = _M_node->size - 1;
+            }
+            else{
+                offset = 0;
+            }
+        }
+        return *this;
+    }
+    self& operator--(int){
+        self tmp = *this;
+        if (offset > 0)--offset;
+        else {
+            if (_M_node != nullptr){
+                _M_node = static_cast<data_node_ptr>(_M_node->prev);
+                offset = _M_node->size - 1;
+            }
+            else{
+                offset = 0;
+            }
+        }
+        return tmp;
+    }
 
     bool operator==(const self& x) const {
         return (_M_node == x._M_node) && (offset == x.offset);
@@ -273,7 +273,7 @@ private:
     pos_type offset;
 
 };
-/*
+
 template<typename _Key,
         typename _Val,
         typename traits>
@@ -539,5 +539,4 @@ private:
 
 };
 
-*/
 }
