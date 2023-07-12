@@ -29,8 +29,7 @@ class aex_type_traits<double>{
 template<typename _Key, 
         typename _Val,
         typename _AllowMultiKey=std::false_type,
-        typename _AllowMultiThread=std::false_type,
-        typename _AllowBalance=std::false_type>
+        typename _AllowMultiThread=std::false_type>
 struct aex_default_traits{
 
     typedef _Key key_type;
@@ -55,13 +54,21 @@ struct aex_default_traits{
 
     typedef _AllowMultiThread AllowMultiThread;
 
-    typedef _AllowBalance AllowBalance;
+    // Allow balance inner node and data node when read and write frequency update?
+    typedef std::false_type AllowRWBalance;
+
+    // Allow balance inner node when insert an item?
+    typedef std::false_type AllowInsertBalance;
+
+    // Allow data node slot size dynamic? (static data node slot size is MIN_DATA_NODE_SLOT_SIZE)
+    typedef std::true_type AllowDynamicDataNode;
+    //typedef std::false_type AllowDynamicDataNode;
     
     static const int ERROR_BOUND = 8;
 
     static const pos_type MIN_INNER_NODE_SLOT_SIZE = 8;
 
-    static const pos_type MIN_ML_INNER_NODE_SLOT_SIZE = 32;
+    static const pos_type MIN_ML_INNER_NODE_SLOT_SIZE = 64;
 
     static const pos_type MAX_NODE_SLOT_SIZE = 1 << 25;
 
@@ -75,7 +82,8 @@ struct aex_default_traits{
         
     static constexpr float DATA_NODE_FULL_RATIO = 1;
 
-    static constexpr float DENSITY_NARROW_RATIO = 0.875;
+    static constexpr float DENSITY_NARROW_RATIO = 0.5;
+    //static constexpr float DENSITY_NARROW_RATIO = 0.75;
     
     static constexpr float EXPAND_RATIO = DATA_NODE_FULL_RATIO / DATA_NODE_FEW_RATIO;
 
@@ -108,5 +116,15 @@ struct aex_default_traits{
     static const int MAX_SEGMENT_NUM = 8;
     
 };
+
+template<typename _Key, 
+        typename _Val,
+        typename _AllowMultiKey=std::false_type,
+        typename _AllowMultiThread=std::false_type>
+struct aex_rw_balance_traits : public aex::aex_default_traits<_Key, _Val, _AllowMultiKey, _AllowMultiThread>{
+    // Allow balance inner node and data node when read and write frequency update?
+    typedef std::true_type AllowRWBalance;
+};
+
 
 }

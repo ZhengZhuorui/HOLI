@@ -31,8 +31,10 @@ public:
 
     typedef typename tree::aex_stats stats;
 
+//#ifndef AEX_EXPERIMENT
 private:
     tree _m;
+//#endif
 
 public:
     explicit inline aex_map() : _m(){}

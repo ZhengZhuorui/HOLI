@@ -5,8 +5,8 @@ namespace aex{
 template<typename _Key, typename _Val, typename traits> class aex_tree;
 template<typename _Key, typename _Val, typename traits> class aex_iterator;
 template<typename _Key, typename _Val, typename traits> class aex_const_iterator;
-template<typename _Key, typename _Val, typename traits> class aex_reverse_iterator;
-template<typename _Key, typename _Val, typename traits> class aex_const_reverse_iterator;
+//template<typename _Key, typename _Val, typename traits> class aex_reverse_iterator;
+//template<typename _Key, typename _Val, typename traits> class aex_const_reverse_iterator;
 
 template<typename _Key,
         typename _Val,
@@ -34,9 +34,9 @@ public:
 
     inline aex_iterator() : _M_node(nullptr), offset(0){}
     
-    inline aex_iterator(data_node* ptr, unsigned char _offset):_M_node(ptr), offset(_offset){}
+    inline aex_iterator(data_node* ptr, pos_type _offset):_M_node(ptr), offset(_offset){}
     
-    inline aex_iterator(const aex_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}        
+    //inline aex_iterator(const aex_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}        
     
     reference operator*(){
         return std::pair<key_type, value_type>(_M_node->key[offset], _M_node->data[offset]);
@@ -71,33 +71,33 @@ public:
         return tmp;
     }
 
-    self& operator--(){
-        if (offset > 0) --offset;
-        else{
-            if (_M_node != nullptr){
-                _M_node = static_cast<data_node_ptr>(_M_node->prev);
-                offset = _M_node->size - 1;
-            }
-            else{
-                offset = 0;
-            }
-        }
-        return *this;
-    }
-    self& operator--(int){
-        self tmp = *this;
-        if (offset > 0) --offset;
-        else {
-            if (_M_node != nullptr){
-                _M_node = static_cast<data_node_ptr>(_M_node->prev);
-                offset = _M_node->size - 1;
-            }
-            else{
-                offset = 0;
-            }
-        }
-        return tmp;
-    }
+    //self& operator--(){
+    //    if (offset > 0) --offset;
+    //    else{
+    //        if (_M_node != nullptr){
+    //            _M_node = static_cast<data_node_ptr>(_M_node->prev);
+    //            offset = _M_node->size - 1;
+    //        }
+    //        else{
+    //            offset = 0;
+    //        }
+    //    }
+    //    return *this;
+    //}
+    //self& operator--(int){
+    //    self tmp = *this;
+    //    if (offset > 0) --offset;
+    //    else {
+    //        if (_M_node != nullptr){
+    //            _M_node = static_cast<data_node_ptr>(_M_node->prev);
+    //            offset = _M_node->size - 1;
+    //        }
+    //        else{
+    //            offset = 0;
+    //        }
+    //    }
+    //    return tmp;
+    //}
 
     bool operator==(const self& x) const {
         return (_M_node == x._M_node) && (offset == x.offset);
@@ -126,7 +126,7 @@ private:
 #endif
     friend class aex_const_iterator<_Key, _Val, traits>;
 
-    friend class aex_reverse_iterator<_Key, _Val, traits>;
+    //friend class aex_reverse_iterator<_Key, _Val, traits>;
     
     friend class aex_const_reverse_iterator<_Key, _Val, traits>;
 
@@ -164,13 +164,13 @@ public:
 
     inline aex_const_iterator() : _M_node(nullptr), offset(0){}
     
-    inline aex_const_iterator(const data_node* ptr, unsigned char _offset):_M_node(ptr), offset(_offset){}
+    inline aex_const_iterator(const data_node* ptr, pos_type _offset):_M_node(ptr), offset(_offset){}
     
     inline aex_const_iterator(const aex_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
     
-    inline aex_const_iterator(const aex_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
+    //inline aex_const_iterator(const aex_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
     
-    inline aex_const_iterator(const aex_const_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
+    //inline aex_const_iterator(const aex_const_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
 
     
     inline reference operator*() const{
@@ -207,33 +207,33 @@ public:
         return tmp;
     }
 
-    self& operator--(){
-        if (offset > 0) --offset;
-        else {
-            if (_M_node != nullptr){
-                _M_node = static_cast<data_node_ptr>(_M_node->prev);
-                offset = _M_node->size - 1;
-            }
-            else{
-                offset = 0;
-            }
-        }
-        return *this;
-    }
-    self& operator--(int){
-        self tmp = *this;
-        if (offset > 0)--offset;
-        else {
-            if (_M_node != nullptr){
-                _M_node = static_cast<data_node_ptr>(_M_node->prev);
-                offset = _M_node->size - 1;
-            }
-            else{
-                offset = 0;
-            }
-        }
-        return tmp;
-    }
+    //self& operator--(){
+    //    if (offset > 0) --offset;
+    //    else {
+    //        if (_M_node != nullptr){
+    //            _M_node = static_cast<data_node_ptr>(_M_node->prev);
+    //            offset = _M_node->size - 1;
+    //        }
+    //        else{
+    //            offset = 0;
+    //        }
+    //    }
+    //    return *this;
+    //}
+    //self& operator--(int){
+    //    self tmp = *this;
+    //    if (offset > 0)--offset;
+    //    else {
+    //        if (_M_node != nullptr){
+    //            _M_node = static_cast<data_node_ptr>(_M_node->prev);
+    //            offset = _M_node->size - 1;
+    //        }
+    //        else{
+    //            offset = 0;
+    //        }
+    //    }
+    //    return tmp;
+    //}
 
     bool operator==(const self& x) const {
         return (_M_node == x._M_node) && (offset == x.offset);
@@ -262,9 +262,9 @@ private:
 #endif
     friend class aex_iterator<_Key, _Val, traits>;
 
-    friend class aex_reverse_iterator<_Key, _Val, traits>;
+    //friend class aex_reverse_iterator<_Key, _Val, traits>;
     
-    friend class aex_const_reverse_iterator<_Key, _Val, traits>;
+    //friend class aex_const_reverse_iterator<_Key, _Val, traits>;
 
     friend class aex_tree<_Key, _Val, traits>;
 
@@ -273,7 +273,7 @@ private:
     pos_type offset;
 
 };
-
+/*
 template<typename _Key,
         typename _Val,
         typename traits>
@@ -300,7 +300,7 @@ public:
 
     inline aex_reverse_iterator() : _M_node(nullptr), offset(0){}
     
-    inline aex_reverse_iterator(const data_node* ptr, unsigned char _offset):_M_node(ptr), offset(_offset){}
+    inline aex_reverse_iterator(const data_node* ptr, pos_type _offset):_M_node(ptr), offset(_offset){}
     
     inline aex_reverse_iterator(const aex_iterator<key_type, value_type, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
     
@@ -430,7 +430,7 @@ public:
 
     inline aex_const_reverse_iterator() : _M_node(nullptr), offset(0){}
     
-    inline aex_const_reverse_iterator(const data_node* ptr, unsigned char _offset):_M_node(ptr), offset(_offset){}
+    inline aex_const_reverse_iterator(const data_node* ptr, pos_type _offset):_M_node(ptr), offset(_offset){}
     
     inline aex_const_reverse_iterator(const aex_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
 
@@ -539,4 +539,5 @@ private:
 
 };
 
+*/
 }

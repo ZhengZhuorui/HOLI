@@ -83,6 +83,9 @@ public:
 
     typedef typename traits::bitmap bitmap;
 
+    // allocator:
+    typedef aex_node_allocator<key_type, value_type, traits> NodeAllocator;
+
     struct aex_stats{
         size_type data_node, inner_node; //debug
         size_type size;
@@ -117,12 +120,15 @@ private:
 
     //aex_allocator<_Key, _Val, Alloc, traits> allocator;
 
-    aex_node_allocator<_Key, _Val, traits> node_allocator;
+    //aex_node_allocator<_Key, _Val, traits> node_allocator;
+    NodeAllocator node_allocator;
 
     //size_type max_inner_node_slot_size[8];
     double inner_node_few_ratio[traits::MAX_DEPTH], inner_node_full_ratio[traits::MAX_DEPTH];
 
-    typename traits::AllowBalance allow_balance;
+    typename traits::AllowRWBalance allow_rw_balance;
+
+    typename traits::AllowInsertBalance allow_insert_balance;
 
     typename std::false_type fp;
 
@@ -155,10 +161,12 @@ public:
     std::pair<iterator, bool> insert(const key_type &key, const value_type &value);
 
     iterator find(const key_type &x) {
-        data_node_ptr node = find_leaf(x, this->allow_balance);
+        data_node_ptr node = find_leaf(x, this->allow_rw_balance);
         iterator it = find_lower(node, x);
+        //AEX_PRINT("find real key=" << x << "node key=" << it.key() << ", data=" << it.data() << ", node_id=" << node_allocator.node_id[it._M_node] << ", pos=" << it.offset);
         if (it.key() != x) 
             return end();
+        //AEX_PRINT("find real key=" << x << "node key=" << it.key() << ", data=" << it.data() << ", node_id=" << node_allocator.node_id[it._M_node] << ", pos=" << it.offset);
         return it;
     }
 
@@ -203,19 +211,19 @@ public:
     }
 
     bool exists(const key_type &x) {
-        iterator it = find(x, this->allow_balance);
+        iterator it = find(x, this->allow_rw_balance);
         if (it.key() != x) return false;
         return true;
     }
 
     iterator lower_bound(const key_type &x){
-        data_node_ptr node = find_leaf(x, this->allow_balance);
+        data_node_ptr node = find_leaf(x, this->allow_rw_balance);
         return find_lower(node, x);
     }
 
     const_iterator lower_bound(const key_type &x) const {
         std::false_type fp;
-        data_node_ptr node = find_leaf(x, this->allow_balance);
+        data_node_ptr node = find_leaf(x, this->allow_rw_balance);
         return find_lower(x, fp);
     }
 
@@ -254,13 +262,13 @@ public:
         //std::true_type tp;
         node_ptr stack[traits::MAX_DEPTH];
         int top;
-        data_node_ptr node = find_leaf_with_trace(x, stack, top, this->allow_balance);
+        data_node_ptr node = find_leaf_with_trace(x, stack, top, this->allow_rw_balance);
         iterator find_iter = find_lower(node, x);
         if (find_iter == end()) 
             return false;
         if (find_iter.key() != x)
             return false;        
-        if (this->allow_balance){
+        if (traits::AllowRWBalance::value){
             pos_type best_slot_size = check_balance_split_best_slot_size(node);
             if (best_slot_size < node->slot_size){
                 balance_split(stack, top, node, best_slot_size);
@@ -277,12 +285,12 @@ public:
         node_ptr stack[traits::MAX_DEPTH];
         int top;
         key_type x = iter._M_node->key[iter.offset];
-        data_node_ptr node = find_leaf_with_trace(x, stack, top, this->allow_balance);
+        data_node_ptr node = find_leaf_with_trace(x, stack, top, this->allow_rw_balance);
         if (traits::AllowMultiKey){
             node = iter._M_node;
             stack[top - 1] = iter._M_node;
         }
-        if (this->allow_balance){
+        if (traits::AllowRWBalance::value){
             size_type best_slot_size = check_balance_split_best_slot_size(node);
             if (best_slot_size < node->slot_size){
                 balance_split(stack, top, node, best_slot_size);
@@ -372,8 +380,10 @@ private:
     // if no item greater than or equal to x, return NULL
     inline iterator find_lower(const data_node_ptr node, const key_type &x){
         pos_type pos = node->find_lower_pos(x);
+        //AEX_PRINT("pos=" << pos << "key=" << node->key[pos] << "node_id=" << node_allocator.node_id[node] << ", size=" << node->size);
         if (pos == node->size)
             return end();
+        //AEX_PRINT("pos=" << pos << "key=" << node->key[pos] << "node_id=" << node_allocator.node_id[node] << ", size=" << node->size);
         return iterator(node, pos);
     }
 
@@ -446,7 +456,7 @@ private:
     // ========== 3. insert ==========
     // Split an node if the node insert item and the size is larger than upper bound
     // if the node is replaced, the node will free
-    bool insert_split(inner_node_ptr __restrict__ node, inner_node_ptr __restrict__ parent, const key_type* const key, const node_ptr* const child, 
+    void insert_split(inner_node_ptr __restrict__ node, inner_node_ptr __restrict__ parent, const key_type* const key, const node_ptr* const child, 
                const pos_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
 
     // insert an item(<key, data>) to data node
@@ -454,8 +464,8 @@ private:
     // size_type insert_data(data_node_ptr node, const key_type &key, const value_type &data);
 
     // try to insert an node to inner node. If no position to insert, return false
-    bool insert_node(inner_node_ptr __restrict__ node, const key_type &key, const node_ptr __restrict__ child, std::false_type allow_balance);
-    bool insert_node(inner_node_ptr __restrict__ node, const key_type &key, const node_ptr __restrict__ child, std::true_type allow_balance);
+    bool insert_node(inner_node_ptr __restrict__ node, const key_type &key, const node_ptr __restrict__ child, std::false_type allow_rw_balance);
+    bool insert_node(inner_node_ptr __restrict__ node, const key_type &key, const node_ptr __restrict__ child, std::true_type allow_rw_balance);
 
     // A part of bulk load.
     void build_tree(std::vector<key_type>& key_buf, std::vector<node_ptr>& child_buf);

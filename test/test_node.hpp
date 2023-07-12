@@ -14,8 +14,8 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch)
     typedef typename traits::pos_type pos_type;
     typedef typename aex::aex_bitmap_impl<traits> bitmap_impl;
     pos_type slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE;
-    AEX_PRINT("ratio=" << tree.inner_node_few_ratio[1]);
-    while (slot_size * tree.inner_node_few_ratio[1] < n - batch) slot_size <<= 1;
+    AEX_PRINT("ratio=" << tree.inner_node_few_ratio[2]);
+    while (slot_size * tree.inner_node_few_ratio[2] < n - batch) slot_size <<= 1;
     slot_size >>= 1;
     inner_node_ptr node = tree.node_allocator.allocate_inner_node(slot_size);
     //printf("node slot size=%lld", node->slot_size);
@@ -169,7 +169,8 @@ bool test_inner_node_erase_perf(vector<key_type> &data, size_t n, size_t batch){
     typedef typename traits::pos_type pos_type;
     typedef typename aex::aex_bitmap_impl<traits> bitmap_impl;
     size_type slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE;
-    while (slot_size * traits::DATA_NODE_FULL_RATIO < n) slot_size <<= 1;
+    while (slot_size * tree.inner_node_few_ratio[2] < n) slot_size <<= 1;
+    slot_size >>= 1;
     inner_node_ptr node = tree.node_allocator.allocate_inner_node(slot_size);
     AEX_PRINT("node slot size=%lld" << node->slot_size);
     AEX_PRINT("prepare dataset...");
@@ -288,7 +289,8 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch){
     [[maybe_unused]] typedef typename traits::size_type size_type;
     typedef typename traits::pos_type pos_type;
     pos_type slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE;
-    while (slot_size * traits::DATA_NODE_FULL_RATIO < n) slot_size <<= 1;
+    while (slot_size * tree.inner_node_few_ratio[2] < n) slot_size <<= 1;
+    slot_size >>= 1;
     inner_node_ptr node = tree.node_allocator.allocate_inner_node(slot_size);
     AEX_PRINT("node slot size" << node->slot_size);
     AEX_PRINT("prepare dataset...");
@@ -506,14 +508,14 @@ bool test_data_node_query_perf(std::pair<key_type, value_type>* data, size_t n, 
     value_type sum = 0;
     const int ITER = 1000;
     double delta = 0;
+    t1 = std::chrono::high_resolution_clock::now();
     for (int T = 0; T < ITER; ++T){
-        t1 = std::chrono::high_resolution_clock::now();
         for (size_t i = 0; i < batch; ++i){
             sum += node->find_lower_pos(query[i]);
         }
-        t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
+    t2 = std::chrono::high_resolution_clock::now();
 
     //printf("msed time=%lld us\n", delta);
     double QPS = 1.0 * 1e6 * ITER * batch / delta;

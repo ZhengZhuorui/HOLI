@@ -105,7 +105,8 @@ public:
     //typedef linear_model<key_type> Model;
     //typedef aex_model<key_type, traits> Model;
 
-    typedef gap_array_linear_model<key_type, traits> Model;
+    //typedef gap_array_linear_model<key_type, traits> Model;
+    typedef piecewise_linear_model<key_type, traits> Model;
 
     typedef aex_data_node<_Key, _Val, traits> data_node;
 
@@ -117,9 +118,31 @@ public:
 
     aex_inner_node(){}
 
-    ~aex_inner_node(){}
+    ~aex_inner_node(){
+        if (this->key_ptr != nullptr)
+            free(this->key_ptr);
+        if (this->child_ptr != nullptr)
+            free(this->key_ptr);
+        if (this->bitmap_ptr != nullptr)
+            free(this->bitmap_ptr);
+    }
 
-    inline void free(){}
+    aex_inner_node(inner_node &other_node){
+        memcpy(this, other_node, sizeof(inner_node));
+        memcpy(this->key_ptr, other_node->key_ptr, aex_node_allocator::KEY_MEMORY_USED(other_node->slot_size));
+        memcpy(this->child_ptr, other_node->key_ptr, aex_node_allocator::PTR_MEMORY_USED(other_node->slot_size));
+        memcpy(this->bitmap_ptr, other_node->key_ptr, aex_node_allocator::BITMAP_MEMORY_USED(other_node->slot_size));
+    }
+
+    aex_inner_node(inner_node &&other_node){
+        memcpy(this, other_node, sizeof(inner_node));
+        this->key_ptr = other_node->key_ptr;
+        this->child_ptr = other_node->child_ptr;
+        this->bitmap_ptr = other_node->bitmap_ptr;
+        other_node->key_ptr = nullptr;
+        other_node->child_ptr = nullptr;
+        other_node->bitmap_ptr = nullptr;
+    }
 
     // clear bitmap
     inline void clear_bitmap(){
@@ -128,6 +151,41 @@ public:
 
     inline void clear_key_array(){
         memset(this->key_ptr, 0, node_allocator::KEY_MEMORY_USED(this->slot_size));
+    }
+
+    inline void inplace_construct(){
+        if (this->real_slot_size() >= traits::MIN_ML_INNER_NODE_SLOT_SIZE){
+            if (Tree::check_rewired(this->key_ptr, this->size, this->real_slot_size(), this->model)){
+                this->prop |= node_property::ML_NODE;
+            }
+            else{
+                this->prop &= ~node_property::ML_NODE;
+            }
+        }
+        else{
+            this->prop &= ~node_property::ML_NODE;
+        }
+        if (this->prop & node_property::ML_NODE){
+            std::move_backward(this->key_ptr, this->key_ptr + this->size, this->key_ptr + this->slot_size);
+            std::move_backward(this->child_ptr, this->child_ptr + this->size, this->child_ptr + this->slot_size);
+            pos_type start = 0, his_pos = 0;
+            for (pos_type i = this->slot_size - this->size; i < this->slot_size; ++i){
+                pos_type pos = this->predict(key[i]);
+                start = std::max(start, pos);
+                bitmap_impl::set_one(bm, start);
+                AEX_ASSERT(start - pos < traits::ERROR_BOUND);
+                AEX_ASSERT(start - pos < traits::ERROR_BOUND);
+                std::fill(this->key_ptr + his_pos, this->key_ptr + start + 1, key[i]);
+                std::fill(this->child_ptr + his_pos, this->child_ptr + start + 1, child[i]);
+                his_pos = start + 1;
+                ++start;
+            }
+            std::fill(this->key_ptr + his_pos, this->key_ptr + this->slot_size, std::numeric_limits<key_type>::max());
+            std::fill(this->child_ptr + his_pos, this->child_ptr + this->slot_size, child[n - 1]);
+        }
+        else{
+            //this->key_ptr[n - 1] = std::numeric_limits<key_type>::max();
+        }
     }
 
     // Construct a node with key array, don't check model is fit. 
@@ -149,6 +207,7 @@ public:
     }
 
     // construct a node with key array and model
+    
     inline void construct(const key_type* const key, const node_ptr* const child, const pos_type n, const Model &m){
         AEX_ASSERT(n > 0);
         bitmap bm = this->bitmap_ptr;
@@ -189,12 +248,9 @@ public:
             }
             std::fill(this->key_ptr + his_pos, this->key_ptr + this->slot_size, std::numeric_limits<key_type>::max());
             std::fill(this->child_ptr + his_pos, this->child_ptr + this->slot_size, child[n - 1]);
-            //bitmap_impl::set_one(bm, this->slot_size - 1);
-
         }
         else{
             std::copy(key, key + n - 1, node_key);
-            node_key[n - 1] = std::numeric_limits<key_type>::max();
             std::copy(child, child + n, node_child);
         }
     }
@@ -377,14 +433,16 @@ public:
             pos_type upper_bound = std::min(pred_pos + traits::ERROR_BOUND, this->slot_size);
             for (pos_type i = pred_pos; i < upper_bound; ++i)
             if (x <= key_ptr[i]){
+                //AEX_PRINT("key=" << x << ", node key=" << key_ptr[i]);
                 return i;
             }
             return this->slot_size;
         }
         else{
-            pos = std::upper_bound(key_ptr, key_ptr + this->size, x) - key_ptr;
+            pos = std::lower_bound(key_ptr, key_ptr + this->size, x) - key_ptr;
             if (pos == this->size)
                 return this->slot_size;
+            //AEX_PRINT("key=" << x << ", node key=" << key_ptr[pos]);
             return pos;
         }
     }
@@ -438,20 +496,31 @@ public:
     //typedef linear_model<key_type, traits> Model;
 
     aex_data_node(){
-        //model.complex_model = nullptr;
     }
+
     ~aex_data_node(){
         //if ((this->prop & COMPLEX_MODEL) & this->model.complex_model == nullptr){
         //    delete this->model.complex_model;
         //}
+        if (key != nullptr)
+            free(key);
+        if (child != nullptr)
+            free(child);
     }
 
-    inline void free(){
-        //if ((this->prop & COMPLEX_MODEL) & this->model.complex_model == nullptr){
-        //    delete this->model.complex_model;
-        //}
+    aex_data_node(aex_data_node &other_node){
+        memcpy(this, other_node, sizeof(data_node));
+        memcpy(this->key, other_node->key_ptr, aex_node_allocator::KEY_MEMORY_USED(other_node->slot_size));
+        memcpy(this->data, other_node->data, aex_node_allocator::DATA_MEMORY_USED(other_node->slot_size));
     }
 
+    aex_data_node(aex_data_node &&other_node){
+        memcpy(this, other_node, sizeof(data_node));
+        this->key = other_node->key;
+        this->data = other_node->data;
+        other_node->key = nullptr;
+        other_node->data = nullptr;
+    }
 
     // only node_property::ML_NODE can use it. check if node_property::ML_NODE first
     // position range [0, slot_size)
@@ -507,6 +576,7 @@ public:
         else{
             pos = std::lower_bound(this->key, this->key + this->size, x) - this->key;
         }
+        //AEX_PRINT("key=" << x << ", node key=" << key[pos]);
         return pos;
     }
 

@@ -322,7 +322,7 @@ bool aex_tree<_Key, _Val, traits>::check_rewired(const key_type* const key, cons
     if (slot_size > traits::MAX_NODE_SLOT_SIZE)
         return false;
     pos_type start = 0;
-    m.train(key, size);
+    m.train(key, size, slot_size);
     for (pos_type i = 0; i < size; ++i){            
         pos_type pos = std::max(0, std::min(static_cast<pos_type>(m.predict(key[i]) * slot_size), static_cast<pos_type>(slot_size + traits::ERROR_BOUND - 1)));
         start = std::max(start, pos);
@@ -371,20 +371,12 @@ bool aex_tree<_Key, _Val, traits>::rescale(inner_node_ptr __restrict__ &node, in
         AEX_ASSERT(node->size <= new_slot_size);
         AEX_ASSERT(node->size >= new_slot_size * this->inner_node_few_ratio[node->level]);
 
-        key_type* key_buffer = node_allocator.allocate_key_buffer(node->size);
-        node_ptr* child_buffer =  node_allocator.allocate_nodeptr_buffer(node->size);
-        copy_to_buffer(node, key_buffer, child_buffer);
-
-        inner_node_ptr __restrict__ new_node = node_allocator.allocate_inner_node(new_slot_size);
-        new_node->construct(key_buffer, child_buffer, node->size);
-        replace_node(node, new_node);
-
-        update_childnode_ptr(parent, node, new_node);
-        node_allocator.free_node(node);
+        node->slot_size = new_slot_size;
+        node_allocator.reallocate(node);
+        node->inplace_construct();
+        
         --this->m_stats.inner_node;
         node = new_node;
-        node_allocator.deallocate(key_buffer);
-        node_allocator.deallocate(child_buffer);
     }
     AEX_PRINT("END");
     return true;
@@ -399,11 +391,9 @@ bool aex_tree<_Key, _Val, traits>::rescale(data_node_ptr __restrict__ &node, inn
     if (new_slot_size < traits::MIN_DATA_NODE_SLOT_SIZE)
         return false;
     if (new_slot_size > traits::MAX_NODE_SLOT_SIZE) return false;
-    data_node_ptr new_node = node_allocator.allocate_data_node(new_slot_size);
-    new_node->construct(node->key, node->data, node->size);
-    replace_node(node, new_node);
-    update_childnode_ptr(parent, node, new_node);
-    node_allocator.free_node(node);
+    //data_node_ptr new_node = node_allocator.allocate_data_node(new_slot_size);
+    node_allocator.rescale(new_node, new_slot_size);
+    node->construct(node->key, node->data, node->size);
     --this->m_stats.data_node;
     node = new_node;
     return true;
@@ -429,12 +419,8 @@ void aex_tree<_Key, _Val, traits>::copy_node(inner_node_ptr __restrict__ node, i
     }
     else if ((node->prop & node_property::ML_NODE) && (new_node->prop & node_property::ML_NODE)){
         AEX_PRINT("copy node 2");
-        key_type* key_buffer = node_allocator.allocate_key_buffer(node->size);
-        node_ptr* child_buffer = node_allocator.allocate_nodeptr_buffer(node->size);
-        copy_to_buffer(node, key_buffer, child_buffer);
-        new_node->construct(key_buffer, child_buffer, node->size);
-        node_allocator.deallocate(key_buffer);
-        node_allocator.deallocate(child_buffer);
+        copy_to_buffer(node, new_node->key_ptr, new_node->child_ptr);
+        new_node->inplace_construct();
     }
     else if ((node->prop & node_property::ML_NODE) && !(new_node->prop & node_property::ML_NODE)){
         AEX_PRINT("copy node 3");
@@ -456,7 +442,7 @@ void aex_tree<_Key, _Val, traits>::merge_to_left_leaf(data_node_ptr __restrict__
     std::move(right_node->data, right_node->data + right_node->size, left_node->data + left_node->size);
     left_node->size += right_node->size;
     
-    if (this->allow_balance){
+    if (traits::AllowRWBalance::value){
         update_node_frequency(left_node);
         update_node_frequency(right_node);
         left_node->base_stats.write_times += right_node->base_stats.write_times;
@@ -483,7 +469,7 @@ void aex_tree<_Key, _Val, traits>::merge_to_right_leaf(data_node_ptr __restrict_
     std::move(left_node->data, left_node->data + left_node->size, right_node->data);
     right_node->size += left_node->size;
 
-    if (this->allow_balance){
+    if (traits::AllowRWBalance::value){
         update_node_frequency(left_node);
         update_node_frequency(right_node);
         left_node->base_stats.write_times += right_node->base_stats.write_times;
@@ -508,7 +494,7 @@ void aex_tree<_Key, _Val, traits>::merge_to_left_node(inner_node_ptr __restrict_
     std::move(right_node->key_ptr, right_node->key_ptr + right_node->size, left_node->key_ptr + left_node->size);
     std::move(right_node->child_ptr, right_node->child_ptr + right_node->size, left_node->child_ptr + left_node->size);
 
-    if (this->allow_balance && left_node->level == 1){
+    if (traits::AllowRWBalance::value && left_node->level == 1){
         update_node_frequency(left_node);
         update_node_frequency(right_node);
         left_node->base_stats.write_times += right_node->base_stats.write_times;
@@ -536,7 +522,7 @@ void aex_tree<_Key, _Val, traits>::merge_to_right_node(inner_node_ptr __restrict
     std::move(left_node->key_ptr, left_node->key_ptr + left_node->size, right_node->key_ptr);
     std::move(left_node->child_ptr, left_node->child_ptr + left_node->size, right_node->child_ptr);
 
-    if (this->allow_balance && right_node->level == 1){
+    if (traits::AllowRWBalance::value && right_node->level == 1){
         update_node_frequency(left_node);
         update_node_frequency(right_node);
         right_node->base_stats.write_times += right_node->base_stats.write_times;
@@ -586,7 +572,7 @@ void aex_tree<_Key, _Val, traits>::shift_to_left_node(inner_node_ptr __restrict_
     ++left_node->size;
     erase_child_node(right_node, shift_node);
     if (right_node->level == 1){
-        if (this->allow_balance){
+        if (traits::AllowRWBalance::value){
             left_node->m_stats.data_size += shift_node->data_size();
             right_node->m_stats.data_size -= shift_node->data_size();
 
@@ -623,7 +609,7 @@ void aex_tree<_Key, _Val, traits>::shift_to_right_node(inner_node_ptr __restrict
     ++right_node->size;
     
     if (right_node->level == 1){
-        if (this->allow_balance){
+        if (traits::AllowRWBalance::value){
             left_node->m_stats.data_size -= shift_node->data_size();
             right_node->m_stats.data_size += shift_node->data_size();
 
@@ -642,7 +628,7 @@ void aex_tree<_Key, _Val, traits>::shift_to_right_node(inner_node_ptr __restrict
 
 // copy keys and pointers of a node to key buffer and pointers buffer
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::copy_to_buffer(const inner_node_ptr __restrict__ node, key_type* __restrict__ key_buf, node_ptr* __restrict__ child_buf){
+void aex_tree<_Key, _Val, traits>::copy_to_buffer(const inner_node_ptr node, key_type* key_buf, node_ptr* child_buf){
     key_type* key = node->key_ptr;
     node_ptr* child = node->child_ptr;
     bitmap bm = node->bitmap_ptr;
@@ -656,8 +642,10 @@ void aex_tree<_Key, _Val, traits>::copy_to_buffer(const inner_node_ptr __restric
         }
     }
     else{
-        std::copy(key, key + node->size, key_buf);
-        std::copy(child, child + node->size, child_buf);
+        if (node->key_ptr != key_buf)
+            std::copy(key, key + node->size, key_buf);
+        if (node->child_ptr != child)
+            std::copy(child, child + node->size, child_buf);
     }
 }
 
@@ -722,6 +710,38 @@ inline void aex_tree<_Key, _Val, traits>::replace_node(const data_node_ptr __res
     if (old_node->next != nullptr) old_node->next->prev = new_node;
     if (this->root == old_node)
         this->root = new_node;
+}
+
+inline void reallocate(inner_node_ptr node, pos_type new_slot_size){
+    node_allocator.memory_used += - NodeAllocator::KEY_MEMORY_USED(node->slot_size) + NodeAllocator::KEY_MEMORY_USED(new_slot_size) - \
+                                    NodeAllocator::PTR_MEMORY_USED(node->slot_size) + NodeAllocator::PTR_MEMORY_USED(new_slot_size) - \
+                                    NodeAllocator::BITMAP_MEMORY_USED(node->slot_size) + NodeAllocator::BITMAP_MEMORY_USED(new_slot_size);
+    key_type *new_key_ptr = static_cast<key_type*>(malloc(NodeAllocator::KEY_MEMORY_USED(new_slot_size)));
+    node_ptr* new_child_ptr = static_cast<node_ptr*>(malloc(NodeAllocator::PTR_MEMORY_USED(new_slot_size)));
+    node_ptr* new_bitmap_ptr = static_cast<bitmap*>(malloc(NodeAllocator::BITMAP_MEMORY_USED(new_slot_size)));
+    copy_to_buffer(node, new_key_ptr, new_child_ptr);
+    node->slot_size = new_slot_size;
+    free(node->key_ptr);
+    free(node->child_ptr);
+    free(node->bitmap_ptr);
+    node->key_ptr = new_key_ptr;
+    node->child_ptr = new_child_ptr;
+    node->bitmap_ptr = new_bitmap_ptr;
+    
+}
+
+inline void reallocate(data_node_ptr node, pos_type new_slot_size){
+    node_allocator.memory_used += - NodeAllocator::KEY_MEMORY_USED(node->slot_size) + NodeAllocator::KEY_MEMORY_USED(new_slot_size) - \
+                                    NodeAllocator::DATA_MEMORY_USED(node->slot_size) + NodeAllocator::DATA_MEMORY_USED(new_slot_size);
+    key_type *new_key = static_cast<key_type*>(malloc(NodeAllocator::KEY_MEMORY_USED(new_slot_size)));
+    value_type *new_data = static_cast<value_type*>(malloc(NodeAllocator::DATA_MEMORY_USED(new_slot_size)));
+    node->slot_size = new_slot_size;
+    std::copy(node->key, node->key + node->size, new_key);
+    std::copy(node->data, node->data + node->size, new_data);
+    free(node->key);
+    free(node->data);
+    node->key = new_key;
+    node->data = new_data;
 }
 
 }

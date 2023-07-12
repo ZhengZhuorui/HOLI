@@ -44,6 +44,8 @@ void generate_query(std::pair<key_type, value_type> *data, const long long n, ve
         long long pos = query_pos[i];
         query[i] = data[pos].first;
         answer[i] = data[pos].second;
+        //if (i == 0)
+            //AEX_PRINT("pos=" << pos << ", k=" << query[i] << ", v=" << answer[i]);
     }
 }
 

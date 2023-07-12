@@ -56,7 +56,7 @@ std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree<_Key, 
     /* if data node is full, split the node */
     if (isfull(old_data_node)){
         inner_node_ptr parent = static_cast<inner_node_ptr>(stack[top - 2]);
-        if ((this->allow_balance == false) || check_balance_split(old_data_node)){
+        if ((!traits::AllowDynamicDataNode::value) || (traits::AllowRWBalance::value && check_balance_split(old_data_node))){
             AEX_PRINT("INSERT DATA NODE SPLIT");
             // data_node => [old_data_node, new_data_node]
             // parent_node->ptr = [... data_node ...] => [... old_data_node, new_data_node(need insert) ... ] 
@@ -96,13 +96,13 @@ std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree<_Key, 
 }
 
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::insert_node(const inner_node_ptr __restrict__ node, const key_type &key, const node_ptr __restrict__ child, std::false_type allow_balance){
+bool aex_tree<_Key, _Val, traits>::insert_node(const inner_node_ptr __restrict__ node, const key_type &key, const node_ptr __restrict__ child, std::false_type allow_insert_balance){
     AEX_ASSERT(node != nullptr);
     return node->insert(key, child);
 }
 
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::insert_node(const inner_node_ptr __restrict__ node, const key_type &key, const node_ptr __restrict__ child, std::true_type allow_balance){
+bool aex_tree<_Key, _Val, traits>::insert_node(const inner_node_ptr __restrict__ node, const key_type &key, const node_ptr __restrict__ child, std::true_type allow_insert_balance){
     if (node == nullptr) return false;
     if (!(node->prop & node_property::ML_NODE)) {
         return node->insert(key, child);
@@ -175,7 +175,7 @@ bool aex_tree<_Key, _Val, traits>::insert_node(const inner_node_ptr __restrict__
 // Split an node if the node insert item and the size is larger than upper bound
 // if the node is replaced, the node will free
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::insert_split(inner_node_ptr __restrict__ node, inner_node_ptr __restrict__ parent, const key_type* const key, const node_ptr* const child, const pos_type n,
+void aex_tree<_Key, _Val, traits>::insert_split(inner_node_ptr __restrict__ node, inner_node_ptr __restrict__ parent, const key_type* const key, const node_ptr* const child, const pos_type n,
                std::vector<key_type> &new_key, std::vector<node_ptr> &new_child){
     key_type* key_buf = node_allocator.allocate_key_buffer((node->size + n));
     node_ptr* child_buf = node_allocator.allocate_nodeptr_buffer((node->size + n));
@@ -219,26 +219,21 @@ bool aex_tree<_Key, _Val, traits>::insert_split(inner_node_ptr __restrict__ node
     AEX_PRINT("size=" << node->size + n);
     
     // split. if old node is not used, replace flag is true.
-    bool replace_flag = split_with_old_node(key_buf, child_buf, node->size + n, new_key, new_child, node);
-        
+    //bool replace_flag = split_with_old_node(key_buf, child_buf, node->size + n, new_key, new_child, node);
+    split(key_buf, child_buf, node->size + n, new_key, new_child);
     // update 
     // parent           --->        parent 
     //  ...\                         ...\.
     //  ....old_node                 ....[back_node]
-
-    if (replace_flag){
-        update_childnode_ptr(parent, node, new_child.back());
-        node_allocator.free_node(node);
-        --this->m_stats.inner_node;
-    }
-    bool flag = update_childnode_key(parent, new_child.back(), new_key.back());
-    AEX_ASSERT(flag == true);
-
-    new_key.pop_back();
-    new_child.pop_back();
-
+    int m = new_child.size();
+    update_childnode_ptr(parent, node, new_child[m - 1]);
+    node_ptr next_node = node->next;
+    node = std::move(new_child[0]);
+    node_allocator.free(new_child[0]);
+    for(size_type i = 0; i < m - 1; ++i)
+        new_child[i]->next = new_child[i + 1];
+    new_child[m - 1]->next = next_node;
     AEX_PRINT("END");
-    return replace_flag;
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -285,7 +280,19 @@ void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, value_typ
     this->m_stats.min_key = key_buf[0];
     this->m_stats.max_key = key_buf[nums - 1];
     
-    split_with_linear_probe(key_buf.data(), data_buf.data(), nums, new_key_buf, new_child_buf);
+    if (traits::AllowDynamicDataNode::value){
+        split_with_linear_probe(key_buf.data(), data_buf.data(), nums, new_key_buf, new_child_buf);
+    }
+    else{
+        for (size_type i = 0; i < nums; i += traits::MIN_DATA_NODE_SLOT_SIZE){
+            ++this->m_stats.data_node;
+            data_node_ptr new_node = node_allocator.allocate_data_node(traits::MIN_DATA_NODE_SLOT_SIZE);
+            size_type size = std::min(static_cast<size_type>(traits::MIN_DATA_NODE_SLOT_SIZE), nums - i);
+            new_node->construct(data + i, size);
+            new_key_buf.push_back(data[i + size - 1].first);
+            new_child_buf.push_back(new_node);
+        }
+    }            
     
     size_type m = new_child_buf.size();
     new_child_buf[0]->prev = nullptr;
@@ -345,11 +352,11 @@ void aex_tree<_Key, _Val, traits>::insert_many(const node_ptr* stack, int top, s
                 {
                     AEX_PRINT("CHECK INSERT");
                     /* if can insert, then insert it */
-                    if (this->insert_node(now_node, key_buf[i], child_buf[i], this->allow_balance)){
+                    if (this->insert_node(now_node, key_buf[i], child_buf[i], this->allow_insert_balance)){
                     }
                     /* else check if insert it after rewire it 
                         TODO: bulk insert */
-                    else if (rewired(now_node) && this->insert_node(now_node, key_buf[i], child_buf[i], this->allow_balance)){
+                    else if (rewired(now_node) && this->insert_node(now_node, key_buf[i], child_buf[i], this->allow_insert_balance)){
                     }
                     /* else split it */
                     else{

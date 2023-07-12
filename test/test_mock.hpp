@@ -184,3 +184,18 @@ public:
         return flag;
     }
 };
+
+//template<typename _Key,
+//        typename _Val, 
+//        typename traits=aex::aex_default_traits<_Key, _Val, std::false_type> >
+//class mock_aex_inner_node_with_linear_model{
+//
+//}
+//
+//template<typename _Key,
+//        typename _Val, 
+//        typename traits=aex::aex_default_traits<_Key, _Val, std::false_type> >
+//class mock_aex_tree_inner_node_with_linear_model : public mock_aex_tree<_Key, _Val, traits>{
+//    typedef mock_aex_inner_node_with_linear_model<_Key, _Val, traits> ;
+//    typedef inner_node* inner_node_ptr;
+//}

@@ -6,23 +6,17 @@ using namespace std::chrono;
 
 template<typename _Tp>
 bool test_exponential_search_lower_bound(_Tp* data, size_t n){
-    std::cout << "[test_exponential_search_lower_bound]" << std::endl;
+    AEX_PRINT("[test_exponential_search_lower_bound]");
     std::sort(data, data + n);
-    _Tp min_value = data[0], max_value = data[n - 1];
-    //cout << min_value << " " << max_value << std::endl;
 
-    const int M = 1000000;
-    vector<size_t> query(M);
-    for (int i = 0; i < M ; ++i) query[i] = rand() % n;
-
-    for (size_t i = 0; i < M; ++i){
-        _Tp x = data[query[i]];
-        long long predict = std::max((long long)0, std::min((long long)n - 1, static_cast<long long>(1.0 * (x - min_value) / (max_value - min_value) * n)));
+    long long real = n >> 1;
+    _Tp x = data[real];
+    for (size_t i = 0; i < n; ++i){    
+        long long predict = i;
         long long exp_search_pos = aex::exponential_search_lower_bound(data, data + n, data + predict, x) - data;
-        long long real = std::lower_bound(data, data + n, x) - data;
+        //AEX_PRINT("predict=" << i << ", exp_search_pos=" << exp_search_pos << ", real=" << real);
         if (exp_search_pos != real){
-            //printf("Error!, item %d, real position %d, predict position %d, expenential search position %d\n", x, real, predict, exp_search_pos);
-            std::cout << "Error!, item " << x << ", real position " << real << ", predict position " << predict <<  ", expenential search position " << exp_search_pos << " \n";
+            AEX_ERROR("Error!, item " << x << ", real position " << real << ", predict position " << predict <<  ", expenential search position " << exp_search_pos);
             return false; 
         }
     }

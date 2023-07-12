@@ -20,6 +20,8 @@
 # (Y)
 ./unit_test --unit=function --key_type=int --num_keys=1000000 --function=exp_lower_bound --input_file=/home/zzr/data/generate_data/uniform_1M_int.bin
 # (Y)
+./unit_test --unit=function --key_type=int --num_keys=1000000 --function=exp_lower_bound --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
 ./unit_test --unit=function --key_type=int --num_keys=1000000 --function=exp_lower_bound_perf --input_file=/home/zzr/data/generate_data/uniform_1M_int.bin
 # result(us):
 # self exp lower bound used time=330974 us
@@ -94,6 +96,8 @@
 ./unit_test --unit=model --key_type=float --num_keys=112 --model_type=linear --input_file=/home/zzr/data/generate_data/normal_1K_0_1_float.bin
 #(Y)
 ./unit_test --unit=model --key_type=float --num_keys=112 --model_type=gap_linear --input_file=/home/zzr/data/generate_data/normal_1K_0_1_float.bin
+#(Y)
+./unit_test --unit=model --key_type=float --num_keys=100 --model_type=piecewise_linear --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
 # Dataset: normal
 # result(max error):
 # linear: 10
@@ -104,16 +108,18 @@
 ./unit_test --unit=model --key_type=float --num_keys=2000000 --model_type=linear --input_file=/home/zzr/data/longitudes-200M.bin.data
 # (Y)
 ./unit_test --unit=model --key_type=float --num_keys=1000000 --model_type=linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
-
-./unit_test --unit=model --key_type=float --num_keys=1000000 --model_type=piecewise_linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=model --key_type=float --num_keys=2000000 --model_type=piecewise_linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=model --key_type=float --num_keys=2000000 --model_type=piecewise_linear --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 # =================================================================================================
 # test inner node(few) (gap array) and data node(dense array) insertion accuracy and performance
-# (Y)
+# (N)
 ./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=72 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
 # (Y)
 ./unit_test --unit=node --key_type=float --node_type=data_node --function=insert --num_keys=72 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
-#(Y)
+# (Y)
 ./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=144 --batch=16 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
 
 # Dataset uniform
@@ -127,14 +133,17 @@
 # (Y)
 ./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
 # (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=128 --batch=16 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+# (Y)
 ./unit_test --unit=node --key_type=float --node_type=data_node --function=query --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+# (Y)
 ./unit_test --unit=node --key_type=float --node_type=data_node --function=query --num_keys=128 --batch=16 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
 
 # Datset: uniform
 # result(us):
 #                                 64         128
-# inner node(gap array)           too small
-# data node(dense array)          too small
+# inner node(gap array)           1ms  3ms, 5.33e7
+# data node(dense array)          9ms  2.8e2ms, 5.71e7
 
 # =================================================================================================
 # test inner node(gap array) and data node(dense array) erase accuracy and perfornmance
@@ -182,17 +191,51 @@
 # (Y)
 ./unit_test --unit=index --key_type=float --function=bulk_load --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=bulk_load --num_keys=20000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=bulk_load --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 # Result:
-# 5.624e5ms 3.556e7
-# 7.583e6ms 2.637e7
+# gap_linear + dynamic:
+# 5.624e5ms 3.556e7 data node:2072 inner node:73
+# 7.583e6ms 2.637e7 data node:15210 inner node:128
+# 1e8ms, 1.82e7 data node: 96132 inner node: 188
+# piecewise_linear + dynamic:
+# 8.35e5ms 2.395e7 data node:2072 inner node:71
+# 1.07e7ms 1.86e7 data node:15210 inner node:125
+# 1.08e8ms, 1.84e7 data node: 96132 inner node: 177
+# piecewise_linear + static:
+# 5.13e6ms, 3.894e6, data node:250000, inner node: 198
+# 5.13e7ms, 3.757e6, data node:2500000, inner node: 279
+# No run
+
+# test index lookup accuracy
+./unit_test --unit=index --key_type=float --function=lookup --num_keys=2000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=lookup --num_keys=20000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=lookup --num_keys=200000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 # test index insert accuracy
+./unit_test --unit=index --key_type=float --function=insert --num_keys=2000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=insert --num_keys=20000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=insert --num_keys=200000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 # test index erase accuracy
+./unit_test --unit=index --key_type=float --function=erase --num_keys=2000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=erase --num_keys=20000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=erase --num_keys=200000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
-# test index bulk load accuracy
+# test index range query accuracy
+./unit_test --unit=index --key_type=float --function=range_query --num_keys=2000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=range_query --num_keys=20000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=range_query --num_keys=200000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 # test index read/write accuracy
+./unit_test --unit=index --key_type=float --function=mix --num_keys=2000000 --batch=200000 --read_ratio=0.5 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=mix --num_keys=20000000 --batch=2000000 --read_ratio=0.5 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=mix --num_keys=200000000 --batch=20000000 --read_ratio=0.5 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+# test index balance accuracy
+./unit_test --unit=index --key_type=float --function=rw_balance --num_keys=2000000 --batch=200000 --read_ratio=0.5 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+# test index concurrancy
+./unit_test --unit=index_con --key_type=float --function=rw --num_keys=2000000 --batch=200000 --read_ratio=0.5 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 # test index find performance
 ./benchmark --key_type=int --num_keys=1000000 --function=query --index=aex --input_file=/home/zzr/data/generate_data/uniform_1M_int.bin

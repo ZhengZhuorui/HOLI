@@ -117,14 +117,17 @@ bool test(map<string, string> &flags){
         if (func == "bulk_load"){
             std::vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
-            std::sort(data.begin(), data.end());
             return test_index_bulk_load_perf<T, T>(data.data(), num_keys);
         }
         if (func == "insert"){
-
+            long long batch = strcoll(flags["batch"]);
+            std::vector<std::pair<T, T> > data;
+            pack_KV_dataset(bin_data, data);
+            return test_index_bulk_load_perf<T, T>(data.data(), num_keys, batch);
         }
         if (func == "lookup"){
             long long batch = stoll(flags["batch"]);
+            //std::sort(bin_data.data(), bin_data.data() + num_keys);
             std::vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
             return test_index_lookup_perf(data.data(), num_keys, batch);
@@ -133,16 +136,32 @@ bool test(map<string, string> &flags){
 
         }
         if (func == "erase"){
-
+            long long batch = stoll(flags["batch"]);
+            std::vector<std::pair<T, T> > data;
+            pack_KV_dataset(bin_data, data);
+            return test_index_erase_perf(data.data(), num_keys, batch);
         }
         if (func == "mix"){
-
+            long long batch = stoll(flags["batch"]);
+            double rw_ratio = stod(flags["read_ratio"]);
+            std::vector<std::pair<T, T> > data;
+            pack_KV_dataset(bin_data, data);
+            return test_index_RW_perf(data.data(), num_keys, batch);
+        }
+        if (func == "mix_balance"){
+            long long batch = stoll(flags["batch"]);
+            double rw_ratio = stod(flags["read_ratio"]);
+            std::vector<std::pair<T, T> > data;
+            pack_KV_dataset(bin_data, data);
+            return test_index_RW_perf<T, T, aex_rw_balance_traits>(data.data(), num_keys, batch);
         }
         if (func == "demo"){
             vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
             return test_index(data.data(), data.size());
         }
+    }
+    else if (unit == "con_index"){
         
     }
     return false;
