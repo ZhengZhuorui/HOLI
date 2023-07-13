@@ -334,7 +334,7 @@ public:
                 std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + pos + 1, this->child_ptr[pos + 1]);
             }
         }
-        else{
+        else{git
             std::move(this->key_ptr + pos + 1, this->key_ptr + this->size, this->key_ptr + pos);
             std::move(this->child_ptr + pos + 1, this->child_ptr + this->size, this->child_ptr + pos);
         }
