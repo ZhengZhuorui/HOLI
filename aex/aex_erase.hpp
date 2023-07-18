@@ -29,14 +29,14 @@ void aex_tree<_Key, _Val, traits>::erase_node(inner_node_ptr node, node_ptr* sta
 
         /* if the node is too few */
         if (isfew(node)){
-            if (rescale(node, parent, traits::NARROW_RATIO)){
+            if (rescale(node, traits::NARROW_RATIO)){
             }
             else{
                 if (left_node != nullptr){
                     // if left_node exists and have more item, shift it
                     bool narrow_flag = true;
                     while (narrow_flag && left_node->slot_size > traits::MIN_INNER_NODE_SLOT_SIZE && isfew(left_node))
-                        narrow_flag = rescale(left_node, parent, traits::NARROW_RATIO);
+                        narrow_flag = rescale(left_node, traits::NARROW_RATIO);
 
                     if (!isfew(left_node)){
                         if (update_childnode_key(parent, left_node, left_node->key_ptr[left_node->last()])){
@@ -50,7 +50,7 @@ void aex_tree<_Key, _Val, traits>::erase_node(inner_node_ptr node, node_ptr* sta
                     // if right_node exists and have more item, shift it
                     bool narrow_flag = true;
                     while (narrow_flag && right_node->slot_size > traits::MIN_INNER_NODE_SLOT_SIZE && isfew(right_node)) 
-                        narrow_flag = rescale(right_node, parent, traits::NARROW_RATIO);
+                        narrow_flag = rescale(right_node, traits::NARROW_RATIO);
                     if (!isfew(right_node)){
                         if (update_childnode_key(parent, node, right_node->key_ptr[0])){
                             shift_to_left_node(right_node, node);
@@ -103,6 +103,7 @@ void aex_tree<_Key, _Val, traits>::erase_iterator(iterator &iter, node_ptr* stac
     this->m_stats.timestamp++;
 
     for (int i = 1; i < top; ++i){
+        add_node_write_frequency();
         update_node_frequency(stack[i]);
         stack[i]->base_stats.write_times++;
     }
@@ -114,7 +115,7 @@ void aex_tree<_Key, _Val, traits>::erase_iterator(iterator &iter, node_ptr* stac
     bool narrow_flag = true;
     inner_node_ptr parent = static_cast<inner_node_ptr>(stack[top - 2]);
     while (narrow_flag && isfew(node)) 
-        narrow_flag = rescale(node, parent, traits::NARROW_RATIO);
+        narrow_flag = rescale(node, traits::NARROW_RATIO);
 
     /* if data node is few, shift the data first, otherwise merge the near leaf */
     if (isfew(node)){
@@ -136,10 +137,10 @@ void aex_tree<_Key, _Val, traits>::erase_iterator(iterator &iter, node_ptr* stac
 
         narrow_flag = true;
         while (narrow_flag && left_node!=nullptr && isfew(left_node)) 
-            narrow_flag = rescale(left_node, parent, traits::NARROW_RATIO);
+            narrow_flag = rescale(left_node, traits::NARROW_RATIO);
         narrow_flag = true;
         while (narrow_flag && right_node!=nullptr && isfew(right_node)) 
-            narrow_flag = rescale(right_node, parent, traits::NARROW_RATIO);
+            narrow_flag = rescale(right_node, traits::NARROW_RATIO);
 
         if (left_node != nullptr && !isfew(left_node) && update_childnode_key(parent, left_node, left_node->key[left_node->size - 1])){
             shift_to_right_leaf(left_node, node);

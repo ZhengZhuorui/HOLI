@@ -3,14 +3,13 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::update_node_frequency(node_ptr node) const{
+inline void aex_tree<_Key, _Val, traits>::update_node_frequency(node_ptr node) {
     double forget_rate = rapid_pow(this->lambda, this->m_stats.timestamp - node->base_stats.recent_update_timestamp);
     node->base_stats.write_times = node->base_stats.write_times * forget_rate;
     node->base_stats.train_times = node->base_stats.train_times * forget_rate;
     node->base_stats.read_times = node->base_stats.read_times * forget_rate;
     node->base_stats.recent_update_timestamp = this->m_stats.recent_update_timestamp;
 }
-
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::update_tree_frequency(){
@@ -248,7 +247,7 @@ typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::ba
                 inner_node_ptr brother = node->next;
                 bool flag = true;
                 if (isfull(brother)) 
-                    flag &= rescale(brother, parent, traits::EXPAND_RATIO);
+                    flag &= rescale(brother, traits::EXPAND_RATIO);
                 if (flag){
                     if (brother->insert(first_key, new_node)){
                         //

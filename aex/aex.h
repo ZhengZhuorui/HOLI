@@ -179,14 +179,15 @@ public:
         return it;
     }
 
-    void range_query(const key_type &L, const key_type &R, std::vector<std::pair<key_type, value_type>>& answer){
+    void range_scan(const key_type &L, const key_type &R, std::vector<std::pair<key_type, value_type>>& answer){
         iterator iter = this->find(L);
         while(iter.key() < R){
             answer.push_back(std::make_pair(iter->key(), iter->value()));
+            iter++;
         }
     }
 
-    size_t count(const key_type &x){
+    size_type count(const key_type &x){
         //if (find(x) != end()) return 1;
         if (traits::AllowMultiKey){
             iterator start = lower_bound(x), end = upper_bound(x);
@@ -332,7 +333,7 @@ public:
         return reverse_iterator(begin());
     }
 
-    inline size_t size() const{
+    inline size_type size() const{
         return static_cast<size_t>(m_stats.size);
     }
 
@@ -342,15 +343,13 @@ public:
 
     void bulk_load(const std::pair<key_type, value_type>* const data, const size_type nums);
 
-    inline const aex_stats& get_stats() const
-    {
+    inline const aex_stats& get_stats() const{
         return m_stats;
     }
 
     void print_stats(){
         AEX_IMPORTANT("data size=" << m_stats.size << ", tree height=" << m_stats.height << ", data node size=" << m_stats.data_node \
                     << ", inner node size=" << m_stats.inner_node << ", max key=" << m_stats.max_key << ", min_key=" << m_stats.min_key);
-        
     }
 
     void print_detail(){
@@ -456,7 +455,7 @@ private:
     // ========== 3. insert ==========
     // Split an node if the node insert item and the size is larger than upper bound
     // if the node is replaced, the node will free
-    void insert_split(inner_node_ptr __restrict__ node, inner_node_ptr __restrict__ parent, const key_type* const key, const node_ptr* const child, 
+    void insert_split(inner_node_ptr node, const key_type* const key, const node_ptr* const child, 
                const pos_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
 
     // insert an item(<key, data>) to data node
@@ -536,9 +535,9 @@ private:
 
     // Rescale a node slot_size. ratio > 1 means expand and ratio < 1 means narrow. 
     // if node expand or narrow successed, the old node will free and return true. Otherwise return false.
-    bool rescale(inner_node_ptr __restrict__ &node, inner_node_ptr __restrict__ parent, const double ratio);
-    bool rescale(data_node_ptr __restrict__ &node, inner_node_ptr __restrict__ parent, const double ratio);
-    bool rescale(node_ptr __restrict__ &node, inner_node_ptr __restrict__ parent, const double ratio);
+    bool rescale(inner_node_ptr __restrict__ &node, const double ratio);
+    bool rescale(data_node_ptr __restrict__ &node, const double ratio);
+    bool rescale(node_ptr __restrict__ &node, const double ratio);
 
     // copy keys and data/pointers from a node to another node, regardless of the node type
     void copy_node(inner_node_ptr __restrict__ node, inner_node_ptr __restrict__ new_node);

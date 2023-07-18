@@ -118,8 +118,8 @@ void aex_tree<_Key, _Val, traits>::split(data_node_ptr __restrict__ old_node, da
     pos_type mid = (old_node->size >> 1) | 1;
     std::move(old_node->key, old_node->key + mid, new_node->key);
     std::move(old_node->data, old_node->data + mid, new_node->data);
-    std::move(old_node->key + mid, old_node->key + old_node->size, old_node->key);
-    std::move(old_node->data + mid, old_node->data + old_node->size, old_node->data);
+    std::move_backward(old_node->key + mid, old_node->key + old_node->size, old_node->key);
+    std::move_backward(old_node->data + mid, old_node->data + old_node->size, old_node->data);
 
     new_node->size = mid;
     old_node->size -= mid;
@@ -180,23 +180,28 @@ void aex_tree<_Key, _Val, traits>::split(const key_type* const key, const node_p
     size_type start = 0, end = n;
     inner_node_model model;
     while (start < end){
-        size_type slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE;
+        size_type slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE, ans_slot_size = 0, ans_size = 0;
         
-        for (; slot_size < (end - start) * this->inner_node_few_ratio[level] && slot_size <= traits::MAX_NODE_SLOT_SIZE; slot_size <<= 1){
+        for (; slot_size * this->inner_node_few_ratio[level] <= (end - start) && slot_size <= traits::MAX_NODE_SLOT_SIZE; slot_size <<= 1){
             size_type size = std::min((size_type)(slot_size * this->inner_node_few_ratio[level]), end - start);
-            if (!self::check_rewired(key + start, size, slot_size, model)){
-                slot_size >>= 1;
-                break;
+            if (self::check_rewired(key + start, size, slot_size, model)){
+                ans_slot_size = slot_size;
+                ans_size = size;
             }
+            else 
+                break;
         }
-        while (slot_size > (end - start) * this->inner_node_few_ratio[level] && (slot_size >> 1) >= traits::MIN_INNER_NODE_SLOT_SIZE) slot_size >>= 1;
-        size_type size = (slot_size < traits::MIN_ML_INNER_NODE_SLOT_SIZE) ? std::min(slot_size, end - start) : std::min((size_type)(slot_size * this->inner_node_few_ratio[level]), end - start);
+        //while (slot_size * this->inner_node_few_ratio[level]> (end - start) && (slot_size >> 1) >= traits::MIN_INNER_NODE_SLOT_SIZE) slot_size >>= 1;
+        if (ans_slot_size == 0) {
+            ans_slot_size = ans_size = traits::MIN_INNER_NODE_SLOT_SIZE;
+        }
         //AEX_PRINT("size=" << size);
-        inner_node_ptr new_node = node_allocator.allocate_inner_node(slot_size);
+        inner_node_ptr new_node = node_allocator.allocate_inner_node(ans_slot_size);
+        new_node->base_stats.recent_update_timestamp = this->m_stats.recent_update_timestamp;
         ++this->m_stats.inner_node;
         new_node->level = level;
-        new_node->construct(key + start, child + start, size);
-        new_key.push_back(key[start + size - 1]);
+        new_node->construct(key + start, child + start, ans_size);
+        new_key.push_back(key[start + ans_size - 1]);
         new_child.push_back(new_node);
         start += size;
     }
@@ -208,24 +213,25 @@ void aex_tree<_Key, _Val, traits>::split_with_exponential_probe(const key_type* 
     size_type start = 0, end = n;
     data_node_model model;
     while (start < end){
-        size_type slot_size = traits::MIN_ML_DATA_NODE_SLOT_SIZE;
-        for (; slot_size < end - start && slot_size <= traits::MAX_NODE_SLOT_SIZE; slot_size <<= 1){
+        size_type slot_size = traits::MIN_ML_DATA_NODE_SLOT_SIZE, ans_slot_size = 0, ans_size = 0;
+        for (; slot_size * traits::DATA_NODE_FEW_RATIO <= end - start && slot_size <= traits::MAX_NODE_SLOT_SIZE; slot_size <<= 1){
             size_type size = std::min(slot_size, end - start);
             model.train(key + start, size);
-            if (model.RMSE(key + start, size) >= traits::MAX_ALLOW_ERROR * log(size)){
-                slot_size >>= 1;
-                break;
+            if (model.RMSE(key + start, size) < traits::MAX_ALLOW_ERROR * log(size)){
+                ans_slot_size = slot_size;
+                ans_size = size;
             }
+            else
+                break;
         }
-
-        while ((slot_size >> 1) > (end - start) * traits::DATA_NODE_FULL_RATIO) slot_size >>= 1;
-        slot_size = std::max(static_cast<size_type>(traits::MIN_DATA_NODE_SLOT_SIZE), slot_size);
-        size_type size = std::min(slot_size, end - start);
-        data_node_ptr new_node = node_allocator.allocate_data_node(slot_size);
+        if (ans_slot_size == 0){
+            ans_slot_size = ans_size = traits::MIN_DATA_NODE_SLOT_SIZE;
+        }
+        data_node_ptr new_node = node_allocator.allocate_data_node(ans_slot_size);
         new_node->base_stats.recent_update_timestamp = this->m_stats.recent_update_timestamp;
         ++this->m_stats.data_node;
-        new_node->construct(key + start, data + start, size);
-        new_key.push_back(key[start + size - 1]);
+        new_node->construct(key + start, data + start, ans_size);
+        new_key.push_back(key[start + ans_size - 1]);
         new_child.push_back(new_node);
         start += size;
     }
@@ -337,6 +343,7 @@ bool aex_tree<_Key, _Val, traits>::check_rewired(const key_type* const key, cons
 // rewired the <key, node_ptr> array of a node. Return true if <K, P> array can be rewired. Otherwise return false.
 template<typename _Key, typename _Val, typename traits>
 bool aex_tree<_Key, _Val, traits>::rewired(inner_node_ptr node){
+    lock_guard<std::shared_mutex>(node->node_mutex);
     if (node->m_stats.rewired_cnt > 0){
         return false;
     }
@@ -360,7 +367,7 @@ bool aex_tree<_Key, _Val, traits>::rewired(inner_node_ptr node){
 // Rescale a inner node slot_size. ratio > 1 means expand and ratio < 1 means narrow. 
 // if node expand or narrow successed, the old node will free and return true. Otherwise return false.
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::rescale(inner_node_ptr __restrict__ &node, inner_node_ptr __restrict__ parent, const double ratio){
+bool aex_tree<_Key, _Val, traits>::rescale(inner_node_ptr __restrict__ &node, const double ratio){
     AEX_PRINT("RESCALE");
     
     //if (node->prop & node_property::ML_NODE)
@@ -385,7 +392,7 @@ bool aex_tree<_Key, _Val, traits>::rescale(inner_node_ptr __restrict__ &node, in
 // Rescale a data node slot_size. ratio > 1 means expand and ratio < 1 means narrow. 
 // if node expand or narrow successed, the old node will free and return true. Otherwise return false.
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::rescale(data_node_ptr __restrict__ &node, inner_node_ptr __restrict__ parent, const double ratio){
+bool aex_tree<_Key, _Val, traits>::rescale(data_node_ptr __restrict__ &node, const double ratio){
     AEX_PRINT("BEGIN");
     pos_type new_slot_size = node->slot_size * ratio;
     if (new_slot_size < traits::MIN_DATA_NODE_SLOT_SIZE)
@@ -400,12 +407,11 @@ bool aex_tree<_Key, _Val, traits>::rescale(data_node_ptr __restrict__ &node, inn
 }
 
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::rescale(node_ptr __restrict__ &node, inner_node_ptr __restrict__ parent, const double ratio){
-    AEX_ASSERT(node != parent);
+bool aex_tree<_Key, _Val, traits>::rescale(node_ptr __restrict__ &node, const double ratio){
     if (node->prop & LEAF) 
-        return rescale(static_cast<data_node_ptr>(node), parent, ratio);
+        return rescale(static_cast<data_node_ptr>(node), ratio);
     else
-        return rescale(static_cast<inner_node_ptr>(node), parent, ratio);
+        return rescale(static_cast<inner_node_ptr>(node), ratio);
 }
 
 template<typename _Key, typename _Val, typename traits>
