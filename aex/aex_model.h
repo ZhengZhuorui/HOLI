@@ -13,10 +13,10 @@ template<typename _Tp,
 class aex_model_base{
 public:
     typedef _Tp key_type;
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
     virtual double predict(const key_type &key) = 0;
-    virtual bool train(const key_type* const key, const pos_type n) = 0;
-    virtual bool train(const key_type* const key, const pos_type n, const pos_type slot_size) = 0;
+    virtual bool train(const key_type* const key, const slot_type n) = 0;
+    virtual bool train(const key_type* const key, const slot_type n, const slot_type slot_size) = 0;
 };
 
 // linear model
@@ -30,27 +30,27 @@ public:
 
     typedef linear_model<key_type, traits> self;
 
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
     // return the predict position. value range from 0 to +inf.
     inline double predict(const key_type &key) const {
-        //return static_cast<pos_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
+        //return static_cast<slot_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
         return std::fma(args.slope, key - args.end, args.inter);
     }
 
-    inline bool train(const key_type* const key, const pos_type n, const pos_type slot_size){
+    inline bool train(const key_type* const key, const slot_type n, const slot_type slot_size){
         return train(key, n);
     }
 
     // train model with an key array, array size n and slot size
-    bool train(const key_type* const key, const pos_type n){
+    bool train(const key_type* const key, const slot_type n){
         //AEX_ASSERT(n > 1);
 
         this->args.end = key[n - 1];
 
         long double sum_x2 = 0, sum_xy = 0, sum_x = 0, bar_x, bar_y, sum_y = 0;
 
-        for (pos_type  i = 0; i < n; ++i){
+        for (slot_type  i = 0; i < n; ++i){
             double pos = 1.0 * i / (n - 1);
             double rex = key[i] - this->args.end;
             sum_y += pos;
@@ -72,12 +72,12 @@ public:
         return true;
     }
 
-    inline double RMSE(const key_type* const key, const pos_type n){
+    inline double RMSE(const key_type* const key, const slot_type n){
         double sum = 0;
-        //pos_type max_error = 0;
-        for (pos_type i = 0; i < n; ++i){
+        //slot_type max_error = 0;
+        for (slot_type i = 0; i < n; ++i){
             sum += sqr(this->predict(key[i]) * (n - 1) - i);
-            //max_error = std::max(max_error, static_cast<pos_type>(std::abs(this->predict(key[i]) * (n - 1) - i)));
+            //max_error = std::max(max_error, static_cast<slot_type>(std::abs(this->predict(key[i]) * (n - 1) - i)));
             //AEX_FORMAT("%.4f %lld | ", this->predict(key[i]) * (n - 1), i);
         }
         //AEX_PRINT("max error=" << max_error);
@@ -86,10 +86,10 @@ public:
         return sum;
     }
 
-    inline pos_type max_error(const key_type* const key, const pos_type n, const pos_type slot_size){
-        pos_type error = 0;
-        for (pos_type i = 0, start = 0; i < n; ++i){
-            pos_type pos = std::max(0, static_cast<pos_type>(this->predict(key[i]) * slot_size));
+    inline slot_type max_error(const key_type* const key, const slot_type n, const slot_type slot_size){
+        slot_type error = 0;
+        for (slot_type i = 0, start = 0; i < n; ++i){
+            slot_type pos = std::max(0, static_cast<slot_type>(this->predict(key[i]) * slot_size));
             start = std::max(start, pos);
             //AEX_PRINT("key=" << key[i] << ", pos=" << pos << ", start=" << start);
             error = std::max(error, start - pos);
@@ -116,22 +116,22 @@ public:
 
     typedef quandratic_model<key_type, traits> self;
 
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
     inline double predict(const key_type &key) const{
         key_type rex = key - args.end;
         return args.quad * sqr(rex) + args.lin * rex + args.inter;
     }
 
-    inline bool train(const key_type* const key, const pos_type n, const pos_type slot_size){
+    inline bool train(const key_type* const key, const slot_type n, const slot_type slot_size){
         return train(key, n);
     }
 
-    bool train(const key_type* const key, const pos_type n){
+    bool train(const key_type* const key, const slot_type n){
         this->args.end = key[n - 1];
         long double sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0, sum_xxx = 0, sum_xxxx = 0, sum_xxy = 0;
         
-        for (pos_type i = 0; i < n; ++i){
+        for (slot_type i = 0; i < n; ++i){
             long double pos = 1.0 * i / (n - 1);
             long double rex = key[i] - this->args.end;
             sum_x += rex;
@@ -151,15 +151,15 @@ public:
         }
 
         long double ratio = matrix[1][0] / matrix[0][0];
-        for (pos_type i = 0; i < 4; ++i)
+        for (slot_type i = 0; i < 4; ++i)
             matrix[1][i] -= ratio * matrix[0][i];
         ratio = matrix[2][0] / matrix[0][0];
-        for (pos_type i = 0; i < 4; ++i)
+        for (slot_type i = 0; i < 4; ++i)
             matrix[2][i] -= ratio * matrix[0][i];
         
         //AEX_ASSERT(abs(matrix[1][i]) < 1e-6);
         ratio = matrix[2][1] / matrix[1][1];
-        for (pos_type i = 0; i < 4; ++i)
+        for (slot_type i = 0; i < 4; ++i)
             matrix[2][i] -= ratio * matrix[1][i];
 
         this->args.quad = matrix[2][3] / matrix[2][2];
@@ -173,9 +173,9 @@ public:
         return true;
     }
 
-    inline double RMSE(const key_type* const key, const pos_type n){
-        pos_type sum = 0;
-        for (pos_type i = 0; i < n; ++i){
+    inline double RMSE(const key_type* const key, const slot_type n){
+        slot_type sum = 0;
+        for (slot_type i = 0; i < n; ++i){
             sum += sqr(this->predict(key[i]) * (n - 1) - i);
         }
         sum /= n;
@@ -200,17 +200,17 @@ public:
 
     typedef exponential_model<key_type, traits> self;
 
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
     inline double predict(const key_type &key) const{
         return 1 - (log(std::max(1e-5, args.end - key + 1)) * args.slope + this->args.inter);
     }
 
-    bool train(const _Tp* const key, const pos_type n){
+    bool train(const _Tp* const key, const slot_type n){
         AEX_ASSERT(n > 1);
         this->args.end = key[n - 1];
         long double sum_x2 = 0, sum_xy = 0, sum_x = 0, bar_x, bar_y, sum_y = 0;
-        for (pos_type  i = 0; i < n; ++i){
+        for (slot_type  i = 0; i < n; ++i){
             double pos = 1 - 1.0 * (i + 1) / n;
             double rex = log(args.end - key[i] + 1);
             sum_y += pos;
@@ -226,9 +226,9 @@ public:
         return true;
     }
 
-    inline double RMSE(const key_type* const key, const pos_type n){
-        pos_type sum = 0;
-        for (pos_type i = 0; i < n; ++i){
+    inline double RMSE(const key_type* const key, const slot_type n){
+        slot_type sum = 0;
+        for (slot_type i = 0; i < n; ++i){
             sum += sqr(this->predict(key[i]) * (n - 1) - i);
         }
         sum /= n;
@@ -252,17 +252,17 @@ public:
 
     typedef logarithmic_model<key_type, traits> self;
 
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
     inline double predict(const key_type &key) const{
         return log(std::max(1e-5, key - args.end + 1)) * args.slope + this->args.inter;
     }
 
-    bool train(const _Tp* const key, const pos_type n){
+    bool train(const _Tp* const key, const slot_type n){
         AEX_ASSERT(n > 1);
         this->args.end = key[0];
         long double sum_x2 = 0, sum_xy = 0, sum_x = 0, bar_x, bar_y, sum_y = 0;
-        for (pos_type  i = 0; i < n; ++i){
+        for (slot_type  i = 0; i < n; ++i){
             double pos = 1.0 * (i + 1) / n;
             double rex = log(key[i] - args.end + 1); 
             sum_y += pos;
@@ -274,7 +274,7 @@ public:
         bar_x = sum_x / n;
         this->args.slope = (sum_xy - 1.0 * n * bar_x * bar_y) / (sum_x2 - 1.0 * n * sqr(bar_x));
         this->args.inter = std::fma(args.slope, -bar_x, bar_y);
-        //for (pos_type  i = 0; i < n; ++i){
+        //for (slot_type  i = 0; i < n; ++i){
         //    double pos = 1.0 * (i + 1) / n;
         //    double rex = log(key[i] - args.end + 1);
         //    std::cout << rex << ":" << pos << "->" << std::fma(this->args.slope, rex, this->args.inter) << " | ";
@@ -284,9 +284,9 @@ public:
         return true;
     }
 
-    inline double RMSE(const key_type* const key, const pos_type n){
-        pos_type sum = 0;
-        for (pos_type i = 0; i < n; ++i){
+    inline double RMSE(const key_type* const key, const slot_type n){
+        slot_type sum = 0;
+        for (slot_type i = 0; i < n; ++i){
             sum += sqr(this->predict(key[i]) * (n - 1) - i);
         }
         sum /= n;
@@ -306,29 +306,29 @@ class gap_array_linear_model{
 public:
     typedef _Tp key_type;
 
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
     // return the predict position. value range from 0 to +inf.
     inline double predict(const key_type &key) const {
-        //return static_cast<pos_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
+        //return static_cast<slot_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
         return 1 + args.slope * (key - args.end);
     }
 
-    inline bool train(const key_type* const key, const pos_type n, const pos_type slot_size){
+    inline bool train(const key_type* const key, const slot_type n, const slot_type slot_size){
         return train(key, n);
     }
 
     // train model with an key array, array size n and slot size
-    bool train(const key_type* const key, const pos_type n){
+    bool train(const key_type* const key, const slot_type n){
         args.end = key[n - 1];
         args.slope = 1 / (key[n - 1] - key[0]);
         return true;
     }
 
-    inline pos_type max_error(const key_type* const key, const pos_type n, const pos_type slot_size){
-        pos_type error = 0;
-        for (pos_type i = 0, start = 0; i < n; ++i){
-            pos_type pos = std::max(0, static_cast<pos_type>(this->predict(key[i]) * slot_size));
+    inline slot_type max_error(const key_type* const key, const slot_type n, const slot_type slot_size){
+        slot_type error = 0;
+        for (slot_type i = 0, start = 0; i < n; ++i){
+            slot_type pos = std::max(0, static_cast<slot_type>(this->predict(key[i]) * slot_size));
             start = std::max(start, pos);
             AEX_PRINT("key=" << key[i] << ", pos=" << pos << ", start=" << start);
             error = std::max(error, start - pos);
@@ -337,9 +337,9 @@ public:
         return error;
     }
 
-    inline double RMSE(const key_type* const key, const pos_type n){
+    inline double RMSE(const key_type* const key, const slot_type n){
         double sum = 0;
-        for (pos_type i = 0; i < n; ++i){
+        for (slot_type i = 0; i < n; ++i){
             sum += sqr(this->predict(key[i]) * (n - 1) - i);
         }
         sum /= n;
@@ -362,13 +362,13 @@ public:
 //
 //    typedef auto_designed_model<key_type, traits> self;
 //
-//    typedef typename traits::pos_type pos_type;
+//    typedef typename traits::slot_type slot_type;
 //
 //    bool train(const key_type* const key, const int n, long double* delta_buffer){
 //        long double slope = key[n - 1] / key [0];
 //        long double history = 0;
 //        vector<key_type> zero_point;
-//        for (pos_type i = 0; i < n; ++i){
+//        for (slot_type i = 0; i < n; ++i){
 //            delta_buffer[i] = key[i] - slope * (key[i] - key[0]);
 //            if (i > 0 && i < n - 2){
 //                if (delta_buffer[i] * delta[i + 1] < 0){
@@ -400,7 +400,7 @@ public:
 
     typedef aex_model<key_type, traits> self;
 
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
     inline double predict(const key_type &key) const{
         switch(this->select_model){
@@ -423,11 +423,11 @@ public:
         }
     }
 
-    bool train(const key_type* const key, const pos_type n, const pos_type slot_size){
+    bool train(const key_type* const key, const slot_type n, const slot_type slot_size){
         return train(key, n);
     }
 
-    bool train(const key_type* const key, const pos_type n){
+    bool train(const key_type* const key, const slot_type n){
         linear_model<_Tp, traits> m0;
         //m0.args.slope = m0.args.inter = m0.args.end = 0;
         quandratic_model<_Tp, traits> m1;
@@ -475,7 +475,7 @@ public:
         }
     }
 
-    inline double RMSE(const _Tp* const key, const pos_type n){
+    inline double RMSE(const _Tp* const key, const slot_type n){
         switch(this->select_model){
             case 0:{
                 return _model.m0.RMSE(key, n);
@@ -514,7 +514,7 @@ public:
     
     typedef _Tp key_type;
 
-    typedef long long pos_type;
+    typedef long long slot_type;
 
     typedef layer<_Tp> model;
     
@@ -523,27 +523,27 @@ public:
     }
 
     inline double predict(key_type &x){
-        pos_type predict_block_pos = max(0, min(block_num - 1, block_num * segments[0]->predict(x)));
+        slot_type predict_block_pos = max(0, min(block_num - 1, block_num * segments[0]->predict(x)));
         return 1.0 * (offset[predict_block_pos] + segments[1 + predict_block_pos]->predict(x) * (offset[1 + predict_block_pos] - offset[predict_block_pos]) ) / offset[block_num + 1];
     }
 
-    void train(const key_type *key, const pos_type n, const pos_type slot_size){
+    void train(const key_type *key, const slot_type n, const slot_type slot_size){
         return train(key, n);
     }
 
-    void train(const key_type *key, const pos_type size){
+    void train(const key_type *key, const slot_type size){
         if (segments != nullptr){
             this->free();
         }
-        pos_type max_block_size = sqrt(size);
+        slot_type max_block_size = sqrt(size);
         for (block_size = traits::MIN_BLOCK_SIZE; block_size > max_block_size; block_size <<= 1);
         block_num = (size - 1) / block_size + 1;
-        char* data = (char*)malloc(align_8bytes((block_num + 1)* sizeof(model)) + (block_num + 2) * sizeof(pos_type)); 
+        char* data = (char*)malloc(align_8bytes((block_num + 1)* sizeof(model)) + (block_num + 2) * sizeof(slot_type)); 
         segments = static_cast<model*>(data); 
-        offset = reinterpret_cast<pos_type*>(data + align_8bytes((block_num + 1)* sizeof(model)));
+        offset = reinterpret_cast<slot_type*>(data + align_8bytes((block_num + 1)* sizeof(model)));
         std::vector<key_type> segments_data(block_num);
-        for (pos_type st = 0, i = 0; st < size; st += block_size, ++i){
-            pos_type now_block_size = std::min(block_size, size - st);
+        for (slot_type st = 0, i = 0; st < size; st += block_size, ++i){
+            slot_type now_block_size = std::min(block_size, size - st);
             offset[i] += st;
             segments[1 + i].train(key + st, now_block_size, now_block_size);
         }
@@ -551,24 +551,24 @@ public:
         offset[block_num + 1] = size;
     }
 
-    inline double RMSE(key_type *key, pos_type size){
+    inline double RMSE(key_type *key, slot_type size){
         double err = 0;
-        for (pos_type i = 0; i < size; ++i)
+        for (slot_type i = 0; i < size; ++i)
             err += sqr(this->predict(key[i]) - i);
         err /= size;
         err = sqrt(err);
         return err;
     }
 
-    inline void insert(pos_type pos){
-        pos_type block_pos = std::lower_bound(offset, offset + block_num, pos) - offset;
-        for (pos_type i = block_pos; i < block_num; ++i)
+    inline void insert(slot_type pos){
+        slot_type block_pos = std::lower_bound(offset, offset + block_num, pos) - offset;
+        for (slot_type i = block_pos; i < block_num; ++i)
             ++offset[i];
     }
     
-    inline void erase(pos_type pos){
-        pos_type block_pos = std::lower_bound(offset, offset + block_num, pos) - offset;
-        for (pos_type i = block_pos; i < block_num; ++i)
+    inline void erase(slot_type pos){
+        slot_type block_pos = std::lower_bound(offset, offset + block_num, pos) - offset;
+        for (slot_type i = block_pos; i < block_num; ++i)
             --offset[i];
     }
 
@@ -579,8 +579,8 @@ public:
     
 private:
     model* segments;
-    pos_type* offset;
-    pos_type block_size, block_num;
+    slot_type* offset;
+    slot_type block_size, block_num;
 };
 
 template<typename _Tp,
@@ -591,11 +591,11 @@ public:
 
     typedef linear_model<key_type, traits> self;
 
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
     // return the predict position. value range from 0 to +inf.
     inline double predict(const key_type &key) const {
-        //return static_cast<pos_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
+        //return static_cast<slot_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
         double ret = 1;
         //std::cout << "key=" << key << " : ";
         for (unsigned int i = 0; i < this->args.seg_nums; ++i){
@@ -607,11 +607,11 @@ public:
         return ret;
     }
 
-    bool train(const key_type* const key, const pos_type n){
+    bool train(const key_type* const key, const slot_type n){
         return false;
     }
 
-    bool train(const key_type* const key, const pos_type n, const pos_type slot_size){
+    bool train(const key_type* const key, const slot_type n, const slot_type slot_size){
         //AEX_HINT("[train]");
         const double density = 1.0 * n / slot_size;
 
@@ -622,12 +622,12 @@ public:
         const double gap = 1.0 / (n - 1) * max_density;
         //const double gap = 1.0 / (slot_size - 1);
 
-        //const pos_type max_offset = 1.0 * traits::ERROR_BOUND / 2;
-        const pos_type max_offset = traits::ERROR_BOUND - 2;
-        const pos_type windows_size = ceil(1.0 * max_offset / (1 - max_density));
+        //const slot_type max_offset = 1.0 * traits::ERROR_BOUND / 2;
+        const slot_type max_offset = traits::ERROR_BOUND - 2;
+        const slot_type windows_size = ceil(1.0 * max_offset / (1 - max_density));
         //AEX_PRINT("n=" << n << ", slot size=" << slot_size << ", max_offset=" << max_offset << ", windows_size=" << windows_size << ", max_density=" << max_density << ", gap=" << gap);
         /*{
-            for (pos_type i = 0; i < n; ++i){
+            for (slot_type i = 0; i < n; ++i){
                 std::cout << key[i] << ", ";
             }
             std::cout << std::endl;
@@ -638,7 +638,7 @@ public:
 
         std::fill(windows_slope.begin(), windows_slope.end(), 1.0 * max_density/ (key[n - 1] - key[0]));
         
-        for (pos_type i = n - 2; i >= 0; --i){
+        for (slot_type i = n - 2; i >= 0; --i){
             double k = gap / (key[i + 1] - key[i]);
             //AEX_PRINT("slope " << i << " = " << k);
             slope[i] = k;
@@ -646,14 +646,14 @@ public:
             windows_slope[0] = k;
             
             std::fill(max_windows_slope.data(), max_windows_slope.data() + max_offset + 1, 0);
-            for (pos_type j = 0; j < windows_size; ++j){
-                for (pos_type k = 0; k < max_offset + 1; ++k)
+            for (slot_type j = 0; j < windows_size; ++j){
+                for (slot_type k = 0; k < max_offset + 1; ++k)
                     if (windows_slope[j] > max_windows_slope[k]){
                         std::move_backward(max_windows_slope.data() + k, max_windows_slope.data() + max_offset, max_windows_slope.data() + max_offset + 1);
                         max_windows_slope[k] = windows_slope[j];
                         break;
                     }
-                slope[i] = std::min(slope[i], max_windows_slope[static_cast<pos_type>(floor(1.0 * (j + 1) * (1 - max_density)))]);
+                slope[i] = std::min(slope[i], max_windows_slope[static_cast<slot_type>(floor(1.0 * (j + 1) * (1 - max_density)))]);
             }
             //AEX_PRINT("slope[" << i << "]=" << slope[i] << ", real=" << gap / (key[i + 1] - key[i]));
         }
@@ -661,21 +661,21 @@ public:
 
         // Dynamic Programing:
         //double f[seg_num][n];
-        //pos_type g[seg_num][n];
+        //slot_type g[seg_num][n];
         // for j = 0 to seg_num do
         //   for i = n-2 downto 0 do
         //     for k = i+1 to n-1 do
         //       f[j][i] = min(f[j][i], f[j][k] + max(slope[i], ... , slope[k-1]) * (key[k] - key[i]))
         // use Monotonic Stack improve it 
         /*{
-            std::vector<pos_type> sta(n);
+            std::vector<slot_type> sta(n);
             std::vector<double> f(traits::MAX_SEGMENT_NUM * n);
-            std::vector<pos_type> g(traits::MAX_SEGMENT_NUM * n);
+            std::vector<slot_type> g(traits::MAX_SEGMENT_NUM * n);
             this->args.seg_nums = 0;
             {
                 double max_segment_slope = 0;
                 f[n - 1] = 0;
-                for (pos_type i = n - 2; i >= 0; --i){
+                for (slot_type i = n - 2; i >= 0; --i){
                     max_segment_slope = std::max(max_segment_slope, slope[i]);
                     f[i] = max_segment_slope * (key[n - 1] - key[i]);
                     g[i] = n - 1;
@@ -686,16 +686,16 @@ public:
             }
             
 
-            for (pos_type j = 1; j < traits::MAX_SEGMENT_NUM; ++j){
+            for (slot_type j = 1; j < traits::MAX_SEGMENT_NUM; ++j){
                 //std::cout << std::endl;
                 if (f[(j - 1) * n] < 1){
                     this->args.seg_nums = j;
                     break;
                 }
-                pos_type head = 0, tail = 0;
+                slot_type head = 0, tail = 0;
                 //forward
                 if (j < traits::MAX_SEGMENT_NUM - 1)
-                for (pos_type i = 0; i < n - 1; ++i){
+                for (slot_type i = 0; i < n - 1; ++i){
                     while (tail >= head && slope[sta[tail]] < slope[i]) --tail;
                     sta[++tail] = i;
                 }
@@ -703,7 +703,7 @@ public:
                 //backward
                 head = 0, tail = 0;
                 sta[0] = n - 1;
-                for (pos_type i = n - 2; i >= 0; --i){
+                for (slot_type i = n - 2; i >= 0; --i){
                     f[j * n + i] = std::numeric_limits<double>::max();
                     while (tail >= head && slope[sta[tail]] < slope[i]) --tail;
                     sta[++tail] = i;
@@ -728,14 +728,14 @@ public:
             AEX_PRINT("least S=" << f[(traits::MAX_SEGMENT_NUM - 1) * n]);
 
             if (this->args.seg_nums == 0) {
-                for (pos_type i = 0; i < n - 1; ++i)
+                for (slot_type i = 0; i < n - 1; ++i)
                     std::cout << "slope[" << i << "]=" << slope[i] << " ";
                 std::cout << "\n real slope: \n";
-                for (pos_type i = 0; i < n - 1; ++i)
+                for (slot_type i = 0; i < n - 1; ++i)
                     std::cout << "slope[" << i << "]=" << gap / (key[i + 1] - key[i]) << " ";
                 std::cout << std::endl;
-                for (pos_type i = 0; i < traits::MAX_SEGMENT_NUM; ++i){
-                    for (pos_type j = 0; j < n; ++j)
+                for (slot_type i = 0; i < traits::MAX_SEGMENT_NUM; ++i){
+                    for (slot_type j = 0; j < n; ++j)
                         std::cout << "f[" << i << "][" << j << "]=(" << f[i * n + j] << ", " << g[i * n + j] << "), ";
                     std::cout << std::endl;
                 }
@@ -743,9 +743,9 @@ public:
             }
             double left_slope = (1 - f[(this->args.seg_nums - 1) * n]) / (key[n - 1] - key[0]), S = 0;
 
-            for (pos_type j = 0, i = this->args.seg_nums - 1; i >= 0; j = g[i * n + j], --i){
+            for (slot_type j = 0, i = this->args.seg_nums - 1; i >= 0; j = g[i * n + j], --i){
                 double max_seg_slope = 0;
-                for (pos_type k = j; k < g[i * n + j]; ++k)
+                for (slot_type k = j; k < g[i * n + j]; ++k)
                     max_seg_slope = std::max(max_seg_slope, slope[k]);
                 this->args.slope[this->args.seg_nums - i - 1] = max_seg_slope + left_slope;
                 this->args.end[this->args.seg_nums - i - 1] = key[g[i * n + j]];
@@ -755,30 +755,30 @@ public:
 
         {
             this->args.seg_nums = 0;
-            pos_type start[traits::MAX_SEGMENT_NUM], end[traits::MAX_SEGMENT_NUM];
+            slot_type start[traits::MAX_SEGMENT_NUM], end[traits::MAX_SEGMENT_NUM];
             double segment_slope[traits::MAX_SEGMENT_NUM]; 
             unsigned int max_segment_num = std::min(traits::MAX_SEGMENT_NUM, n / 8);
-            pos_type seg_len = static_cast<pos_type>(ceil(1.0 * (n - 1) / max_segment_num));
-            pos_type start_pos = 0;
+            slot_type seg_len = static_cast<slot_type>(ceil(1.0 * (n - 1) / max_segment_num));
+            slot_type start_pos = 0;
             for (unsigned int i = 0; i < max_segment_num; ++i){
-                pos_type end_pos = std::min(n - 2, start_pos + seg_len - 1);
+                slot_type end_pos = std::min(n - 2, start_pos + seg_len - 1);
                 start[i] = start_pos;
                 end[i] = end_pos;
                 segment_slope[i] = 0;
-                for (pos_type k = start_pos; k <= end_pos; ++k) 
+                for (slot_type k = start_pos; k <= end_pos; ++k) 
                     segment_slope[i] = std::max(segment_slope[i], slope[k]);
                 start_pos = end_pos + 1;
             }
 
             for (unsigned int i = 0; i < max_segment_num; ++i){
                 if (i > 0 && segment_slope[i] < segment_slope[i - 1]){
-                    for (pos_type j = end[i - 1]; j >= start[i - 1] && slope[j] <= segment_slope[i]; --j){
+                    for (slot_type j = end[i - 1]; j >= start[i - 1] && slope[j] <= segment_slope[i]; --j){
                         --start[i];
                         --end[i - 1];
                     }
                 }
                 if (i < max_segment_num - 1 && segment_slope[i] < segment_slope[i + 1]){
-                    for (pos_type j = start[i + 1]; j <= end[i + 1] && slope[j] <= segment_slope[i]; ++j){
+                    for (slot_type j = start[i + 1]; j <= end[i + 1] && slope[j] <= segment_slope[i]; ++j){
                         ++end[i];
                         ++start[i + 1];
                     }
@@ -842,10 +842,10 @@ public:
         
     }
 
-    inline double RMSE(const key_type* const key, const pos_type n){
+    inline double RMSE(const key_type* const key, const slot_type n){
         double sum = 0;
-        //pos_type max_error = 0;
-        for (pos_type i = 0; i < n; ++i){
+        //slot_type max_error = 0;
+        for (slot_type i = 0; i < n; ++i){
             sum += sqr(this->predict(key[i]) * (n - 1) - i);
         }
         sum /= n;
@@ -853,10 +853,10 @@ public:
         return sum;
     }
 
-    inline pos_type max_error(const key_type* const key, const pos_type n, const pos_type slot_size){
-        pos_type error = 0;
-        for (pos_type i = 0, start = 0; i < n; ++i){
-            pos_type pos = std::max(0, static_cast<pos_type>(this->predict(key[i]) * slot_size));
+    inline slot_type max_error(const key_type* const key, const slot_type n, const slot_type slot_size){
+        slot_type error = 0;
+        for (slot_type i = 0, start = 0; i < n; ++i){
+            slot_type pos = std::max(0, static_cast<slot_type>(this->predict(key[i]) * slot_size));
             start = std::max(start, pos);
             //AEX_PRINT("key=" << key[i] << ", pos=" << pos << ", start=" << start);
             error = std::max(error, start - pos);

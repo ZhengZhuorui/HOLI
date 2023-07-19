@@ -110,7 +110,12 @@ bool test(map<string, string> &flags){
         if (func == "node_split") {
             return test_SMO_node_split_perf<T, T>(bin_data.data(), num_keys);
         }
-        if (func == "update_key") {}
+        if (func == "insert_split"){
+            return false;
+        }
+        if (func == "insert_ascend"){
+            return false;
+        }
     }
     else if (unit == "index"){
         auto func = flags["function"];
@@ -120,10 +125,10 @@ bool test(map<string, string> &flags){
             return test_index_bulk_load_perf<T, T>(data.data(), num_keys);
         }
         if (func == "insert"){
-            long long batch = strcoll(flags["batch"]);
+            long long batch = stoll(flags["batch"]);
             std::vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
-            return test_index_bulk_load_perf<T, T>(data.data(), num_keys, batch);
+            return test_index_insert_perf<T, T>(data.data(), num_keys, batch);
         }
         if (func == "lookup"){
             long long batch = stoll(flags["batch"]);
@@ -146,15 +151,15 @@ bool test(map<string, string> &flags){
             double rw_ratio = stod(flags["read_ratio"]);
             std::vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
-            return test_index_RW_perf(data.data(), num_keys, batch);
+            return test_index_RW_perf(data.data(), num_keys, batch, rw_ratio);
         }
-        if (func == "mix_balance"){
-            long long batch = stoll(flags["batch"]);
-            double rw_ratio = stod(flags["read_ratio"]);
-            std::vector<std::pair<T, T> > data;
-            pack_KV_dataset(bin_data, data);
-            return test_index_RW_perf<T, T, aex_rw_balance_traits>(data.data(), num_keys, batch);
-        }
+        //if (func == "mix_balance"){
+        //    long long batch = stoll(flags["batch"]);
+        //    double rw_ratio = stod(flags["read_ratio"]);
+        //    std::vector<std::pair<T, T> > data;
+        //    pack_KV_dataset(bin_data, data);
+        //    return test_index_RW_perf<T, T, aex_rw_balance_traits>(data.data(), num_keys, batch);
+        //}
         if (func == "demo"){
             vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);

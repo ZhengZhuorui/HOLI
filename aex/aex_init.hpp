@@ -88,8 +88,8 @@ void aex_tree<_Key, _Val, traits>::construct(node_ptr node, node_ptr &new_node){
         node_ptr* child = static_cast<inner_node_ptr>(node)->child_ptr;
         node_ptr* new_child = static_cast<inner_node_ptr>(new_node)->child_ptr;
         if (node->prop & node_property::ML_NODE){
-            pos_type prev = 0;
-            for (pos_type i = 0; i < node->slot_size; ++i)
+            slot_type prev = 0;
+            for (slot_type i = 0; i < node->slot_size; ++i)
             if (bitmap_impl::at(bm, i)){
                 construct(child[i], new_child[i]);
                 std::fill(new_child + prev, new_child + i, new_child[i]);
@@ -99,7 +99,7 @@ void aex_tree<_Key, _Val, traits>::construct(node_ptr node, node_ptr &new_node){
                 std::fill(new_child + prev, new_child + node->slot_size, new_child[prev]);
         }
         else{
-            for (pos_type i = 0; i < node->size; ++i){
+            for (slot_type i = 0; i < node->size; ++i){
                 construct(child[i], new_child[i]);
             }
         }

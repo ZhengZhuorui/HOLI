@@ -38,7 +38,7 @@ struct aex_default_traits{
 
     typedef unsigned long long size_type;
 
-    typedef int pos_type;
+    typedef int slot_type;
 
     typedef unsigned long long bitmap_base;
 
@@ -46,7 +46,7 @@ struct aex_default_traits{
 
     typedef unsigned char version_type;
 
-    //typedef unsigned long long pos_type;
+    //typedef unsigned long long slot_type;
 
     typedef std::false_type used_as_set;
 
@@ -66,17 +66,17 @@ struct aex_default_traits{
     
     static const int ERROR_BOUND = 8;
 
-    static const pos_type MIN_INNER_NODE_SLOT_SIZE = 8;
+    static const slot_type MIN_INNER_NODE_SLOT_SIZE = 8;
 
-    static const pos_type MIN_ML_INNER_NODE_SLOT_SIZE = 64;
+    static const slot_type MIN_ML_INNER_NODE_SLOT_SIZE = 64;
 
-    static const pos_type MAX_NODE_SLOT_SIZE = 1 << 25;
+    static const slot_type MAX_NODE_SLOT_SIZE = 1 << 25;
 
-    static const pos_type MIN_DATA_NODE_SLOT_SIZE = 8;
+    static const slot_type MIN_DATA_NODE_SLOT_SIZE = 8;
 
-    static const pos_type MAX_DATA_NODE_SLOT_SIZE= 1 << 20;
+    static const slot_type MAX_DATA_NODE_SLOT_SIZE= 1 << 20;
 
-    static const pos_type MIN_ML_DATA_NODE_SLOT_SIZE = 32;
+    static const slot_type MIN_ML_DATA_NODE_SLOT_SIZE = 32;
     
     static constexpr float DATA_NODE_FEW_RATIO = 0.5;
         

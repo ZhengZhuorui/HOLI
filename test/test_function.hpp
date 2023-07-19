@@ -141,14 +141,14 @@ bool test_linear_probe(key_type* data, size_t n){
     AEX_HINT("[test linear probe]");
     mock_aex_tree<key_type, value_type, traits> tree;
     typedef typename traits::size_type size_type;
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
     std::sort(data, data + n);
     typename mock_aex_tree<key_type, value_type, traits>::data_node_model m;
-    pos_type ret = tree.linear_probe(data, n, m);
+    slot_type ret = tree.linear_probe(data, n, m);
     AEX_PRINT("ret=" << ret << ", end=" << m.args.end << ", slope=" << m.args.slope << ", inter=" << m.args.inter);
     double ERROR = traits::MAX_LINEAR_PROBE_ALLOW_ERROR * log(std::max(traits::MIN_ML_DATA_NODE_SLOT_SIZE, ret));
-    for (pos_type i = 0; i < ret; ++i){
-        pos_type pred_pos = static_cast<pos_type>(m.predict(data[i]) * (ret - 1));
+    for (slot_type i = 0; i < ret; ++i){
+        slot_type pred_pos = static_cast<slot_type>(m.predict(data[i]) * (ret - 1));
         if (std::abs(pred_pos - i) > ERROR){
             AEX_ERROR("error wrong! predict pos=" << pred_pos << ", real pos=" << i << "ERROR=" << ERROR);
             return false;

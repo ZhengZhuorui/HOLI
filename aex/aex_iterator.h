@@ -22,7 +22,7 @@ public:
 
     typedef value_type* pointer;
 
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
     typedef std::bidirectional_iterator_tag iterator_category;
 
@@ -34,7 +34,7 @@ public:
 
     inline aex_iterator() : _M_node(nullptr), offset(0){}
     
-    inline aex_iterator(data_node* ptr, pos_type _offset):_M_node(ptr), offset(_offset){}
+    inline aex_iterator(data_node* ptr, slot_type _offset):_M_node(ptr), offset(_offset){}
     
     //inline aex_iterator(const aex_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}        
     
@@ -134,7 +134,7 @@ private:
     
     data_node_ptr _M_node;
 
-    pos_type offset;
+    slot_type offset;
 
 };
 
@@ -152,7 +152,7 @@ public:
 
     typedef value_type* pointer;
 
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
     typedef std::bidirectional_iterator_tag iterator_category;
 
@@ -164,7 +164,7 @@ public:
 
     inline aex_const_iterator() : _M_node(nullptr), offset(0){}
     
-    inline aex_const_iterator(const data_node* ptr, pos_type _offset):_M_node(ptr), offset(_offset){}
+    inline aex_const_iterator(const data_node* ptr, slot_type _offset):_M_node(ptr), offset(_offset){}
     
     inline aex_const_iterator(const aex_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
     
@@ -270,7 +270,7 @@ private:
 
     data_node_ptr _M_node;
 
-    pos_type offset;
+    slot_type offset;
 
 };
 
@@ -288,7 +288,7 @@ public:
 
     typedef value_type* pointer;
 
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
     typedef std::bidirectional_iterator_tag iterator_category;
 
@@ -300,7 +300,7 @@ public:
 
     inline aex_reverse_iterator() : _M_node(nullptr), offset(0){}
     
-    inline aex_reverse_iterator(const data_node* ptr, pos_type _offset):_M_node(ptr), offset(_offset){}
+    inline aex_reverse_iterator(const data_node* ptr, slot_type _offset):_M_node(ptr), offset(_offset){}
     
     inline aex_reverse_iterator(const aex_iterator<key_type, value_type, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
     
@@ -401,7 +401,7 @@ private:
 
     data_node_ptr _M_node;
 
-    pos_type offset;
+    slot_type offset;
 };
 
 template<typename _Key,
@@ -418,7 +418,7 @@ public:
 
     typedef value_type* pointer;
 
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
     typedef std::bidirectional_iterator_tag iterator_category;
 
@@ -430,7 +430,7 @@ public:
 
     inline aex_const_reverse_iterator() : _M_node(nullptr), offset(0){}
     
-    inline aex_const_reverse_iterator(const data_node* ptr, pos_type _offset):_M_node(ptr), offset(_offset){}
+    inline aex_const_reverse_iterator(const data_node* ptr, slot_type _offset):_M_node(ptr), offset(_offset){}
     
     inline aex_const_reverse_iterator(const aex_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
 
@@ -535,7 +535,7 @@ private:
 
     data_node_ptr _M_node;
 
-    pos_type offset;
+    slot_type offset;
 
 };
 

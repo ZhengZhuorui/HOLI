@@ -17,7 +17,7 @@ public:
 
     typedef typename traits::size_type size_type;
 
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
     typedef typename traits::version_type version_type;
 
@@ -130,7 +130,7 @@ public:
                         //    flag = false;
                         //}
                         // check if the key position is smaller than predict position
-                        pos_type pos = in->predict(node_key[i]);
+                        slot_type pos = in->predict(node_key[i]);
                         if (i < pos || i - pos >= traits::ERROR_BOUND){
                             AEX_PRINT("pos=" << i << " predict=" << pos);
                             flag = false;

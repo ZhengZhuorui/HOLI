@@ -184,14 +184,15 @@ template<typename key_type,
         typename traits=aex::aex_default_traits<key_type, value_type>>
 bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
     AEX_HINT("[test index lookup]");
+    typedef mock_aex_tree<key_type, value_type, traits> tree;
     mock_aex_tree<key_type, value_type, traits> index;
     [[maybe_unused]] typedef typename traits::size_type size_type;
-    typedef typename mock_aex_tree::node_ptr node_ptr;
+    typedef typename tree::node_ptr node_ptr;
     std::vector<std::pair<key_type, value_type> > insert_data(batch); 
     std::random_shuffle(data, data + n);
     std::sort(data, data + n - batch);
     index.bulk_load(data, n - batch);
-    for (size_type i = n - batch; i < n; ++batch)
+    for (long long i = n - batch; i < n; ++batch)
         index.insert(data[i]);
     {
         if (static_cast<long long>(index.size()) != n){
@@ -226,12 +227,12 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
 
     index.clear();
     const int ITER = 10;
-    system_clock t1, t2;
+    std::chrono::high_resolution_clock::time_point t1, t2;
     double delta = 0;
-    for (size_type i = 0; i < ITER; ++i){
+    for (int T = 0; T < ITER; ++T){
         index.bulk_load(data, n - batch);
         t1 = std::chrono::high_resolution_clock::now();
-        for (size_type i = n - batch; i < n; ++i)
+        for (long long i = n - batch; i < n; ++i)
             index.insert(data[i]);
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
@@ -239,7 +240,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     double OPS = 1.0 * 1e6 * ITER / delta;
     std::cout << std::scientific;
     std::cout << std::setprecision(3);  
-    AEX_SUCCESS("code=" << sum << "insert use time " << delta << "ms, OPS=" << OPS);
+    AEX_SUCCESS("insert use time " << delta << "ms, OPS=" << OPS);
     return true;
 }
 
@@ -248,13 +249,15 @@ template<typename key_type,
         typename traits=aex::aex_default_traits<key_type, value_type>>
 bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
     AEX_HINT("[test index lookup]");
+    typedef mock_aex_tree<key_type, value_type, traits> tree;
     mock_aex_tree<key_type, value_type, traits> index;
+    typedef typename tree::node_ptr node_ptr;
     [[maybe_unused]] typedef typename traits::size_type size_type;
     std::vector<key_type> erase_key(batch);
-    std::vector<std::pair<key_type, value_type> > left_key(n - batch);
+    std::vector<std::pair<key_type, value_type> > left_data(n - batch);
     std::random_shuffle(data, data + n);
     std::copy(data + n - batch, data + n, erase_key.data());
-    std::copy(data, data + n, left_key.data());
+    std::copy(data, data + n, left_data.data());
     std::sort(data, data + n);
     index.bulk_load(data, n);
     for (long long i = 0; i < batch; ++i)
@@ -268,7 +271,6 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
         index.print_stats();
         size_type leaf_num = 0, data_size = 0;
         for (node_ptr inode = index.head_leaf; inode != nullptr; inode = inode->next){
-            //std::cout << "inode=" << inode << ", key[0]=" << static_cast<data_node_ptr>(inode)->key[0] << ;
             ++leaf_num;
             data_size += inode->size;
         }
@@ -280,7 +282,7 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
         size_type i = 0;
         //AEX_PRINT("slot_size=" << index.begin()._M_node->slot_size);
         for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
-            if (left_key[i].first != iter.key()){
+            if (left_data[i].first != iter.key()){
                 AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << data[i].first);
                 return false;
             }
@@ -292,40 +294,42 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
     }
 
     index.clear();
-    const ITER = 10;
-    system_clock t1, t2;
+    const int ITER = 10;
+    std::chrono::high_resolution_clock::time_point t1, t2;
     double delta = 0;
-    for (size_type i = 0; i < ITER; ++i){
+    for (int T = 0; T < ITER; ++T){
         index.bulk_load(data, n);
         t1 = std::chrono::high_resolution_clock::now();
-        for (size_type i = 0; i < batch; ++i)
-            index.erase(erase_data[i]);
+        for (long long i = 0; i < batch; ++i)
+            index.erase(erase_key[i]);
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
     double OPS = 1.0 * 1e6 * ITER / delta;
     std::cout << std::scientific;
     std::cout << std::setprecision(3);  
-    AEX_SUCCESS("code=" << sum << "erase use time " << delta << "ms, OPS=" << OPS);
+    AEX_SUCCESS("erase use time " << delta << "ms, OPS=" << OPS);
     return true;
 }
 
-template<tyepname key_type,
+template<typename key_type,
         typename value_type,
         typename traits=aex::aex_default_traits<key_type, value_type> >
 bool test_index_range_query_perf(std::pair<key_type, value_type>* data, long long n, long long batch, double range_length){
     mock_aex_tree<key_type, value_type, traits> index;
     [[maybe_unused]]typedef typename mock_aex_tree<key_type, value_type, traits>::size_type size_type;
-    
+
     return false;
 }
 
 template<typename key_type,
         typename value_type,
         typename traits=aex::aex_rw_balance_traits<key_type, value_type>>
-bool test_index_RW_balance_perf(std::pair<key_type, value_type>* data, long long n, long long batch, double rw_ratio){
-    mock_aex_tree<key_type, value_type, traits> index;
+bool test_index_RW_perf(std::pair<key_type, value_type>* data, long long n, long long batch, double rw_ratio){
+    typedef mock_aex_tree<key_type, value_type, traits> tree;
     [[maybe_unused]]typedef typename mock_aex_tree<key_type, value_type, traits>::size_type size_type;
+    typedef typename tree::node_ptr node_ptr;
+    mock_aex_tree<key_type, value_type, traits> index;
     long long insert_num = static_cast<long long>(rw_ratio * batch);
     long long query_num = batch - insert_num;
     std::vector<std::pair<key_type, value_type> > insert_data(insert_num), bulk_load_data(n);
@@ -338,29 +342,30 @@ bool test_index_RW_balance_perf(std::pair<key_type, value_type>* data, long long
     std::copy(data, data + n - insert_num, bulk_load_data);
     std::vector<OperationType> operation_list(batch);
 
-    for (size_type i = 0; i < query_num; ++i) oepration_list[i] = OperationType::Lookup;
-    for (size_type i = query_num; i < batch; ++i) operation_list[i] = OperationType::Insert;
+    for (long long i = 0; i < query_num; ++i) operation_list[i] = OperationType::Lookup;
+    for (long long i = query_num; i < batch; ++i) operation_list[i] = OperationType::Insert;
     std::random_shuffle(operation_list.begin(), operation_list.end());
 
     {
         std::sort(bulk_load_data.begin(), bulk_load_data.end());
-        index.bulk_load(bulk_load_data.begin(), bulk_load_data.end());
-        for (size_type i = 0, qn = 0; i < batch; ++i){
-            switch (operation_list[i])
-            {
-            case OperationType::Lookup:
-                auto x = index.find(query[qn]);
-                if (x != index.end()){
-                    if (x.data() != answer[qn]){
-                        AEX_ERROR("lookup data error!");
+        index.bulk_load(bulk_load_data.data(), bulk_load_data.size());
+        for (long long i = 0, qn = 0; i < batch; ++i){
+            switch (operation_list[i]){
+                case OperationType::Lookup:{
+                    auto x = index.find(query[qn]);
+                    if (x != index.end()){
+                        if (x.data() != answer[qn]){
+                            AEX_ERROR("lookup data error!");
+                        }
                     }
+                    qn++;
+                    break;
                 }
-                qn++;
-                break;
-            case OperationType::Insert:
-                index.insert(insert_data[i]);
-            default:
-                break;
+                case OperationType::Insert:{
+                    index.insert(insert_data[i]);
+                }
+                default:
+                    break;
             }
         }
         if (static_cast<long long>(index.size()) != n){
@@ -395,23 +400,36 @@ bool test_index_RW_balance_perf(std::pair<key_type, value_type>* data, long long
     }
 
     const int ITER = 10;
+    std::chrono::high_resolution_clock::time_point t1, t2;
+    double delta = 0;
     for (int T = 0; T < ITER; ++T){
         value_type sum = 0;
         index.clear();
-        index.bulk_load(bulk_load_data.begin(), bulk_load_data.end());
-        for (size_type i = 0, qn = 0; i < batch; ++i){
+        index.bulk_load(bulk_load_data.data(), bulk_load_data.size());
+        t1 = std::chrono::high_resolution_clock::now();
+        for (long long i = 0, qn = 0; i < batch; ++i){
             switch (operation_list[i]){
-                case OperationType::Lookup:
+                case OperationType::Lookup:{
                     auto x = index.find(query[qn]);
                     if (x != index.end())
-                        sum += index.data();
+                        sum += x.data();
                     qn++;
                     break;
-                case OperationType::Insert:
+                }
+                case OperationType::Insert:{
                     index.insert(insert_data[i]);
+                }
                 default:
                     break;
             }
         }
+        t2 = std::chrono::high_resolution_clock::now();
+        delta +=  duration_cast<microseconds>(t2 - t1).count();
     }
+
+    double OPS = 1.0 * 1e6 * ITER * batch/ delta;
+    std::cout << std::scientific;
+    std::cout << std::setprecision(3);  
+    AEX_SUCCESS("mix operation use time " << delta << "ms, OPS=" << OPS);
+
 }

@@ -9,7 +9,7 @@ bool test_SMO_data_split_with_exponential_probe_perf(key_type* key, value_type* 
     [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
     typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::size_type size_type;
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
     mock_aex_tree<key_type, value_type, traits> tree;
     std::vector<key_type> key_buf;
@@ -29,7 +29,7 @@ bool test_SMO_data_split_with_exponential_probe_perf(key_type* key, value_type* 
     cnt = 0;
     for (size_type i = 0; i < data_node_buf.size(); ++i){
         node_ptr inode = data_node_buf[i];
-        for (pos_type j = 0; j < inode->size; ++j, ++cnt){
+        for (slot_type j = 0; j < inode->size; ++j, ++cnt){
             if (static_cast<data_node_ptr>(inode)->key[j] != key[cnt]){
                 AEX_ERROR("Key Error! key[" << cnt << "]=" << key[cnt] << "data node key=" << static_cast<data_node_ptr>(inode)->key[j]);
                 return false;
@@ -63,7 +63,7 @@ bool test_SMO_data_split_with_linear_probe_perf(key_type* key, value_type* data,
     [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
     typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::size_type size_type;
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
     mock_aex_tree<key_type, value_type, traits> tree;
     std::vector<key_type> key_buf;
@@ -83,7 +83,7 @@ bool test_SMO_data_split_with_linear_probe_perf(key_type* key, value_type* data,
     cnt = 0;
     for (size_t i = 0; i < data_node_buf.size(); ++i){
         node_ptr inode = data_node_buf[i];
-        for (pos_type j = 0; j < inode->size; ++j, ++cnt){
+        for (slot_type j = 0; j < inode->size; ++j, ++cnt){
             if (static_cast<data_node_ptr>(inode)->key[j] != key[cnt]){
                 AEX_ERROR("Key Error! key[" << cnt << "]=" << key[cnt] << "data node key=" << static_cast<data_node_ptr>(inode)->key[j]);
                 return false;

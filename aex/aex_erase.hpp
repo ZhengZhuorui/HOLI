@@ -7,7 +7,7 @@ namespace aex{
 // TODO: 
 /* erase a node from button to up */
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::erase_node(inner_node_ptr node, node_ptr* stack, int top){
+void aex_tree<_Key, _Val, traits>::erase_ascend(inner_node_ptr node, node_ptr* stack, int top){
     if (top < 1) 
         return;
     bool merge_flag = true;
@@ -103,7 +103,6 @@ void aex_tree<_Key, _Val, traits>::erase_iterator(iterator &iter, node_ptr* stac
     this->m_stats.timestamp++;
 
     for (int i = 1; i < top; ++i){
-        add_node_write_frequency();
         update_node_frequency(stack[i]);
         stack[i]->base_stats.write_times++;
     }
@@ -212,13 +211,13 @@ void aex_tree<_Key, _Val, traits>::erase_tree_recursive(node_ptr node){
         node_ptr* child = static_cast<inner_node_ptr>(node)->child_ptr;
         if (node->prop & node_property::ML_NODE){
             bitmap bm = static_cast<inner_node_ptr>(node)->bitmap_ptr;
-            for (pos_type i = 0; i < static_cast<inner_node_ptr>(node)->slot_size; ++i)
+            for (slot_type i = 0; i < static_cast<inner_node_ptr>(node)->slot_size; ++i)
             if (bitmap_impl::at(bm, i)){
                 this->erase_tree_recursive(child[i]);
             }
         }
         else{
-            for (pos_type i = 0; i < static_cast<inner_node_ptr>(node)->size; ++i){
+            for (slot_type i = 0; i < static_cast<inner_node_ptr>(node)->size; ++i){
                 this->erase_tree_recursive(child[i]);
             }
         }

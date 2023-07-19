@@ -6,7 +6,8 @@ template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::update_node_frequency(node_ptr node) {
     double forget_rate = rapid_pow(this->lambda, this->m_stats.timestamp - node->base_stats.recent_update_timestamp);
     node->base_stats.write_times = node->base_stats.write_times * forget_rate;
-    node->base_stats.train_times = node->base_stats.train_times * forget_rate;
+    //node->base_stats.train_times = node->base_stats.train_times * forget_rate;
+    node->base_stats.update_times++;
     node->base_stats.read_times = node->base_stats.read_times * forget_rate;
     node->base_stats.recent_update_timestamp = this->m_stats.recent_update_timestamp;
 }
@@ -26,14 +27,16 @@ inline double aex_tree<_Key, _Val, traits>::estimate_cost() const {
 }
 
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::check_balance_merge_subtree(inner_node_ptr node){
+bool aex_tree<_Key, _Val, traits>::check_balance_merge(inner_node_ptr node){
     // delta cost
     // 1. delta write cost
     // *2. delta node read cost
     // 3. delta all read cost
-    if (this->level - node->level > 1)
-        return false;
+    //if (this->level - node->level > 1)
+    //    return false;
     update_node_frequency(node);
+    if (node->update_times < node->size * traits::MERGE_UPDATE_RATIO)
+        return false;
     //double read_pro = 1.0 * read_times / (read_times + this->m_stats.write_times);
     //double read_pro = 1 - (this->m_stats.write_times / this->m_stats.lambda_timestamp);
     
@@ -52,26 +55,25 @@ bool aex_tree<_Key, _Val, traits>::check_balance_merge_subtree(inner_node_ptr no
 }
 
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::check_balance_merge_nodes(node_ptr* node_buffer, size_type size){
+bool aex_tree<_Key, _Val, traits>::check_insert_merge(node_ptr* node_buffer, size_type size){
     // delta cost
     // 1. write cost 
     // 2. merge cost
     // 3. read cost
-    double write_times = 0, train_times = 0, delta_cost = 0;
+    double write_times = 0, delta_cost = 0;
+    size_type update_times = 0;
     size_type data_size = 0, data_node_size = 0, slot_size = 0;
     for (size_type i = 0; i < size; ++i){
         if (node_buffer[i]->prop & node_property::LEAF){
             if (!(node_buffer[i]->prop & node_property::ML_NODE)) return false;
         }
         else{
-            if (node_buffer[i]->m_stats.rewired_cnt > 0)
-                return false;
             double SMO_cost = node_buffer[i]->base_stats.train_times * traits::LEARNING_COST / this->m_stats.timestamp * node_buffer[i]->slot_size;
             delta_cost += SMO_cost;
         }
         update_node_frequency(node_buffer[i]);
         write_times += node_buffer[i]->base_stats.write_times;
-        train_times += node_buffer[i]->base_stats.train_times;
+        update_times += node_buffer[i]->base_stats.update_times;
         data_size += node_buffer[i]->data_size();
         data_node_size += node_buffer[i]->data_node_size();
     }
@@ -183,12 +185,12 @@ bool aex_tree<_Key, _Val, traits>::check_balance_split(data_node_ptr node, size_
 }
 
 template<typename _Key, typename _Val, typename traits>
-typename traits::pos_type aex_tree<_Key, _Val, traits>::check_balance_split_best_slot_size(data_node_ptr node){
+typename traits::slot_type aex_tree<_Key, _Val, traits>::check_balance_split_best_slot_size(data_node_ptr node){
     // delta cost
     // 1. delta write cost
     // 2. delta node read cost
     // 3. delta all read cost
-    pos_type slot_size = node->slot_size, best_slot_size = node->slot_size;
+    slot_type slot_size = node->slot_size, best_slot_size = node->slot_size;
     double best_delta_cost = 0, delta_cost;
     for (; slot_size >= traits::MIN_DATA_NODE_SLOT_SIZE; slot_size >>= 1){
         delta_cost = - node_write_pro(node) * (node->size - slot_size) / 2 \
@@ -241,7 +243,7 @@ typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::ba
     // merge
     {
         cnt = 0;
-        key_type first_key = node->key_ptr[first_key];
+        key_type first_key = node->key_ptr[0];
         if (parent != nullptr){
             if (node != parent->child_ptr[0]){
                 inner_node_ptr brother = node->next;
@@ -287,6 +289,7 @@ typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::ba
         this->erase_tree_recursive(node);
     }
 }
+
 
 //template<typename _Key, typename _Val, typename traits>
 //inline bool aex_tree<_Key, _Val, traits>::check_insert_balance(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node){
@@ -393,14 +396,18 @@ typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val, trait
 }
 
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::balance_split(const node_ptr* stack, const int top, data_node_ptr node, pos_type slot_size){
+void aex_tree<_Key, _Val, traits>::balance_split(data_node_ptr node, slot_type slot_size){
+    node_ptr stack[tree::depth];
+    int top;
+    find_leaf_with_trace(node->key[0], stack, top);
+    
     std::vector<key_type> key_buffer;
     std::vector<node_ptr> node_buffer;
 
     iterator res_iter;
     //double min_cost = 0;
-    pos_type leaf_size = slot_size * traits::DATA_NODE_FEW_RATIO;
-    for (pos_type i_offset = 0; i_offset < node->size; i_offset += leaf_size){
+    slot_type leaf_size = slot_size * traits::DATA_NODE_FEW_RATIO;
+    for (slot_type i_offset = 0; i_offset < node->size; i_offset += leaf_size){
         data_node_ptr new_data_node = node_allocator.allocate_data_node(slot_size);
         ++this->m_stats.data_node;
         if (node->size - i_offset < slot_size) leaf_size = node->size - i_offset;
@@ -412,7 +419,7 @@ void aex_tree<_Key, _Val, traits>::balance_split(const node_ptr* stack, const in
         this->build_tree(key_buffer, node_buffer);
     }
     else{
-        insert_many(stack, top, key_buffer, node_buffer);
+        insert_ascend(stack, top, key_buffer, node_buffer);
     }
 
     node_allocator.free_node(node);

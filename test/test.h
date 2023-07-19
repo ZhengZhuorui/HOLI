@@ -6,12 +6,6 @@
 
 #include "test/test_mock.hpp"
 
-#include "test/test_function.hpp"
-#include "test/test_index.hpp"
-#include "test/test_model.hpp"
-#include "test/test_node.hpp"
-#include "test/test_SMO_split.hpp"
-
 enum OperationType{
     Lookup=0,
     Insert=1,
@@ -25,3 +19,10 @@ enum OperationType{
 //    key_type key;
 //    value_type value;
 //};
+
+
+#include "test/test_function.hpp"
+#include "test/test_index.hpp"
+#include "test/test_model.hpp"
+#include "test/test_node.hpp"
+#include "test/test_SMO_split.hpp"

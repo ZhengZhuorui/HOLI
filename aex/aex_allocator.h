@@ -79,6 +79,8 @@ struct memory_config{
 //};
 //
 
+template<typename _Key, typename _Val, typename traits> class aex_tree;
+
 template<typename _Key, 
         typename _Val,
         typename traits>
@@ -91,6 +93,8 @@ public:
     //typedef aex_allocator<_Key, _Val, traits> allocator;
 
     typedef aex_node_allocator<_Key, _Val, traits> self;
+
+    typedef aex_tree<_Key, _Val, traits> base_tree;
 
     typedef aex_node_base<key_type, value_type, traits> base_node;
 
@@ -107,6 +111,8 @@ public:
     typedef data_node* data_node_ptr;
 
     typedef typename traits::size_type size_type;
+
+    typedef typename traits::slot_type slot_type;
 
     typedef typename traits::version_type version_type;
 
@@ -178,23 +184,22 @@ public:
         return align_8bytes((slot_size) * sizeof(value_type));
     }
     
-    //inline static size_type INNER_NODE_MEMORY_USED(size_type slot_size){ 
-    //    return BITMAP_MEMORY_USED(slot_size) + KEY_MEMORY_USED(slot_size) + PTR_MEMORY_USED(slot_size) + \
-    //    // + (traits::AllowMultiThread) * (MUTEX_MEMORY_USED(real_slot_size) + VERSION_MEMORY_USED(real_slot_size)) + 
-    //    align_8bytes(sizeof(inner_node));
-    //}
-
-    //inline static size_type DATA_NODE_MEMORY_USED(size_type slot_size){
-    //    return align_8bytes(sizeof(data_node)) + KEY_MEMORY_USED(slot_size) + DATA_MEMORY_USED(slot_size);
-    //}
-
-    inline static size_type MUTEX_MEMORY_USED(size_type slot_size){
-        return align_8bytes(sizeof(aex_spinlock) * slot_size / traits::ERROR_BOUND);
+    inline static size_type INNER_NODE_MEMORY_USED(size_type slot_size){ 
+        return BITMAP_MEMORY_USED(slot_size) + KEY_MEMORY_USED(slot_size) + PTR_MEMORY_USED(slot_size) + \
+        align_8bytes(sizeof(inner_node));
     }
 
-    inline size_type VERSION_MEMORY_USED(size_type slot_size){
-        return align_8bytes(sizeof(version_type) * slot_size / traits::ERROR_BOUND);
+    inline static size_type DATA_NODE_MEMORY_USED(size_type slot_size){
+        return align_8bytes(sizeof(data_node)) + KEY_MEMORY_USED(slot_size) + DATA_MEMORY_USED(slot_size);
     }
+
+    //inline static size_type MUTEX_MEMORY_USED(size_type slot_size){
+    //    return align_8bytes(sizeof(aex_spinlock) * slot_size / traits::ERROR_BOUND);
+    //}
+//
+    //inline size_type VERSION_MEMORY_USED(size_type slot_size){
+    //    return align_8bytes(sizeof(version_type) * slot_size / traits::ERROR_BOUND);
+    //}
 
     inline inner_node_ptr allocate_inner_node(size_type slot_size, bool ml_node_flag=true){
         /*
@@ -260,7 +265,7 @@ public:
         while (real_slot_size < slot_size) real_slot_size <<= 1;
         slot_size = real_slot_size;
 
-        this->_memory_used += sizeof(data_node) + KEY_MEMORY_USED(this->slot_size) + DATA_MEMORY_USED(this->slot_size);
+        this->_memory_used += sizeof(data_node) + KEY_MEMORY_USED(slot_size) + DATA_MEMORY_USED(slot_size);
         data_node_ptr node = new data_node();
         
         #ifdef AEX_EXPERIMENT
@@ -278,10 +283,10 @@ public:
         node->base_stats.write_times = node->base_stats.train_times = 0;
 
         //node->key = reinterpret_cast<key_type*>(align_8bytes(reinterpret_cast<size_t>(node) + sizeof(data_node)));
-        node->key = static_cast<key_type*>(malloc(KEY_MEMORY_USED(node->slot_size)));
+        node->key = static_cast<key_type*>(malloc(KEY_MEMORY_USED(node->slot_size + 1)));
 
         // offset: metadata + key array
-        node->data = static_cast<value_type*>(malloc(DATA_MEMORY_USED(node->slot_size)));
+        node->data = static_cast<value_type*>(malloc(DATA_MEMORY_USED(node->slot_size + 1)));
         
         if (ml_node_flag == true && node->slot_size > traits::MIN_ML_DATA_NODE_SLOT_SIZE){
             node->prop |= node_property::ML_NODE;
@@ -292,6 +297,37 @@ public:
         timer.allocate_data_node_time += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
         #endif
         return node;
+    }
+
+    inline void reallocate(inner_node_ptr node, slot_type new_slot_size){
+        this->memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) - \
+                                        PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) - \
+                                        BITMAP_MEMORY_USED(node->slot_size) + BITMAP_MEMORY_USED(new_slot_size);
+        key_type *new_key_ptr = static_cast<key_type*>(malloc(KEY_MEMORY_USED(new_slot_size)));
+        node_ptr *new_child_ptr = static_cast<node_ptr*>(malloc(PTR_MEMORY_USED(new_slot_size)));
+        bitmap new_bitmap_ptr = static_cast<bitmap*>(malloc(BITMAP_MEMORY_USED(new_slot_size)));
+        base_tree::copy_to_buffer(node, new_key_ptr, new_child_ptr);
+        node->slot_size = new_slot_size;
+        free(node->key_ptr);
+        free(node->child_ptr);
+        free(node->bitmap_ptr);
+        node->key_ptr = new_key_ptr;
+        node->child_ptr = new_child_ptr;
+        node->bitmap_ptr = new_bitmap_ptr;
+    }
+
+    inline void reallocate(data_node_ptr node, slot_type new_slot_size){
+        this->memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) - \
+                                        DATA_MEMORY_USED(node->slot_size) + DATA_MEMORY_USED(new_slot_size);
+        key_type *new_key = static_cast<key_type*>(malloc(KEY_MEMORY_USED(new_slot_size)));
+        value_type *new_data = static_cast<value_type*>(malloc(DATA_MEMORY_USED(new_slot_size)));
+        node->slot_size = new_slot_size;
+        std::copy(node->key, node->key + node->size, new_key);
+        std::copy(node->data, node->data + node->size, new_data);
+        free(node->key);
+        free(node->data);
+        node->key = new_key;
+        node->data = new_data;
     }
 
     inline void deallocate(key_type* p){

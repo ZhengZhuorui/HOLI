@@ -106,19 +106,19 @@ public:
 
     typedef typename traits::bitmap bitmap;
 
-    typedef typename traits::pos_type pos_type;
+    typedef typename traits::slot_type slot_type;
 
-    static inline void set_one(bitmap text, const pos_type x) {
+    static inline void set_one(bitmap text, const slot_type x) {
         text[x >> 6] |= (1LL << (x & 63));
     }
-    static inline void set_zero(bitmap text, const pos_type x){
+    static inline void set_zero(bitmap text, const slot_type x){
         text[x >> 6] &= ~(1LL << (x & 63));
     }
-    static inline char at(const bitmap text, const pos_type x){
+    static inline char at(const bitmap text, const slot_type x){
         return ((text[x >> 6] >> (x & 63)) & 1);
     }
 
-    static inline pos_type next_empty_slot(ULL* text, size_type x){
+    static inline slot_type next_empty_slot(ULL* text, size_type x){
         /*
         //lower bound: 4
         int p = x >> 6, q = x & 64;
@@ -132,7 +132,7 @@ public:
         }
         else return -1;
         */
-        for (pos_type i = x; i < x + traits::ERROR_BOUND; ++i)
+        for (slot_type i = x; i < x + traits::ERROR_BOUND; ++i)
         if (!at(text, i)){
             return i;
         }

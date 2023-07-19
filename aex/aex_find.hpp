@@ -8,7 +8,7 @@ template<typename _Key, typename _Val, typename traits>
 typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_leaf(const key_type &key, std::true_type AllowBalance){
     //mutex timestamp
     ++this->m_stats.timestamp;
-    node_ptr node;
+    node_ptr node = nullptr, parent = nullptr;
     bool flag;
     //node_ptr stack[traits::MAX_DEPTH];
     //int top = 1;
@@ -16,13 +16,17 @@ typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits
         flag = true;
         node = root;
         while (!(node->prop & node_property::LEAF)){
+            check_balance_merge(node, parent);
             if (check_balance_merge(node)){
                 flag = false;
                 balance_merge_subtree(node);
+                parent = nullptr;
                 break;
             }
-            else 
+            else {
+                parent = node;
                 node = find(static_cast<inner_node_ptr>(node), key, AllowBalance);
+            }
         }
     }while(flag == false);
     return static_cast<data_node_ptr>(node);
@@ -40,46 +44,20 @@ typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits
     return static_cast<data_node_ptr>(node);
 }
 
-template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_leaf_with_trace(const key_type &key, node_ptr* stack, int &top, std::true_type AllowBalance){
-    //mutex timestamp
-    ++this->m_stats.timestamp;
-    bool flag;
-    node_ptr node;
-    stack[top = 0] = nullptr;
-    do{
-        top = 1;
-        flag = true;
-        node = root;
-        while (!(node->prop & node_property::LEAF)){
-            stack[top++] = node;
-            if (check_balance_merge(node)){
-                flag = false;
-                balance_merge(node, stack, top);
-                break;
-            }
-            else 
-                node = find(static_cast<inner_node_ptr>(node), key, AllowBalance);
-        }
-    }while(flag == false);
-    stack[top++] = node;
-    return find(static_cast<data_node_ptr>(node), key);
-}
-
-template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_leaf_with_trace(const key_type &key, node_ptr* stack, int &top, std::false_type AllowBalance){
-    //mutex timestamp
-    ++this->m_stats.timestamp;
-    node_ptr node = root;
-    stack[top = 0] = nullptr;
-    top++;
-    while (!(node->prop & node_property::LEAF)){
-        stack[top++] = node;
-        node = find(static_cast<inner_node_ptr>(node), key);
-    }
-    stack[top++] = node;
-    return static_cast<data_node_ptr>(node);
-}
+//template<typename _Key, typename _Val, typename traits>
+//typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_leaf_with_trace(const key_type &key, node_ptr* stack, int &top){
+//    //mutex timestamp
+//    ++this->m_stats.timestamp;
+//    node_ptr node = root;
+//    stack[top = 0] = nullptr;
+//    top++;
+//    while (!(node->prop & node_property::LEAF)){
+//        stack[top++] = node;
+//        node = find(static_cast<inner_node_ptr>(node), key);
+//    }
+//    stack[top++] = node;
+//    return static_cast<data_node_ptr>(node);
+//}
 
 
 }
