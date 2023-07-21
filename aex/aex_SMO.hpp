@@ -67,46 +67,24 @@ bool aex_tree<_Key, _Val, traits>::update_childnode_key(inner_node_ptr __restric
     }
 }
 
+// Split an inner node to many nodes
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::update_childnode_ptr(inner_node_ptr __restrict__ parent, const node_ptr old_node, const node_ptr new_node){
-    AEX_ASSERT(old_node != parent);
-    if (parent == nullptr) return false;
-    if (old_node == new_node) return true;
-    AEX_FORMAT("update childnode pointer old node=%p, new_node=%p, parent=%p", old_node, new_node, parent);
-    slot_type pos = parent->at(old_node);
-    if (pos == parent->slot_size) 
-        return false;
-    parent->m_stats.data_size += -old_node->data_size() + new_node->data_size();
-    parent->m_stats.data_node += -old_node->data_node_size() + new_node->data_node_size();
-    
-    if (parent->prop & node_property::ML_NODE){
-        slot_type prev_pos = parent->prev_item(pos);
-        for (slot_type i = prev_pos + 1; i <= pos; ++i)
-            parent->child_ptr[i] = new_node;
-        if (parent->child_ptr[parent->slot_size - 1] == old_node){
-            std::fill(parent->child_ptr + pos + 1, parent->child_ptr + parent->slot_size, new_node);
-        }
-    }
-    else{
-        parent->child_ptr[pos] = new_node;
-    }
-    return true;
-}
-
-// Split an data node to many nodes with linear_probe
-template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::split(data_node_ptr node, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child){
-
-    split_with_linear_probe(node->key, node->data, node->size, new_key, new_child);
+void aex_tree<_Key, _Val, traits>::split(inner_node_ptr node, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child){
+    std::vector<key_type> new_key;
+    std::vector<node_ptr> new_child;
+    copy_to_buffer(node, node->key_ptr, node->child_ptr);
+    split(node->key_ptr, node->child_ptr, node->size, node->m_stats.level, new_key, new_child);
 
     int m = new_child.size();
     node_ptr prev_node = node->prev;
+    for (size_type i = 0; i < m; ++i)
+        new_child[i]->parent = node->parent;
     if (traits::AllowRWBalace::value){
         update_node_frequency(node);
         for(size_type i = 0; i < m; ++i){
-            new_child[i]->read_times = node->read_times * (new_child[i]->size / node->size);
-            new_child[i]->write_times = node->write_times * (new_child[i]->size / node->size);
-            new_child[i]->update_times = node->update_times * (new_child[i]->size / node->size);
+            new_child[i]->read_times = node->read_times * (1.0 * new_child[i]->size / node->size);
+            new_child[i]->write_times = node->write_times * (1.0 * new_child[i]->size / node->size);
+            new_child[i]->update_times = node->update_times * (1.0 * new_child[i]->size / node->size);
         }
     }
 
@@ -123,102 +101,31 @@ void aex_tree<_Key, _Val, traits>::split(data_node_ptr node, std::vector<key_typ
     new_child.pop_back();
 }
 
-//template<typename _Key, typename _Val, typename traits>
-//void aex_tree<_Key, _Val, traits>::split(data_node_ptr __restrict__ old_node, data_node_ptr __restrict__ new_node){
-//    AEX_ASSERT(old_node != new_node);
-//    AEX_ASSERT(old_node->slot_size == new_node->slot_size);
-//
-//    new_node->prev = old_node;
-//    new_node->next = old_node->next;
-//    if (old_node->next != nullptr) old_node->next->prev = new_node;
-//    old_node->next = new_node;
-//
-//    if (head_leaf == old_node) head_leaf = new_node;
-//
-//    // meta:
-//    {
-//        update_node_frequency(old_node);
-//        new_node->base_stats.read_times = old_node->base_stats.read_times / 2;
-//        old_node->base_stats.read_times /= 2;
-//        new_node->base_stats.write_times = old_node->base_stats.write_times / 2;
-//        old_node->base_stats.write_times /= 2;
-//        new_node->base_stats.update_times += old_node->base_stats.update_times / 2;
-//        old_node->base_stats.update_times += old_node->base_stats.update_times / 2;
-//        new_node->base_stats.recent_update_timestamp = old_node->base_stats.recent_update_timestamp;
-//    }
-//    
-//    slot_type mid = (old_node->size >> 1) | 1;
-//    std::move(old_node->key + mid, old_node->key + old_node->size, new_node->key);
-//    std::move(old_node->data + mid, old_node->data + old_node->size, new_node->data);
-//
-//    new_node->size = old_node->size - mid;
-//    old_node->size = mid;
-//
-//    if (old_node->prop & node_property::ML_NODE){
-//        old_node->train_model();
-//    }
-//    if (new_node->prop & node_property::ML_NODE){
-//        new_node->train_model();
-//    }
-//
-//}
-
-// split a ordered key array with child pointers array. Support the old node firstly.
-//template<typename _Key, typename _Val, typename traits>
-//bool aex_tree<_Key, _Val, traits>::split_with_old_node(const key_type* const __restrict__ key, const node_ptr* const __restrict__ child, const size_type n, 
-//                std::vector<key_type> &new_key, std::vector<node_ptr> &new_child, inner_node_ptr __restrict__ node){
-//    size_type start = 0, end = n;
-//    inner_node_model model;
-//    bool replace_flag = true;
-//    AEX_PRINT("split with old node, node->slot_size=<<" << node->slot_size);
-//    if (end >= node->real_slot_size() * this->inner_node_few_ratio[node->level]){
-//        size_type size = static_cast<size_type>(node->real_slot_size() * this->inner_node_few_ratio[node->level]);
-//        if (check_rewired(key, size, node->real_slot_size(), model)){
-//            AEX_FORMAT("target 1 size=%lld", size);
-//            replace_flag = false;
-//            if (node->real_slot_size() >= traits::MIN_ML_INNER_NODE_SLOT_SIZE) 
-//                node->prop |= node_property::ML_NODE;
-//            node->construct(key + end - size, child + end - size, size, model);
-//            end -= size;
-//        }
-//    }
-//
-//    split(key, child, end - start, node->level, new_key, new_child);
-//    if (replace_flag){
-//        new_key.push_back(key[n - 1]);
-//        new_child.push_back(node);
-//    }
-//
-//    //meta:
-//    size_type m = new_child.size();
-//    node_ptr prev_node = node->prev, next_node = node->next;
-//
-//    if (prev_node != nullptr) prev_node->next = new_child[0];
-//    new_child[0]->prev = prev_node;
-//    if (next_node != nullptr) next_node->prev = new_child[m  - 1];
-//    new_child[m - 1]->next = next_node;
-//    for(size_type i = 0; i < m - 1; ++i){
-//        new_child[i + 1]->prev = new_child[i];
-//        new_child[i]->next = new_child[i + 1];
-//    }
-//    return replace_flag;
-//}
-
 // split a ordered key array with child pointers array.
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::split(const key_type* const key, const node_ptr* const child, const size_type n, const unsigned int level, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child){
     size_type start = 0, end = n;
     inner_node_model model;
+
     while (start < end){
         size_type slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE, ans_slot_size = 0, ans_size = 0;
-        for (; slot_size * this->inner_node_few_ratio[level] <= (end - start) && slot_size <= traits::MAX_NODE_SLOT_SIZE; slot_size <<= 1){
-            size_type size = std::min((size_type)(slot_size * this->inner_node_few_ratio[level]), end - start);
-            if (self::check_rewired(key + start, size, slot_size, model)){
-                ans_slot_size = slot_size;
-                ans_size = size;
+        while (slot_size * this->inner_node_few_ratio[level] <= (end - start) && slot_size <= traits::MAX_NODE_SLOT_SIZE) slot_size <<= 1;
+        slot_size >>= 1;
+        if (self::check_retrain(key, n, slot_size, model)){
+            ans_slot_size = slot_size;
+            ans_size = n;
+        }
+        else{
+            slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE;
+            for (; slot_size * this->inner_node_few_ratio[level] <= (end - start) && slot_size <= traits::MAX_NODE_SLOT_SIZE; slot_size <<= 1){
+                size_type size = std::min((size_type)(slot_size * this->inner_node_few_ratio[level]), end - start);
+                if (self::check_retrain(key + start, size, slot_size, model)){
+                    ans_slot_size = slot_size;
+                    ans_size = size;
+                }
+                else 
+                    break;
             }
-            else 
-                break;
         }
         //while (slot_size * this->inner_node_few_ratio[level]> (end - start) && (slot_size >> 1) >= traits::MIN_INNER_NODE_SLOT_SIZE) slot_size >>= 1;
         if (ans_slot_size == 0) {
@@ -350,8 +257,8 @@ void aex_tree<_Key, _Val, traits>::split_with_linear_probe(const key_type* const
 
 // check if key buffer can put in a node with slot_size slot size. The model m will be trained if the answer is true
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::check_rewired(const key_type* const key, const slot_type size, const slot_type slot_size, inner_node_model &m){
-    //AEX_HINT("[check rewired]");
+bool aex_tree<_Key, _Val, traits>::check_retrain(const key_type* const key, const slot_type size, const slot_type slot_size, inner_node_model &m){
+    //AEX_HINT("[check retrain]");
     if (slot_size < traits::MIN_ML_INNER_NODE_SLOT_SIZE)
         return true;
     if (slot_size > traits::MAX_NODE_SLOT_SIZE)
@@ -369,53 +276,26 @@ bool aex_tree<_Key, _Val, traits>::check_rewired(const key_type* const key, cons
     return true;
 }
 
-// rewired the <key, node_ptr> array of a node. Return true if <K, P> array can be rewired. Otherwise return false.
-template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::rewired(inner_node_ptr node){
-    if (node->m_stats.rewired_cnt > 0){
-        return false;
-    }
-    node->m_stats.rewired_cnt += this->init_rewired_cnt(node);
-    
-    inner_node_model model;
-    bool flag = true;
-    if (!(node->prop & node_property::ML_NODE)) return true;
-    key_type* new_key = node_allocator.allocate_key_buffer(node->size);
-    
-
-    copy_to_buffer(node, new_key);
-
-    flag = check_rewired(new_key, node->size, node->real_slot_size(), model);
-    if (flag){
-        node_ptr* new_child = node_allocator.allocate_nodeptr_buffer(node->size);
-        copy_to_buffer(node, new_child);
-        node->construct(new_key, new_child, node->size, model);
-        node_allocator.deallocate(new_child);
-    }
-    node_allocator.deallocate(new_key);
-    return flag;
-}
-
 // Rescale a inner node slot_size. ratio > 1 means expand and ratio < 1 means narrow. 
 // if node expand or narrow successed, the old node will free and return true. Otherwise return false.
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::rescale(inner_node_ptr __restrict__ &node, const double ratio){
+void aex_tree<_Key, _Val, traits>::rescale(inner_node_ptr node, const double ratio){
     AEX_PRINT("RESCALE");
     
-    //if (node->prop & node_property::ML_NODE)
-    {
-        slot_type new_slot_size = node->real_slot_size() * ratio;
-        if (new_slot_size < traits::MIN_INNER_NODE_SLOT_SIZE) return false;
-        if (new_slot_size > traits::MAX_NODE_SLOT_SIZE) return false;
-        AEX_ASSERT(node->size <= new_slot_size);
-        AEX_ASSERT(node->size >= new_slot_size * this->inner_node_few_ratio[node->level]);
+    slot_type new_slot_size = node->real_slot_size() * ratio;
+    if (new_slot_size < traits::MIN_INNER_NODE_SLOT_SIZE || new_slot_size > traits::MAX_NODE_SLOT_SIZE) return false;
 
-        node->slot_size = new_slot_size;
-        node_allocator.reallocate(node, new_slot_size);
-        node->inplace_construct();
-        
-        --this->m_stats.inner_node;
-    }
+    std::vector<key_type> key_buf(node->size);
+    copy_to_buffer(node, key_buf);
+    model m;
+    bool flag = self::check_retrain(key_buf, node->size, new_slot_size, m);
+    if (flag == false)
+        return false;
+
+    node->slot_size = new_slot_size;
+    node_allocator.reallocate(node, new_slot_size);
+    node->inplace_construct(m);
+
     AEX_PRINT("END");
     return true;
 }
@@ -423,249 +303,20 @@ bool aex_tree<_Key, _Val, traits>::rescale(inner_node_ptr __restrict__ &node, co
 // Rescale a data node slot_size. ratio > 1 means expand and ratio < 1 means narrow. 
 // if node expand or narrow successed, the old node will free and return true. Otherwise return false.
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::rescale(data_node_ptr __restrict__ &node, const double ratio){
-    AEX_PRINT("BEGIN");
+void aex_tree<_Key, _Val, traits>::rescale(data_node_ptr node, const double ratio){
     slot_type new_slot_size = node->slot_size * ratio;
-    if (new_slot_size < traits::MIN_DATA_NODE_SLOT_SIZE)
+    if (new_slot_size < traits::MIN_DATA_NODE_SLOT_SIZE || new_slot_size > traits::MAX_NODE_SLOT_SIZE)
         return false;
-    if (new_slot_size > traits::MAX_NODE_SLOT_SIZE) return false;
     node_allocator.reallocate(node, new_slot_size);
-    --this->m_stats.data_node;
     return true;
 }
 
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::rescale(node_ptr __restrict__ &node, const double ratio){
+void aex_tree<_Key, _Val, traits>::rescale(node_ptr node, const double ratio){
     if (node->prop & LEAF) 
         return rescale(static_cast<data_node_ptr>(node), ratio);
     else
         return rescale(static_cast<inner_node_ptr>(node), ratio);
-}
-
-template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::copy_node(inner_node_ptr __restrict__ node, inner_node_ptr __restrict__ new_node){
-    AEX_ASSERT(node != new_node);
-    new_node->size = node->size;
-    if (!(node->prop & node_property::ML_NODE) && !(new_node->prop & node_property::ML_NODE)){
-        //AEX_FORMAT("copy node 1 " << node << " "<< new_node);
-        std::copy(node->key_ptr, node->key_ptr + node->size, new_node->key_ptr);
-        std::copy(node->child_ptr, node->child_ptr + node->size, new_node->child_ptr);
-    }
-    else if ((node->prop & node_property::ML_NODE) && (new_node->prop & node_property::ML_NODE)){
-        AEX_PRINT("copy node 2");
-        copy_to_buffer(node, new_node->key_ptr, new_node->child_ptr);
-        new_node->inplace_construct();
-    }
-    else if ((node->prop & node_property::ML_NODE) && !(new_node->prop & node_property::ML_NODE)){
-        AEX_PRINT("copy node 3");
-        copy_to_buffer(node, new_node->key_ptr, new_node->child_ptr);
-    }
-    else if (!(node->prop & node_property::ML_NODE) && (new_node->prop & node_property::ML_NODE)){
-        AEX_PRINT("copy node 4");
-        new_node->construct(node->key_ptr, node->child_ptr, node->size);
-    }
-}
-
-// merge right leaf to left leaf.
-template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::merge_to_left_leaf(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node){
-    AEX_ASSERT((left_node->prop & node_property::ML_NODE) == 0);
-    AEX_ASSERT((right_node->prop & node_property::ML_NODE) == 0);
-    AEX_ASSERT(left_node != right_node);
-    std::move(right_node->key, right_node->size, left_node->key + left_node->size);
-    std::move(right_node->data, right_node->data + right_node->size, left_node->data + left_node->size);
-    left_node->size += right_node->size;
-    
-    if (traits::AllowRWBalance::value){
-        update_node_frequency(left_node);
-        update_node_frequency(right_node);
-        left_node->base_stats.read_times += right_node->base_stats.read_times;
-        left_node->base_stats.write_times += right_node->base_stats.write_times;
-        left_node->base_stats.update_times += right_node->base_stats.update_times;
-        left_node->size += right_node->size;
-    }
-
-    left_node->next = right_node->next;
-    if (right_node->next != nullptr) right_node->next->prev = left_node;
-    if (tail_leaf == right_node)
-        tail_leaf = left_node;
-    left_node->train_model();
-}
-
-// merge left leaf to right leaf.
-template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::merge_to_right_leaf(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node){
-    AEX_ASSERT((left_node->prop & node_property::ML_NODE) == 0);
-    AEX_ASSERT((right_node->prop & node_property::ML_NODE) == 0);
-    AEX_ASSERT(left_node != right_node);
-    std::move_backward(right_node->key, right_node->key + right_node->size, right_node->key + left_node->size + right_node->size);
-    std::move_backward(right_node->data, right_node->data + right_node->size, right_node->data + left_node->size + right_node->size);
-    std::move(left_node->key, left_node->key + left_node->size, right_node->key);
-    std::move(left_node->data, left_node->data + left_node->size, right_node->data);
-    right_node->size += left_node->size;
-
-    if (traits::AllowRWBalance::value){
-        update_node_frequency(left_node);
-        update_node_frequency(right_node);
-        left_node->base_stats.read_times += right_node->base_stats.read_times;
-        left_node->base_stats.write_times += right_node->base_stats.write_times;
-        left_node->base_stats.update_times += right_node->base_stats.update_times;
-        left_node->size += right_node->size;
-    }
-
-    right_node->prev = left_node->prev;
-    if (left_node->prev != nullptr) left_node->prev->next = right_node;
-    if (head_leaf == left_node)
-        head_leaf = right_node;
-    right_node->train_model();
-}
-
-// merge right inner node to left inner node. require the left inner node and right inner node must be not ML node.
-template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::merge_to_left_node(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node){
-    AEX_ASSERT((left_node->prop & node_property::ML_NODE) == 0);
-    AEX_ASSERT((right_node->prop & node_property::ML_NODE) == 0);
-    AEX_ASSERT(left_node != right_node);
-    AEX_ASSERT(left_node->size + right_node->size > left_node->slot_size);
-    std::move(right_node->key_ptr, right_node->key_ptr + right_node->size, left_node->key_ptr + left_node->size);
-    std::move(right_node->child_ptr, right_node->child_ptr + right_node->size, left_node->child_ptr + left_node->size);
-
-    if (traits::AllowRWBalance::value){
-        update_node_frequency(left_node);
-        update_node_frequency(right_node);
-        left_node->base_stats.read_times += right_node->base_stats.read_times;
-        left_node->base_stats.write_times += right_node->base_stats.write_times;
-        left_node->base_stats.update_times += right_node->base_stats.update_times;
-        left_node->size += right_node->size;
-        left_node->m_stats.data_size += right_node->m_stats.data_size;
-        left_node->m_stats.data_node += right_node->m_stats.data_node;
-    }
-
-    left_node->next = right_node->next;
-    if (right_node->next != nullptr) right_node->next->prev = left_node;
-}
-
-// merge left inner node to right inner node. require the left inner node and right inner node must be not ML node.
-template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::merge_to_right_node(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node){
-    AEX_ASSERT((left_node->prop & node_property::ML_NODE) == 0);
-    AEX_ASSERT((right_node->prop & node_property::ML_NODE) == 0);
-    AEX_ASSERT(left_node != right_node);
-    AEX_ASSERT(left_node->size + right_node->size > right_node->slot_size);
-    
-    std::move_backward(right_node->key_ptr, right_node->key_ptr + right_node->size, right_node->key_ptr + left_node->size + right_node->size);
-    std::move_backward(right_node->child_ptr, right_node->child_ptr + right_node->size, right_node->child_ptr + left_node->size + right_node->size);
-
-    std::move(left_node->key_ptr, left_node->key_ptr + left_node->size, right_node->key_ptr);
-    std::move(left_node->child_ptr, left_node->child_ptr + left_node->size, right_node->child_ptr);
-
-    if (traits::AllowRWBalance::value && right_node->level == 1){
-        update_node_frequency(left_node);
-        update_node_frequency(right_node);
-        right_node->base_stats.read_times += right_node->base_stats.read_times;
-        right_node->base_stats.write_times += right_node->base_stats.write_times;
-        right_node->base_stats.update_times += right_node->base_stats.update_times;
-        right_node->size += left_node->size;
-        right_node->m_stats.data_size += left_node->m_stats.data_size;
-        right_node->m_stats.data_node += left_node->m_stats.data_node;
-    }
-
-    right_node->prev = left_node->prev;
-    if (left_node->prev != nullptr) left_node->prev->next = right_node;
-}
-
-// shift one item from right leaf to left leaf
-template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::shift_to_left_leaf(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node){
-    left_node->key[left_node->size] = right_node->key[0];
-    left_node->data[left_node->size] = right_node->data[0];
-    std::move(right_node->key + 1, right_node->key + right_node->size, right_node->key);
-    std::move(right_node->data + 1, right_node->data + right_node->size, right_node->data);
-    ++left_node->size;
-    --right_node->size;
-}
-
-// shift one item from left leaf to right leaf
-template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::shift_to_right_leaf(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node){
-    std::move_backward(right_node->key, right_node->key + right_node->size, right_node->key + right_node->size + 1);
-    std::move_backward(right_node->data, right_node->data + right_node->size, right_node->data + right_node->size + 1);
-    right_node->key[0] = left_node->key[left_node->size - 1];
-    right_node->data[0] = std::move(left_node->data[left_node->size - 1]);
-    ++right_node->size;
-    --left_node->size;
-}
-
-
-// shift one item from right inner node to left brother, the left node must be least node, because left node will narrow if left node is ML_NODE
-// left node must not be ML_NODE
-template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::shift_to_left_node(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node){
-    AEX_ASSERT((left_node->prop & node_property::ML_NODE) == 0);
-    AEX_ASSERT(left_node->level == right_node->level);
-    key_type shift_key = right_node->key_ptr[0];
-    node_ptr shift_node = right_node->child_ptr[0];
-    left_node->key_ptr[left_node->size] = shift_key;
-    left_node->child_ptr[left_node->size] = shift_node;
-    shift_node->parent = left_node;
-    ++left_node->size;
-    erase_child_node(right_node, shift_node);
-    if (right_node->level == 1){
-        if (traits::AllowRWBalance::value){
-            left_node->m_stats.data_size += shift_node->data_size();
-            right_node->m_stats.data_size -= shift_node->data_size();
-
-            left_node->m_stats.data_node += shift_node->data_node_size();
-            right_node->m_stats.data_node -= shift_node->data_node_size();
-
-            update_node_frequency(left_node);
-            update_node_frequency(right_node);
-            update_node_frequency(static_cast<data_node_ptr>(shift_node));
-            left_node->base_stats.read_times += shift_node->base_stats.read_times;
-            right_node->base_stats.read_times -= shift_node->base_stats.read_times;
-            left_node->base_stats.write_times += shift_node->base_stats.write_times;
-            right_node->base_stats.write_times -= shift_node->base_stats.write_times;
-            left_node->base_stats.update_times++;
-            right_node->base_stats.update_times++;
-        }
-    }
-
-}
-
-
-// shift one item from left inner node to right brother, the left node must be least node, because right node will narrow if right node is node_property::ML_NODE,
-// right node must not be ML_NODE
-template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::shift_to_right_node(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node){
-    AEX_ASSERT((right_node->prop & node_property::ML_NODE) == 0);
-    slot_type shift_pos = left_node->last();
-    key_type shift_key = left_node->key_ptr[shift_pos];
-    node_ptr shift_node = left_node->child_ptr[shift_pos];
-    erase_child_node(left_node, shift_node);
-    std::move_backward(right_node->key_ptr, right_node->key_ptr + right_node->size, right_node->key_ptr + right_node->size + 1);
-    std::move_backward(right_node->child_ptr, right_node->child_ptr + right_node->size, right_node->child_ptr + right_node->size + 1);
-    right_node->key_ptr[0] = shift_key;
-    right_node->child_ptr[0] = shift_node;
-    shift_node->parent = right_node;
-    ++right_node->size;
-    
-    if (right_node->level == 1){
-        if (traits::AllowRWBalance::value){
-            left_node->m_stats.data_size -= shift_node->data_size();
-            right_node->m_stats.data_size += shift_node->data_size();
-            left_node->m_stats.data_node -= shift_node->data_node_size();
-            right_node->m_stats.data_node += shift_node->data_node_size();
-            update_node_frequency(left_node);
-            update_node_frequency(right_node);
-            update_node_frequency(static_cast<data_node_ptr>(shift_node));
-            left_node->base_stats.read_times -= shift_node->base_stats.read_times;
-            right_node->base_stats.read_times += shift_node->base_stats.read_times
-            left_node->base_stats.write_times -= shift_node->base_stats.write_times;
-            right_node->base_stats.write_times += shift_node->base_stats.write_times;
-            left_node->base_stats.update_times++;
-            right_node->base_stats.update_times++;
-        }
-    }
 }
 
 // copy keys and pointers of a node to key buffer and pointers buffer
@@ -725,5 +376,35 @@ void aex_tree<_Key, _Val, traits>::copy_to_buffer(const inner_node_ptr __restric
     }
 }
 
+// update 
+// parent           --->        parent 
+//  ...\                         ...\.
+//  ....old_node                 .[node_list..., old_node]
+template<typename _Key, typename _Val, typename traits>
+void aex_tree<_Key, _Val, traits>::link_node_list(node_ptr node, std::vector<node_ptr> &node_buf){
+    int m = new_child.size();
+    node_ptr prev_node = node->prev, next_node = node->next, parent = node->parent;
+    if (node->prop & LEAF){
+        static_cast<data_node>(*node) = std::move(static_cast<data_node>(*new_child[m - 1]));
+    }
+    else{
+        static_cast<inner_node>(*node) = std::move(static_cast<inner_node>(*new_child[m - 1]));
+    }
+    new_child[m - 1] = node;
+    node_allocator.free(new_child[m - 1]);
+    for (slot_type i = 0; i < m; ++i)
+        new_child[i]->parent = parent;
+    for(size_type i = 0; i < m - 1; ++i){
+        new_child[i]->next = new_child[i + 1];
+        new_child[i + 1]->prev = new_child[i];
+    }
+    if (prev_node != nullptr)
+        prev_node->next = new_child[0];
+    new_child[0]->prev = prev_node;
+
+    new_child[m - 1]->next = next_node;
+    new_key.pop_back();
+    new_child.pop_back();
+}
 
 }

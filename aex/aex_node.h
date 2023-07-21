@@ -55,6 +55,8 @@ public:
         size_type recent_update_timestamp, update_times;
         double write_times, read_times;
         balance_stats():recent_update_timestamp(0), update_times(0), write_times(0), read_times(0){}
+        balance_stats(balance_stats &other_stats):recent_update_timestamp(other_stats.recent_update_timestamp), update_times(other_stats.update_times), 
+                                                write_times(other_stats.write_times), read_times(other_stats.read_times){}
     }base_stats;
 
     inline slot_type data_size(){
@@ -65,7 +67,13 @@ public:
         return (this->prop & node_property::LEAF) ? 1 : static_cast<inner_node_ptr>(this)->m_stats.data_node;
     }
 
-    aex_node_base():prev(nullptr), next(nullptr), size(0), slot_size(0), prop(0), level(0), balance_stats(){}
+    aex_node_base():prev(nullptr), next(nullptr), parent(nullptr), size(0), slot_size(0), prop(0), level(0), balance_stats(){}
+
+    aex_node_base(aex_node_base &other_node):prev(other_node.prev), next(other_node.next), parent(other_node.parent), size(other_node.size), slot_size(other_node.slot_size), 
+                                            prop(other_node.prop), level(other_node.level), balance_stats(other_node.base_stats){}
+
+    aex_node_base(aex_node_base &&other_node):prev(other_node.prev), next(other_node.next), parent(other_node.parent), size(other_node.size), slot_size(other_node.slot_size), 
+                                            prop(other_node.prop), level(other_node.level), balance_stats(other_node.base_stats){}
 
 };
 
@@ -129,15 +137,13 @@ public:
             free(this->bitmap_ptr);
     }
 
-    aex_inner_node(inner_node &other_node){
-        memcpy(this, other_node, sizeof(inner_node));
+    aex_inner_node(inner_node &other_node):aex_node_base(other_node), m_stats(other_node.m_stats), model(other_node.model){
         std::copy(other_node.key_ptr, other_node.key_ptr + other_node.slot_size, this->key_ptr);
         std::copy(other_node.child_ptr, other_node.child_ptr + other_node.slot_size, this->child_ptr);
         memcpy(this->bitmap_ptr, other_node->key_ptr, NodeAllocator::BITMAP_MEMORY_USED(other_node->slot_size));
     }
 
-    aex_inner_node(inner_node &&other_node){
-        memcpy(this, other_node, sizeof(inner_node));
+    aex_inner_node(inner_node &&other_node):aex_node_base(other_node), m_stats(other_node.m_stats), model(other_node.model){
         if (this->key_ptr != nullptr)
             free(this->key_ptr);
         if (this->child_ptr != nullptr)
@@ -152,6 +158,24 @@ public:
         other_node->bitmap_ptr = nullptr;
     }
 
+    aex_inner_node& operator = (aex_inner_node &&other_node){
+        static_cast<base_node>(*this) = static_cast<base_node>(other_node);
+        model = other_node.model;
+        if (this->key_ptr != nullptr)
+            free(this->key_ptr);
+        if (this->child_ptr != nullptr)
+            free(this->key_ptr);
+        if (this->bitmap_ptr != nullptr)
+            free(this->bitmap_ptr);
+        this->key_ptr = other_node->key_ptr;
+        this->child_ptr = other_node->child_ptr;
+        this->bitmap_ptr = other_node->bitmap_ptr;
+        other_node->key_ptr = nullptr;
+        other_node->child_ptr = nullptr;
+        other_node->bitmap_ptr = nullptr;
+        return *this;
+    }
+
     // clear bitmap
     inline void clear_bitmap(){
         memset(this->bitmap_ptr, 0, NodeAllocator::BITMAP_MEMORY_USED(this->slot_size));
@@ -161,35 +185,24 @@ public:
         memset(this->key_ptr, 0, NodeAllocator::KEY_MEMORY_USED(this->slot_size));
     }
 
-    inline void inplace_construct(){
+    inline void inplace_construct(Model &m){
         bitmap bm = this->bitmap_ptr();
-        if (this->real_slot_size() >= traits::MIN_ML_INNER_NODE_SLOT_SIZE){
-            if (Tree::check_rewired(this->key_ptr, this->size, this->real_slot_size(), this->model)){
-                this->prop |= node_property::ML_NODE;
-            }
-            else{
-                this->prop &= ~node_property::ML_NODE;
-            }
-        }
-        else{
-            this->prop &= ~node_property::ML_NODE;
-        }
+        this->model = m;
 
         {
             this->m_stats.data_node = this->m_stats.data_size = this->base_stats.write_times = 0;
-            this->size = n;
-            for(slot_type i = 0 ; i < n; ++i)
+            for(slot_type i = 0 ; i < this->size; ++i)
                 this->m_stats.data_size += static_cast<inner_node_ptr>(child[i])->data_size();
 
             if (this->level == 1){
                 AEX_ASSERT((child[0]->prop & LEAF) != 0);
-                this->m_stats.data_node = n;
+                this->m_stats.data_node = this->size;
             }
             else{
-                for(slot_type i = 0 ; i < n; ++i)
+                for(slot_type i = 0 ; i < this->size; ++i)
                     this->m_stats.data_node += static_cast<inner_node_ptr>(child[i])->m_stats.data_node;
             }
-            for (slot_type i = 0; i < n; ++i)
+            for (slot_type i = 0; i < this->size; ++i)
                 child[i]->parent = this;
         }
 
@@ -216,11 +229,11 @@ public:
     }
 
     // Construct a node with key array, don't check model is fit. 
-    // Please check_rewired(key, n) first!!!
+    // Please check_retrain(key, n) first!!!
     inline void construct(const key_type* const key, const node_ptr* const child, const slot_type n){
         //AEX_PRINT("inner node construct");
         if (this->real_slot_size() >= traits::MIN_ML_INNER_NODE_SLOT_SIZE){
-            if (Tree::check_rewired(key, n, this->real_slot_size(), this->model)){
+            if (Tree::check_retrain(key, n, this->real_slot_size(), this->model)){
                 this->prop |= node_property::ML_NODE;
             }
             else{
@@ -368,15 +381,6 @@ public:
             std::move(this->child_ptr + pos + 1, this->child_ptr + this->size, this->child_ptr + pos);
         }
         return true;
-    }
-
-    // copy a node
-    inline void copy(const inner_node_ptr node){
-        AEX_ASSERT(node->slot_size != this->slot_size);
-        memcpy(this, node, sizeof(inner_node));
-        std::copy(node->key_ptr, node->key_ptr + node->slot_size, this->key_ptr);
-        std::copy(node->child_ptr, node->child_ptr + node->slot_size, this->child_ptr);
-        memcpy(this->bitmap_ptr, node->bitmap_ptr, NodeAllocator::BITMAP_MEMORY_USED(this->slot_size));
     }
 
     // return the slot of child node
@@ -537,14 +541,12 @@ public:
             free(data);
     }
 
-    aex_data_node(aex_data_node &other_node){
-        memcpy(this, other_node, sizeof(data_node));
+    aex_data_node(aex_data_node &other_node):aex_node_base(other_node), m_stats(other_node.m_stats), model(other_node.model){
         std::copy(other_node.key, other_node.key + other_node.size, this->key);
         std::copy(other_node.data, other_node.data + other_node.size, this->data);
     }
 
-    aex_data_node(aex_data_node &&other_node){
-        memcpy(this, other_node, sizeof(data_node));
+    aex_data_node(aex_data_node &&other_node):aex_node_base(other_node), m_stats(other_node.m_stats), model(other_node.model){
         if (this->key != nullptr)
             free(this->key);
         if (this->data != nullptr)
@@ -553,6 +555,20 @@ public:
         this->data = other_node.data;
         other_node.key = nullptr;
         other_node.data = nullptr;
+    }
+
+    aex_data_node& operator = (aex_data_node &&other_node){
+        static_cast<base_node>(*this) = static_cast<base_node>(other_node);
+        model = other_node.model;
+        if (this->key != nullptr)
+            free(this->key);
+        if (this->data != nullptr)
+            free(this->data);
+        this->key = other_node.key;
+        this->data = other_node.data;
+        other_node.key = nullptr;
+        other_node.data = nullptr;
+        return *this;
     }
 
     // only node_property::ML_NODE can use it. check if node_property::ML_NODE first

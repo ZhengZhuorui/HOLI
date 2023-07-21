@@ -161,19 +161,14 @@ public:
     std::pair<iterator, bool> insert(const key_type &key, const value_type &value);
 
     iterator find(const key_type &x) {
-        data_node_ptr node = find_leaf(x, this->allow_rw_balance);
-        iterator it = find_lower(node, x);
-        //AEX_PRINT("find real key=" << x << "node key=" << it.key() << ", data=" << it.data() << ", node_id=" << node_allocator.node_id[it._M_node] << ", pos=" << it.offset);
+        iterator it = find_iterator(x);
         if (it.key() != x) 
             return end();
-        //AEX_PRINT("find real key=" << x << "node key=" << it.key() << ", data=" << it.data() << ", node_id=" << node_allocator.node_id[it._M_node] << ", pos=" << it.offset);
         return it;
     }
 
     const_iterator find(const key_type &x) const{
-        std::false_type fp;
-        data_node_ptr node = find_leaf(x, fp);
-        iterator it = find_lower(node, x);
+        iterator it = find_iterator(x);
         if (it.key() != x) 
             return end();
         return it;
@@ -218,23 +213,16 @@ public:
     }
 
     iterator lower_bound(const key_type &x){
-        data_node_ptr node = find_leaf(x, this->allow_rw_balance);
-        return find_lower(node, x);
+        return find_iterator(x);
     }
 
     const_iterator lower_bound(const key_type &x) const {
-        std::false_type fp;
-        data_node_ptr node = find_leaf(x, this->allow_rw_balance);
-        return find_lower(x, fp);
+        return find_iterator(x);
     }
 
     iterator upper_bound(const key_type &x){
-        std::false_type fp;
-        data_node_ptr node = find_leaf(x, fp);
-        while (node != nullptr && node->key[node->size] <= x)
-            node = node->next;
-        if (node == nullptr) return end();
-        iterator iter = find_upper(node, x);
+        iterator iter = find_iterator(node, x);
+        while (iter.key() <= x) ++iter;
         return iter;
     }
 
@@ -261,10 +249,7 @@ public:
 
     bool erase_one(const key_type &x){
         //std::true_type tp;
-        node_ptr stack[traits::MAX_DEPTH];
-        int top;
-        data_node_ptr node = find_leaf_with_trace(x, stack, top);
-        iterator find_iter = find_lower(node, x);
+        iterator find_iter = find_iterator(x);
         if (find_iter == end()) 
             return false;
         if (find_iter.key() != x)
@@ -272,33 +257,27 @@ public:
         if (traits::AllowRWBalance::value){
             slot_type best_slot_size = check_balance_split_best_slot_size(node);
             if (best_slot_size < node->slot_size){
-                balance_split(stack, top, node, best_slot_size);
-                node = find_leaf_with_trace(x, stack, top);
+                balance_split(node, best_slot_size);
+                node = find_leaf(x);
             }
         }
 
-        erase_iterator(find_iter, stack, top);
+        erase_ascend(find_iter);
         return true;
     }
 
     inline void erase(const_iterator &iter){
         if (root == nullptr) return end();
-        node_ptr stack[traits::MAX_DEPTH];
-        int top;
         key_type x = iter._M_node->key[iter.offset];
-        data_node_ptr node = find_leaf_with_trace(x, stack, top);
-        if (traits::AllowMultiKey){
-            node = iter._M_node;
-            stack[top - 1] = iter._M_node;
-        }
+        data_node_ptr node = iter._M_node;
         if (traits::AllowRWBalance::value){
             size_type best_slot_size = check_balance_split_best_slot_size(node);
             if (best_slot_size < node->slot_size){
-                balance_split(stack, top, node, best_slot_size);
+                balance_split(node, best_slot_size);
             }
-            node = find_leaf_with_trace(x, stack, top);
+            node = find_leaf(x);
         }
-        erase_iterator(iter, stack, top);
+        erase_iterator(iter);
     }
 
     inline iterator begin() {
@@ -368,7 +347,7 @@ protected:
 private:    
 #endif
      
-    void construct(node_ptr node, node_ptr &new_node);
+    void construct(node_ptr &node, node_ptr &new_node);
 
     void deconstruct(node_ptr node);
 
@@ -393,6 +372,25 @@ private:
         return iterator(node, pos);
     }
 
+    inline iterator find_iterator(const key_type &x){
+        do{
+            data_node_ptr node = find_leaf(x);
+            slot_type pos = node->find_lower_pos(x);
+            if (pos == node->size)
+                return end();
+            if ((node->prop & ML_NODE))
+                if (std::abs(node->predict(x) - pos) >= traits::ERROR_BOUND * 2){
+                    std::vector<key_type> key_buf;
+                    std::vector<value_type > key_buf;
+                    split(node, key_buf, child_buf);
+                    if (key_buf.size() > 0)
+                        insert_ascend(node, key_buf, child_buf);
+                    continue;
+                }
+            return iterator(node, pos);
+        }while(true);
+    }
+
     // if no item greater than x, return NULL
     inline iterator find_upper(const data_node_ptr node, const key_type &x){
         slot_type pos = node->find_upper_pos(x);
@@ -409,10 +407,6 @@ private:
     data_node_ptr find_leaf(const key_type &key, std::true_type AllowBalance);
 
     data_node_ptr find_leaf(const key_type &key, std::false_type AllowBalance);
-
-    //data_node_ptr find_leaf_with_trace(const key_type &key, node_ptr* stack, int &top);
-
-    //data_node_ptr find_leaf_with_trace(const key_type &key, node_ptr* stack, int &top, std::false_type AllowBalance);
 
     // layout: [a, old_node, b] -> [a, old_node, new_node, b]
     void split(data_node_ptr __restrict__ old_node, data_node_ptr __restrict__ new_node);
@@ -450,7 +444,7 @@ private:
 
     bool check_balance_split(size_type node_slot_size, double node_write_pro, double train_pro, size_type slot_size);
     bool check_balance_split(data_node_ptr node, size_type slot_size=traits::MIN_DATA_NODE_SLOT_SIZE);
-    void balance_split(const node_ptr* stack, const int top, data_node_ptr node, slot_type slot_size);
+    void balance_split(data_node_ptr node, slot_type slot_size);
     
     slot_type check_balance_split_best_slot_size(data_node_ptr node);
   
@@ -469,8 +463,8 @@ private:
     // A part of bulk load.
     void build_tree(std::vector<key_type>& key_buf, std::vector<node_ptr>& child_buf);
 
-    // insert some items to node(stack[top - 1]) from bottom to up
-    void insert_ascend(const node_ptr* stack, const int top, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
+    // insert some items to node from bottom to up
+    void insert_ascend(inner_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
 
     // ========== 4. erase ==========
 
@@ -478,10 +472,10 @@ private:
     void erase_tree_recursive(node_ptr node);
 
     // erase an node from bottom to up
-    void erase_ascend(inner_node_ptr node, node_ptr* stack, int top);
+    void erase_ascend(inner_node_ptr node);
 
     // erase one iterator
-    void erase_iterator(iterator &iter, node_ptr* stack, int top);
+    void erase_iterator(iterator &iter);
 
     // erase one child node from parent. return false if parent or child not exists
     // no free the node
@@ -490,10 +484,17 @@ private:
     // erase one item(iterator) from data_node
     void erase_data(iterator &iter);
 
-    // ========== 4. Structure Modify Operation(SMO) ==========
+    bool erase_split(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node);
+    bool erase_split(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node);
 
-    // Split an data node to many nodes with linear_probe
-    void split(data_node_ptr node, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
+    inline void erase_link(node_ptr node){
+        if (node->prev != nullptr) 
+            node->prev->next = node->next;
+        if (node->next != nullptr) 
+            node->next->prev = node->prev;
+    }
+
+    // ========== 4. Structure Modify Operation(SMO) ==========
 
     // split a ordered key array with child pointers array to inner node array. Support the old node firstly.
     //bool split_with_old_node(const key_type* const __restrict__ key, const node_ptr* const __restrict__ child, const size_type n, 
@@ -512,59 +513,18 @@ private:
     // need no key of item between old key and new key.
     bool update_childnode_key(inner_node_ptr __restrict__ parent, const node_ptr __restrict__ node, const key_type &key);
 
-    // change the parent node ptr with same key. The old_node->key[0] must equal to the new_node->key[0].
-    bool update_childnode_ptr(inner_node_ptr __restrict__ parent, const node_ptr old_node, const node_ptr new_node);
-
     // Unused. Please use insert directly.
     // check if a node can insert the key.
     bool check_insert(const inner_node_ptr node, const key_type &key);
 
-    // check if a node can insert the key. If true, insert it.
-    //bool check_insert_and_do(const inner_node_ptr __restrict__ node, const key_type &key, const node_ptr __restrict__ new_node);
-    
-    inline size_type init_rewired_cnt(inner_node_ptr node){
-        return static_cast<size_type>(traits::INIT_REWIRED_CNT * log(node->real_slot_size()));
-    }
-
     // check if key buffer can put in a node with slot_size slot size. The model m will be trained if the answer is true
-    static bool check_rewired(const key_type* const key, const slot_type size, const slot_type slot_size, inner_node_model &m);
-
-    // rewired the <key, node_ptr> array of a node. Return true if <K, P> array can be rewired. Otherwise return false.
-    bool rewired(inner_node_ptr node);
+    static bool check_retrain(const key_type* const key, const slot_type size, const slot_type slot_size, inner_node_model &m);
 
     // Rescale a node slot_size. ratio > 1 means expand and ratio < 1 means narrow. 
     // if node expand or narrow successed, the old node will free and return true. Otherwise return false.
-    bool rescale(inner_node_ptr __restrict__ &node, const double ratio);
-    bool rescale(data_node_ptr __restrict__ &node, const double ratio);
-    bool rescale(node_ptr __restrict__ &node, const double ratio);
-
-    // copy keys and data/pointers from a node to another node, regardless of the node type
-    void copy_node(inner_node_ptr __restrict__ node, inner_node_ptr __restrict__ new_node);
-
-    // merge right leaf to left leaf.
-    void merge_to_left_leaf(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node);
-
-    // merge left leaf to right leaf.
-    void merge_to_right_leaf(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node);
-
-    // merge right inner node to left inner node. require the left inner node and right inner node must be not ML node.
-    void merge_to_left_node(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node);
-
-    // merge left inner node to right inner node. require the left inner node and right inner node must be not ML node.
-    void merge_to_right_node(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node);
-
-    // shift one item from right leaf to left leaf
-    void shift_to_left_leaf(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node);
-
-    // shift one item from left leaf to right leaf
-    void shift_to_right_leaf(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node);
-
-    // shift one item from right inner node to left brother, the left node must be least node, because left node will narrow if left node is node_property::ML_NODE, it is same as shift_to_right_node
-    void shift_to_left_node(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node);
-
-    // shift one item from left inner node to right brother, the left node must be least node, because right node will narrow if right node is node_property::ML_NODE,
-    // right node must not be ML_NODE
-    void shift_to_right_node(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node);
+    bool rescale(inner_node_ptr node, const double ratio);
+    bool rescale(data_node_ptr node, const double ratio);
+    bool rescale(node_ptr node, const double ratio);
 
     inline static void data_memmove(value_type* __restrict__ dest, const value_type* const __restrict__ src, const size_type n){
         used_as_set s;
@@ -579,8 +539,16 @@ private:
         return node->size < node->slot_size * traits::DATA_NODE_FEW_RATIO;
     }
 
+    inline bool isfew(const data_node_ptr node, const slot_type offset) const {
+        return (node->size + offset) < node->slot_size * traits::DATA_NODE_FEW_RATIO;
+    }
+
     inline bool isfull(const inner_node_ptr node) const {
         return (node->prop & node_property::ML_NODE) ? (node->size >= node->slot_size * this->inner_node_full_ratio[node->level]) : (node->size >= node->slot_size * traits::DATA_NODE_FULL_RATIO);
+    }
+
+    inline bool isfull(const inner_node_ptr node, slot_type offset) const {
+        return (node->prop & node_property::ML_NODE) ? (node->size + offset >= node->slot_size * this->inner_node_full_ratio[node->level]) : (node->size + offset>= node->slot_size * traits::DATA_NODE_FULL_RATIO);
     }
     
     inline bool isfew(const inner_node_ptr node) const {

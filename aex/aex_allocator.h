@@ -228,7 +228,6 @@ public:
 
         node->slot_size = real_slot_size;
         node->prop = node->size = node->base_stats.write_times = node->base_stats.train_times = 0;
-        node->m_stats.rewired_cnt = static_cast<size_type>(traits::INIT_REWIRED_CNT * log(slot_size));
 
         // offset: meta data
         node->key_ptr = static_cast<key_type*>(malloc(KEY_MEMORY_USED(node->slot_size)));

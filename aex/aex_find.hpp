@@ -10,8 +10,6 @@ typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits
     ++this->m_stats.timestamp;
     node_ptr node = nullptr, parent = nullptr;
     bool flag;
-    //node_ptr stack[traits::MAX_DEPTH];
-    //int top = 1;
     do{
         flag = true;
         node = root;
@@ -44,20 +42,6 @@ typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits
     return static_cast<data_node_ptr>(node);
 }
 
-//template<typename _Key, typename _Val, typename traits>
-//typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_leaf_with_trace(const key_type &key, node_ptr* stack, int &top){
-//    //mutex timestamp
-//    ++this->m_stats.timestamp;
-//    node_ptr node = root;
-//    stack[top = 0] = nullptr;
-//    top++;
-//    while (!(node->prop & node_property::LEAF)){
-//        stack[top++] = node;
-//        node = find(static_cast<inner_node_ptr>(node), key);
-//    }
-//    stack[top++] = node;
-//    return static_cast<data_node_ptr>(node);
-//}
 
 
 }

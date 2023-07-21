@@ -75,25 +75,25 @@ void aex_tree<_Key, _Val, traits>::init(){
 }
 
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::construct(node_ptr node, node_ptr &new_node){
+void aex_tree<_Key, _Val, traits>::construct(node_ptr &node, node_ptr &new_node){
     if (node->prop & node_property::LEAF){
-        new_node = node_allocator.allocate_data_node(new_node->slot_size);
-        static_cast<data_node>(new_node)->copy(node);
+        node = node_allocator.allocate_data_node(new_node->slot_size);
+        new_node = other_node;
     }
     else{
         new_node = node_allocator.allocate_inner_node(node->slot_size);
         ++this->m_stats.inner_node;
-        static_cast<inner_node_ptr>(new_node)->copy(node);
-        bitmap bm = static_cast<inner_node_ptr>(new_node)->bitmap_ptr;
+        new_node = other_node;
+        bitmap bm = static_cast<inner_node_ptr>(other_node)->bitmap_ptr;
         node_ptr* child = static_cast<inner_node_ptr>(node)->child_ptr;
-        node_ptr* new_child = static_cast<inner_node_ptr>(new_node)->child_ptr;
+        node_ptr* new_child = static_cast<inner_node_ptr>(other_node)->child_ptr;
         if (node->prop & node_property::ML_NODE){
             slot_type prev = 0;
             for (slot_type i = 0; i < node->slot_size; ++i)
             if (bitmap_impl::at(bm, i)){
                 construct(child[i], new_child[i]);
                 std::fill(new_child + prev, new_child + i, new_child[i]);
-                prev = i;
+                prev = i + 1;
             }
             if (prev != node->slot_size - 1)
                 std::fill(new_child + prev, new_child + node->slot_size, new_child[prev]);
