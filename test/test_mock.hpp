@@ -63,14 +63,14 @@ public:
         key_type first_key;
         ++msg.level_node_nums[node->level];
 
-        if (node->prop & node_property::LEAF){
+        if (IS_LEAF_NODE(node)){
             return;
         }
         else{
             inner_node_ptr in = static_cast<inner_node_ptr>(node);
             key_type* node_key = in->key_ptr;
             node_ptr* node_child = in->child_ptr;
-            if (node->prop & node_property::ML_NODE){
+            if (IS_ML_NODE(node)){
                 bitmap bm = in->bitmap_ptr;
                 for (size_type i = 0; i <= in->slot_size; ++i){
                     if (bitmap_impl::at(bm, i)){
@@ -94,7 +94,7 @@ public:
     std::pair<key_type, bool> debug(node_ptr node){
         bool flag = true;
         key_type first_key;
-        if (node->prop & node_property::LEAF){
+        if (IS_LEAF_NODE(node)){
             ++msg.data_node;
             data_node_ptr dn = static_cast<data_node_ptr>(node);
             first_key = dn->key[0];
@@ -110,7 +110,7 @@ public:
             inner_node_ptr in = static_cast<inner_node_ptr>(node);
             key_type* node_key = in->key_ptr;
             node_ptr* node_child = in->child_ptr;
-            if (node->prop & node_property::ML_NODE){
+            if (IS_ML_NODE(node)){
                 size_type cnt = 0;
                 bitmap bm = in->bitmap_ptr;
                 first_key = node_key[0];

@@ -1,5 +1,8 @@
 #pragma once
 
+#include "aex/aex_def.h"
+#include "aex/aex_balance.h"
+
 namespace aex
 {
 
@@ -12,74 +15,6 @@ enum memory_prop{
 struct memory_config{
     std::vector<size_t> node_size_vec;
 };
-
-//template<typename _Key,
-//        typename _Val,
-//        typename traits>
-//class aex_allocator{
-//public:
-//
-//    typedef _Key key_type;
-//
-//    typedef _Val value_type;
-//
-//    typedef aex_node_base<_Key, _Val, traits> node;
-//    
-//    typedef node* node_ptr;
-//
-//    //memory_config _config;
-//
-//    std::vector<char*> lt;
-//
-//    inline void* _allocate(size_t size){
-//        /* 
-//        *   TODO: memory pool
-//        */
-//        #ifdef AEX_DEBUG
-//            ++alloc_cnt;
-//            AEX_FORMAT("alloc_cnt=%lld", alloc_cnt);
-//        #endif
-//        return static_cast<void*>(malloc(size));
-//    }
-//
-//    inline key_type* allocate_key_buffer(size_t size){
-//        /* 
-//        *   TODO: memory pool
-//        */
-//        #ifdef AEX_DEBUG
-//            ++alloc_cnt;
-//            AEX_FORMAT("alloc_cnt=%lld", alloc_cnt);
-//        #endif
-//        return static_cast<key_type*>(malloc(size * sizeof(_Key)));
-//    }
-//
-//
-//    inline node_ptr* allocate_nodeptr_buffer(size_t size){
-//        /* 
-//         *   TODO: memory pool
-//        */
-//        #ifdef AEX_DEBUG
-//            ++alloc_cnt;
-//            AEX_FORMAT("alloc_cnt=%lld", alloc_cnt);
-//        #endif
-//        return static_cast<node_ptr*>(malloc(size * sizeof(node_ptr*)));
-//    }
-//
-//    inline void _free(void* p){
-//        /* 
-//        *   TODO: memory pool
-//        */
-//        #ifdef AEX_DEBUG
-//            ++free_cnt;
-//            AEX_FORMAT("free_cnt=%lld, pointer=%p", free_cnt, p);
-//        #endif
-//        if (p != nullptr)
-//            free(p);
-//    }
-//};
-//
-
-template<typename _Key, typename _Val, typename traits> class aex_tree;
 
 template<typename _Key, 
         typename _Val,
@@ -227,7 +162,8 @@ public:
         #endif
 
         node->slot_size = real_slot_size;
-        node->prop = node->size = node->base_stats.write_times = node->base_stats.train_times = 0;
+        node->prop = node->size = 0;
+        node->balance_stats = aex_node_balance_stats<typename traits::AllowBalance>();
 
         // offset: meta data
         node->key_ptr = static_cast<key_type*>(malloc(KEY_MEMORY_USED(node->slot_size)));
@@ -279,7 +215,7 @@ public:
         node->level = 1;
         node->prev = node->next = nullptr;
         node->prop = node_property::LEAF;
-        node->base_stats.write_times = node->base_stats.train_times = 0;
+        node->balance_stats = aex_node_balance_stats<typename traits::AllowBalance>();
 
         //node->key = reinterpret_cast<key_type*>(align_8bytes(reinterpret_cast<size_t>(node) + sizeof(data_node)));
         node->key = static_cast<key_type*>(malloc(KEY_MEMORY_USED(node->slot_size + 1)));
@@ -299,12 +235,12 @@ public:
     }
 
     inline void reallocate(inner_node_ptr node, slot_type new_slot_size){
-        this->memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) - \
-                                        PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) - \
-                                        BITMAP_MEMORY_USED(node->slot_size) + BITMAP_MEMORY_USED(new_slot_size);
+        this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) \
+                              - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) \
+                              - BITMAP_MEMORY_USED(node->slot_size) + BITMAP_MEMORY_USED(new_slot_size);
         key_type *new_key_ptr = static_cast<key_type*>(malloc(KEY_MEMORY_USED(new_slot_size)));
         node_ptr *new_child_ptr = static_cast<node_ptr*>(malloc(PTR_MEMORY_USED(new_slot_size)));
-        bitmap new_bitmap_ptr = static_cast<bitmap*>(malloc(BITMAP_MEMORY_USED(new_slot_size)));
+        bitmap new_bitmap_ptr = static_cast<bitmap>(malloc(BITMAP_MEMORY_USED(new_slot_size)));
         base_tree::copy_to_buffer(node, new_key_ptr, new_child_ptr);
         node->slot_size = new_slot_size;
         free(node->key_ptr);
@@ -316,7 +252,7 @@ public:
     }
 
     inline void reallocate(data_node_ptr node, slot_type new_slot_size){
-        this->memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) - \
+        this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) - \
                                         DATA_MEMORY_USED(node->slot_size) + DATA_MEMORY_USED(new_slot_size);
         key_type *new_key = static_cast<key_type*>(malloc(KEY_MEMORY_USED(new_slot_size)));
         value_type *new_data = static_cast<value_type*>(malloc(DATA_MEMORY_USED(new_slot_size)));

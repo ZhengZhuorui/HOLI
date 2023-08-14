@@ -4,7 +4,7 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(){
+aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(){
     AEX_HINT("BEGIN");
     this->init();
     AEX_HINT("END");
@@ -12,7 +12,7 @@ aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), tail
 
 template<typename _Key, typename _Val, typename traits>
 template<typename _InputIterator>
-aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(){
+aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(){
     this->init();
     /* TODO: insert data sequencely */
     std::vector<std::pair<key_type, value_type> > data;
@@ -23,15 +23,15 @@ aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __
 }
 
 template<typename _Key, typename _Val, typename traits>
-aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(){
+aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(){
     this->init();
-    this->construct(_index.root, root);
-    this->m_stats.size = _index.m_stats.size;
-    this->m_stats.height = _index.m_stats.height;
+    this->construct(_index.root, this->root);
+    this->m_stats = _index.m_stats;
+    this->balance_stats = _index.balance_stats;
 }
 
 template<typename _Key, typename _Val, typename traits>
-aex_tree<_Key, _Val, traits>::aex_tree(self&& _index){
+aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(){
     this->erase_tree_recursive(this->root);
     
     this->init();
@@ -40,9 +40,10 @@ aex_tree<_Key, _Val, traits>::aex_tree(self&& _index){
     this->head_leaf = _index.head_leaf;
     _index.head_leaf = nullptr;
     this->tail_leaf = _index.tail_leaf;
-    this->m_stats = _index.m_stats;
+    _index.tail_leaf = nullptr;
 
-    this->split = self::split_with_exponential_probe;
+    this->m_stats = _index.m_stats;
+    this->balance_stats = _index.balance_stats;
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -70,24 +71,27 @@ void aex_tree<_Key, _Val, traits>::init(){
         this->inner_node_few_ratio[i] = this->inner_node_few_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
         this->inner_node_full_ratio[i] = this->inner_node_full_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
     }
-    //this->lambda = 1 - 1.0 / traits::LAMBDA_;
+    this->balance_stats = aex_tree_balance_stats<typename traits::AllowBalance>();
     AEX_HINT("END");
 }
 
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::construct(node_ptr &node, node_ptr &new_node){
-    if (node->prop & node_property::LEAF){
-        node = node_allocator.allocate_data_node(new_node->slot_size);
-        new_node = other_node;
+void aex_tree<_Key, _Val, traits>::construct(node_ptr node, node_ptr &new_node){
+    if (IS_LEAF_NODE(node)){
+        new_node = node_allocator.allocate_data_node(node->slot_size);
+        ++this->m_stats.level_node[0];
+        ++this->m_stats.data_node;
+        static_cast<data_node>(*new_node) = static_cast<data_node>(*node);
     }
     else{
         new_node = node_allocator.allocate_inner_node(node->slot_size);
+        ++this->m_stats.level_node[node->level];
         ++this->m_stats.inner_node;
-        new_node = other_node;
-        bitmap bm = static_cast<inner_node_ptr>(other_node)->bitmap_ptr;
+        static_cast<inner_node>(*new_node) = static_cast<inner_node>(*node);
+        bitmap bm = static_cast<inner_node_ptr>(node)->bitmap_ptr;
         node_ptr* child = static_cast<inner_node_ptr>(node)->child_ptr;
-        node_ptr* new_child = static_cast<inner_node_ptr>(other_node)->child_ptr;
-        if (node->prop & node_property::ML_NODE){
+        node_ptr* new_child = static_cast<inner_node_ptr>(node)->child_ptr;
+        if (IS_ML_NODE(node)){
             slot_type prev = 0;
             for (slot_type i = 0; i < node->slot_size; ++i)
             if (bitmap_impl::at(bm, i)){

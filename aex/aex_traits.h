@@ -26,9 +26,17 @@ class aex_type_traits<double>{
     typedef double args_type; 
 };
 
+struct aex_default_balance_args{
+    static constexpr double MODEL_SEARCH_FACTOR = 4.0; // find a child/data with learned model needs MODEL_SEARCH_FACTOR cost
+    static constexpr double BINEARY_SEARCH_FACTOR = 1.0; // find a child/data with bineary search needs BINEARY_SEARCH_FACTOR * log(n) cost
+    static constexpr double DENSE_ARRAY_INSERT_FACTOR = 1.0; // insert a child/data in dense array needs DENSE_ARRAY_INSERT_FACTOR * n cost
+    static constexpr double GAP_ARRAY_INSERT_FACTOR = 4.0; // insert a child/data in gap array needs GAP_ARRAY_INSERT_FACTOR cost
+    static constexpr double DATA_NODE_TRAIN_FACTOR = 32.0; // train a data node needs DATA_NODE_TRAIN_FACTOR * n cost
+    static constexpr double INNER_NODE_TRAIN_FACTOR = 32.0; // train a inner node needs INNER_NODE_TRAIN_FACTOR * n cost
+};
+
 template<typename _Key, 
         typename _Val,
-        typename _AllowMultiKey=std::false_type,
         typename _AllowMultiThread=std::false_type>
 struct aex_default_traits{
 
@@ -46,11 +54,9 @@ struct aex_default_traits{
 
     typedef unsigned char version_type;
 
-    //typedef unsigned long long slot_type;
+    typedef aex_default_balance_args MODEL_ARGS;
 
     typedef std::false_type used_as_set;
-
-    typedef _AllowMultiKey AllowMultiKey;
 
     typedef _AllowMultiThread AllowMultiThread;
 
@@ -59,6 +65,10 @@ struct aex_default_traits{
 
     // Allow balance inner node when insert an item?
     typedef std::false_type AllowInsertBalance;
+
+    typedef std::false_type AllowBalance;
+
+    static_assert((AllowRWBalance::value | AllowInsertBalance::value) == AllowBalance::value);
 
     // Allow data node slot size dynamic? (static data node slot size is MIN_DATA_NODE_SLOT_SIZE)
     typedef std::true_type AllowDynamicDataNode;
@@ -83,11 +93,6 @@ struct aex_default_traits{
     static constexpr float DATA_NODE_FULL_RATIO = 1;
 
     static constexpr float DENSITY_NARROW_RATIO = 0.5;
-    //static constexpr float DENSITY_NARROW_RATIO = 0.75;
-    
-    static constexpr float EXPAND_RATIO = DATA_NODE_FULL_RATIO / DATA_NODE_FEW_RATIO;
-
-    static constexpr float NARROW_RATIO = 0.5;
 
     static constexpr float MERGE_COST_PARA = 1;
 
@@ -100,8 +105,6 @@ struct aex_default_traits{
     static const int MAX_DEPTH = 16;
 
     static const char INIT_REWIRED_CNT = 5;
-
-    static const int LAMBDA_ = 100000;
 
     static constexpr float LEARNING_COST = 10;
 
@@ -119,9 +122,8 @@ struct aex_default_traits{
 
 template<typename _Key, 
         typename _Val,
-        typename _AllowMultiKey=std::false_type,
         typename _AllowMultiThread=std::false_type>
-struct aex_rw_balance_traits : public aex::aex_default_traits<_Key, _Val, _AllowMultiKey, _AllowMultiThread>{
+struct aex_rw_balance_traits : public aex::aex_default_traits<_Key, _Val, _AllowMultiThread>{
     // Allow balance inner node and data node when read and write frequency update?
     typedef std::true_type AllowRWBalance;
 };

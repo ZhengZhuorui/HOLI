@@ -1,11 +1,7 @@
 #pragma once
+#include "aex/aex_balance.h"
+
 namespace aex{
-
-template<typename _Key, typename _Val, typename traits> class aex_tree;
-template<typename _Key, typename _Val, typename traits> class aex_node_allocator;
-
-template<typename _Key, typename _Val, typename traits> struct aex_inner_node;
-template<typename _Key, typename _Val, typename traits> struct aex_data_node;
 
 template<typename _Key,
         typename _Val,
@@ -26,6 +22,8 @@ public:
 
     typedef aex_data_node<_Key, _Val, traits> data_node;
 
+    typedef aex_node_balance_stats<typename traits::AllowBalance> node_balance_stats;
+
     typedef inner_node* inner_node_ptr;
 
     typedef data_node* data_node_ptr;
@@ -34,7 +32,9 @@ public:
 
     typedef self* node_ptr;
 
-    node_ptr prev, next, parent;
+    node_ptr prev, next;
+
+    inner_node_ptr parent;
 
     // size: the child node of the node(inner node); the data of the node(data node)
     // slot_size: the slot of the node
@@ -43,37 +43,28 @@ public:
     // prop
     // level: node height
     unsigned int prop, level;
-
-    //virtual size_type& data_size() = 0;
-    //
-    //virtual size_type data_node_size() = 0;
-//
-    //virtual key_type max_key() = 0;
-
-    struct balance_stats{
-        // UNDO:
-        size_type recent_update_timestamp, update_times;
-        double write_times, read_times;
-        balance_stats():recent_update_timestamp(0), update_times(0), write_times(0), read_times(0){}
-        balance_stats(balance_stats &other_stats):recent_update_timestamp(other_stats.recent_update_timestamp), update_times(other_stats.update_times), 
-                                                write_times(other_stats.write_times), read_times(other_stats.read_times){}
-    }base_stats;
-
-    inline slot_type data_size(){
-        return (this->prop & node_property::LEAF) ? this->size : static_cast<inner_node_ptr>(this)->size;
-    }
-
-    inline slot_type data_node_size(){
-        return (this->prop & node_property::LEAF) ? 1 : static_cast<inner_node_ptr>(this)->m_stats.data_node;
-    }
+    
+    node_balance_stats balance_stats;
 
     aex_node_base():prev(nullptr), next(nullptr), parent(nullptr), size(0), slot_size(0), prop(0), level(0), balance_stats(){}
 
     aex_node_base(aex_node_base &other_node):prev(other_node.prev), next(other_node.next), parent(other_node.parent), size(other_node.size), slot_size(other_node.slot_size), 
-                                            prop(other_node.prop), level(other_node.level), balance_stats(other_node.base_stats){}
+                                            prop(other_node.prop), level(other_node.level), balance_stats(other_node.balance_stats){}
 
     aex_node_base(aex_node_base &&other_node):prev(other_node.prev), next(other_node.next), parent(other_node.parent), size(other_node.size), slot_size(other_node.slot_size), 
-                                            prop(other_node.prop), level(other_node.level), balance_stats(other_node.base_stats){}
+                                            prop(other_node.prop), level(other_node.level), balance_stats(other_node.balance_stats){}
+
+    aex_node_base& operator = (aex_node_base &other_node){
+        this->prev = other_node.prev;this->next = other_node.next;this->parent = other_node.parent;this->size = other_node.size;
+        this->slot_size = other_node.slot_size;this->prop = other_node.prop;this->level = other_node.level;this->balance_stats = other_node.balance_stats;
+        return *this;
+    }
+
+    aex_node_base& operator = (aex_node_base &&other_node){
+        this->prev = other_node.prev;this->next = other_node.next;this->parent = other_node.parent;this->size = other_node.size;
+        this->slot_size = other_node.slot_size;this->prop = other_node.prop;this->level = other_node.level;this->balance_stats = other_node.balance_stats;
+        return *this;
+    }
 
 };
 
@@ -137,13 +128,13 @@ public:
             free(this->bitmap_ptr);
     }
 
-    aex_inner_node(inner_node &other_node):aex_node_base(other_node), m_stats(other_node.m_stats), model(other_node.model){
+    aex_inner_node(inner_node &other_node):base_node(other_node), model(other_node.model){
         std::copy(other_node.key_ptr, other_node.key_ptr + other_node.slot_size, this->key_ptr);
         std::copy(other_node.child_ptr, other_node.child_ptr + other_node.slot_size, this->child_ptr);
         memcpy(this->bitmap_ptr, other_node->key_ptr, NodeAllocator::BITMAP_MEMORY_USED(other_node->slot_size));
     }
 
-    aex_inner_node(inner_node &&other_node):aex_node_base(other_node), m_stats(other_node.m_stats), model(other_node.model){
+    aex_inner_node(inner_node &&other_node):base_node(other_node), model(other_node.model){
         if (this->key_ptr != nullptr)
             free(this->key_ptr);
         if (this->child_ptr != nullptr)
@@ -167,12 +158,12 @@ public:
             free(this->key_ptr);
         if (this->bitmap_ptr != nullptr)
             free(this->bitmap_ptr);
-        this->key_ptr = other_node->key_ptr;
-        this->child_ptr = other_node->child_ptr;
-        this->bitmap_ptr = other_node->bitmap_ptr;
-        other_node->key_ptr = nullptr;
-        other_node->child_ptr = nullptr;
-        other_node->bitmap_ptr = nullptr;
+        this->key_ptr = other_node.key_ptr;
+        this->child_ptr = other_node.child_ptr;
+        this->bitmap_ptr = other_node.bitmap_ptr;
+        other_node.key_ptr = nullptr;
+        other_node.child_ptr = nullptr;
+        other_node.bitmap_ptr = nullptr;
         return *this;
     }
 
@@ -185,28 +176,14 @@ public:
         memset(this->key_ptr, 0, NodeAllocator::KEY_MEMORY_USED(this->slot_size));
     }
 
-    inline void inplace_construct(Model &m){
-        bitmap bm = this->bitmap_ptr();
-        this->model = m;
-
+    inline void inplace_construct(){
+        bitmap bm = this->bitmap_ptr;
         {
-            this->m_stats.data_node = this->m_stats.data_size = this->base_stats.write_times = 0;
-            for(slot_type i = 0 ; i < this->size; ++i)
-                this->m_stats.data_size += static_cast<inner_node_ptr>(child[i])->data_size();
-
-            if (this->level == 1){
-                AEX_ASSERT((child[0]->prop & LEAF) != 0);
-                this->m_stats.data_node = this->size;
-            }
-            else{
-                for(slot_type i = 0 ; i < this->size; ++i)
-                    this->m_stats.data_node += static_cast<inner_node_ptr>(child[i])->m_stats.data_node;
-            }
             for (slot_type i = 0; i < this->size; ++i)
-                child[i]->parent = this;
+                child_ptr[i]->parent = this;
         }
 
-        if (this->prop & node_property::ML_NODE){
+        if (IS_ML_NODE(this)){
             std::move_backward(this->key_ptr, this->key_ptr + this->size, this->key_ptr + this->slot_size);
             std::move_backward(this->child_ptr, this->child_ptr + this->size, this->child_ptr + this->slot_size);
             slot_type start = 0, his_pos = 0;
@@ -217,7 +194,7 @@ public:
                 AEX_ASSERT(start - pos < traits::ERROR_BOUND);
                 AEX_ASSERT(start - pos < traits::ERROR_BOUND);
                 std::fill(this->key_ptr + his_pos, this->key_ptr + start + 1, key_ptr[i]);
-                std::fill(this->child_ptr + his_pos, this->child_ptr + start + 1, key_ptr[i]);
+                std::fill(this->child_ptr + his_pos, this->child_ptr + start + 1, child_ptr[i]);
                 his_pos = start + 1;
                 ++start;
             }
@@ -229,21 +206,15 @@ public:
     }
 
     // Construct a node with key array, don't check model is fit. 
-    // Please check_retrain(key, n) first!!!
     inline void construct(const key_type* const key, const node_ptr* const child, const slot_type n){
-        //AEX_PRINT("inner node construct");
-        if (this->real_slot_size() >= traits::MIN_ML_INNER_NODE_SLOT_SIZE){
-            if (Tree::check_retrain(key, n, this->real_slot_size(), this->model)){
-                this->prop |= node_property::ML_NODE;
-            }
-            else{
-                this->prop &= ~node_property::ML_NODE;
-            }
+        if (IS_ML_NODE(this)){
+            model.train(key, n, this->real_slot_size());
+            this->construct(key, child, n, model);
         }
         else{
-            this->prop &= ~node_property::ML_NODE;
+            std::copy(key, key + n - 1, this->key_ptr);
+            std::copy(child, child + n, this->child_ptr);
         }
-        this->construct(key, child, n, this->model);
     }
 
     // construct a node with key array and model
@@ -258,23 +229,10 @@ public:
         this->model = m;
         // meta
         {
-            this->m_stats.data_node = this->m_stats.data_size = this->base_stats.write_times = 0;
-            this->size = n;
-            for(slot_type i = 0 ; i < n; ++i)
-                this->m_stats.data_size += static_cast<inner_node_ptr>(child[i])->data_size();
-
-            if (this->level == 1){
-                AEX_ASSERT((child[0]->prop & LEAF) != 0);
-                this->m_stats.data_node = n;
-            }
-            else{
-                for(slot_type i = 0 ; i < n; ++i)
-                    this->m_stats.data_node += static_cast<inner_node_ptr>(child[i])->m_stats.data_node;
-            }
             for (slot_type i = 0; i < n; ++i)
                 child[i]->parent = this;
         }
-        if (this->prop & node_property::ML_NODE){
+        if (IS_ML_NODE(this)){
             slot_type start = 0, his_pos = 0;
             for (slot_type i = 0; i < n; ++i){
                 slot_type pos = this->predict(key[i]);
@@ -290,20 +248,18 @@ public:
             std::fill(this->child_ptr + his_pos, this->child_ptr + this->slot_size, child[n - 1]);
         }
         else{
-            std::copy(key, key + n - 1, node_key);
+            std::copy(key, key + n, node_key);
             std::copy(child, child + n, node_child);
         }
     }
 
     // insert a node
     bool insert(const key_type &key, const node_ptr child){
-        if (!(this->prop & node_property::ML_NODE)) {
+        if (!IS_ML_NODE(this)) {
             slot_type pos = this->find(key);
             std::move_backward(this->key_ptr + pos, this->key_ptr + this->size, this->key_ptr + this->size + 1);
             std::move_backward(this->child_ptr + pos, this->child_ptr + this->size, this->child_ptr + this->size + 1);
             ++this->size;
-            this->m_stats.data_size += child->data_size();
-            this->m_stats.data_node += child->data_node_size();
             child->parent = this;
             return true;
         }
@@ -311,7 +267,7 @@ public:
             slot_type pred_pos = this->predict(key);
             slot_type inserted_pos = pred_pos;
             for (; inserted_pos < this->slot_size && inserted_pos - pred_pos < traits::ERROR_BOUND; ++inserted_pos)
-            if (key <= this->key_ptr[inserted_pos] || !bitmap_impl::at(this->bitmap_ptr, inserted_pos)){
+            if (key < this->key_ptr[inserted_pos]){
                 break;
             }
             if (inserted_pos >= this->slot_size)
@@ -345,8 +301,6 @@ public:
                     std::fill(this->key_ptr + prev_pos + 1, this->key_ptr + inserted_pos + 1, key);
                     std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + inserted_pos + 1, child);
                     ++this->size; 
-                    this->m_stats.data_size += child->data_size();
-                    this->m_stats.data_node += child->data_node_size();
                     child->parent = this;
                     return true;
                 }
@@ -365,10 +319,8 @@ public:
         slot_type pos = this->at(node);
         if (pos == this->slot_size)
             return false;
-        this->m_stats.data_size -= node->data_size();
-        this->m_stats.data_node -= node->data_node_size();
         --this->size;
-        if (this->prop & node_property::ML_NODE){
+        if (IS_ML_NODE(node)){
             bitmap_impl::set_zero(this->bitmap_ptr, pos);
             slot_type prev_pos = this->prev_item(pos);
             if (pos < this->slot_size - 1){
@@ -388,8 +340,8 @@ public:
         bitmap bm = this->bitmap_ptr;
         node_ptr* child = this->child_ptr;
         if (node == nullptr) return this->slot_size;
-        key_type node_key = (node->prop & node_property::LEAF) ? (static_cast<data_node_ptr>(node)->key[0]) : (static_cast<inner_node_ptr>(node)->key_ptr[0]); 
-        if (this->prop & node_property::ML_NODE){
+        key_type node_key = IS_LEAF_NODE(node) ? (static_cast<data_node_ptr>(node)->key[0]) : (static_cast<inner_node_ptr>(node)->key_ptr[0]); 
+        if (IS_ML_NODE(this)){
             slot_type pos = this->predict(node_key);
             for (slot_type i = pos; i < this->slot_size; ++i)
             if (bitmap_impl::at(bm, i) && child[i] == node) 
@@ -423,7 +375,7 @@ public:
         bitmap bm = this->bitmap_ptr;
         if (pos == 0) return this->slot_size;
         /* TODO: use __buitlin_clzll */
-        if (this->prop & node_property::ML_NODE){
+        if (IS_ML_NODE(this)){
             for (slot_type i = pos - 1; i >= 0; --i)
             if (bitmap_impl::at(bm, i))
                 return i;
@@ -436,7 +388,7 @@ public:
     // return the next item position. If none, return slot_size
     inline slot_type next_item(slot_type pos) const {
         bitmap bm = this->bitmap_ptr;
-        if (this->prop & node_property::ML_NODE){
+        if (IS_ML_NODE(this)){
             for (slot_type i = pos + 1; i < this->slot_size; ++i)
             if (bitmap_impl::at(bm, i))
                 return i;
@@ -448,7 +400,7 @@ public:
 
     // real_slot_size() mean slot size minus error bound
     inline slot_type real_slot_size() const{
-        return (this->prop & node_property::ML_NODE) ? (this->slot_size - traits::ERROR_BOUND) : this->slot_size;
+        return IS_ML_NODE(this) ? (this->slot_size - traits::ERROR_BOUND) : this->slot_size;
     }
 
     // only node_property::ML_NODE can use it. check if node_property::ML_NODE first
@@ -461,7 +413,7 @@ public:
     // find key pos in which slot. If not, return node->slot_size
     inline slot_type find(const key_type& x) const{
         slot_type pos = -1;
-        if (this->prop & node_property::ML_NODE){
+        if (IS_ML_NODE(this)){
             slot_type pred_pos = this->predict(x);
             slot_type upper_bound = std::min(pred_pos + traits::ERROR_BOUND, this->slot_size);
             for (slot_type i = pred_pos; i < upper_bound; ++i)
@@ -480,17 +432,8 @@ public:
         }
     }
 
-    inline slot_type data_size(){return this->m_stats.data_size;}
-
-    inline slot_type data_node_size(){return this->m_stats.data_node;}
-
 
 public:
-
-    // meta:
-    struct stats{
-        size_type data_node, data_size;
-    }m_stats;
 
     Model model;
 
@@ -506,6 +449,9 @@ template<typename _Key,
         typename traits>
 class aex_data_node : public aex_node_base<_Key, _Val, traits>{
 public:
+
+    typedef aex_node_base<_Key, _Val, traits> base_node;
+
     typedef aex_data_node<_Key, _Val, traits> data_node;
 
     typedef data_node* data_node_ptr;
@@ -541,12 +487,12 @@ public:
             free(data);
     }
 
-    aex_data_node(aex_data_node &other_node):aex_node_base(other_node), m_stats(other_node.m_stats), model(other_node.model){
+    aex_data_node(aex_data_node &other_node):base_node(other_node), model(other_node.model){
         std::copy(other_node.key, other_node.key + other_node.size, this->key);
         std::copy(other_node.data, other_node.data + other_node.size, this->data);
     }
 
-    aex_data_node(aex_data_node &&other_node):aex_node_base(other_node), m_stats(other_node.m_stats), model(other_node.model){
+    aex_data_node(aex_data_node &&other_node):base_node(other_node), model(other_node.model){
         if (this->key != nullptr)
             free(this->key);
         if (this->data != nullptr)
@@ -577,30 +523,27 @@ public:
         return std::max((slot_type)0, std::min(static_cast<slot_type>(model.predict(key) * this->size), this->size - 1));
     }
 
-    void construct(const std::pair<key_type, value_type>* _data, slot_type nums){
-        AEX_ASSERT(this->slot_size >= nums);
-        for (slot_type j = 0; j < nums; ++j){
-            key[j] = _data[j].first;
-            data[j] = _data[j].second;
-        }
-        this->size = nums;
-        this->base_stats.write_times = this->base_stats.train_times = this->base_stats.read_times = 0;
-        this->train_model();
-    }
-
     void construct(const key_type *_key, const value_type *_data, slot_type nums){
+        AEX_ASSERT(IS_ML_NODE(this) == false);
         std::move(_key, _key + nums, this->key);
         std::move(_data, _data + nums, this->data);
         this->size = nums;
-        this->base_stats.write_times = this->base_stats.train_times = this->base_stats.read_times = 0;
-        this->train_model();
+    }
+
+    void construct(const std::pair<key_type, value_type> *_data, slot_type nums){
+        std::vector<key_type> _key(nums);
+        std::vector<value_type> _value(nums);
+        for (slot_type i = 0; i < nums; ++i){
+            _key[i] = _data[i].first;
+            _value[i] = _data[i].second;
+        }
+        this->construct(_key.data(), _value.data(), nums);
     }
 
     void construct(const key_type *_key, const value_type *_data, slot_type nums, Model &m){
         std::move(_key, _key + nums, this->key);
         std::move(_data, _data + nums, this->data);
         this->size = nums;
-        this->base_stats.write_times = this->base_stats.train_times = this->base_stats.read_times = 0;
         this->model = m;
     }
 
@@ -615,10 +558,17 @@ public:
         return pos;
     }
 
+    inline bool erase(const slot_type pos){
+        std::move(this->key + pos + 1, this->key + this->size, this->key + pos);
+        std::move(this->data + pos + 1, this->data + this->size, this->data + pos);
+        this->size--;
+        return true;
+    }
+
     // if no item greater than or equal x, return slot_size
     inline slot_type find_lower_pos(const key_type &x){
         slot_type pos = this->slot_size;
-        if (this->prop & node_property::ML_NODE){
+        if (IS_ML_NODE(this)){
             slot_type pred_pos = this->predict(x);
             pos = aex::exponential_search_lower_bound(this->key, this->key + this->size, this->key + pred_pos, x) - this->key;
         }
@@ -630,7 +580,7 @@ public:
 
     inline slot_type find_upper_pos(const key_type &x){
         slot_type pos = this->slot_size;
-        if (this->prop & node_property::ML_NODE){
+        if (IS_ML_NODE(this)){
             slot_type pred_pos = this->predict(x);
             pos = aex::exponential_search_upper_bound(this->key, this->key + this->size, this->key + pred_pos, x) - this->key;
         }
@@ -640,30 +590,12 @@ public:
         return pos;
     }
 
-    // if the data node can be trained, return true. Else return false.
-    inline bool train_model(){
-        if (this->prop & node_property::ML_NODE){
-            model.train(this->key, this->size);
-            //AEX_PRINT(traits::MAX_ALLOW_ERROR * log(this->size) << " " << this->RMSE());
-            if (this->RMSE() > traits::MAX_ALLOW_ERROR * log(this->size)){
-                this->prop ^= node_property::ML_NODE;
-                return false;
-            }
-            return true;
-        }
-        return false;
-    }
-
     inline double RMSE(){
-        if (this->prop & node_property::ML_NODE){
+        if (IS_ML_NODE(this)){
             return this->model.RMSE(this->key, this->size);
         }
         else return 0;
     }
-
-    inline slot_type data_size(){return this->size;}
-    
-    inline slot_type data_node_size(){return 1;}
 };
 
 }

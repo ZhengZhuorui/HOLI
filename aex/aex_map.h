@@ -84,15 +84,7 @@ public:
         return _m.lower_bound(key);
     }
 
-    inline const_iterator lower_bound(const key_type &key) const{
-        return _m.lower_bound(key);
-    }
-
     inline iterator upper_bound(const key_type &key) {
-        return _m.upper_bound(key);
-    }
-
-    inline const_iterator upper_bound(const key_type &key) const{
         return _m.upper_bound(key);
     }
 

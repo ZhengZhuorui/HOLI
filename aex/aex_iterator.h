@@ -1,12 +1,7 @@
 #pragma once
-
+#include "aex/aex_def.h"
 
 namespace aex{
-template<typename _Key, typename _Val, typename traits> class aex_tree;
-template<typename _Key, typename _Val, typename traits> class aex_iterator;
-template<typename _Key, typename _Val, typename traits> class aex_const_iterator;
-template<typename _Key, typename _Val, typename traits> class aex_reverse_iterator;
-template<typename _Key, typename _Val, typename traits> class aex_const_reverse_iterator;
 
 template<typename _Key,
         typename _Val,

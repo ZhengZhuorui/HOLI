@@ -61,13 +61,10 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch)
     
     node->construct(node_data.data(), child_ptr, n);
     printf("construct finish.\n");
-    //if (!(node->prop & aex::node_property::ML_NODE)){
-    //    printf("Error! no ML NODE\n");
-    //    return false;
-    //}
-    printf("is ml node?(0 or 1): %d\n", (((node->prop) & aex::node_property::ML_NODE) > 0));
+
+    printf("is ml node?(0 or 1): %d\n", IS_ML_NODE(node));
     fflush(stdout);
-    if (!(node->prop & aex::node_property::ML_NODE)) return false;
+    if (!IS_ML_NODE(node)) return false;
     size_type insert_failed = 0;
     vector<key_type> final_node_data(n);
     std::copy(node_data.data(), node_data.data() + n, final_node_data.data());
@@ -193,7 +190,7 @@ bool test_inner_node_erase_perf(vector<key_type> &data, size_t n, size_t batch){
         del_node[i] = child_ptr[del_pos[i]];
     
     node->construct(data.data(), child_ptr, n);
-    AEX_PRINT("is ml node?(0 or 1): " << (((node->prop) & aex::node_property::ML_NODE) > 0));
+    AEX_PRINT("is ml node?(0 or 1): " << IS_ML_NODE(node));
     AEX_PRINT("construct finish.");
     for (size_t i = 0; i < batch; ++i){
         bool flag = node->erase(del_node[i]);
@@ -317,7 +314,7 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch){
     }
     
     node->construct(data.data(), child_ptr, n);
-    AEX_PRINT("is ml node?(0 or 1): " << (((node->prop) & aex::node_property::ML_NODE) > 0));
+    AEX_PRINT("is ml node?(0 or 1): " << IS_ML_NODE(node));
     AEX_PRINT("construct finish.");
     for (size_t i = 0; i < batch; ++i){
         slot_type pos = node->find(query[i]);
@@ -408,12 +405,11 @@ bool test_data_node_insert_perf(std::pair<key_type, value_type>* data, size_t n,
     for (size_type i = 0; i < n; ++i)
         std::cout << node_data[i].first << " ";
     std::cout << std::endl;
-    node->construct(node_data.data(), n);
 
     printf("construct finish.\n");
 
-    AEX_PRINT("is ml node?(0 or 1): " << (((node->prop) & aex::node_property::ML_NODE) > 0));
-    if (!(node->prop & aex::node_property::ML_NODE)) return false;
+    AEX_PRINT("is ml node?(0 or 1): " << IS_ML_NODE(node));
+    if (!IS_ML_NODE(node)) return false;
     for (size_t i = 0; i < batch; ++i){       
         if (tree.isfull(node)){
             AEX_PRINT("node slot full");
@@ -488,8 +484,8 @@ bool test_data_node_query_perf(std::pair<key_type, value_type>* data, size_t n, 
     node->construct(data, n);
 
     AEX_PRINT("construct finish.\n");
-    AEX_PRINT("is ml node?(0 or 1): " << (((node->prop) & aex::node_property::ML_NODE) > 0));
-    if (!(node->prop & aex::node_property::ML_NODE)) return false;
+    AEX_PRINT("is ml node?(0 or 1): " << IS_ML_NODE(node));
+    if (!IS_ML_NODE(node)) return false;
     for (size_t i = 0; i < batch; ++i){
         slot_type pos = std::lower_bound(ori_data.data(), ori_data.data() + n, query[i]) - ori_data.data();
         if (pos > 0)

@@ -256,8 +256,9 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
     std::vector<key_type> erase_key(batch);
     std::vector<std::pair<key_type, value_type> > left_data(n - batch);
     std::random_shuffle(data, data + n);
-    std::copy(data + n - batch, data + n, erase_key.data());
-    std::copy(data, data + n, left_data.data());
+    for (long long i = n - batch; i < n; ++i)
+        erase_key[i] = data[i].first;
+    std::copy(data, data + n - batch, left_data.data());
     std::sort(data, data + n);
     index.bulk_load(data, n);
     for (long long i = 0; i < batch; ++i)
@@ -339,7 +340,7 @@ bool test_index_RW_perf(std::pair<key_type, value_type>* data, long long n, long
     generate_query(data, n, query, answer, query_num);
     assert(n > insert_num);
     std::copy(data + n - insert_num, data + n, insert_data.data());
-    std::copy(data, data + n - insert_num, bulk_load_data);
+    std::copy(data, data + n - insert_num, bulk_load_data.data());
     std::vector<OperationType> operation_list(batch);
 
     for (long long i = 0; i < query_num; ++i) operation_list[i] = OperationType::Lookup;
@@ -431,5 +432,5 @@ bool test_index_RW_perf(std::pair<key_type, value_type>* data, long long n, long
     std::cout << std::scientific;
     std::cout << std::setprecision(3);  
     AEX_SUCCESS("mix operation use time " << delta << "ms, OPS=" << OPS);
-
+    return true;
 }
