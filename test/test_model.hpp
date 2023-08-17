@@ -133,7 +133,6 @@ bool test_piecewise_linear_model(T* data, size_t n){
         for (slot_type i = 0; i < size; ++i){
             slot_type pos = std::max(0, std::min(static_cast<slot_type>(m.predict(data[i]) * slot_size), slot_size));    
             start = std::max(start, pos);
-            //AEX_PRINT("key=" << data[i] << ", predict=" << pos << ", pos=" << start);
             ++start;
         }
     }

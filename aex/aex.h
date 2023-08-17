@@ -129,14 +129,8 @@ private:
 
     tree_balance_stats balance_stats;
 
-    //Alloc& alloc_;
-
-    //aex_allocator<_Key, _Val, Alloc, traits> allocator;
-
-    //aex_node_allocator<_Key, _Val, traits> node_allocator;
     NodeAllocator node_allocator;
 
-    //size_type max_inner_node_slot_size[8];
     double inner_node_few_ratio[traits::MAX_DEPTH], inner_node_full_ratio[traits::MAX_DEPTH];
 
     typename std::false_type fp;
@@ -156,10 +150,39 @@ public:
 
     ~aex_tree();
 
+    aex_tree& operator = (aex_tree &_index){
+        this->init();
+        this->construct(_index.root, this->root);
+        this->m_stats = _index.m_stats;
+        this->balance_stats = _index.balance_stats;
+        this->node_allocator = _index.node_allocator;
+        return *this;
+    }
+
+    aex_tree& operator = (aex_tree &&_index){
+        this->init();
+        this->root = _index.root;
+        _index.root = nullptr;
+        this->head_leaf = _index.head_leaf;
+        _index.head_leaf = nullptr;
+        this->tail_leaf = _index.tail_leaf;
+        _index.tail_leaf = nullptr;
+
+        this->m_stats = _index.m_stats;
+        _index.m_stats = aex_stats();
+        this->balance_stats = _index.balance_stats;
+        _index.m_stats = balance_stats();
+        this->node_allocator = _index.node_allocator;
+        _index.node_allocator = NodeAllocator();
+        return *this;
+    }
+
     void clear(){
+        AEX_HINT("[begin]");
         this->deconstruct(this->root);
         this->m_stats = aex_stats();
         this->root = this->head_leaf = this->tail_leaf = nullptr;
+        AEX_HINT("[end]");
     }
 
 
@@ -306,6 +329,8 @@ public:
     void print_stats(){
         AEX_IMPORTANT("data size=" << m_stats.size << ", tree height=" << m_stats.height << ", data node size=" << m_stats.data_node \
                     << ", inner node size=" << m_stats.inner_node << ", max key=" << m_stats.max_key << ", min_key=" << m_stats.min_key);
+        node_allocator.print_stats();
+        balance_stats.print_stats();
     }
 
     void print_detail(){
@@ -326,7 +351,9 @@ private:
      
     void construct(node_ptr node, node_ptr &new_node);
 
-    void deconstruct(node_ptr node);
+    inline void deconstruct(node_ptr node){
+        erase_tree_recursive(node);
+    }
 
     // ========== 0. utils ==========
 
@@ -340,7 +367,7 @@ private:
             return end();
 
         if (IS_ML_NODE(node))
-            if (std::abs(node->predict(x) - pos) >= traits::ERROR_BOUND * 2) {
+            if (std::abs(node->predict(x) - pos) >= traits::DATA_NODE_ERROR_BOUND * 2) {
                 fix_data_node(node);
                 node = find_leaf(x);
                 pos = node->find_lower_pos(x);
@@ -405,8 +432,8 @@ private:
     // size_type insert_data(data_node_ptr node, const key_type &key, const value_type &data);
 
     // try to insert an node to inner node. If no position to insert, return false
-    bool insert_node(inner_node_ptr __restrict__ node, const key_type &key, const node_ptr __restrict__ child, std::false_type allow_rw_balance);
-    bool insert_node(inner_node_ptr __restrict__ node, const key_type &key, const node_ptr __restrict__ child, std::true_type allow_rw_balance);
+    bool insert_node(inner_node_ptr node, const key_type &key, const node_ptr child, std::false_type allow_rw_balance);
+    bool insert_node(inner_node_ptr node, const key_type &key, const node_ptr child, std::true_type allow_rw_balance);
 
     // A part of bulk load.
     void build_tree(std::vector<key_type>& key_buf, std::vector<node_ptr>& child_buf);
@@ -456,8 +483,8 @@ private:
     // split a data node to at least two data node
     void split(data_node_ptr node, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
     // split a ordered key array with child pointers array to inner node array.
-    void split(const key_type* const key, const node_ptr* const child, const size_type n, const unsigned int level, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
-    // split a ordered key array with data array to inner node array.
+    void split(const key_type* const key, const node_ptr* const child, const size_type n, const unsigned int level, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child, bool can_retrain=true);
+    // split a ordered key array with data array to node array.
     void split_with_exponential_probe(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
     // split a ordered key array with data array to inner node array. Use linear probe(use greedy).
     void split_with_linear_probe(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
@@ -499,15 +526,15 @@ private:
     }
 
     inline bool isfull(const inner_node_ptr node) const {
-        return IS_ML_NODE(node) ? (node->size >= node->slot_size * this->inner_node_full_ratio[node->level]) : (node->size >= node->slot_size * traits::DATA_NODE_FULL_RATIO);
+        return node->size >= node->real_slot_size() * ((IS_ML_NODE(node) ? this->inner_node_full_ratio[node->level] : traits::DATA_NODE_FULL_RATIO));
     }
 
     inline bool isfull(const inner_node_ptr node, slot_type offset) const {
-        return IS_ML_NODE(node) ? (node->size + offset >= node->slot_size * this->inner_node_full_ratio[node->level]) : (node->size + offset>= node->slot_size * traits::DATA_NODE_FULL_RATIO);
+        return node->size + offset >= node->real_slot_size() * ((IS_ML_NODE(node) ? this->inner_node_full_ratio[node->level] : traits::DATA_NODE_FULL_RATIO));
     }
     
     inline bool isfew(const inner_node_ptr node) const {
-        return IS_ML_NODE(node) ? (node->size < node->slot_size * this->inner_node_few_ratio[node->level]) : (node->size < node->slot_size * traits::DATA_NODE_FEW_RATIO);
+        return node->size < node->real_slot_size() * ((IS_ML_NODE(node) ? this->inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO));
     }
 
     inline bool isfew(const node_ptr node) const{

@@ -4,8 +4,23 @@
 #include "aex/aex_utils.h"
 
 namespace aex{
+
 template<typename _Tp>
 struct aex_node_balance_stats{
+    aex_node_balance_stats(){}
+    aex_node_balance_stats(unsigned long long _recent_update_timestamp, double _train_times, double _read_times, double _write_times){}
+    inline void update_frequency(unsigned long long timestamp){}
+    inline void update_read_frequency(unsigned long long timestamp){}
+    inline void update_write_frequency(unsigned long long timestamp){}
+    inline void update_train_frequency(unsigned long long timestamp){}
+    inline double get_read_times(){return 0;}
+    inline double get_write_times(){return 0;}
+    inline double get_train_times(){return 0;}
+    inline double get_recent_update_timestamp(){return 0;}
+};
+
+template<>
+struct aex_node_balance_stats<std::true_type>{
     unsigned long long recent_update_timestamp;
     double train_times, write_times, read_times;
     static constexpr double lambda = 1 - 1.0 / 100000;
@@ -46,22 +61,18 @@ struct aex_node_balance_stats{
 
 };
 
-template<>
-struct aex_node_balance_stats<std::false_type>{
-    aex_node_balance_stats(){}
-    aex_node_balance_stats(unsigned long long _recent_update_timestamp, double _train_times, double _read_times, double _write_times){}
-    inline void update_frequency(unsigned long long timestamp){}
-    inline void update_read_frequency(unsigned long long timestamp){}
-    inline void update_write_frequency(unsigned long long timestamp){}
-    inline void update_train_frequency(unsigned long long timestamp){}
-    inline double get_read_times(){return 0;}
-    inline double get_write_times(){return 0;}
-    inline double get_train_times(){return 0;}
-    inline double get_recent_update_timestamp(){return 0;}
-};
-
 template<typename _Tp>
 struct aex_tree_balance_stats{
+    aex_tree_balance_stats(){}
+    void update_timestamp(){}
+    inline unsigned long long get_timestamp(){return 0;}
+    inline double get_lambda_timestamp(){return 0;}
+    inline void print_stats(){}
+
+};
+
+template<>
+struct aex_tree_balance_stats<std::true_type>{
     unsigned long long timestamp;
     double lambda_timestamp;
     static constexpr double lambda = 1 - 1.0 / 100000;
@@ -72,14 +83,9 @@ struct aex_tree_balance_stats{
     }
     inline unsigned long long get_timestamp(){return timestamp;}
     inline double get_lambda_timestamp(){return lambda_timestamp;}
+    inline void print_stats(){
+        AEX_IMPORTANT("[balance stats]: timestamp=" << timestamp << "lambda timestamp=" << lambda_timestamp);
+    }
 };
 
-template<>
-struct aex_tree_balance_stats<std::false_type>{
-    aex_tree_balance_stats(){}
-    void update_timestamp(){}
-    inline unsigned long long get_timestamp(){return 0;}
-    inline double get_lambda_timestamp(){return 0;}
-
-};
 }

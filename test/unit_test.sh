@@ -15,6 +15,9 @@
 # (Y)
 ./generate_dataset --key_type=float --num_keys=1000 --distribution=normal --output_file=/home/zzr/data/generate_data/normal_1K_0_1_float.bin --mean=0 --stddev=1
 
+#
+./generate_dataset --key_type=int --num_keys=1000000 --distribution=id_ascend --output_file=/home/zzr/data/generate_data/id_1M_int.bin
+
 # =================================================================================================
 # test find function(STL(bineary lower bound), ALEX(exponential find), exponential find)
 # (Y)
@@ -22,11 +25,18 @@
 # (Y)
 ./unit_test --unit=function --key_type=int --num_keys=1000000 --function=exp_lower_bound --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=function --key_type=int --num_keys=1000000 --function=exp_lower_bound_perf --input_file=/home/zzr/data/generate_data/uniform_1M_int.bin
+./unit_test --unit=function --key_type=int --num_keys=1000000 --function=search_perf --input_file=/home/zzr/data/generate_data/uniform_1M_int.bin
 # result(us):
 # self exp lower bound used time=330974 us
 # ALEX exp lower bound used time=775420 us
 # STL lower bound used time=1301185 us
+# (Y)
+./unit_test --unit=function --key_type=int --num_keys=1000000 --function=search_with_error_bound_perf --input_file=/home/zzr/data/generate_data/uniform_1M_int.bin
+# result(us):
+# self exp lower bound used time=180819 us
+# ALEX exp lower bound used time=233474 us
+# STL lower bound used time=236411 us
+# search used time=205381 us
 
 # test linear probe (with exponential probe)
 # (Y)
@@ -135,8 +145,10 @@
 # (Y)
 ./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=128 --batch=16 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float --node_type=data_node --function=query --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=256 --batch=16 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
 # (Y)
+./unit_test --unit=node --key_type=float --node_type=data_node --function=query --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+# (N)
 ./unit_test --unit=node --key_type=float --node_type=data_node --function=query --num_keys=128 --batch=16 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
 
 # Datset: uniform
@@ -163,28 +175,37 @@
 
 # test data split
 # (Y)
-./unit_test --unit=SMO --key_type=float --function=data_split --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=SMO --key_type=float --function=data_split_with_exponential_probe --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 # (Y)
 ./unit_test --unit=SMO --key_type=float --function=data_split_with_linear_probe --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-# Result: (node size, time, NPS)
+
+# Result: (node size, time, NPS, ml rate)
 # exp_probe(2*log(n)): 1343, 589302 ms, 3.39e07
 # linear_probe(2*log(n)): 7135, 986474 ms, 2.02e7
 # linear_probe(4*log(n)): 2072, 964832 ms, 2.07e7
+# linear_probe(8): 23035, 1.50364e6 ms, 1.33e7, 0.67
 
 # (Y)
-./unit_test --unit=SMO --key_type=float --function=data_split --num_keys=1000000 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=SMO --key_type=int --function=data_split_with_linear_probe --num_keys=1000000 --input_file=/home/zzr/data/generate_data/id_1M_int.bin
+# linear_probe(8): 1, 246014ms. 4.06e7
+
+# (Y)
+./unit_test --unit=SMO --key_type=float --function=data_split_with_exponential_probe --num_keys=1000000 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
 ./unit_test --unit=SMO --key_type=float --function=data_split_with_linear_probe --num_keys=1000000 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
-# Result: (node size, time, NPS)
+# Result: (node size, time, NPS, ml rate)
 # exp_probe(2*log(n)): 102, 289789 ms, 3.45e7
 # linear_probe(2*log(n)): 2862, 484237ms, 2.06e7
 # linear_probe(4*log(n)): 475, 484237ms, 2.16e7
+# linear_probe(8): 11095, 743938 ms, 1.334e7, 0.700
 
 # test inner node split
-# (Y)
+# (N)
 ./unit_test --unit=SMO --key_type=float --function=node_split --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 # Result: (node size, time, NPS)
-# 645, 1.56e6 ms, 1.28e7
+# level1: 
+# level2: 64, 1.28e7, 1.55e6
+
 
 # =================================================================================================
 # test index construction accuracy and performance
@@ -249,6 +270,13 @@
 # test index memory performace
 
 # test index 
+
+# =================================================================================================
+
+# test tree balance
+
+
+
 
 # =================================================================================================
 # test all (need much time)

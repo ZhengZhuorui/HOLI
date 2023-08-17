@@ -102,42 +102,76 @@ void aex_tree<_Key, _Val, traits>::split(data_node_ptr node, std::vector<key_typ
 
 // split a ordered key array with child pointers array.
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::split(const key_type* const key, const node_ptr* const child, const size_type n, const unsigned int level, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child){
+void aex_tree<_Key, _Val, traits>::split(const key_type* const key, const node_ptr* const child, const size_type n, const unsigned int level, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child, bool can_retrain){
     size_type start = 0;
     inner_node_model model;
+    new_key.clear();
+    new_child.clear();
 
-    while (start < n){
-        size_type slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE, ans_slot_size = 0, ans_size = 0;
-        if (start == 0){
-            while (slot_size * this->inner_node_few_ratio[level] <= (n - start) && slot_size <= traits::MAX_NODE_SLOT_SIZE) slot_size <<= 1;
+    if (can_retrain && n < traits::MIN_ML_INNER_NODE_SIZE){
+        size_type slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE;
+        if (n < traits::MIN_ML_INNER_NODE_SIZE){
+            slot_size = traits::MIN_INNER_NODE_SLOT_SIZE;
+            while (slot_size <= n && slot_size <= traits::MAX_NODE_SLOT_SIZE) slot_size <<= 1;
+            slot_size >>= 1;
+            inner_node_ptr new_node = node_allocator.allocate_inner_node(slot_size, false);
+            ++this->m_stats.inner_node;
+            ++this->m_stats.level_node[level];
+            new_node->level = level;
+            new_node->construct(key, child, n);
+            new_key.push_back(key[start + n - 1]);
+            new_child.push_back(new_node);
+            return;
+        }
+        else{
+            while (slot_size * this->inner_node_few_ratio[level] <= n && slot_size <= traits::MAX_NODE_SLOT_SIZE) slot_size <<= 1;
             slot_size >>= 1;
             model.train(key, n, slot_size);
             if (self::check_collision(key, n, slot_size, model)){
+                inner_node_ptr new_node = node_allocator.allocate_inner_node(slot_size, true);
+                ++this->m_stats.inner_node;
+                ++this->m_stats.level_node[level];
+                new_node->level = level;
+                new_node->construct(key, child, n, model);
+                new_key.push_back(key[start + n - 1]);
+                new_child.push_back(new_node);
+                return;
+            }
+        }
+    }
+
+    while (start < n){
+        size_type slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE, ans_slot_size = 0, ans_size = 0;
+        bool flag = true;
+        for (; slot_size * this->inner_node_few_ratio[level] < traits::MIN_ML_INNER_NODE_SIZE; slot_size <<= 1);
+        for (; slot_size * this->inner_node_few_ratio[level] <= (n - start) && slot_size <= traits::MAX_NODE_SLOT_SIZE; slot_size <<= 1){
+            size_type size = std::min((size_type)(slot_size * this->inner_node_few_ratio[level]), n - start);
+            model.train(key + start, size, slot_size);
+            if (self::check_collision(key + start, size, slot_size, model)){
                 ans_slot_size = slot_size;
-                ans_size = n;
+                ans_size = size;
             }
+            else 
+                break;
         }
-        if (ans_slot_size == 0){
-            slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE;
-            for (; slot_size * this->inner_node_few_ratio[level] <= (n - start) && slot_size <= traits::MAX_NODE_SLOT_SIZE; slot_size <<= 1){
-                size_type size = std::min((size_type)(slot_size * this->inner_node_few_ratio[level]), n - start);
-                model.train(key, size, slot_size);
-                if (self::check_collision(key + start, size, slot_size, model)){
-                    ans_slot_size = slot_size;
-                    ans_size = size;
-                }
-                else 
-                    break;
-            }
-        }
+        
         if (ans_slot_size == 0) {
             ans_slot_size = ans_size = traits::MIN_INNER_NODE_SLOT_SIZE;
+            flag = false;
         }
-        inner_node_ptr new_node = node_allocator.allocate_inner_node(ans_slot_size);
+        //AEX_PRINT("size=" << ans_size << ", slot_size=" << ans_slot_size);
+
+        inner_node_ptr new_node = node_allocator.allocate_inner_node(ans_slot_size, flag);
         ++this->m_stats.inner_node;
         ++this->m_stats.level_node[level];
         new_node->level = level;
-        new_node->construct(key + start, child + start, ans_size);
+        if (IS_ML_NODE(new_node)){
+            model.train(key + start, ans_size, ans_slot_size);
+            new_node->construct(key + start, child + start, ans_size, model);
+        }
+        else
+            new_node->construct(key + start, child + start, ans_size);
+
         new_key.push_back(key[start + ans_size - 1]);
         new_child.push_back(new_node);
         start += ans_size;
@@ -149,38 +183,33 @@ template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::split_with_exponential_probe(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child){
     size_type start = 0;
     data_node_model model;
+    new_key.clear();
+    new_child.clear();
     while (start < n){
         size_type slot_size = traits::MIN_ML_DATA_NODE_SLOT_SIZE, ans_slot_size = 0, ans_size = 0;
-        if (start == 0){
-            while (slot_size * traits::DATA_NODE_FEW_RATIO <= (n - start) && slot_size <= traits::MAX_NODE_SLOT_SIZE) slot_size <<= 1;
-            slot_size >>= 1;
-            model.train(key, n);
-            if (model.RMSE(key + start, n) < traits::MAX_ALLOW_ERROR * log(n)){
+
+        for (; slot_size * traits::DATA_NODE_FEW_RATIO <= n - start && slot_size <= traits::MAX_NODE_SLOT_SIZE; slot_size <<= 1){
+            size_type size = std::min(slot_size, n - start);
+            model.train(key + start, size);
+            if (model.RMSE(key + start, size) < traits::MAX_ALLOW_ERROR * log(size)){
                 ans_slot_size = slot_size;
-                ans_size = n;
+                ans_size = size;
             }
             else
                 break;
         }
-        if (ans_slot_size == 0){
-            for (; slot_size * traits::DATA_NODE_FEW_RATIO <= n - start && slot_size <= traits::MAX_NODE_SLOT_SIZE; slot_size <<= 1){
-                size_type size = std::min(slot_size, n - start);
-                model.train(key + start, size);
-                if (model.RMSE(key + start, size) < traits::MAX_ALLOW_ERROR * log(size)){
-                    ans_slot_size = slot_size;
-                    ans_size = size;
-                }
-                else
-                    break;
-            }
-        }
-        if (ans_slot_size == 0){
+        if (ans_slot_size == 0)
             ans_slot_size = ans_size = traits::MIN_DATA_NODE_SLOT_SIZE;
-        }
+        
         data_node_ptr new_node = node_allocator.allocate_data_node(ans_slot_size);
         ++this->m_stats.level_node[0];
         ++this->m_stats.data_node;
-        new_node->construct(key + start, data + start, ans_size);
+        
+        if (IS_ML_NODE(new_node))
+            new_node->construct(key + start, data + start, ans_size, model);
+        else
+            new_node->construct(key + start, data + start, ans_size);
+
         new_key.push_back(key[start + ans_size - 1]);
         new_child.push_back(new_node);
         start += ans_size;
@@ -191,7 +220,7 @@ template<typename _Key, typename _Val, typename traits>
 typename traits::slot_type aex_tree<_Key, _Val, traits>::linear_probe(const key_type* const key, const size_type n, data_node_model &m){
     //static_assert(std::is_same<data_node_model, linear_model<key_type, traits> >::value,);
     if (n <= traits::MIN_DATA_NODE_SLOT_SIZE)
-        return traits::MIN_DATA_NODE_SLOT_SIZE;
+        return n;
     std::vector<size_type> sta1(2), sta2(2);
     int top1 = 2, top2 = 2, head1 = 1, head2 = 1;
     size_type ret = 0;
@@ -200,10 +229,11 @@ typename traits::slot_type aex_tree<_Key, _Val, traits>::linear_probe(const key_
 
     slot_type max_n = static_cast<slot_type>(std::min(n, static_cast<size_type>(traits::MAX_NODE_SLOT_SIZE)));
 
-    for (slot_type i = 2; i < max_n; ++i){
-        double ERROR = traits::MAX_LINEAR_PROBE_ALLOW_ERROR * log(std::max(traits::MIN_ML_DATA_NODE_SLOT_SIZE, i));
+    //double ERROR = traits::MAX_LINEAR_PROBE_ALLOW_ERROR * log(std::max(traits::MIN_ML_DATA_NODE_SLOT_SIZE, i));
+    double ERROR_BOUND = traits::DATA_NODE_ERROR_BOUND;
+    for (slot_type i = 2; i < max_n; ++i){       
         
-        if (cross_product(key[0], -ERROR, key[sta1[head1]], sta1[head1], key[i], i - ERROR) > 0 || cross_product(key[0], ERROR, key[sta2[head2]], sta2[head2], key[i], i + ERROR) < 0){
+        if (cross_product(key[0], -ERROR_BOUND, key[sta1[head1]], sta1[head1], key[i], i - ERROR_BOUND) > 0 || cross_product(key[0], ERROR_BOUND, key[sta2[head2]], sta2[head2], key[i], i + ERROR_BOUND) < 0){
             ret = i;
             break;
         }
@@ -225,8 +255,8 @@ typename traits::slot_type aex_tree<_Key, _Val, traits>::linear_probe(const key_
         head1 = std::min(head1, top1 - 1);
         head2 = std::min(head2, top2 - 1);
         
-        while (head1 < top1 - 1 && cross_product(key[0], -ERROR, key[sta1[head1]], sta1[head1], key[sta1[head1 + 1]], sta1[head1 + 1]) < 0) ++head1;
-        while (head2 < top2 - 1 && cross_product(key[0], ERROR, key[sta2[head2]], sta2[head2], key[sta2[head2 + 1]], sta2[head2 + 1]) > 0) ++head2;
+        while (head1 < top1 - 1 && cross_product(key[0], -ERROR_BOUND, key[sta1[head1]], sta1[head1], key[sta1[head1 + 1]], sta1[head1 + 1]) < 0) ++head1;
+        while (head2 < top2 - 1 && cross_product(key[0], ERROR_BOUND, key[sta2[head2]], sta2[head2], key[sta2[head2 + 1]], sta2[head2 + 1]) > 0) ++head2;
 
     }
     if (ret == 0)
@@ -246,6 +276,9 @@ typename traits::slot_type aex_tree<_Key, _Val, traits>::linear_probe(const key_
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::split_with_linear_probe(const key_type* const __restrict__ key, const value_type* const __restrict__ data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child){
     size_type start = 0;
+    AEX_IMPORTANT("n=" << n);
+    new_key.clear();
+    new_child.clear();
     while (start < n){
         data_node_model model;
         slot_type size = linear_probe(key + start, n - start, model);
@@ -259,9 +292,10 @@ void aex_tree<_Key, _Val, traits>::split_with_linear_probe(const key_type* const
         ++this->m_stats.level_node[0];
         ++this->m_stats.data_node;
         if (IS_ML_NODE(new_node))
-            new_node->construct(key + start, data + start, size);
-        else 
             new_node->construct(key + start, data + start, size, model);
+        else 
+            new_node->construct(key + start, data + start, size);
+
         new_key.push_back(key[start + size - 1]);
         new_child.push_back(new_node);
         start += size;
@@ -272,14 +306,14 @@ void aex_tree<_Key, _Val, traits>::split_with_linear_probe(const key_type* const
 template<typename _Key, typename _Val, typename traits>
 bool aex_tree<_Key, _Val, traits>::check_collision(const key_type* const key, const slot_type size, const slot_type slot_size, inner_node_model &m){
     //AEX_HINT("[check retrain]");
-    if (slot_size < traits::MIN_ML_INNER_NODE_SLOT_SIZE)
+    if (size < traits::MIN_ML_INNER_NODE_SIZE || slot_size < traits::MIN_ML_INNER_NODE_SLOT_SIZE)
         return true;
     if (slot_size > traits::MAX_NODE_SLOT_SIZE)
         return false;
     slot_type start = 0;
     for (slot_type i = 0; i < size; ++i){            
         slot_type pos = std::max(0, std::min(static_cast<slot_type>(m.predict(key[i]) * slot_size), static_cast<slot_type>(slot_size + traits::ERROR_BOUND - 1)));
-        start = std::max(start, pos);
+        //AEX_PRINT("start=" << start << ", pos=" << pos);
         if (start - pos >= traits::ERROR_BOUND || start >= slot_size + traits::ERROR_BOUND){
             return false;
         }
@@ -393,14 +427,11 @@ template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::link_node_list_and_replace_last_node(node_ptr node, std::vector<node_ptr> &new_child){
     int m = new_child.size();
     node_ptr prev_node = node->prev, next_node = node->next;
-    inner_node_ptr parent = node->parent;
 
-    if (node->prop & LEAF){
+    if (node->prop & LEAF)
         *static_cast<data_node_ptr>(node) = std::move(*static_cast<data_node_ptr>(new_child[m - 1]));
-    }
-    else{
+    else
         *static_cast<inner_node_ptr>(node) = std::move(*static_cast<inner_node_ptr>(new_child[m - 1]));
-    }
     new_child[m - 1] = node;
     node_allocator.free_node(new_child[m - 1]);
     for(slot_type i = 0; i < m - 1; ++i){

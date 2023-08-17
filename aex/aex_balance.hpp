@@ -120,13 +120,15 @@ void aex_tree<_Key, _Val, traits>::merge_nodes(data_node_ptr* node_buffer, slot_
 
     data_node_model m;
     data_node_ptr new_node = node_buffer[size - 1];
-    node_allocator.reallocate(new_node, data_size);
+    size_type new_slot_size;
+    while (new_slot_size < data_size) new_slot_size <<= 1;
+    node_allocator.reallocate(new_node, new_slot_size);
+
     if (linear_probe(key_buf.data(), data_size, m) == size){
         new_node->construct(key_buf.data(), data_buf.data(), m);
     }
     else{
-        new_node = node_allocator.allocate_data_node(data_size, false);
-        new_node->prop &= ~(node_property::ML_NODE);
+        UNSET_FLAG(new_node, node_property::ML_NODE);
         new_node->construct(key_buf.data(), data_buf.data());
     }
 
@@ -156,26 +158,27 @@ void aex_tree<_Key, _Val, traits>::merge_nodes(inner_node_ptr* node_buffer, slot
     std::vector<key_type> key_buf(child_size);
     std::vector<node_ptr> child_buf(child_size);
     
-    for (size_type i = 0, cnt = 0; i < size; cnt += node_buffer[i]->size, ++i){
+    for (size_type i = 0, cnt = 0; i < size; cnt += node_buffer[i]->size, ++i)
         copy_to_buffer(node_buffer[i], key_buf.data() + cnt, child_buf.data() + cnt);
-    }
 
     inner_node_model model;
-    inner_node_ptr new_node;
-    size_type slot_size = 0;
+    size_type slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE;
     int level = node_buffer[0]->level;
 
     while (slot_size * this->inner_node_few_ratio[level] <= child_size && slot_size <= traits::MAX_NODE_SLOT_SIZE) slot_size <<= 1;
     slot_size >>= 1;
     bool ml_flag = check_collision(key_buf.data(), child_size, slot_size, model);
+    ml_flag &= (child_size >= traits::MIN_ML_INNER_NODE_SIZE);
 
-    new_node = node_allocator.allocate_inner_node(child_size, ml_flag);
-    ++this->m_stats.level_node[node_buffer[0]->level];
-    ++this->m_stats.inner_node;
-    if (ml_flag)
-        new_node->construct(key_buf.data(), child_buf.data(), model);
-    else 
-        new_node->construct(key_buf.data(), child_buf.data());
+    inner_node_ptr last_node = node_buffer[size - 1];
+    if (IS_ML_NODE(last_node)){
+        node_allocator.reallocate(last_node, slot_size);
+        last_node->construct(key_buf.data(), child_buf.data(), model);
+    }
+    else {
+        UNSET_FLAG(last_node, node_property::ML_NODE);
+        last_node->construct(key_buf.data(), child_buf.data());
+    }
 }
 
 template<typename _Key, typename _Val, typename traits>

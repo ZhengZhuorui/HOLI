@@ -23,6 +23,25 @@ bool test_exponential_search_lower_bound(_Tp* data, size_t n){
     return true;
 }
 
+template<typename _Tp>
+bool test_exponential_search_upper_bound(_Tp* data, size_t n){
+    AEX_PRINT("[test_exponential_search_lower_bound]");
+    std::sort(data, data + n);
+
+    long long real = n >> 1;
+    _Tp x = data[real];
+    for (size_t i = 0; i < n; ++i){    
+        long long predict = i;
+        long long exp_search_pos = aex::exponential_search_upper_bound(data, data + n, data + predict, x) - data;
+        //AEX_PRINT("predict=" << i << ", exp_search_pos=" << exp_search_pos << ", real=" << real);
+        if (exp_search_pos != real + 1){
+            AEX_ERROR("Error!, item " << x << ", real position " << real << ", predict position " << predict <<  ", expenential search position " << exp_search_pos);
+            return false; 
+        }
+    }
+    return true;
+}
+
 template <class K>
 int alex_binary_search_lower_bound(K* data, int l, int r, const K& key) {
     while (l < r) {
@@ -62,8 +81,8 @@ inline int alex_exponential_search_lower_bound(K* data, int n, int m, const K& k
 }
 
 template<typename _Tp>
-bool test_exponential_search_lower_bound_perf(_Tp* data, size_t n){
-    std::cout << "[test_exponential_search_lower_bound_perf]" << std::endl;
+bool test_search_perf(_Tp* data, size_t n){
+    AEX_HINT("[test_search_perf]");
     std::sort(data, data + n);
     _Tp min_value = data[0], max_value = data[n - 1];
     //cout << min_value << " " << max_value << std::endl;
@@ -71,15 +90,20 @@ bool test_exponential_search_lower_bound_perf(_Tp* data, size_t n){
     const int iter = 10;
     const int M = 1000000;
     vector<size_t> query(M);
-    for (int i = 0; i < M ; ++i) query[i] = rand() % n;
+    for (int i = 0; i < M ; ++i){
+        query[i] = rand() % n;
+        //predict[i] = std::max(0ULL, std::min(n - 1, query[i] + (rand() % 17) - 8));
+    }
 
     system_clock::time_point t1, t2;
+    long long sum = 0;
     t1 = std::chrono::high_resolution_clock::now();
     for (int T = 0; T < iter; ++T){
         for (size_t i = 0; i < M; ++i){
             _Tp x = data[query[i]];
             long long predict = std::max((long long)0, std::min((long long)n - 1, static_cast<long long>(1.0 * (x - min_value) / (max_value - min_value) * n)));
-            [[maybe_unused]] long long exp_search_pos = aex::exponential_search_lower_bound(data, data + n, data + predict, x) - data;
+            long long exp_search_pos = aex::exponential_search_lower_bound(data, data + n, data + predict, x) - data;
+            sum += exp_search_pos;
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
@@ -87,13 +111,12 @@ bool test_exponential_search_lower_bound_perf(_Tp* data, size_t n){
     printf("self exp lower bound used time=%lld us\n", delta);
 
     t1 = std::chrono::high_resolution_clock::now();
-
-
     for (int T = 0; T < iter; ++T){
         for (size_t i = 0; i < M; ++i){
             _Tp x = data[query[i]];
             long long predict = std::max((long long)0, std::min((long long)n - 1, static_cast<long long>(1.0 * (x - min_value) / (max_value - min_value) * n)));
-            [[maybe_unused]] long long exp_search_pos = alex_exponential_search_lower_bound(data, n, predict, x);
+            long long exp_search_pos = alex_exponential_search_lower_bound(data, n, predict, x);
+            sum += exp_search_pos;
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
@@ -104,33 +127,90 @@ bool test_exponential_search_lower_bound_perf(_Tp* data, size_t n){
     for (int T = 0; T < iter; ++T){
         for (size_t i = 0; i < M; ++i){
             _Tp x = data[query[i]];
-            [[maybe_unused]] long long real = std::lower_bound(data, data + n, x) - data;
+            long long real = std::lower_bound(data, data + n, x) - data;
+            sum += real;
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
     delta = duration_cast<microseconds>(t2 - t1).count();
     printf("stl lower bound used time=%lld us\n", delta);
+
+    AEX_PRINT("code=" << sum);
     return true;
 }
 
 template<typename _Tp>
-bool test_exponential_search_upper_bound(_Tp* data, size_t n){
-    std::cout << "[test_exponential_search_upper_bound]" << std::endl;
+bool test_search_with_error_bound_perf(_Tp* data, size_t n){
+    AEX_HINT("[test_search_with_error_bound_perf]");
     std::sort(data, data + n);
-    _Tp min_value = data[0], max_value = data[n - 1];
-    //cout << min_value << " " << max_value << std::endl;
 
-    for (size_t i = 0; i < n; ++i){
-        _Tp x = data[i];
-        long long predict = std::max((long long)0, std::min((long long)n - 1, static_cast<long long>(1.0 * (x - min_value) / (max_value - min_value) * n)));
-        long long exp_search_pos = aex::exponential_search_upper_bound(data, data + n, data + predict, x) - data;
-        long long real = std::upper_bound(data, data + n, x) - data;
-        if (exp_search_pos != real){
-            //printf("Error!, item %d, real position %d, predict position %d, expenential search position %d\n", x, real, predict, exp_search_pos);
-            std::cout << "Error!, item " << x << ", real position " << real << ", predict position " << predict <<  ", expenential search position " << exp_search_pos << std::endl;
-            return false; 
+    const int iter = 10;
+    const int M = 1000000;
+    std::vector<size_t> query(M);
+    std::vector<long long> predict(M);
+    for (int i = 0; i < M ; ++i){
+        query[i] = rand() % n;
+        predict[i] = std::max(0LL, std::min(static_cast<long long>(n - 1), static_cast<long long>(query[i] + (rand() % 17) - 8)));
+    }
+
+    system_clock::time_point t1, t2;
+    long long sum = 0;
+    t1 = std::chrono::high_resolution_clock::now();
+    for (int T = 0; T < iter; ++T){
+        for (size_t i = 0; i < M; ++i){
+            _Tp x = data[query[i]];
+            long long exp_search_pos = aex::exponential_search_lower_bound(data, data + n, data + predict[i], x) - data;
+            sum += exp_search_pos;
         }
     }
+    t2 = std::chrono::high_resolution_clock::now();
+    long long delta = duration_cast<microseconds>(t2 - t1).count();
+    AEX_IMPORTANT("code=" << sum << ", search used time=" << delta << " us");
+
+    sum = 0;
+    t1 = std::chrono::high_resolution_clock::now();
+    for (int T = 0; T < iter; ++T){
+        for (size_t i = 0; i < M; ++i){
+            _Tp x = data[query[i]];
+            long long exp_search_pos = alex_exponential_search_lower_bound(data, n, predict[i], x);
+            sum += exp_search_pos;
+        }
+    }
+    t2 = std::chrono::high_resolution_clock::now();
+    delta = duration_cast<microseconds>(t2 - t1).count();
+    AEX_IMPORTANT("code=" << sum << ", search used time=" << delta << " us");
+
+    sum = 0;
+    t1 = std::chrono::high_resolution_clock::now();
+    for (int T = 0; T < iter; ++T){
+        for (size_t i = 0; i < M; ++i){
+            _Tp x = data[query[i]];
+            long long real = std::lower_bound(data + std::max(0LL, predict[i] - 8), data + std::min(static_cast<long long>(n), predict[i] + 8 + 1), x) - data;
+            sum += real;
+        }
+    }
+    t2 = std::chrono::high_resolution_clock::now();
+    delta = duration_cast<microseconds>(t2 - t1).count();
+    AEX_IMPORTANT("code=" << sum << ", search used time=" << delta << " us");
+
+    sum = 0;
+    t1 = std::chrono::high_resolution_clock::now();
+    for (int T = 0; T < iter; ++T){
+        for (size_t i = 0; i < M; ++i){
+            _Tp x = data[query[i]];
+            long long lb = std::max(0LL, predict[i] - 8), ub = std::min(static_cast<long long>(n), predict[i] + 8 + 1);
+            long long real = ub;
+            for (long long j = lb; j < ub; ++j)
+                if (data[j] >= x){
+                    real = j;
+                    break;
+                }
+            sum += real;
+        }
+    }
+    t2 = std::chrono::high_resolution_clock::now();
+    delta = duration_cast<microseconds>(t2 - t1).count();
+    AEX_IMPORTANT("code=" << sum << ", search used time=" << delta << " us");
     return true;
 }
 

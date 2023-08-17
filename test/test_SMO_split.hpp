@@ -17,13 +17,14 @@ bool test_SMO_data_split_with_exponential_probe_perf(key_type* key, value_type* 
     std::sort(key, key + num_keys);
     tree.split_with_exponential_probe(key, data, num_keys, key_buf, data_node_buf);
     AEX_IMPORTANT("split data node size=" << data_node_buf.size());
-    size_type cnt = 0;
+    size_type cnt = 0, ml_node_cnt = 0;
     std::vector<value_type> node_data;
     for (size_t i = 0; i < data_node_buf.size(); ++i){
         cnt += data_node_buf[i]->size;
+        ml_node_cnt += IS_ML_NODE(data_node_buf[i]);
     }
     if (cnt != static_cast<size_type>(num_keys)){
-        AEX_ERROR("Key number is wrong. num_keys=" << num_keys << "data node key=" << cnt);
+        AEX_ERROR("Key number is wrong. num_keys=" << num_keys << ", data node key=" << cnt);
         return false;
     }
     cnt = 0;
@@ -36,7 +37,7 @@ bool test_SMO_data_split_with_exponential_probe_perf(key_type* key, value_type* 
             }
         }
     }
-    
+    AEX_SUCCESS("mechine learing node rate=" << 1.0 * ml_node_cnt / data_node_buf.size());
     AEX_SUCCESS("test success! Next test performance...");
     std::chrono::system_clock::time_point t1, t2;
     const int ITER = 10;
@@ -71,10 +72,11 @@ bool test_SMO_data_split_with_linear_probe_perf(key_type* key, value_type* data,
     std::sort(key, key + num_keys);
     tree.split_with_linear_probe(key, data, num_keys, key_buf, data_node_buf);
     AEX_IMPORTANT("split data node size=" << data_node_buf.size());
-    size_type cnt = 0;
+    size_type cnt = 0, ml_node_cnt = 0;
     std::vector<value_type> node_data;
     for (size_t i = 0; i < data_node_buf.size(); ++i){
         cnt += data_node_buf[i]->size;
+        ml_node_cnt += IS_ML_NODE(data_node_buf[i]);
     }
     if (cnt != num_keys){
         AEX_ERROR("Key number is wrong. num_keys=" << num_keys << "data node key=" << cnt);
@@ -90,7 +92,8 @@ bool test_SMO_data_split_with_linear_probe_perf(key_type* key, value_type* data,
             }
         }
     }
-    
+
+    AEX_SUCCESS("mechine learing node rate=" << 1.0 * ml_node_cnt / data_node_buf.size());
     AEX_SUCCESS("test success! Next test performance...");
     std::chrono::system_clock::time_point t1, t2;
     const int ITER = 10;
@@ -129,12 +132,12 @@ bool test_SMO_node_split_perf(key_type* key, size_t num_keys){
     std::vector<key_type> key_buf;
     std::vector<node_ptr> inner_node_buf;
     std::sort(key, key + num_keys);
-    tree.split(key, nodeptr_buffer, num_keys, 1, key_buf, inner_node_buf);
-    AEX_IMPORTANT("split inner node size=" << inner_node_buf.size());
-    size_type cnt = 0;
+    tree.split(key, nodeptr_buffer, num_keys, 2, key_buf, inner_node_buf, false);
+    size_type cnt = 0, ml_node_size = 0;
     std::vector<key_type> node_key(num_keys);
     for (size_t i = 0; i < inner_node_buf.size(); ++i){
         cnt += inner_node_buf[i]->size;
+        ml_node_size += IS_ML_NODE(inner_node_buf[i]);
     }
     if (cnt != num_keys){
         AEX_ERROR("Key number is wrong. num_keys=" << num_keys << "inner node key=" << cnt);
@@ -152,7 +155,7 @@ bool test_SMO_node_split_perf(key_type* key, size_t num_keys){
         }
         cnt += inode->size;
     }
-    
+    AEX_SUCCESS("split inner node size=" << inner_node_buf.size() << "ml node size=" << 1.0 * ml_node_size / inner_node_buf.size());
     AEX_SUCCESS("test success! Next test performance...");
     std::chrono::system_clock::time_point t1, t2;
     const int ITER = 10;

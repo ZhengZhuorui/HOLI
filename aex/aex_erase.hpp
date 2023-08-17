@@ -219,6 +219,7 @@ inline bool aex_tree<_Key, _Val, traits>::erase_child_node(inner_node_ptr __rest
 
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::erase_tree_recursive(node_ptr node){
+    
     if (node == nullptr) return;
     if (IS_LEAF_NODE(node)){
         --this->m_stats.level_node[0];
@@ -231,12 +232,13 @@ void aex_tree<_Key, _Val, traits>::erase_tree_recursive(node_ptr node){
         if (IS_ML_NODE(node)){
             bitmap bm = static_cast<inner_node_ptr>(node)->bitmap_ptr;
             for (slot_type i = 0; i < node->slot_size; ++i)
-            if (bitmap_impl::at(bm, i)){
-                this->erase_tree_recursive(child[i]);
-            }
+                if (bitmap_impl::at(bm, i))
+                    this->erase_tree_recursive(child[i]);
         }
         else{
+            AEX_PRINT("node=" << node << ", level=" << node->level);
             for (slot_type i = 0; i < node->size; ++i){
+                AEX_PRINT("child=" << child[i]);
                 this->erase_tree_recursive(child[i]);
             }
         }

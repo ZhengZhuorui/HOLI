@@ -58,6 +58,12 @@ int main(int argc, char** argv){
             generate_lognormal_unique_dataset<long long>(data, num_keys, mean, stddev);
             write_bineary_file(file, data);
         }
+        else if (distribution == "id_ascend"){
+            std::vector<long long> data(num_keys);
+            for (long long i = 0; i < num_keys; ++i)
+                data[i] = i;
+            write_bineary_file(file, data);
+        }
     }
     else if (key_type == "float"){
         if (distribution == "uniform"){

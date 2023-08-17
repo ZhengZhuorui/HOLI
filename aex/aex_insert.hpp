@@ -3,7 +3,6 @@
 
 namespace aex{
 
-/* require: node_allocator.allocate_data_node, node_allocator.allocate_inner_node, insert_data, insert_one*/
 template<typename _Key, typename _Val, typename traits>
 std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree<_Key, _Val, traits>::insert(const key_type &key, const value_type &value){
     AEX_PRINT("[index] insert(" << key << ", " << value << ")");
@@ -74,7 +73,7 @@ bool aex_tree<_Key, _Val, traits>::insert_node(const inner_node_ptr __restrict__
 }
 
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::insert_node(const inner_node_ptr __restrict__ node, const key_type &key, const node_ptr __restrict__ child, std::true_type allow_insert_balance){
+bool aex_tree<_Key, _Val, traits>::insert_node(const inner_node_ptr node, const key_type &key, const node_ptr child, std::true_type allow_insert_balance){
     if (!node->insert(key, child)){
         bitmap bm = node->bitmap_ptr;
         slot_type pred_pos = node->predict(key);
@@ -108,7 +107,6 @@ bool aex_tree<_Key, _Val, traits>::insert_node(const inner_node_ptr __restrict__
                 return false;
             else{
                 slot_type prev_pos = node->prev_item(pred_pos);
-                
                 for (slot_type i = pred_pos; i <= inserted_pos; ++i)
                     bitmap_impl::set_zero(node->bitmap_ptr, inserted_pos);
                 std::fill(node->key_ptr + prev_pos + 1, node->key_ptr + pred_pos + 1, key);
@@ -118,6 +116,18 @@ bool aex_tree<_Key, _Val, traits>::insert_node(const inner_node_ptr __restrict__
                     std::fill(node->key_ptr + pred_pos + 1, node->key_ptr + inserted_pos + 1, node->key_ptr[inserted_pos + 1]);
                     std::fill(node->child_ptr + pred_pos + 1, node->child_ptr + inserted_pos + 1, node->child_ptr[inserted_pos + 1]);
                 }
+                child->prev = node_buffer[0]->prev;
+                if (node_buffer[0]->prev != nullptr)
+                    node_buffer[0]->prev->next = child;
+
+                child->next = node_buffer[buffer_size - 2]->next;
+                if (node_buffer[buffer_size - 2]->next != nullptr)
+                    node_buffer[buffer_size - 2]->next->prev = child;
+                    
+                child->parent = node_buffer[0]->parent;
+
+                for (slot_type i = 0; i < buffer_size; ++i)
+                    node_allocator.free_node(node_buffer[i]);
             }
             return true;
         }
@@ -220,11 +230,12 @@ void aex_tree<_Key, _Val, traits>::insert_split(data_node_ptr node, const key_ty
 
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::build_tree(std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf){
+    AEX_HINT("[INDEX] build tree");
     AEX_ASSERT(key_buf.size() == child_buf.size());
     std::vector<key_type> new_key_buf;
     std::vector<node_ptr> new_child_buf;
     this->m_stats.height = 0;
-    while (key_buf.size() > 1){
+    while (child_buf.size() > 1){
         ++this->m_stats.height;
         split(key_buf.data(), child_buf.data(), key_buf.size(), this->m_stats.height, new_key_buf, new_child_buf);
         size_type m = new_child_buf.size();
@@ -331,7 +342,7 @@ void aex_tree<_Key, _Val, traits>::insert_ascend(inner_node_ptr node, std::vecto
 
     /* if new child, create a new root */
     if (key_buf.size() > 0){
-        inner_node_ptr now_inner_node = node_allocator.allocate_inner_node(key_buf.size() + 1);
+        inner_node_ptr now_inner_node = node_allocator.allocate_inner_node(key_buf.size() + 1, false);
         ++this->m_stats.level_node[this->m_stats.height];
         ++this->m_stats.inner_node;
         ++this->m_stats.height;

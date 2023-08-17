@@ -31,8 +31,10 @@ bool test(map<string, string> &flags){
             return test_exponential_search_lower_bound(bin_data.data(), num_keys);
         if (func == "exp_upper_bound")
             return test_exponential_search_upper_bound(bin_data.data(), num_keys);
-        if (func == "exp_lower_bound_perf")
-            return test_exponential_search_lower_bound_perf(bin_data.data(), num_keys);
+        if (func == "search_perf")
+            return test_search_perf(bin_data.data(), num_keys);
+        if (func == "search_with_error_bound_perf")
+            return test_search_with_error_bound_perf(bin_data.data(), num_keys);
         if (func == "linear_probe")
             return test_linear_probe<T, T, aex_default_traits<T, T> >(bin_data.data(), num_keys);    
     }

@@ -73,6 +73,8 @@ enum node_property{
 
 #define IS_ML_NODE(node_ptr) (((node_ptr)->prop & node_property::ML_NODE) != 0)
 #define IS_LEAF_NODE(node_ptr) (((node_ptr)->prop & node_property::LEAF) != 0)
+#define SET_FLAG(node_ptr, flag) do { (node_ptr)->prop |= flag; } while(0);
+#define UNSET_FLAG(node_ptr, flag) do { (node_ptr)->prop &= ~flag; } while(0);
 
 template<typename _Tp>
 inline _Tp rapid_pow(_Tp base, unsigned long long x){

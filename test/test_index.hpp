@@ -71,6 +71,7 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
     typedef typename traits::size_type size_type;
     std::sort(data, data + n);
     index.bulk_load(data, n);
+    //tmp = index;
     
     {
         if (static_cast<long long>(index.size()) != n){
@@ -102,7 +103,7 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
             }
         }
     }
-
+    AEX_SUCCESS("bulk load finish...");
     index.clear();
     index.print_stats();
     if (index.size() != 0){
@@ -119,6 +120,7 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
         index.bulk_load(data, n);
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
+        index.print_stats();
     }
 
     double OPS = 1.0 * 1e6 * ITER * n / delta;
