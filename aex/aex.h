@@ -51,8 +51,6 @@ public:
 
     typedef typename traits::value_type value_type;
 
-    typedef typename traits::used_as_set used_as_set;
-
     typedef typename traits::size_type size_type;
 
     typedef typename traits::slot_type slot_type;
@@ -99,17 +97,37 @@ public:
     typedef aex_tree_balance_stats<typename traits::AllowBalance> tree_balance_stats;
 
     struct aex_stats{
-        size_type data_node, inner_node; //debug
         size_type level_node[traits::MAX_DEPTH];
         size_type size;
         unsigned int height;
         key_type max_key, min_key;
-        aex_stats():data_node(0), inner_node(0), size(0), height(0){
+        aex_stats():size(0), height(0){
             memset(level_node, 0, sizeof(level_node));
             max_key = std::numeric_limits<key_type>::min();
             min_key = std::numeric_limits<key_type>::max();
         }
+        inline size_type inner_node(){
+            return std::reduce(level_node + 1, level_node + height);
+        }
+        inline size_type data_node(){
+            return level_node[0];
+        }
     };
+
+    #ifdef AEX_EXPERIMENT
+    struct operation_stats{
+        operation_stats():inner_node_split_cnt(0), inner_node_merge_cnt(0), inner_node_rescale_cnt(0),
+                        data_node_split_cnt(0), data_node_merge_cnt(0), data_node_rescale_cnt(0){}
+        size_type inner_node_split_cnt, inner_node_merge_cnt, inner_node_rescale_cnt;
+        size_type data_node_split_cnt, data_node_merge_cnt, data_node_rescale_cnt;
+        void print_stats(){
+            AEX_PRINT("[Operation status] inner node: split times=" << inner_node_split_cnt << ", merge times=" << inner_node_merge_cnt <<
+                    ", rescale times" << inner_node_rescale_cnt);
+            AEX_PRINT(" data node: split times=" << data_node_split_cnt << ", merge times=" << data_node_merge_cnt <<
+                    ", rescale times" << data_node_rescale_cnt);
+        }
+    }opt_stats;
+    #endif
 
     //#ifdef AEX_DEBUG
     static int debug_level; 
@@ -178,11 +196,9 @@ public:
     }
 
     void clear(){
-        AEX_HINT("[begin]");
         this->deconstruct(this->root);
         this->m_stats = aex_stats();
         this->root = this->head_leaf = this->tail_leaf = nullptr;
-        AEX_HINT("[end]");
     }
 
 
@@ -327,14 +343,13 @@ public:
     }
 
     void print_stats(){
-        AEX_IMPORTANT("data size=" << m_stats.size << ", tree height=" << m_stats.height << ", data node size=" << m_stats.data_node \
-                    << ", inner node size=" << m_stats.inner_node << ", max key=" << m_stats.max_key << ", min_key=" << m_stats.min_key);
+        AEX_IMPORTANT("data size=" << m_stats.size << ", tree height=" << m_stats.height << ", data node size=" << m_stats.data_node() \
+                    << ", inner node size=" << m_stats.inner_node() << ", max key=" << m_stats.max_key << ", min_key=" << m_stats.min_key);
         node_allocator.print_stats();
         balance_stats.print_stats();
-    }
-
-    void print_detail(){
-        
+        #ifdef AEX_EXPERIMENT
+        opt_stats.print_stats();
+        #endif
     }
 
     inline size_type memory_used()const{
@@ -401,24 +416,15 @@ private:
 
     // update node/tree freuency counter.
     // One subtree represents a segment, frequency = node->balance_stats.write_times / tree->balance_stats.write_times
-    bool check_insert_merge(inner_node_ptr* node_buffer, slot_type size);
+    bool check_insert_merge(node_ptr* node_buffer, slot_type size);
     void merge_nodes(inner_node_ptr* node_buffer, slot_type buffer_size);
-
-    bool check_insert_merge(data_node_ptr* node_buffer, slot_type size);
     void merge_nodes(data_node_ptr* node_buffer, slot_type buffer_size);
-
-    inline bool check_insert_merge(node_ptr* node_buffer, slot_type size){
-        if (IS_LEAF_NODE(node_buffer[0]))
-            return check_insert_merge(static_cast<data_node_ptr*>(node_buffer), size);
-        else 
-            return check_insert_merge(static_cast<inner_node_ptr*>(node_buffer), size);
-    }
 
     inline void merge_nodes(node_ptr* node_buffer, slot_type size){
         if (IS_LEAF_NODE(node_buffer[0]))
-            merge_nodes(static_cast<data_node_ptr*>(node_buffer), size);
+            merge_nodes((data_node_ptr*)(node_buffer), size);
         else 
-            merge_nodes(static_cast<inner_node_ptr*>(node_buffer), size);
+            merge_nodes((inner_node_ptr*)(node_buffer), size);
     }
 
     bool check_split(data_node_ptr node, bool is_forced=false);
@@ -459,14 +465,14 @@ private:
     void erase_iterator(iterator &iter);
 
     // erase one child node from parent. return false if parent or child not exists
-    // no free the node
-    bool erase_child_node(inner_node_ptr __restrict__ parent, node_ptr __restrict__ node);
+    // free the node
+    void erase_child_node(inner_node_ptr __restrict__ parent, node_ptr __restrict__ node);
 
     // erase one item(iterator) from data_node
     void erase_data(iterator &iter);
 
-    bool erase_split(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node);
-    bool erase_split(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node);
+    bool erase_merge(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node);
+    bool erase_merge(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node);
 
     inline void erase_link(node_ptr node){
         if (node->prev != nullptr) 
@@ -484,6 +490,9 @@ private:
     void split(data_node_ptr node, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
     // split a ordered key array with child pointers array to inner node array.
     void split(const key_type* const key, const node_ptr* const child, const size_type n, const unsigned int level, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child, bool can_retrain=true);
+
+    // split a ordered key array with data array to node array.
+    void split_to_static_data_node(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
     // split a ordered key array with data array to node array.
     void split_with_exponential_probe(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
     // split a ordered key array with data array to inner node array. Use linear probe(use greedy).
@@ -529,12 +538,16 @@ private:
         return node->size >= node->real_slot_size() * ((IS_ML_NODE(node) ? this->inner_node_full_ratio[node->level] : traits::DATA_NODE_FULL_RATIO));
     }
 
-    inline bool isfull(const inner_node_ptr node, slot_type offset) const {
+    inline bool isfull(const inner_node_ptr node, const slot_type offset) const {
         return node->size + offset >= node->real_slot_size() * ((IS_ML_NODE(node) ? this->inner_node_full_ratio[node->level] : traits::DATA_NODE_FULL_RATIO));
     }
     
     inline bool isfew(const inner_node_ptr node) const {
         return node->size < node->real_slot_size() * ((IS_ML_NODE(node) ? this->inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO));
+    }
+
+    inline bool isfew(const inner_node_ptr node, const slot_type offset) const {
+        return node->size + offset < node->real_slot_size() * ((IS_ML_NODE(node) ? this->inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO));
     }
 
     inline bool isfew(const node_ptr node) const{

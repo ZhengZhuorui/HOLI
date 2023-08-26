@@ -36,7 +36,7 @@ bool test(map<string, string> &flags){
         if (func == "search_with_error_bound_perf")
             return test_search_with_error_bound_perf(bin_data.data(), num_keys);
         if (func == "linear_probe")
-            return test_linear_probe<T, T, aex_default_traits<T, T> >(bin_data.data(), num_keys);    
+            return test_linear_probe<T, T, test_traits<T, T> >(bin_data.data(), num_keys);    
     }
     else if (unit == "model"){
         auto model_type = flags["model_type"];
@@ -66,15 +66,17 @@ bool test(map<string, string> &flags){
         std::sort(bin_data.data(), bin_data.data() + num_keys);
         //vector<T> data(num_keys);
         if (node_type == "inner_node"){
-            if (func == "insert"){
-                return test_inner_node_insert_perf<T, T>(bin_data, num_keys, batch);
-            }
+            int level = 1;
+            if (flags.find("level") != flags.end())
+                level = stoi(flags["level"]);
+            if (func == "insert")
+                return test_inner_node_insert_perf<T, T>(bin_data, num_keys, batch, level);
             if (func == "erase")
-                return test_inner_node_erase_perf<T, T>(bin_data, num_keys, batch);
+                return test_inner_node_erase_perf<T, T>(bin_data, num_keys, batch, level);
             if (func == "query")
-                return test_inner_node_query_perf<T, T>(bin_data, num_keys, batch);
+                return test_inner_node_query_perf<T, T>(bin_data, num_keys, batch, level);
             if (func == "other")
-                return test_inner_node_other<T, T>(bin_data, num_keys, batch);
+                return test_inner_node_other<T, T>(bin_data, num_keys, batch, level);
         }
         else if (node_type == "data_node"){
             std::vector<std::pair<T, T> > data;
@@ -86,7 +88,7 @@ bool test(map<string, string> &flags){
             if (func == "query")
                 return test_data_node_query_perf<T, T>(data.data(), num_keys, batch);
             //if (func == "other")
-            //    return test_data_node_other<T, T, aex::aex_default_traits<T, T>>(bin_data, num_keys, batch);
+            //    return test_data_node_other<T, T, aex::test_traits<T, T>>(bin_data, num_keys, batch);
         }
 
     }
@@ -155,13 +157,6 @@ bool test(map<string, string> &flags){
             pack_KV_dataset(bin_data, data);
             return test_index_RW_perf(data.data(), num_keys, batch, rw_ratio);
         }
-        //if (func == "mix_balance"){
-        //    long long batch = stoll(flags["batch"]);
-        //    double rw_ratio = stod(flags["read_ratio"]);
-        //    std::vector<std::pair<T, T> > data;
-        //    pack_KV_dataset(bin_data, data);
-        //    return test_index_RW_perf<T, T, aex_rw_balance_traits>(data.data(), num_keys, batch);
-        //}
         if (func == "demo"){
             vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
@@ -176,7 +171,7 @@ bool test(map<string, string> &flags){
 
 /*
  * Required flags:
- * unit ("index", "function", "model")
+ * unit ("index", "function", "model", "SMO_xxx")
  * key_type: int or float
  * input_file
  * optional flags:
@@ -186,7 +181,6 @@ bool test(map<string, string> &flags){
 
 int main(int argc, char** argv){
     srand(0);
-
     auto flags = parse_flags(argc, argv);
     auto key_type = flags["key_type"];
     bool test_result = false;

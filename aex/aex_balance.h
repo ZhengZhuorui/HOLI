@@ -65,8 +65,8 @@ template<typename _Tp>
 struct aex_tree_balance_stats{
     aex_tree_balance_stats(){}
     void update_timestamp(){}
-    inline unsigned long long get_timestamp(){return 0;}
-    inline double get_lambda_timestamp(){return 0;}
+    inline unsigned long long get_timestamp(){return 1;}
+    inline double get_lambda_timestamp(){return 1;}
     inline void print_stats(){}
 
 };

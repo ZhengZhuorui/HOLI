@@ -9,23 +9,21 @@
 #include "generate_dataset.h"
 
 using namespace std::chrono;
-typedef unsigned long long size_type;
-
 
 template<typename key_type, typename value_type>
 void aex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, value_type> > &insert_data){
     
     system_clock::time_point t1, t2;
 
-    //size_type cnt = 0;
-    size_type M = insert_data.size();
-    size_type times = 10;
+    //size_t cnt = 0;
+    size_t M = insert_data.size();
+    size_t times = 10;
     printf("aex insert test...\n");
     fflush(stdout);
     long long delta = 0;
-    for (size_type i = 0; i < times; ++i){
-        t1 = std::chrono::high_resolution_clock::now();
+    for (size_t i = 0; i < times; ++i){
         aex::aex_map<key_type, value_type> index(data.begin(), data.end());
+        t1 = std::chrono::high_resolution_clock::now();
         for (const auto& x : insert_data){
             index.insert(x);
         }
@@ -46,12 +44,12 @@ void stlmap_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<
     
     system_clock::time_point t1, t2;
 
-    size_type M = insert_data.size();
-    size_type times = 10;
+    size_t M = insert_data.size();
+    size_t times = 10;
     printf("stl map query test...\n");
     fflush(stdout);
     long long delta = 0;
-    for (size_type i = 0; i < times; ++i){
+    for (size_t i = 0; i < times; ++i){
         std::map<key_type, value_type> index(data.begin(), data.end());
         t1 = std::chrono::high_resolution_clock::now();    
         for (const auto& x : insert_data){
@@ -75,12 +73,12 @@ void stx_btree_insert_bench(vector<pair<key_type, value_type> > &data, vector<pa
     
     system_clock::time_point t1, t2;
 
-    size_type M = insert_data.size();
-    size_type times = 10;
+    size_t M = insert_data.size();
+    size_t times = 10;
     printf("stl map query test...\n");
     fflush(stdout);
     long long delta = 0;
-    for (size_type i = 0; i < times; ++i){
+    for (size_t i = 0; i < times; ++i){
         stx::btree_map<key_type, value_type> index(data.begin(), data.end());
         t1 = std::chrono::high_resolution_clock::now();    
         for (const auto& x : insert_data){
@@ -103,13 +101,13 @@ void alex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<ke
     
     system_clock::time_point t1, t2;
 
-    //size_type cnt = 0;
-    size_type M = insert_data.size();
-    size_type times = 10;
+    //size_t cnt = 0;
+    size_t M = insert_data.size();
+    size_t times = 10;
     printf("stl map query test...\n");
     fflush(stdout);
     long long delta = 0;
-    for (size_type i = 0; i < times; ++i){
+    for (size_t i = 0; i < times; ++i){
         alex::Alex<key_type, value_type> index(data.begin(), data.end());
         t1 = std::chrono::high_resolution_clock::now();    
         for (const auto& x : insert_data){
@@ -132,13 +130,13 @@ void pgm_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key
     
     system_clock::time_point t1, t2;
 
-    //size_type cnt = 0;
-    size_type M = insert_data.size();
-    size_type times = 10;
+    //size_t cnt = 0;
+    size_t M = insert_data.size();
+    size_t times = 10;
     printf("stl map query test...\n");
     fflush(stdout);
     long long delta = 0;
-    for (size_type i = 0; i < times; ++i){
+    for (size_t i = 0; i < times; ++i){
         pgm::DynamicPGMIndex<key_type, value_type> index(data.begin(), data.end());
         t1 = std::chrono::high_resolution_clock::now();    
         for (const auto& x : insert_data){

@@ -71,10 +71,14 @@ enum node_property{
     SORTED_NODE=0x20,
 };
 
-#define IS_ML_NODE(node_ptr) (((node_ptr)->prop & node_property::ML_NODE) != 0)
-#define IS_LEAF_NODE(node_ptr) (((node_ptr)->prop & node_property::LEAF) != 0)
-#define SET_FLAG(node_ptr, flag) do { (node_ptr)->prop |= flag; } while(0);
-#define UNSET_FLAG(node_ptr, flag) do { (node_ptr)->prop &= ~flag; } while(0);
+template<typename _NodePtr>
+bool IS_ML_NODE(_NodePtr node){return ((node)->prop & node_property::ML_NODE) != 0;}
+template<typename _NodePtr>
+bool IS_LEAF_NODE(_NodePtr node){return ((node)->prop & node_property::LEAF) != 0;}
+template<typename _NodePtr>
+void SET_FLAG(_NodePtr node, unsigned int flag){(node)->prop |= flag; }
+template<typename _NodePtr>
+void UNSET_FLAG(_NodePtr node, unsigned int flag){(node)->prop &= ~flag; }
 
 template<typename _Tp>
 inline _Tp rapid_pow(_Tp base, unsigned long long x){
@@ -84,6 +88,20 @@ inline _Tp rapid_pow(_Tp base, unsigned long long x){
         base *= base;
     }
     return ans;
+}
+
+template<typename _Tp>
+inline _Tp min_slot_size(const _Tp x, const int min_slot_size){
+    _Tp slot_size = min_slot_size;
+    while (slot_size < x) slot_size <<= 1;
+    return slot_size;
+}
+
+template<typename _Tp>
+inline _Tp min_slot_size(const _Tp x, double ratio, const int min_slot_size){
+    _Tp slot_size = min_slot_size;
+    while (slot_size * ratio < x) slot_size <<= 1;
+    return slot_size;
 }
 
 template<typename _Tp>

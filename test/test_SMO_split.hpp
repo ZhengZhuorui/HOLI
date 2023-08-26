@@ -121,14 +121,10 @@ bool test_SMO_node_split_perf(key_type* key, size_t num_keys){
     typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
     [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::size_type size_type;
-    
-    node_ptr* nodeptr_buffer = tree.node_allocator.allocate_nodeptr_buffer(num_keys);
-
     std::sort(key, key + num_keys);
-    for (size_type i = 0; i < num_keys; ++i){
-        nodeptr_buffer[i] = tree.node_allocator.allocate_data_node(1);
-        static_cast<data_node_ptr>(nodeptr_buffer[i])->key[0] = key[i];
-    }
+    node_ptr* nodeptr_buffer = tree.node_allocator.allocate_nodeptr_buffer(num_keys);
+    construct_data_node_array<key_type, value_type, node_ptr>(key, num_keys, nodeptr_buffer);
+
     std::vector<key_type> key_buf;
     std::vector<node_ptr> inner_node_buf;
     std::sort(key, key + num_keys);

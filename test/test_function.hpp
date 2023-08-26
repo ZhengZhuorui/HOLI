@@ -226,11 +226,10 @@ bool test_linear_probe(key_type* data, size_t n){
     typename mock_aex_tree<key_type, value_type, traits>::data_node_model m;
     slot_type ret = tree.linear_probe(data, n, m);
     AEX_PRINT("ret=" << ret << ", end=" << m.args.end << ", slope=" << m.args.slope << ", inter=" << m.args.inter);
-    double ERROR = traits::MAX_LINEAR_PROBE_ALLOW_ERROR * log(std::max(traits::MIN_ML_DATA_NODE_SLOT_SIZE, ret));
     for (slot_type i = 0; i < ret; ++i){
         slot_type pred_pos = static_cast<slot_type>(m.predict(data[i]) * (ret - 1));
-        if (std::abs(pred_pos - i) > ERROR){
-            AEX_ERROR("error wrong! predict pos=" << pred_pos << ", real pos=" << i << "ERROR=" << ERROR);
+        if (std::abs(pred_pos - i) > traits::MAX_LINEAR_PROBE_ALLOW_ERROR){
+            AEX_ERROR("error wrong! predict pos=" << pred_pos << ", real pos=" << i << "ERROR=" << pred_pos - i);
             return false;
         }
     }

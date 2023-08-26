@@ -48,14 +48,14 @@ void aex_tree<_Key, _Val, traits>::erase_ascend(inner_node_ptr node){
             std::vector<node_ptr> child_buf;
             if (left_node != nullptr && right_node != nullptr){
                 if (left_node->slot_size < right_node->slot_size)
-                    merge_flag = erase_split(left_node, node);
+                    merge_flag = erase_merge(left_node, node);
                 else
-                    merge_flag = erase_split(node, right_node);
+                    merge_flag = erase_merge(node, right_node);
             }
             else if (left_node != nullptr)
-                merge_flag = erase_split(left_node, node);
+                merge_flag = erase_merge(left_node, node);
             else
-                merge_flag = erase_split(node, right_node);
+                merge_flag = erase_merge(node, right_node);
         }
         node = node->parent;
     }
@@ -67,7 +67,6 @@ void aex_tree<_Key, _Val, traits>::erase_ascend(inner_node_ptr node){
                 node_ptr tmp = root;
                 root = static_cast<inner_node_ptr>(root)->child_ptr[0];
                 --m_stats.level_node[this->m_stats.height - 1];
-                --m_stats.inner_node;
                 --m_stats.height;
                 node_allocator.free_node(tmp);
             }
@@ -75,7 +74,6 @@ void aex_tree<_Key, _Val, traits>::erase_ascend(inner_node_ptr node){
         else if (node->size == 0){
             root = head_leaf = tail_leaf = nullptr;
             --m_stats.level_node[this->m_stats.height - 1];
-            --m_stats.data_node;
             --m_stats.height;
             node_allocator.free_node(node);
         }
@@ -84,7 +82,7 @@ void aex_tree<_Key, _Val, traits>::erase_ascend(inner_node_ptr node){
 
 // return merge flag
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::erase_split(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node){
+bool aex_tree<_Key, _Val, traits>::erase_merge(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node){
     std::vector<key_type> key_buf(left_node->size + right_node->size), new_key;
     std::vector<node_ptr> child_buf(left_node->size + right_node->size), new_child;
     inner_node_ptr parent = right_node->parent;
@@ -112,12 +110,25 @@ bool aex_tree<_Key, _Val, traits>::erase_split(inner_node_ptr __restrict__ left_
 
 // return merge flag
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::erase_split(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node){
+bool aex_tree<_Key, _Val, traits>::erase_merge(data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node){
+    
+    if (!traits::AllowDynamicDataNode::value){
+        if (left_node->size + right_node->size <= right_node->slot_size){
+            std::move_backward(right_node->key, right_node->key + right_node->size, right_node->key + right_node->size + left_node->size);
+            std::move_backward(right_node->data, right_node->data + right_node->size, right_node->data + right_node->size + left_node->size);
+            std::move(left_node->key, left_node->key + left_node->size, right_node->key);
+            std::move(left_node->data, left_node->data + left_node->size, right_node->data);
+            erase_link(left_node);
+            erase_child_node(left_node->parent, left_node);
+            return true;
+        }
+        else return false;
+    }
+
     std::vector<key_type> key_buf(left_node->size + right_node->size), new_key;
     std::vector<value_type> data_buf(left_node->size + right_node->size);
     std::vector<node_ptr> new_child;
     inner_node_ptr parent = right_node->parent;
-
     std::copy(left_node->key, left_node->key + left_node->size, key_buf.data());
     std::copy(left_node->data, left_node->data + left_node->size, data_buf.data());
     std::copy(right_node->key, right_node->key + right_node->size, key_buf.data() + left_node->size);
@@ -129,7 +140,7 @@ bool aex_tree<_Key, _Val, traits>::erase_split(data_node_ptr __restrict__ left_n
     new_key.pop_back();
     new_child.pop_back();
     erase_link(left_node);
-    parent->erase(left_node);
+    erase_child_node(parent, left_node);
     if (new_key.size() > 0){
         insert_ascend(parent, new_key, new_child);
         return false;
@@ -181,17 +192,16 @@ void aex_tree<_Key, _Val, traits>::erase_iterator(iterator &iter){
             AEX_ASSERT(isfew(right_node) == true);
 
         bool merge_flag = true;
-
         if (left_node != nullptr && right_node != nullptr){
             if (left_node->size < right_node->size)
-                merge_flag = erase_split(left_node, node);
+                merge_flag = erase_merge(left_node, node);
             else
-                merge_flag = erase_split(node, right_node);
+                merge_flag = erase_merge(node, right_node);
         }
         else if (left_node != nullptr)
-            merge_flag = erase_split(left_node, node);
+            merge_flag = erase_merge(left_node, node);
         else
-            merge_flag = erase_split(node, right_node);
+            merge_flag = erase_merge(node, right_node);
         
         if (merge_flag && node->parent != nullptr){
             if (isfew(node->parent))
@@ -202,19 +212,12 @@ void aex_tree<_Key, _Val, traits>::erase_iterator(iterator &iter){
 
 /*  */
 template<typename _Key, typename _Val, typename traits>
-inline bool aex_tree<_Key, _Val, traits>::erase_child_node(inner_node_ptr __restrict__ parent, node_ptr __restrict__ node){
-    if (parent == nullptr)
-        return false;
-        
-    bool flag = parent->erase(node);
-    if (flag){
-        --this->m_stats.level_node[node->level];
-        if (IS_LEAF_NODE(node)) --this->m_stats.data_node;
-        else --this->m_stats.inner_node;
-        node_allocator.free_node(node);
-    }
-    AEX_ASSERT(flag == false);
-    return flag;
+inline void aex_tree<_Key, _Val, traits>::erase_child_node(inner_node_ptr __restrict__ parent, node_ptr __restrict__ node){
+    if (parent != nullptr)
+        parent->erase(node);
+
+    --this->m_stats.level_node[node->level];
+    node_allocator.free_node(node);
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -223,7 +226,6 @@ void aex_tree<_Key, _Val, traits>::erase_tree_recursive(node_ptr node){
     if (node == nullptr) return;
     if (IS_LEAF_NODE(node)){
         --this->m_stats.level_node[0];
-        --this->m_stats.data_node;
         node_allocator.free_node(static_cast<data_node_ptr>(node));
         return;
     }
@@ -236,13 +238,10 @@ void aex_tree<_Key, _Val, traits>::erase_tree_recursive(node_ptr node){
                     this->erase_tree_recursive(child[i]);
         }
         else{
-            AEX_PRINT("node=" << node << ", level=" << node->level);
-            for (slot_type i = 0; i < node->size; ++i){
-                AEX_PRINT("child=" << child[i]);
+            for (slot_type i = 0; i < node->size; ++i)
                 this->erase_tree_recursive(child[i]);
-            }
+
         }
-        --this->m_stats.inner_node;
         --this->m_stats.level_node[node->level];
         node_allocator.free_node(static_cast<inner_node_ptr>(node));
     }

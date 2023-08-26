@@ -5,64 +5,55 @@ namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
 std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree<_Key, _Val, traits>::insert(const key_type &key, const value_type &value){
-    AEX_PRINT("[index] insert(" << key << ", " << value << ")");
+    //AEX_PRINT("[index] insert(" << key << ", " << value << ")");
 
     this->balance_stats.update_timestamp();
     
     std::pair<iterator, bool> ret;
 
     if (root == nullptr){
-        root = head_leaf = tail_leaf = node_allocator.allocate_data_node(traits::MIN_DATA_NODE_SLOT_SIZE);
+        root = head_leaf = tail_leaf = node_allocator.allocate_data_node(traits::MIN_DATA_NODE_SLOT_SIZE, false);
         ++m_stats.level_node[0];
-        ++m_stats.data_node;
         m_stats.height = 1;
     }
     //AEX_FORMAT("level=%u, size=%lld, root_size=%lld", root->level, this->m_stats.size);
 
-    AEX_PRINT("FIND PATH END");    
-    data_node_ptr node;
-
-    node = this->find_leaf(key);
+    iterator iter = find_iterator(key);
+    data_node_ptr node = iter._M_node;
+    slot_type pos = iter.offset;
 
     this->m_stats.min_key = std::min(this->m_stats.min_key, key);
     this->m_stats.max_key = std::max(this->m_stats.max_key, key);
 
-    /* insert to data node */
-    AEX_PRINT("INSERT DATA NODE");
-
     /* find the insert position */
-    slot_type pos = node->find_upper_pos(key);
     if (pos < node->slot_size && node->key[pos] == key){
-        return std::pair<iterator, bool>(end(), false);
+        return std::pair<iterator, bool>(iterator(node, pos), false);
     }
 
     node->balance_stats.update_write_frequency(this->balance_stats.get_timestamp());
     /* if data node is full, split the node */
     if (isfull(node)){
         if ((!traits::AllowDynamicDataNode::value) || node->slot_size * 2 > traits::MAX_DATA_NODE_SLOT_SIZE || (check_split(node, true))){
-            AEX_PRINT("INSERT DATA NODE SPLIT");
             std::vector<key_type> insert_key;
             std::vector<node_ptr> insert_node;
             insert_split(node, key, value, insert_key, insert_node);
             if (insert_key.size() > 0)
                 insert_ascend(node->parent, insert_key, insert_node);
+            ret = std::pair<iterator, bool>(find_iterator(key), true);
         }
         else{
-            rescale(node, node->slot_size << 1);
-            node->insert(key, value);
+            bool flag = rescale(node, node->slot_size << 1);
+            AEX_ASSERT(flag == true);
+            pos = node->insert(key, value);
+            ret = std::pair<iterator, bool>(iterator(node, pos), true);
         }
     }
     /* else insert the position of the data node*/ 
     else{
-        node->insert(key, value);
-        ret = std::pair<iterator, bool>(iterator(node, pos), true);
+        node->insert(key, value, pos);
+        ret = std::pair<iterator, bool>(iter, true);
     }
-
-    AEX_PRINT("root->prop=" << this->root->prop << ", size=" << this->root->size);
-
     ++m_stats.size;
-
-    AEX_PRINT("END");
     return ret;
 }
 
@@ -94,41 +85,28 @@ bool aex_tree<_Key, _Val, traits>::insert_node(const inner_node_ptr node, const 
         AEX_ASSERT(node->key_ptr[inserted_pos] == key);
 
         node_ptr node_buffer[traits::ERROR_BOUND + 1];
-        size_type buffer_size = 0, first_slot = -1;
-        for (size_type i = pred_pos; i < inserted_pos; ++i)
+        slot_type buffer_size = 0;
+        for (slot_type i = pred_pos; i < inserted_pos; ++i)
             if (bitmap_impl::at(bm, i))
                 node_buffer[buffer_size++] = node->child_ptr[i];
         
         node_buffer[buffer_size++] = child;
 
-        if (isfew(node, -(buffer_size - 1)) == false && check_insert_merge(node_buffer, buffer_size, node->size)){
-            bool flag = merge_nodes(node_buffer, buffer_size);
-            if (flag == false)
-                return false;
-            else{
-                slot_type prev_pos = node->prev_item(pred_pos);
-                for (slot_type i = pred_pos; i <= inserted_pos; ++i)
-                    bitmap_impl::set_zero(node->bitmap_ptr, inserted_pos);
-                std::fill(node->key_ptr + prev_pos + 1, node->key_ptr + pred_pos + 1, key);
-                std::fill(node->child_ptr + prev_pos + 1, node->child_ptr + pred_pos + 1, child);
-                bitmap_impl::set_one(node->bitmap_ptr, pred_pos);
-                if (inserted_pos < node->slot_size - 1){
-                    std::fill(node->key_ptr + pred_pos + 1, node->key_ptr + inserted_pos + 1, node->key_ptr[inserted_pos + 1]);
-                    std::fill(node->child_ptr + pred_pos + 1, node->child_ptr + inserted_pos + 1, node->child_ptr[inserted_pos + 1]);
-                }
-                child->prev = node_buffer[0]->prev;
-                if (node_buffer[0]->prev != nullptr)
-                    node_buffer[0]->prev->next = child;
-
-                child->next = node_buffer[buffer_size - 2]->next;
-                if (node_buffer[buffer_size - 2]->next != nullptr)
-                    node_buffer[buffer_size - 2]->next->prev = child;
-                    
-                child->parent = node_buffer[0]->parent;
-
-                for (slot_type i = 0; i < buffer_size; ++i)
-                    node_allocator.free_node(node_buffer[i]);
+        if (isfew(node, -(buffer_size - 1)) == false && check_insert_merge(node_buffer, buffer_size)){
+            merge_nodes(node_buffer, buffer_size);
+            slot_type prev_pos = node->prev_item(pred_pos);
+            for (slot_type i = pred_pos; i <= inserted_pos; ++i)
+                bitmap_impl::set_zero(node->bitmap_ptr, inserted_pos);
+            std::fill(node->key_ptr + prev_pos + 1, node->key_ptr + pred_pos + 1, key);
+            std::fill(node->child_ptr + prev_pos + 1, node->child_ptr + pred_pos + 1, child);
+            bitmap_impl::set_one(node->bitmap_ptr, pred_pos);
+            if (inserted_pos < node->slot_size - 1){
+                std::fill(node->key_ptr + pred_pos + 1, node->key_ptr + inserted_pos + 1, node->key_ptr[inserted_pos + 1]);
+                std::fill(node->child_ptr + pred_pos + 1, node->child_ptr + inserted_pos + 1, node->child_ptr[inserted_pos + 1]);
             }
+
+            for (slot_type i = 0; i < buffer_size; ++i)
+                node_allocator.free_node(node_buffer[i]);
             return true;
         }
         else return false;
@@ -140,6 +118,11 @@ bool aex_tree<_Key, _Val, traits>::insert_node(const inner_node_ptr node, const 
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::insert_split(inner_node_ptr node, const key_type* const key, const node_ptr* const child, const slot_type n,
                std::vector<key_type> &new_key, std::vector<node_ptr> &new_child){
+    
+    #ifdef AEX_EXPERIMENT
+    ++opt_stats.inner_node_split_cnt;
+    #endif
+
     std::vector<key_type> key_buf(node->size + n);
     std::vector<node_ptr> child_buf(node->size + n);
     bitmap bm = node->bitmap_ptr;
@@ -198,6 +181,11 @@ void aex_tree<_Key, _Val, traits>::insert_split(inner_node_ptr node, const key_t
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::insert_split(data_node_ptr node, const key_type key, const value_type data, 
                                                 std::vector<key_type> &new_key, std::vector<node_ptr> &new_child){
+
+    #ifdef AEX_EXPERIMENT
+    ++opt_stats.data_node_split_cnt;
+    #endif
+
     std::vector<key_type> key_buf(node->size + 1), new_key_2;
     std::vector<value_type> data_buf(node->size + 1);
     std::vector<node_ptr> new_child_2;
@@ -230,37 +218,40 @@ void aex_tree<_Key, _Val, traits>::insert_split(data_node_ptr node, const key_ty
 
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::build_tree(std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf){
-    AEX_HINT("[INDEX] build tree");
     AEX_ASSERT(key_buf.size() == child_buf.size());
+    this->m_stats.height = 0;
     std::vector<key_type> new_key_buf;
     std::vector<node_ptr> new_child_buf;
-    this->m_stats.height = 0;
-    while (child_buf.size() > 1){
+    while (child_buf.size() > 1){    
         ++this->m_stats.height;
         split(key_buf.data(), child_buf.data(), key_buf.size(), this->m_stats.height, new_key_buf, new_child_buf);
         size_type m = new_child_buf.size();
+        
         new_child_buf[0]->prev = nullptr;
         new_child_buf[m - 1]->next = nullptr;
         for(size_type i = 0; i < m - 1; ++i){
             new_child_buf[i + 1]->prev = new_child_buf[i];
             new_child_buf[i]->next = new_child_buf[i + 1];
         }
-        key_buf = std::move(new_key_buf);
-        child_buf = std::move(new_child_buf);
+        std::swap(key_buf, new_key_buf);
+        std::swap(child_buf, new_child_buf);
+        new_key_buf.clear();
+        new_child_buf.clear();
     }
 
     root = child_buf[0];
-    
 }
 
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, value_type>* const data, const size_type nums){
-    AEX_HINT("[INDEX] bulk load");
+    this->deconstruct(this->root);
+    if (nums == 0)
+        return;
+
     std::vector<key_type> key_buf(nums), new_key_buf;
     std::vector<node_ptr> new_child_buf;
     std::vector<value_type> data_buf(nums);
     
-    this->deconstruct(this->root);
     for (size_type i = 0; i < nums; ++i){
         key_buf[i] = data[i].first;
         data_buf[i] = data[i].second;
@@ -271,21 +262,13 @@ void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, value_typ
     }
     this->m_stats.min_key = key_buf[0];
     this->m_stats.max_key = key_buf[nums - 1];
-    
+
     if (traits::AllowDynamicDataNode::value){
+        AEX_PRINT("AllowDynamicDataNode");
         split_with_linear_probe(key_buf.data(), data_buf.data(), nums, new_key_buf, new_child_buf);
     }
-    else{
-        for (size_type i = 0; i < nums; i += traits::MIN_DATA_NODE_SLOT_SIZE){
-            data_node_ptr new_node = node_allocator.allocate_data_node(traits::MIN_DATA_NODE_SLOT_SIZE);
-            ++this->m_stats.level_node[0];
-            ++this->m_stats.data_node;
-            size_type size = std::min(static_cast<size_type>(traits::MIN_DATA_NODE_SLOT_SIZE), nums - i);
-            new_node->construct(data + i, size);
-            new_key_buf.push_back(data[i + size - 1].first);
-            new_child_buf.push_back(new_node);
-        }
-    }            
+    else
+        split_to_static_data_node(key_buf.data(), data_buf.data(), nums, new_key_buf, new_child_buf);
     
     size_type m = new_child_buf.size();
     new_child_buf[0]->prev = nullptr;
@@ -294,13 +277,13 @@ void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, value_typ
         new_child_buf[i + 1]->prev = new_child_buf[i];
         new_child_buf[i]->next = new_child_buf[i + 1];
     }
-    
-    this->m_stats.size = nums;
 
+    this->m_stats.size = nums;
     this->head_leaf = static_cast<data_node_ptr>(new_child_buf[0]);
     this->tail_leaf = static_cast<data_node_ptr>(new_child_buf[m - 1]);
-    
+
     this->build_tree(new_key_buf, new_child_buf);
+
 }
 
 
@@ -310,7 +293,6 @@ void aex_tree<_Key, _Val, traits>::insert_ascend(inner_node_ptr node, std::vecto
     if (key_buf.size() == 0) return;
     std::vector<key_type> new_key_buf;
     std::vector<node_ptr> new_child_buf;
-
     while (node != nullptr && key_buf.size() > 0){
         size_t num_buf = key_buf.size();
         bool split_flag = false;
@@ -334,17 +316,16 @@ void aex_tree<_Key, _Val, traits>::insert_ascend(inner_node_ptr node, std::vecto
                 }
             }
         
-        /* swap buffer */
-        key_buf = std::move(new_key_buf);
-        child_buf = std::move(new_child_buf);
+        std::swap(key_buf, new_key_buf);
+        std::swap(child_buf, new_child_buf);
         node = node->parent;
     }
 
     /* if new child, create a new root */
     if (key_buf.size() > 0){
-        inner_node_ptr now_inner_node = node_allocator.allocate_inner_node(key_buf.size() + 1, false);
+        size_type slot_size = min_slot_size(key_buf.size(), traits::MIN_INNER_NODE_SLOT_SIZE);
+        inner_node_ptr now_inner_node = node_allocator.allocate_inner_node(slot_size, false);
         ++this->m_stats.level_node[this->m_stats.height];
-        ++this->m_stats.inner_node;
         ++this->m_stats.height;
 
         now_inner_node->level = this->m_stats.height;

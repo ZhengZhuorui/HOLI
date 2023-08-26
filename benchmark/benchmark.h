@@ -10,6 +10,7 @@
 
 #include "benchmark_insert.hpp"
 #include "benchmark_query.hpp"
+#include "benchmark_build.hpp"
 #include "benchmark_other.hpp"
 /*
 template<typename key_type, typename value_type>

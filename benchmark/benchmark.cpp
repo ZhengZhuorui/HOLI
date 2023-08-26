@@ -96,7 +96,29 @@ void benchmark_depth(FILE* file, long long num_keys, string &index_name){
     if (index_name == "alex")
         benchmark_alex_depth<key_type, value_type>(data);
     else if (index_name == "aex"){
+        
+    }
+}
 
+template<typename key_type,
+        typename value_type>
+void benchmark_build(FILE* file, long long num_keys, string &index_name){
+    vector<key_type> bin_data;
+    vector<pair<key_type, value_type> > data;
+    read_bineary_file<key_type>(file, bin_data, num_keys);
+    pack_KV_dataset(bin_data, data);
+    std::sort(data.begin(), data.end());
+    if (index_name == "aex"){
+        aex_build_bench(data);
+    }
+    else if (index_name == "stl_map"){
+        stlmap_build_bench(data);
+    }
+    else if (index_name == "stx_btree"){
+        stx_btree_build_bench(data);
+    }
+    else if (index_name == "alex"){
+        alex_build_bench(data);
     }
 }
 
@@ -109,11 +131,12 @@ void benchmark(FILE* file, long long num_keys, long long num_ops, string &index_
         benchmark_insert<key_type, value_type>(file, num_keys, num_ops, index_name);
     else if (func == "depth")
         benchmark_depth<key_type, value_type>(file, num_keys, index_name);
-    else if (func == "insert_lookup"){
 
+    else if (func == "build"){
+        benchmark_build<key_type, value_type>(file, num_keys, index_name);
     }
     else if (func == "erase"){
-        
+        //benchmark_erase<key_type, value_type>(file, num_keys);
     }
 }
 

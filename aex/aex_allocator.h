@@ -60,10 +60,12 @@ public:
     }
 
     ~aex_node_allocator(){
-        #ifdef AEX_DEBUG
-        AEX_HINT("allocate inner node used time=" << timer.allocate_inner_node_time << "ms");
-        AEX_HINT("allocate data node used time=" << timer.allocate_data_node_time << "ms");
-        #endif
+    }
+
+    void clear(){
+        inner_node_nums = data_node_nums = free_cnt = alloc_cnt = 0;
+        timer = Timer();
+        _memory_used = max_node_id = 0;
     }
 
    inline void* _allocate(size_type size){
@@ -136,7 +138,7 @@ public:
     //    return align_8bytes(sizeof(version_type) * slot_size / traits::ERROR_BOUND);
     //}
 
-    inline inner_node_ptr allocate_inner_node(size_type slot_size, bool ml_node_flag){
+    inline inner_node_ptr allocate_inner_node(slot_type slot_size, bool ml_node_flag){
         /*
         *   TODO: memory pool
         */
@@ -145,15 +147,18 @@ public:
         t1 = std::chrono::high_resolution_clock::now();
         #endif
         ++inner_node_nums;
-        size_type real_slot_size = traits::MIN_INNER_NODE_SLOT_SIZE;
-        while (real_slot_size < slot_size) real_slot_size <<= 1;
-        
-        real_slot_size += traits::ERROR_BOUND;
+        AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
+
+        size_type real_slot_size = slot_size;
+
+        if (ml_node_flag == true)
+            AEX_ASSERT(slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE);
+
+        if (real_slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE) 
+            real_slot_size += traits::ERROR_BOUND;
+
         size_type memory_used = INNER_NODE_MEMORY_USED(real_slot_size);
         this->_memory_used += memory_used;
-        //if (slot_size / traits::MIN_INNER_NODE_SLOT_SIZE)
-
-        //inner_node_ptr node = static_cast<inner_node_ptr>(this->_allocate(memory_used));
         inner_node_ptr node = new inner_node(real_slot_size);
 
         #ifdef AEX_EXPERIMENT
@@ -175,18 +180,14 @@ public:
         return node;
     }
     
-    inline data_node_ptr allocate_data_node(size_type slot_size, bool ml_node_flag=true){
-        //AEX_FORMAT("ALLOCATE DATA NODE");
+    inline data_node_ptr allocate_data_node(slot_type slot_size, bool ml_node_flag){
         #ifdef AEX_EXPERIMENT
         std::chrono::system_clock::time_point t1, t2;
         t1 = std::chrono::high_resolution_clock::now();
         #endif
         ++data_node_nums;
-        size_type real_slot_size = traits::MIN_DATA_NODE_SLOT_SIZE;
-        while (real_slot_size < slot_size) real_slot_size <<= 1;
-        slot_size = real_slot_size;
+        AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
 
-        //this->_memory_used += sizeof(data_node) + KEY_MEMORY_USED(slot_size) + DATA_MEMORY_USED(slot_size);
         this->_memory_used += DATA_NODE_MEMORY_USED(slot_size);
         data_node_ptr node = new data_node(slot_size);
         SET_FLAG(node, node_property::LEAF);
@@ -209,7 +210,9 @@ public:
     }
 
     inline void reallocate(inner_node_ptr node, slot_type new_slot_size){
-        new_slot_size += traits::ERROR_BOUND;
+        if (new_slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE)
+            new_slot_size += traits::ERROR_BOUND;
+
         this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) \
                               - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) \
                               - BITMAP_MEMORY_USED(node->slot_size) + BITMAP_MEMORY_USED(new_slot_size);
@@ -297,10 +300,12 @@ public:
     }
 
     inline void print_stats(){
-        AEX_IMPORTANT("[Allocator]: memory used=" << _memory_used << ", inner_node_nums=" << inner_node_nums << ", data_node_nums=" << data_node_nums <<
+        AEX_IMPORTANT("[Allocator]: memory used=" << _memory_used << " bytes, inner_node_nums=" << inner_node_nums << ", data_node_nums=" << data_node_nums <<
                     ", allocate inner node used time=" << timer.allocate_inner_node_time << "ms" <<
                     ", allocate data node used time=" << timer.allocate_data_node_time << "ms"
                     ", allocator count=" << alloc_cnt << ", free count=" << free_cnt);
+        AEX_HINT("allocate inner node used time=" << timer.allocate_inner_node_time << "ms"
+                << ", allocate data node used time=" << timer.allocate_data_node_time << "ms");
     }
 
 

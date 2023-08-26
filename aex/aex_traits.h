@@ -27,10 +27,12 @@ class aex_type_traits<double>{
 };
 
 struct aex_default_balance_args{
-    static constexpr double MODEL_SEARCH_FACTOR = 4.0; // find a child/data with learned model needs MODEL_SEARCH_FACTOR cost
-    static constexpr double BINEARY_SEARCH_FACTOR = 1.0; // find a child/data with bineary search needs BINEARY_SEARCH_FACTOR * log(n) cost
+    static constexpr double INNER_NODE_MODEL_SEARCH_FACTOR = 4.0; // find a child/data with learned model needs MODEL_SEARCH_FACTOR cost
+    static constexpr double DATA_NODE_MODEL_SEARCH_FACTOR = 16.0; // find a child/data with learned model needs MODEL_SEARCH_FACTOR cost
+    static constexpr double BINEARY_SEARCH_FACTOR = 2.0; // find a child/data with bineary search needs BINEARY_SEARCH_FACTOR * log(n) cost
     static constexpr double DENSE_ARRAY_INSERT_FACTOR = 1.0; // insert a child/data in dense array needs DENSE_ARRAY_INSERT_FACTOR * n cost
-    static constexpr double GAP_ARRAY_INSERT_FACTOR = 4.0; // insert a child/data in gap array needs GAP_ARRAY_INSERT_FACTOR cost
+
+    static constexpr double GAP_ARRAY_INSERT_FACTOR = 8.0; // insert a child/data in gap array needs GAP_ARRAY_INSERT_FACTOR cost
     static constexpr double DATA_NODE_TRAIN_FACTOR = 32.0; // train a data node needs DATA_NODE_TRAIN_FACTOR * n cost
     static constexpr double INNER_NODE_TRAIN_FACTOR = 32.0; // train a inner node needs INNER_NODE_TRAIN_FACTOR * n cost
 };
@@ -56,8 +58,6 @@ struct aex_default_traits{
 
     typedef aex_default_balance_args MODEL_ARGS;
 
-    typedef std::false_type used_as_set;
-
     typedef _AllowMultiThread AllowMultiThread;
 
     // Allow balance inner node and data node when read and write frequency update?
@@ -66,27 +66,30 @@ struct aex_default_traits{
     // Allow balance inner node when insert an item?
     typedef std::false_type AllowInsertBalance;
 
+    // Allow tree balance tree struct in lookup, insert and erase.
     typedef std::false_type AllowBalance;
 
     static_assert((AllowRWBalance::value | AllowInsertBalance::value) == AllowBalance::value);
 
     // Allow data node slot size dynamic? (static data node slot size is MIN_DATA_NODE_SLOT_SIZE)
-    typedef std::true_type AllowDynamicDataNode;
-    //typedef std::false_type AllowDynamicDataNode;
+    // If data node slot size is dynamic(lazy update), it must AllowRWBalance.
+    typedef std::false_type AllowDynamicDataNode;
+
+    static_assert((AllowRWBalance::value | (!AllowDynamicDataNode::value)) == true);
     
     static const int ERROR_BOUND = 8;
 
     static const int DATA_NODE_ERROR_BOUND = 8;
 
-    static const slot_type MIN_INNER_NODE_SLOT_SIZE = 8;
+    static const slot_type MIN_INNER_NODE_SLOT_SIZE = 16;
 
     static const slot_type MIN_ML_INNER_NODE_SLOT_SIZE = 64;
 
     static const slot_type MIN_ML_INNER_NODE_SIZE = 64;
 
-    static const slot_type MAX_NODE_SLOT_SIZE = 1 << 25;
+    static const slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 25;
 
-    static const slot_type MIN_DATA_NODE_SLOT_SIZE = 8;
+    static const slot_type MIN_DATA_NODE_SLOT_SIZE = 16;
 
     static const slot_type MAX_DATA_NODE_SLOT_SIZE= 1 << 20;
 
@@ -108,12 +111,6 @@ struct aex_default_traits{
 
     static const int MAX_DEPTH = 16;
 
-    static const char INIT_REWIRED_CNT = 5;
-
-    static constexpr float LEARNING_COST = 10;
-
-    static const int CACHE_LINE_SIZE = MIN_DATA_NODE_SLOT_SIZE;
-
     static constexpr float MAX_ALLOW_ERROR = 2.0 / log(2);
 
     static constexpr float MAX_LINEAR_PROBE_ALLOW_ERROR = 4.0 / log(2);
@@ -121,16 +118,6 @@ struct aex_default_traits{
     static const bool debug = true;
 
     static const int MAX_SEGMENT_NUM = 8;
-    
 };
-
-template<typename _Key, 
-        typename _Val,
-        typename _AllowMultiThread=std::false_type>
-struct aex_rw_balance_traits : public aex::aex_default_traits<_Key, _Val, _AllowMultiThread>{
-    // Allow balance inner node and data node when read and write frequency update?
-    typedef std::true_type AllowRWBalance;
-};
-
 
 }

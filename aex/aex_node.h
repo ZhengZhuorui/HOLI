@@ -191,13 +191,15 @@ public:
         memset(this->bitmap_ptr, 0, NodeAllocator::BITMAP_MEMORY_USED(this->slot_size));
     }
 
-    inline void clear_key_array(){
-        memset(this->key_ptr, 0, NodeAllocator::KEY_MEMORY_USED(this->slot_size));
+    inline void clear(){
+        clear_bitmap();
+        std::fill(this->key_ptr, this->key_ptr + this->slot_size, 0);
+        std::fill(this->child_ptr, this->child_ptr + this->slot_size, nullptr);
     }
 
     inline void inplace_construct(){
         bitmap bm = this->bitmap_ptr;
-        std::for_each(child, child + this->size, [this](node_ptr node){node->parent = this;});
+        std::for_each(this->child_ptr, this->child_ptr + this->size, [this](node_ptr node){node->parent = this;});
 
         if (IS_ML_NODE(this)){
             std::move_backward(this->key_ptr, this->key_ptr + this->size, this->key_ptr + this->slot_size);
@@ -224,7 +226,7 @@ public:
     // Construct a node with key array, don't check model is fit. 
     inline void construct(const key_type* const key, const node_ptr* const child, const slot_type n){
         AEX_ASSERT(IS_ML_NODE(this) == false);
-        this->clear_bitmap();
+        this->clear();
         this->size = n;
         std::copy(key, key + n, this->key_ptr);
         std::copy(child, child + n, this->child_ptr);
@@ -235,8 +237,7 @@ public:
     inline void construct(const key_type* const key, const node_ptr* const child, const slot_type n, const Model &m){
         AEX_ASSERT(n > 0);
         bitmap bm = this->bitmap_ptr;
-        this->clear_bitmap();
-        this->clear_key_array();
+        this->clear();
         this->model = m;
         this->size = n;
         // meta
@@ -408,7 +409,8 @@ public:
 
     // real_slot_size() mean slot size minus error bound
     inline slot_type real_slot_size() const{
-        return IS_ML_NODE(this) ? (this->slot_size - traits::ERROR_BOUND) : this->slot_size;
+        //return IS_ML_NODE(this) ? (this->slot_size - traits::ERROR_BOUND) : this->slot_size;
+        return (this->slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE) ? (this->slot_size - traits::ERROR_BOUND) : this->slot_size;
     }
 
     // only node_property::ML_NODE can use it. check if node_property::ML_NODE first
@@ -575,12 +577,17 @@ public:
     // insert a item
     inline slot_type insert(const key_type &x, const value_type &data){
         slot_type pos = this->find_upper_pos(x);
+        insert(x, data, pos);
+        return pos;
+    }
+
+    // insert a item in position
+    inline void insert(const key_type &x, const value_type &data, const slot_type pos){
         std::move_backward(this->key + pos, this->key + this->size, this->key + this->size + 1);
         std::move_backward(this->data + pos, this->data + this->size, this->data + this->size + 1);
         this->key[pos] = x;
         this->data[pos] = data;
         this->size++;
-        return pos;
     }
 
     inline bool erase(const slot_type pos){

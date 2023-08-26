@@ -48,21 +48,16 @@ aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(n
 
 template<typename _Key, typename _Val, typename traits>
 aex_tree<_Key, _Val, traits>::~aex_tree(){
-    AEX_HINT("BEGIN");
     this->erase_tree_recursive(this->root);
-    if (this->m_stats.data_node != this->node_allocator.data_node_nums){
-        AEX_ERROR("data node number error! tree data node=" << this->m_stats.data_node << ", allocator data node number=" << this->node_allocator.data_node_nums);
-    }
-    if (this->m_stats.inner_node != this->node_allocator.inner_node_nums){
-        AEX_ERROR("inner node number no free! tree inner node=" << this->m_stats.inner_node << ", allocator inner node number=" << this->node_allocator.inner_node_nums);
-    }
     this->root = this->head_leaf = this->tail_leaf = nullptr;
-    AEX_HINT("END");
 }
 
 
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::init(){
+    if (this->root != nullptr){
+        this->deconstruct(this->root);
+    }
     this->m_stats.max_key = std::numeric_limits<key_type>::min();
     this->m_stats.min_key = std::numeric_limits<key_type>::max();
     this->inner_node_few_ratio[0] = traits::DATA_NODE_FEW_RATIO, this->inner_node_full_ratio[0] = traits::DATA_NODE_FULL_RATIO;
@@ -70,7 +65,8 @@ void aex_tree<_Key, _Val, traits>::init(){
         this->inner_node_few_ratio[i] = this->inner_node_few_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
         this->inner_node_full_ratio[i] = this->inner_node_full_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
     }
-    //this->balance_stats = aex_tree_balance_stats<typename traits::AllowBalance>();
+    this->root = this->head_leaf = this->tail_leaf = nullptr;
+    this->node_allocator.clear();
     this->m_stats = aex_stats();
     this->balance_stats = tree_balance_stats();
 }
@@ -78,15 +74,13 @@ void aex_tree<_Key, _Val, traits>::init(){
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::construct(node_ptr node, node_ptr &new_node){
     if (IS_LEAF_NODE(node)){
-        new_node = node_allocator.allocate_data_node(node->slot_size);
+        new_node = node_allocator.allocate_data_node(node->slot_size, IS_ML_NODE(node));
         ++this->m_stats.level_node[0];
-        ++this->m_stats.data_node;
         *static_cast<data_node_ptr>(new_node) = *static_cast<data_node_ptr>(node);
     }
     else{
-        new_node = node_allocator.allocate_inner_node(node->slot_size, IS_ML_NODE(node));
+        new_node = node_allocator.allocate_inner_node(static_cast<inner_node_ptr>(node)->real_slot_size(), IS_ML_NODE(node));
         ++this->m_stats.level_node[node->level];
-        ++this->m_stats.inner_node;
         *static_cast<inner_node_ptr>(new_node) = *static_cast<inner_node_ptr>(node);
 
         bitmap bm = static_cast<inner_node_ptr>(node)->bitmap_ptr;

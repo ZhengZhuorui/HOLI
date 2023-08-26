@@ -13,8 +13,6 @@ public:
 
     typedef typename traits::value_type value_type;
 
-    typedef typename traits::used_as_set used_as_set;
-
     typedef typename traits::size_type size_type;
 
     typedef typename traits::slot_type slot_type;
@@ -54,41 +52,47 @@ public:
     typedef typename traits::bitmap bitmap;
 
     void print_detail(){
+        msg = detail_msg();
         msg.level_node_nums.resize(traits::MAX_DEPTH);
         dfs_detail(this->root);
+        AEX_PRINT("inner node number=" << msg.inner_node << ", data node number=" << msg.data_node << 
+                ", ml inner node number=" << msg.ml_inner_node << ", ml data node number=" << msg.ml_data_node);
     }
     
     void dfs_detail(node_ptr node){
-        bool flag = true;
-        key_type first_key;
         ++msg.level_node_nums[node->level];
 
         if (IS_LEAF_NODE(node)){
+            msg.data_node++;
+            msg.ml_data_node += IS_ML_NODE(node);
             return;
         }
         else{
+            msg.inner_node++;
+            msg.ml_inner_node += IS_ML_NODE(node);
             inner_node_ptr in = static_cast<inner_node_ptr>(node);
-            key_type* node_key = in->key_ptr;
             node_ptr* node_child = in->child_ptr;
             if (IS_ML_NODE(node)){
                 bitmap bm = in->bitmap_ptr;
-                for (size_type i = 0; i <= in->slot_size; ++i){
+                for (slot_type i = 0; i <= in->slot_size; ++i){
                     if (bitmap_impl::at(bm, i)){
-                        auto res = dfs_detail(node_child[i]);
+                        dfs_detail(node_child[i]);
                     }
                 }
             }
             else{
-                for (size_type i = 0; i < in->size; ++i){
-                    auto res = dfs_detail(node_child[i]);
+                for (slot_type i = 0; i < in->size; ++i){
+                    dfs_detail(node_child[i]);
                 }
             }
         } 
     }
     
     struct detail_msg{
+        detail_msg():level_node_nums(0), inner_node(0), data_node(0), ml_inner_node(0), ml_data_node(0){}
         vector<size_type> level_node_nums;
         size_type inner_node, data_node;
+        size_type ml_inner_node, ml_data_node;
     }msg;
 
     std::pair<key_type, bool> debug(node_ptr node){

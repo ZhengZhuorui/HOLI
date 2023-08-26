@@ -59,38 +59,29 @@ bool test_exp_model(T* data, size_t n, bool spec_flag){
 
 template<typename T>
 bool test_quad_model(T* data, size_t n, bool spec_flag){
-    std::cout << "[test_quandratic_model]" << std::endl;
+    AEX_HINT("[test_quandratic_model]");
     if (spec_flag){
         T min_data = data[0], max_data = data[0];
         for (size_t i = 1; i < n; ++i){
             min_data = std::min(min_data, data[i]);
             max_data = std::max(max_data, data[i]);
         }
-        std::cout << std::endl;
         T bias = rand() % 100;
         //const double quad = -1e-6, lin/-2quad = 10, lin=2e-5, inter = 1;
         for (size_t i = 0; i < n; ++i){
             double pos = (data[i] - min_data) / (max_data - min_data);
             data[i] = (10 - sqrt(100 + 1e6 * (1 - pos))) + bias;
-            std::cout << data[i] << " ";
         }
-        std::cout << std::endl;
     }
-
-    //for (size_t i = 0; i < n; ++i){
-    //    data[i] = exp(data[i] / 30) + bias;
-    //    std::cout << data[i] << " ";
-    //}
-    //cout << std::endl;
 
     aex::quandratic_model<T, aex::aex_default_traits<T, T>> m;
     if (m.train(data, n) == false){
         printf("train failed.");
     }
     std::cout << "quad=" << m.args.quad << ", linear=" << m.args.lin << ", inter=" << m.args.inter << ", end=" <<  m.args.end << std::endl;
-    printf("RMSE=%.4f\n", m.RMSE(data, n));
-    for (size_t i = 0; i < n; ++i)
-        std::cout << "key=" << data[i] << ", pos=" << i << ", predict=" << m.predict(data[i]) * n << " | ";
+    AEX_SUCCESS("RMSE=" << m.RMSE(data, n));
+    //for (size_t i = 0; i < n; ++i)
+    //    std::cout << "key=" << data[i] << ", pos=" << i << ", predict=" << m.predict(data[i]) * n << " | ";
     return true;
 }
 
