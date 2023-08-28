@@ -25,6 +25,7 @@ void construct_data_node_array(key_type* key, size_t num_keys, node_ptr* child_b
     for (size_type i = 0; i < num_keys; ++i){
         child_buf[i] = tree.node_allocator.allocate_data_node(traits::MIN_DATA_NODE_SLOT_SIZE, false);
         static_cast<data_node_ptr>(child_buf[i])->key[0] = key[i];
+        child_buf[i]->size = 1;
     }
 }
 

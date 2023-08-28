@@ -352,7 +352,8 @@ public:
                                                 (static_cast<inner_node_ptr>(node)->key_ptr[static_cast<inner_node_ptr>(node)->last()]); 
         if (IS_ML_NODE(this)){
             slot_type pos = this->predict(node_key);
-            for (slot_type i = pos; i < this->slot_size; ++i)
+            slot_type max_slot = std::max(pos + traits::ERROR_BOUND, this->slot_size);
+            for (slot_type i = pos; i < max_slot; ++i)
             if (bitmap_impl::at(bm, i) && child[i] == node) 
                 return i;
         }
@@ -576,7 +577,8 @@ public:
 
     // insert a item
     inline slot_type insert(const key_type &x, const value_type &data){
-        slot_type pos = this->find_upper_pos(x);
+        slot_type pos = this->find_lower_pos(x);
+        AEX_ASSERT(x < key[pos]);
         insert(x, data, pos);
         return pos;
     }
@@ -607,18 +609,6 @@ public:
         }
         else{
             pos = std::lower_bound(this->key, this->key + this->size, x) - this->key;
-        }
-        return pos;
-    }
-
-    inline slot_type find_upper_pos(const key_type &x){
-        slot_type pos = this->slot_size;
-        if (IS_ML_NODE(this)){
-            slot_type pred_pos = this->predict(x);
-            pos = aex::exponential_search_upper_bound(this->key, this->key + this->size, this->key + pred_pos, x) - this->key;
-        }
-        else{
-            pos = std::upper_bound(this->key, this->key + this->size, x) - this->key;
         }
         return pos;
     }

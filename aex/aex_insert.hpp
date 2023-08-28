@@ -162,7 +162,24 @@ void aex_tree<_Key, _Val, traits>::insert_split(inner_node_ptr node, const key_t
         std::copy(child + j, child + n, child_buf.data() + n_slot);
     }
     
-    split(key_buf.data(), child_buf.data(), node->size + n, node->level, new_key, new_child);
+    if (check_split(node)){
+        #ifdef AEX_EXPERIMENT
+        ++opt_stats.inner_node_balance_split_cnt;
+        #endif
+        slot_type new_n = node->size + n;
+        split(key_buf.data(), child_buf.data(), new_n / 2, node->level, new_key, new_child);
+        std::vector<key_type> new_key_2;
+        std::vector<node_ptr> new_child_2;
+        split(key_buf.data() + new_n / 2, child_buf.data() + new_n / 2, new_n - new_n / 2, node->level, new_key_2, new_child_2);
+        slot_type sz = new_key_2.size();
+        for (slot_type i = 0; i < sz; ++i){
+            new_key.push_back(new_key_2[i]);
+            new_child.push_back(new_child_2[i]);
+        }
+    }
+    else{
+        split(key_buf.data(), child_buf.data(), node->size + n, node->level, new_key, new_child);
+    }
 
     node->balance_stats.update_train_frequency(this->balance_stats.get_timestamp());
     update_node_list_frequency(node, new_child.data(), new_child.size());
@@ -264,7 +281,6 @@ void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, value_typ
     this->m_stats.max_key = key_buf[nums - 1];
 
     if (traits::AllowDynamicDataNode::value){
-        AEX_PRINT("AllowDynamicDataNode");
         split_with_linear_probe(key_buf.data(), data_buf.data(), nums, new_key_buf, new_child_buf);
     }
     else

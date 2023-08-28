@@ -63,7 +63,7 @@ bool aex_tree<_Key, _Val, traits>::check_insert_merge(node_ptr* node_buffer, slo
         merge_cost = write_pro * tot_size * traits::MODEL_ARGS::INNER_NODE_TRAIN_FACTOR; // +
 
     merge_cost = -write_pro * parent->size * traits::MODEL_ARGS::INNER_NODE_TRAIN_FACTOR
-                -(this->m_stats.height - parent->level) * traits::MODEL_ARGS::GAP_ARRAY_INSERT_FACTOR;// -
+                -(this->m_stats.height - parent->level) * traits::MODEL_ARGS::GAP_ARRAY_INSERT_FACTOR * (1.0 * this->inner_node_few_ratio[1] / this->inner_node_few_ratio[parent->level]);// -
 
     double delta_cost = write_cost + read_cost + merge_cost;
 
@@ -164,6 +164,24 @@ void aex_tree<_Key, _Val, traits>::merge_nodes(inner_node_ptr* node_buffer, slot
         node_allocator.free_node(node_buffer[i]);
     }
     
+}
+
+template<typename _Key, typename _Val, typename traits>
+inline bool aex_tree<_Key, _Val, traits>::check_split(inner_node_ptr node){
+    // delta cost
+    // 1. delta all read cost
+    // 3. delta SMO cost
+    if (traits::AllowBalance::value == false)
+        return false;
+    double lambda_timestamp = this->balance_stats.get_timestamp();
+    double train_pro = 1.0 * node->balance_stats.get_train_times() / lambda_timestamp;
+
+    double read_cost = 1.0 * (1.0 / this->m_stats.level_node[node->level]) * traits::MODEL_ARGS::INNER_NODE_MODEL_SEARCH_FACTOR;
+    double SMO_cost = -(train_pro / 2) * traits::MODEL_ARGS::INNER_NODE_TRAIN_FACTOR * node->size;
+    double delta_cost = read_cost + SMO_cost;
+    if (delta_cost < 0)
+        return false;
+    return true;
 }
 
 template<typename _Key, typename _Val, typename traits>

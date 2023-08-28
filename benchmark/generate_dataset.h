@@ -14,6 +14,7 @@ void generate_data(vector<T> &data, const long long n, const ArgsType a, const A
     for (long long i = 0; i < n; ++i){
         data[i] = static_cast<T>(distribution(generator));
     }
+    std::random_shuffle(data.data(), data.data() + n);
 }
 
 //generate lookup and erase dataset
@@ -40,6 +41,7 @@ void generate_query(std::pair<key_type, value_type> *data, const long long n, ve
     answer.resize(m);
     vector<long long> query_pos(m);
     generate_data<long long, Distribution, long long>(query_pos, m, 0, n - 1);
+    std::random_shuffle(query_pos.data(), query_pos.data() + m);
     for (long long i = 0; i < m; ++i){
         long long pos = query_pos[i];
         query[i] = data[pos].first;
@@ -80,6 +82,7 @@ void generate_unique_dataset(vector<key_type> &data, const long long n, ArgsType
             st.insert(random_x);
         }
     }
+    std::random_shuffle(data.data(), data.data() + n);
     std::random_shuffle(data.data(), data.data() + n);
 }
 

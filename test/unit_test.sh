@@ -15,7 +15,7 @@
 # (Y)
 ./generate_dataset --key_type=float --num_keys=1000 --distribution=normal --output_file=/home/zzr/data/generate_data/normal_1K_0_1_float.bin --mean=0 --stddev=1
 
-#
+# (Y)
 ./generate_dataset --key_type=int --num_keys=1000000 --distribution=id_ascend --output_file=/home/zzr/data/generate_data/id_1M_int.bin
 
 # =================================================================================================
@@ -42,7 +42,7 @@
 # (Y)
 ./unit_test --unit=function --key_type=int --num_keys=1000000 --function=linear_probe --input_file=/home/zzr/data/generate_data/uniform_1M_int.bin
 # (Y)
-./unit_test --unit=function --key_type=float --num_keys=1000 --function=linear_probe --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=function --key_type=float --num_keys=1000 --function=linear_probe --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
 ./unit_test --unit=function --key_type=float --num_keys=1000000 --function=linear_probe --input_file=/home/zzr/data/longitudes-200M.bin.data
 
@@ -56,13 +56,13 @@
 # (Y)
 ./unit_test --unit=model --key_type=int --num_keys=1000 --model_type=linear --input_file=/home/zzr/data/generate_data/uniform_1K_int.bin
 # (Y)
-./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=linear --spec=1 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=linear --spec=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=log --spec=1 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=log --spec=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=exp --spec=1 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=exp --spec=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=quad --spec=1 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=quad --spec=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # Dataset: uniform->corresponding distribution
 # result(RMSE):
 # linear: 5.99
@@ -71,19 +71,19 @@
 # quandratic: 4
 
 #(Y)
-./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=linear --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 
 #(Y)
-./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=log --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=log --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 
 #(Y)
-./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=exp --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=exp --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 
 #(Y)
-./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=quad --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=quad --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 
 #(Y)
-./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=gap_linear --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=1000 --model_type=gap_linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # Dataset: uniform
 # result(RMSE):
 # linear: 5.99
@@ -94,20 +94,20 @@
 
 # test gap array fitting model(linear, gap array linear)
 #(Y)
-./unit_test --unit=model --key_type=float --num_keys=128 --model_type=linear --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=128 --model_type=linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 #(Y)
-./unit_test --unit=model --key_type=float --num_keys=128 --model_type=gap_linear --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=128 --model_type=gap_linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # Dataset: uniform
 # result(max error):
 # linear: 3
 # gap linear: 5
 
 #(Y)
-./unit_test --unit=model --key_type=float --num_keys=1024 --model_type=linear --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=1024 --model_type=linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 #(Y)
-./unit_test --unit=model --key_type=float --num_keys=1024 --model_type=gap_linear --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=1024 --model_type=gap_linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 #(Y)
-./unit_test --unit=model --key_type=float --num_keys=1024 --model_type=piecewise_linear --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=1024 --model_type=piecewise_linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # Dataset: uniform
 # size: 1024
 # result(max error):
@@ -129,26 +129,51 @@
 # =================================================================================================
 # test inner node(few) (gap array) and data node(dense array) insertion accuracy and performance
 # (Y)
-./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=64 --batch=8 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=64 --batch=8 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=128 --batch=8 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=128 --batch=8 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=256 --batch=8 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=256 --batch=8 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=512 --batch=8 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=512 --batch=8 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=1024 --batch=8 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 
 # (Y)
-./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=128 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
-# ()
-./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=256 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
-# ()
-./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=512 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=128 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=256 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=512 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=1024 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=2048 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=4096 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 
 # (Y)
-./unit_test --unit=node --key_type=float --node_type=data_node --function=insert --num_keys=128 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=64 --batch=8 --level=3 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=128 --batch=8 --level=3 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=256 --batch=8 --level=3 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=512 --batch=8 --level=3 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=1024 --batch=8 --level=3 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=2048 --batch=8 --level=3 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=insert --num_keys=4096 --batch=8 --level=3 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 
 # (Y)
-./unit_test --unit=node --key_type=float --node_type=data_node --function=insert --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=data_node --function=insert --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=data_node --function=insert --num_keys=128 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+
+./unit_test --unit=node --key_type=int --node_type=data_node --function=insert --num_keys=128 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1M_int.bin
+
 
 # Dataset uniform
 # result(QPS, failed ratio):
@@ -159,15 +184,52 @@
 # =================================================================================================
 # test inner node(gap array) and data node(dense array) query accuracy and performance
 # (Y)
-./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=64 --batch=64 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=128 --batch=16 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=128 --batch=64 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=256 --batch=16 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=256 --batch=64 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float --node_type=data_node --function=query --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=512 --batch=64 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=1024 --batch=64 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (N)
-./unit_test --unit=node --key_type=float --node_type=data_node --function=query --num_keys=128 --batch=16 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=2048 --batch=64 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=64 --batch=64 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=128 --batch=64 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=256 --batch=64 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=512 --batch=64 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=1024 --batch=64 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=2048 --batch=64 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=4096 --batch=64 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=64 --batch=64 --level=3 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=128 --batch=64 --level=3 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=256 --batch=64 --level=3 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=512 --batch=64 --level=3 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=1024 --batch=64 --level=3 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=2048 --batch=64 --level=3 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=4096 --batch=64 --level=3 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=data_node --function=query --num_keys=64 --batch=64 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=data_node --function=query --num_keys=128 --batch=64  --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 
 # Datset: uniform
 # result(us):
@@ -178,14 +240,37 @@
 # =================================================================================================
 # test inner node(gap array) and data node(dense array) erase accuracy and perfornmance
 # (Y)
-./unit_test --unit=node --key_type=float --node_type=inner_node --function=erase --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=erase --num_keys=64 --batch=8 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=erase --num_keys=128 --batch=8 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=erase --num_keys=256 --batch=8 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=erase --num_keys=512 --batch=8 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=erase --num_keys=64 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=erase --num_keys=128 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=erase --num_keys=256 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=erase --num_keys=512 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=erase --num_keys=1024 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+# (Y)
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=erase --num_keys=2048 --batch=8 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+
 # (X)
-./unit_test --unit=node --key_type=float --node_type=data_node --function=erase --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=data_node --function=erase --num_keys=64 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=data_node --function=erase --num_keys=128 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=data_node --function=erase --num_keys=256 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=data_node --function=erase --num_keys=512 --batch=8 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 
 # =================================================================================================
 # test inner node mixup
 # (X)
-./unit_test --unit=node --key_type=float --node_type=inner_node --function=mixup --num_keys=64 --batch=8 --iter=8 --input_file=/home/zzr/data/generate_data/uniform_1K_neg100to100_float.bin
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=mixup --num_keys=64 --batch=8 --iter=8 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 
 
 # =================================================================================================
@@ -193,9 +278,19 @@
 
 # test data split
 # (Y)
+./unit_test --unit=SMO --key_type=float --function=data_split_with_exponential_probe --num_keys=200000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+# (Y)
+./unit_test --unit=SMO --key_type=float --function=data_split_with_linear_probe --num_keys=200000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+# (Y)
 ./unit_test --unit=SMO --key_type=float --function=data_split_with_exponential_probe --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 # (Y)
 ./unit_test --unit=SMO --key_type=float --function=data_split_with_linear_probe --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+# (Y)
+./unit_test --unit=SMO --key_type=float --function=data_split_with_exponential_probe --num_keys=20000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+# (Y)
+./unit_test --unit=SMO --key_type=float --function=data_split_with_linear_probe --num_keys=20000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 # Result: (node size, time, NPS, ml rate)
 # exp_probe(2*log(n)): 1343, 589302 ms, 3.39e07
@@ -218,12 +313,19 @@
 # linear_probe(8): 11095, 743938 ms, 1.334e7, 0.700
 
 # test inner node split
-# (N)
+# (Y)
+./unit_test --unit=SMO --key_type=float --function=node_split --num_keys=2048 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=SMO --key_type=float --function=node_split --num_keys=200000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=SMO --key_type=float --function=node_split --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=SMO --key_type=float --function=node_split --num_keys=20000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 # Result: (node size, time, NPS)
 # level1: 
 # level2: 64, 1.28e7, 1.55e6
 
+
+./unit_test --unit=SMO --key_type=int --function=node_split --num_keys=200000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=SMO --key_type=int --function=node_split --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=SMO --key_type=int --function=node_split --num_keys=20000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 # =================================================================================================
 # test index construction accuracy and performance

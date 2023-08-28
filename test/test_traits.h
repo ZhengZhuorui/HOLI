@@ -115,7 +115,7 @@ struct test_dynamic_data_node_traits{
     typedef _AllowMultiThread AllowMultiThread;
 
     // Allow balance inner node and data node when read and write frequency update?
-    typedef std::false_type AllowRWBalance;
+    typedef std::true_type AllowRWBalance;
 
     // Allow balance inner node when insert an item?
     typedef std::true_type AllowInsertBalance;

@@ -27,14 +27,15 @@ class aex_type_traits<double>{
 };
 
 struct aex_default_balance_args{
-    static constexpr double INNER_NODE_MODEL_SEARCH_FACTOR = 4.0; // find a child/data with learned model needs MODEL_SEARCH_FACTOR cost
-    static constexpr double DATA_NODE_MODEL_SEARCH_FACTOR = 16.0; // find a child/data with learned model needs MODEL_SEARCH_FACTOR cost
-    static constexpr double BINEARY_SEARCH_FACTOR = 2.0; // find a child/data with bineary search needs BINEARY_SEARCH_FACTOR * log(n) cost
-    static constexpr double DENSE_ARRAY_INSERT_FACTOR = 1.0; // insert a child/data in dense array needs DENSE_ARRAY_INSERT_FACTOR * n cost
+    static constexpr double INNER_NODE_MODEL_SEARCH_FACTOR = 2.0; // find a child/data with learned model needs MODEL_SEARCH_FACTOR cost
+    static constexpr double DATA_NODE_MODEL_SEARCH_FACTOR = 1.0; // find a child/data with learned model needs MODEL_SEARCH_FACTOR cost
+    static constexpr double BINEARY_SEARCH_FACTOR = 1.0; // find a child/data with bineary search needs BINEARY_SEARCH_FACTOR * log(n) cost
 
+    static constexpr double DENSE_ARRAY_INSERT_FACTOR = 1.0; // insert a child/data in dense array needs DENSE_ARRAY_INSERT_FACTOR * n cost
     static constexpr double GAP_ARRAY_INSERT_FACTOR = 8.0; // insert a child/data in gap array needs GAP_ARRAY_INSERT_FACTOR cost
-    static constexpr double DATA_NODE_TRAIN_FACTOR = 32.0; // train a data node needs DATA_NODE_TRAIN_FACTOR * n cost
-    static constexpr double INNER_NODE_TRAIN_FACTOR = 32.0; // train a inner node needs INNER_NODE_TRAIN_FACTOR * n cost
+
+    static constexpr double DATA_NODE_TRAIN_FACTOR = 1.0; // train a data node needs DATA_NODE_TRAIN_FACTOR * n cost
+    static constexpr double INNER_NODE_TRAIN_FACTOR = 8.0; // train a inner node needs INNER_NODE_TRAIN_FACTOR * n cost
 };
 
 template<typename _Key, 
@@ -61,19 +62,19 @@ struct aex_default_traits{
     typedef _AllowMultiThread AllowMultiThread;
 
     // Allow balance inner node and data node when read and write frequency update?
-    typedef std::false_type AllowRWBalance;
+    typedef std::true_type AllowRWBalance;
 
     // Allow balance inner node when insert an item?
-    typedef std::false_type AllowInsertBalance;
+    typedef std::true_type AllowInsertBalance;
 
     // Allow tree balance tree struct in lookup, insert and erase.
-    typedef std::false_type AllowBalance;
+    typedef std::true_type AllowBalance;
 
     static_assert((AllowRWBalance::value | AllowInsertBalance::value) == AllowBalance::value);
 
     // Allow data node slot size dynamic? (static data node slot size is MIN_DATA_NODE_SLOT_SIZE)
     // If data node slot size is dynamic(lazy update), it must AllowRWBalance.
-    typedef std::false_type AllowDynamicDataNode;
+    typedef std::true_type AllowDynamicDataNode;
 
     static_assert((AllowRWBalance::value | (!AllowDynamicDataNode::value)) == true);
     
