@@ -305,11 +305,7 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
     std::vector<key_type> key_buf;
     std::vector<node_ptr> child_buf;
     tree.split(data.data(), child_ptr, n, level, key_buf, child_buf);
-<<<<<<< HEAD
     AEX_PRINT("construct finish. ");
-=======
-    AEX_PRINT("cosntruct finish. ");
->>>>>>> dd70831881e0ac77af93e9b01b9d8a39425d3470
 
     if (key_buf.size() > 1){
         AEX_PRINT("can't be construct in a inner node.");
