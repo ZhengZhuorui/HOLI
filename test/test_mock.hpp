@@ -19,6 +19,8 @@ public:
 
     typedef typename traits::version_type version_type;
 
+    typedef aex::aex_tree<_Key, _Val, traits> parent;
+
     // iterator:
     typedef typename aex::aex_iterator<_Key, _Val, traits> iterator;
 
@@ -40,7 +42,8 @@ public:
     typedef typename inner_node::Model inner_node_model;
 
     // data_node:
-    typedef typename aex::aex_data_node<_Key, _Val, traits> data_node;
+    //typedef typename aex::aex_data_node<_Key, _Val, traits> data_node;
+    typedef typename parent::data_node data_node;
 
     typedef data_node* data_node_ptr;
     
@@ -57,6 +60,7 @@ public:
         dfs_detail(this->root);
         AEX_PRINT("inner node number=" << msg.inner_node << ", data node number=" << msg.data_node << 
                 ", ml inner node number=" << msg.ml_inner_node << ", ml data node number=" << msg.ml_data_node);
+        AEX_PRINT("avg seg nums=" << 1.0 * msg.tot_seg_nums / msg.ml_inner_node);
     }
     
     void dfs_detail(node_ptr node){
@@ -74,6 +78,7 @@ public:
             node_ptr* node_child = in->child_ptr;
             if (IS_ML_NODE(node)){
                 bitmap bm = in->bitmap_ptr;
+                msg.tot_seg_nums += in->model.args.seg_nums;
                 for (slot_type i = 0; i <= in->slot_size; ++i){
                     if (bitmap_impl::at(bm, i)){
                         dfs_detail(node_child[i]);
@@ -89,10 +94,11 @@ public:
     }
     
     struct detail_msg{
-        detail_msg():level_node_nums(0), inner_node(0), data_node(0), ml_inner_node(0), ml_data_node(0){}
+        detail_msg():level_node_nums(0), inner_node(0), data_node(0), ml_inner_node(0), ml_data_node(0), tot_seg_nums(0){}
         vector<size_type> level_node_nums;
         size_type inner_node, data_node;
         size_type ml_inner_node, ml_data_node;
+        size_type tot_seg_nums;
     }msg;
 
     std::pair<key_type, bool> debug(node_ptr node){

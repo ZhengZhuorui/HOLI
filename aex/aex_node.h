@@ -248,10 +248,8 @@ public:
             slot_type pos = this->predict(key[i]);
             start = std::max(start, pos);
             bitmap_impl::set_one(bm, start);
-            if (start - pos >= traits::ERROR_BOUND){
-                AEX_PRINT("start=" << start << ", pos=" << pos);
-            }
             AEX_ASSERT(start - pos < traits::ERROR_BOUND);
+            AEX_ASSERT(start < this->slot_size);
             std::fill(this->key_ptr + his_pos, this->key_ptr + start + 1, key[i]);
             std::fill(this->child_ptr + his_pos, this->child_ptr + start + 1, child[i]);
             his_pos = start + 1;
@@ -422,26 +420,40 @@ public:
     // (X) if no item greater than or equal x, return node->slot_size
     // find key pos in which slot. If not, return node->slot_size
     inline slot_type find(const key_type& x) const{
-        slot_type pos = -1;
+        slot_type pos;
         if (IS_ML_NODE(this)){
             slot_type pred_pos = this->predict(x);
-            slot_type upper_bound = std::min(pred_pos + traits::ERROR_BOUND, this->slot_size);
+            slot_type upper_bound = std::min(this->slot_size, pred_pos + traits::ERROR_BOUND + 1);
+            pos = 0;
             for (slot_type i = pred_pos; i < upper_bound; ++i)
             if (x <= key_ptr[i]){
-                //AEX_PRINT("key=" << x << ", node key=" << key_ptr[i]);
                 return i;
             }
             return this->slot_size;
+            //if (this->slot_size - pred_pos > traits::ERROR_BOUND + 1){
+            //    slot_type upper_bound = pred_pos + traits::ERROR_BOUND + 1;
+            //    for (slot_type i = pred_pos; i < pred_pos + traits::ERROR_BOUND + 1; ++i)
+            //        pos += (x > key_ptr[i]);
+            //    return (pos == traits::ERROR_BOUND + 1) ? this->slot_size : pred_pos + pos;
+            //}
+            //else{
+            //    for (slot_type i = pred_pos; i < this->slot_size; ++i)
+            //        pos += (x > key_ptr[i]);
+            //    return pred_pos + pos;
+            //}
         }
         else{
             pos = std::lower_bound(key_ptr, key_ptr + this->size, x) - key_ptr;
-            if (pos == this->size)
+            if (pos == this->size){
                 return this->slot_size;
-            //AEX_PRINT("key=" << x << ", node key=" << key_ptr[pos]);
+            }
             return pos;
         }
     }
 
+    inline slot_type find_child(const key_type& x) const{
+        return child_ptr[this->find(x)];
+    }
 
 public:
 
@@ -550,8 +562,8 @@ public:
 
     void construct(const key_type *_key, const value_type *_data, slot_type nums){
         AEX_ASSERT(IS_ML_NODE(this) == false);
-        std::move(_key, _key + nums, this->key);
-        std::move(_data, _data + nums, this->data);
+        std::copy(_key, _key + nums, this->key);
+        std::copy(_data, _data + nums, this->data);
         this->size = nums;
     }
 
@@ -599,14 +611,15 @@ public:
 
     // if no item greater than or equal x, return slot_size
     inline slot_type find_lower_pos(const key_type &x){
-        slot_type pos = this->slot_size;
-        if (IS_ML_NODE(this)){
+        slot_type pos;
+        if (traits::AllowDynamicDataNode::value && IS_ML_NODE(this)){
             slot_type pred_pos = this->predict(x);
             pos = aex::exponential_search_lower_bound(this->key, this->key + this->size, this->key + pred_pos, x) - this->key;
-            //pos = aex::lower_bound(this->key + std::max(0, pred_pos - 2 * traits::ERROR_BOUND), this->key + std::min(this->size, pred_pos + 2 * traits::ERROR_BOUND + 1), x) - this->key;
         }
         else{
-            pos = std::lower_bound(this->key, this->key + this->size, x) - this->key;
+            for (pos = 0; pos < this->size; ++pos)
+            if (x <= key[pos])
+                break;
         }
         return pos;
     }
@@ -629,6 +642,136 @@ public:
         }
         else return 0;
     }
+};
+
+template<typename _Key,
+        typename _Val,
+        typename traits>
+class aex_static_data_node : public aex_node_base<_Key, _Val, traits>{
+public:
+
+    typedef aex_node_allocator<_Key, _Val, traits> NodeAllocator;
+
+    typedef aex_node_base<_Key, _Val, traits> base_node;
+    
+    typedef base_node* node_ptr;
+
+    typedef aex_static_data_node<_Key, _Val, traits> data_node;
+
+    typedef data_node* data_node_ptr;
+    
+    typedef _Key key_type;
+
+    typedef _Val value_type;
+    
+    typedef typename traits::size_type size_type;
+
+    typedef typename traits::slot_type slot_type;
+    
+    key_type key[traits::MIN_DATA_NODE_SLOT_SIZE];
+
+    value_type data[traits::MIN_DATA_NODE_SLOT_SIZE];
+
+    typedef linear_model<key_type, traits> Model;
+
+    aex_static_data_node(){}
+
+    explicit aex_static_data_node(slot_type _slot_size):base_node(_slot_size){
+    }
+
+    ~aex_static_data_node(){
+    }
+
+    aex_static_data_node(aex_static_data_node &other_node):base_node(other_node){
+        AEX_ASSERT(this->slot_size == other_node.slot_size);
+        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
+        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
+    }
+
+    aex_static_data_node(aex_static_data_node &&other_node):base_node(other_node){
+        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
+        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
+    }
+
+    aex_static_data_node& operator = (aex_static_data_node &other_node){
+        AEX_ASSERT(this->slot_size == other_node.slot_size);
+        *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
+        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
+        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
+        return *this;
+    }
+
+    aex_static_data_node& operator = (aex_static_data_node &&other_node){
+        *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
+        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
+        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
+        return *this;
+    }
+
+    inline void construct(const key_type *_key, const value_type *_data, slot_type nums){
+        AEX_ASSERT(IS_ML_NODE(this) == false);
+        std::copy(_key, _key + nums, this->key);
+        std::copy(_data, _data + nums, this->data);
+        this->size = nums;
+        std::fill(this->key + nums, this->key + traits::MIN_DATA_NODE_SLOT_SIZE, std::numeric_limits<key_type>::max());
+    }
+
+    inline void construct(const std::pair<key_type, value_type> *_data, slot_type nums){
+        AEX_ASSERT(IS_ML_NODE(this) == false);
+        std::vector<key_type> _key(nums);
+        std::vector<value_type> _value(nums);
+        for (slot_type i = 0; i < nums; ++i){
+            _key[i] = _data[i].first;
+            _value[i] = _data[i].second;
+        }
+        this->construct(_key.data(), _value.data(), nums);
+    }
+
+    void construct(const key_type *_key, const value_type *_data, slot_type nums, Model &m){
+        AEX_ASSERT(false == true);
+    }
+
+    // insert a item
+    inline slot_type insert(const key_type &x, const value_type &data){
+        slot_type pos = this->find_upper_pos(x);
+        insert(x, data, pos);
+        return pos;
+    }
+
+    // insert a item in position
+    inline void insert(const key_type &x, const value_type &data, const slot_type pos){
+        std::move_backward(this->key + pos, this->key + this->size, this->key + this->size + 1);
+        std::move_backward(this->data + pos, this->data + this->size, this->data + this->size + 1);
+        this->key[pos] = x;
+        this->data[pos] = data;
+        this->size++;
+    }
+
+    inline bool erase(const slot_type pos){
+        std::move(this->key + pos + 1, this->key + this->size, this->key + pos);
+        std::move(this->data + pos + 1, this->data + this->size, this->data + pos);
+        this->key[this->size] = std::numeric_limits<key_type>::max();
+        this->size--;
+        return true;
+    }
+
+    // if no item greater than or equal x, return slot_size
+    inline slot_type find_lower_pos(const key_type &x){
+        for (int i = 0; i < traits::MIN_DATA_NODE_SLOT_SIZE; ++i)
+        if (x <= key[i])
+            return i;
+        
+        return this->size;
+    }
+
+    inline slot_type find_upper_pos(const key_type &x){
+        slot_type pos = 0;
+        for (int i = 0; i < traits::MIN_DATA_NODE_SLOT_SIZE; ++i)
+            pos += (x >= key[i]);
+        
+        return pos;
+    }
+
 };
 
 }

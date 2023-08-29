@@ -1,8 +1,12 @@
 #include <bits/stdc++.h>
 
+#ifndef AEX_DEBUG
 #define AEX_DEBUG
-#define AEX_TEST
+#endif
 
+#ifndef AEX_EXPERIMENT
+#define AEX_EXPERIMENT
+#endif
 #include "aex/aex_map.h"
 #include "benchmark/generate_dataset.h"
 #include "test/test.h"
@@ -36,7 +40,7 @@ bool test(map<string, string> &flags){
         if (func == "search_with_error_bound_perf")
             return test_search_with_error_bound_perf(bin_data.data(), num_keys);
         if (func == "linear_probe")
-            return test_linear_probe<T, T, test_traits<T, T> >(bin_data.data(), num_keys);    
+            return test_linear_probe<T, T, aex_default_traits<T, T> >(bin_data.data(), num_keys);    
     }
     else if (unit == "model"){
         auto model_type = flags["model_type"];

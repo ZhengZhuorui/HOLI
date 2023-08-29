@@ -1,6 +1,6 @@
 template<typename key_type,
         typename value_type,
-        typename traits=test_traits<key_type, value_type>>
+        typename traits=aex_default_traits<key_type, value_type>>
 bool test_index_RW_perf(std::pair<key_type, value_type>* data, long long n, long long batch, double rw_ratio){
     typedef mock_aex_tree<key_type, value_type, traits> tree;
     [[maybe_unused]]typedef typename mock_aex_tree<key_type, value_type, traits>::size_type size_type;

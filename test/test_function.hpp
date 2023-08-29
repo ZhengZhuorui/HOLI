@@ -228,7 +228,7 @@ bool test_linear_probe(key_type* data, size_t n){
     AEX_PRINT("ret=" << ret << ", end=" << m.args.end << ", slope=" << m.args.slope << ", inter=" << m.args.inter);
     for (slot_type i = 0; i < ret; ++i){
         slot_type pred_pos = static_cast<slot_type>(m.predict(data[i]) * (ret - 1));
-        if (std::abs(pred_pos - i) > traits::MAX_LINEAR_PROBE_ALLOW_ERROR){
+        if (std::abs(pred_pos - i) > traits::DATA_NODE_ERROR_BOUND){
             AEX_ERROR("error wrong! predict pos=" << pred_pos << ", real pos=" << i << "ERROR=" << pred_pos - i);
             return false;
         }

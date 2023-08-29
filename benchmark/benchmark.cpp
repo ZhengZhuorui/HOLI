@@ -35,10 +35,8 @@ void benchmark_lookup(FILE* file, long long num_keys, long long num_ops, string 
 
     std::sort(data.begin(), data.end(), [](auto const &a, auto const &b){return a.first < b.first;});
 
-    for (int i = 0; i < 100; ++i){
-        std::cout << data[i].first << " " << data[i].second << " | ";
-    }
-    std::cout << std::endl;
+    //int unique_num = std::unique(data.data(), date.data() + data.size()) - data.data();
+    //AEX_ASSERT(unique_num == num_keys);
 
     if (index_name == "aex"){
         aex_query_bench(data, query, answer);
@@ -54,6 +52,12 @@ void benchmark_lookup(FILE* file, long long num_keys, long long num_ops, string 
     }
     else if (index_name == "pgm"){
         pgm_query_bench(data, query, answer);
+    }
+    else if (index_name == "lipp"){
+        lipp_query_bench(data, query, answer);
+    }
+    else if (index_name == "search"){
+        bineary_search_query_bench(data, query, answer);
     }
 }
 
@@ -164,6 +168,6 @@ int main(int argc, char** argv){
     //if (flags.find("write_ratio") != flags.end())
     //    write_ratio = stod(flags["write_ratio"]);
 
-    if (key_type == "int") benchmark<long long, long long>(file, num_keys, num_ops, index_name, func, query_dis);
+    if (key_type == "int") benchmark<unsigned long long, unsigned long long>(file, num_keys, num_ops, index_name, func, query_dis);
     else benchmark<double, double>(file, num_keys, num_ops, index_name, func, query_dis);
 }

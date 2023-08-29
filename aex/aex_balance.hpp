@@ -5,11 +5,10 @@ namespace aex{
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::update_node_list_frequency(node_ptr node, node_ptr* node_list, slot_type n){
     unsigned long long recent_udpate_timestamp = node->balance_stats.get_recent_update_timestamp();
-    double train_times = node->balance_stats.get_train_times(), read_times = node->balance_stats.get_read_times(), write_times = node->balance_stats.get_write_times();
+    double train_times = node->balance_stats.get_train_times(), write_times = node->balance_stats.get_write_times();
     for (slot_type i = 0; i < n; ++i){
         node_list[i]->balance_stats = node_balance_stats(recent_udpate_timestamp,
                                                         train_times, 
-                                                        read_times * (1.0 * node_list[i]->size / node->size),
                                                         write_times * (1.0 * node_list[i]->size / node->size));
     }
 }
@@ -26,14 +25,13 @@ bool aex_tree<_Key, _Val, traits>::check_insert_merge(node_ptr* node_buffer, slo
     // W\R     low high
     // low      T   F
     // high     F   F
-    double read_times = 0, write_times = 0, train_times = 0;
+    double write_times = 0, train_times = 0;
     size_type tot_size = 0;
     inner_node_ptr parent = node_buffer[0]->parent;
     AEX_ASSERT(parent != nullptr);
     parent->balance_stats.update_frequency(this->balance_stats.get_timestamp());
     for (slot_type i = 0; i < size; ++i){
         node_buffer[i]->balance_stats.update_frequency(this->balance_stats.get_timestamp());
-        read_times += node_buffer[i]->balance_stats.get_read_times();
         write_times += node_buffer[i]->balance_stats.get_write_times();
         train_times += node_buffer[i]->balance_stats.get_train_times();
         tot_size += node_buffer[i]->size;
@@ -43,17 +41,14 @@ bool aex_tree<_Key, _Val, traits>::check_insert_merge(node_ptr* node_buffer, slo
         return false;
 
     double lambda_timestamp = this->balance_stats.get_lambda_timestamp();
-    double read_pro = read_times / lambda_timestamp;
     double write_pro = write_times / lambda_timestamp;
 
     double write_cost = write_pro * traits::MODEL_ARGS::DENSE_ARRAY_INSERT_FACTOR * tot_size; // +
     double read_cost;
     if (IS_LEAF_NODE(node_buffer[0]))
-        read_cost = -1.0 * (size / this->m_stats.level_node[node_buffer[0]->level]) * traits::MODEL_ARGS::DATA_NODE_MODEL_SEARCH_FACTOR
-                    + read_pro * traits::MODEL_ARGS::BINEARY_SEARCH_FACTOR * log(tot_size); // - +
+        read_cost = -1.0 * (size / this->m_stats.level_node[node_buffer[0]->level]) * traits::MODEL_ARGS::DATA_NODE_MODEL_SEARCH_FACTOR; // - +
     else
-        read_cost = -1.0 * (size / this->m_stats.level_node[node_buffer[0]->level]) * traits::MODEL_ARGS::INNER_NODE_MODEL_SEARCH_FACTOR
-                    + read_pro * traits::MODEL_ARGS::BINEARY_SEARCH_FACTOR * log(tot_size); // - +
+        read_cost = -1.0 * (size / this->m_stats.level_node[node_buffer[0]->level]) * traits::MODEL_ARGS::INNER_NODE_MODEL_SEARCH_FACTOR; // - +
                     
     double merge_cost;
     // merge cost:

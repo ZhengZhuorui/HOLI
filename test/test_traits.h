@@ -37,13 +37,13 @@ struct test_traits{
 
     // Allow data node slot size dynamic? (static data node slot size is MIN_DATA_NODE_SLOT_SIZE)
     // If data node slot size is dynamic(lazy update), it must AllowRWBalance.
-    typedef std::true_type AllowDynamicDataNode;
+    typedef std::false_type AllowDynamicDataNode;
 
     static_assert((AllowRWBalance::value | (!AllowDynamicDataNode::value)) == true);
     
     static const int ERROR_BOUND = 8;
 
-    static const int DATA_NODE_ERROR_BOUND = 8;
+    static const int DATA_NODE_ERROR_BOUND = 2;
 
     static const slot_type MIN_INNER_NODE_SLOT_SIZE = 8;
 
@@ -53,11 +53,11 @@ struct test_traits{
 
     static const slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 25;
 
-    static const slot_type MIN_DATA_NODE_SLOT_SIZE = 8;
+    static const slot_type MIN_DATA_NODE_SLOT_SIZE = 16;
 
     static const slot_type MAX_DATA_NODE_SLOT_SIZE= 1 << 20;
 
-    static const slot_type MIN_ML_DATA_NODE_SLOT_SIZE = 64;
+    static const slot_type MIN_ML_DATA_NODE_SLOT_SIZE = 32;
     
     static constexpr float DATA_NODE_FEW_RATIO = 0.5;
         
@@ -133,7 +133,7 @@ struct test_dynamic_data_node_traits{
     
     static const int ERROR_BOUND = 8;
 
-    static const int DATA_NODE_ERROR_BOUND = 8;
+    static const int DATA_NODE_ERROR_BOUND = 2;
 
     static const slot_type MIN_INNER_NODE_SLOT_SIZE = 8;
 
@@ -143,11 +143,11 @@ struct test_dynamic_data_node_traits{
 
     static const slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 25;
 
-    static const slot_type MIN_DATA_NODE_SLOT_SIZE = 8;
+    static const slot_type MIN_DATA_NODE_SLOT_SIZE = 16;
 
     static const slot_type MAX_DATA_NODE_SLOT_SIZE= 1 << 20;
 
-    static const slot_type MIN_ML_DATA_NODE_SLOT_SIZE = 64;
+    static const slot_type MIN_ML_DATA_NODE_SLOT_SIZE = 32;
     
     static constexpr float DATA_NODE_FEW_RATIO = 0.5;
         
@@ -172,8 +172,6 @@ struct test_dynamic_data_node_traits{
     static const int CACHE_LINE_SIZE = MIN_DATA_NODE_SLOT_SIZE;
 
     static constexpr float MAX_ALLOW_ERROR = 2.0 / log(2);
-
-    static constexpr float MAX_LINEAR_PROBE_ALLOW_ERROR = 4.0 / log(2);
 
     static const bool debug = true;
 

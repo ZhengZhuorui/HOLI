@@ -138,7 +138,7 @@ bool test_piecewise_linear_model(T* data, size_t n){
         AEX_ERROR("max error larger than ERROR_BOUND, max_error=" << max_error << ", ERROR_BOUND=" << traits::ERROR_BOUND);
         return false;
     }
-    AEX_SUCCESS("slot size=" << slot_size << ", max error=" << max_error);
+    AEX_SUCCESS("slot size=" << slot_size << ", max error=" << max_error << ", seg_nums=" << m.args.seg_nums);
     return true;
 }
 

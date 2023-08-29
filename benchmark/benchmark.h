@@ -5,6 +5,7 @@
 #include "aex/aex_map.h"
 #include "pgm_index.hpp"
 #include "pgm_index_dynamic.hpp"
+#include "lipp.h"
 #include "stx/btree_map.h"
 //#include "alex_map.h"
 

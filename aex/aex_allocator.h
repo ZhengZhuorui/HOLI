@@ -41,7 +41,13 @@ public:
 
     typedef typename inner_node::Model Model;
 
-    typedef aex_data_node<key_type, value_type, traits> data_node;
+    //typedef aex_data_node<key_type, value_type, traits> data_node;
+
+    //typedef aex_static_data_node<key_type, value_type, traits> data_node;
+
+    typedef typename base_tree::data_node data_node;
+    
+    //static_assert(traits::AllowDynamicDataNode::value != std::is_same<aex_static_data_node<_Key, _Val, traits>, data_node>::value);
 
     typedef data_node* data_node_ptr;
 
@@ -53,20 +59,27 @@ public:
 
     typedef typename aex_bitmap_impl<traits>::bitmap bitmap;
 
-    aex_node_allocator():inner_node_nums(0), data_node_nums(0), free_cnt(0), alloc_cnt(0), timer(), _memory_used(0){
-        #ifdef AEX_EXPERIMENT
-        max_node_id = 0;
-        #endif
+    #ifdef AEX_EXPERIMENT
+    aex_node_allocator():inner_node_nums(0), data_node_nums(0), free_cnt(0), alloc_cnt(0), timer(), max_node_id(0), _memory_used(0){
+        
     }
+    #else
+    aex_node_allocator():inner_node_nums(0), data_node_nums(0), free_cnt(0), alloc_cnt(0), _memory_used(0){
+    }
+    #endif
 
     ~aex_node_allocator(){
     }
 
+    #ifdef AEX_EXPERIMENT
     void clear(){
         inner_node_nums = data_node_nums = free_cnt = alloc_cnt = 0;
         timer = Timer();
         _memory_used = max_node_id = 0;
     }
+    #else
+    void clear(){}
+    #endif
 
    inline void* _allocate(size_type size){
         /* 
@@ -232,19 +245,19 @@ public:
     }
 
     inline void reallocate(data_node_ptr node, slot_type new_slot_size){
-        this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) - \
-                                        DATA_MEMORY_USED(node->slot_size) + DATA_MEMORY_USED(new_slot_size);
-        key_type *new_key = static_cast<key_type*>(malloc(KEY_MEMORY_USED(new_slot_size)));
-        value_type *new_data = static_cast<value_type*>(malloc(DATA_MEMORY_USED(new_slot_size)));
-        node->slot_size = new_slot_size;
-        std::copy(node->key, node->key + node->size, new_key);
-        std::copy(node->data, node->data + node->size, new_data);
-        if (node->key != nullptr){
-            free(node->key);
-            free(node->data);
-        }
-        node->key = new_key;
-        node->data = new_data;
+        //this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) - \
+        //                                DATA_MEMORY_USED(node->slot_size) + DATA_MEMORY_USED(new_slot_size);
+        //key_type *new_key = static_cast<key_type*>(malloc(KEY_MEMORY_USED(new_slot_size)));
+        //value_type *new_data = static_cast<value_type*>(malloc(DATA_MEMORY_USED(new_slot_size)));
+        //node->slot_size = new_slot_size;
+        //std::copy(node->key, node->key + node->size, new_key);
+        //std::copy(node->data, node->data + node->size, new_data);
+        //if (node->key != nullptr){
+        //    free(node->key);
+        //    free(node->data);
+        //}
+        //node->key = new_key;
+        //node->data = new_data;
     }
 
     inline void deallocate(key_type* p){
@@ -299,6 +312,7 @@ public:
         }
     }
 
+    #ifdef AEX_EXPERIMENT
     inline void print_stats(){
         AEX_IMPORTANT("[Allocator]: memory used=" << _memory_used << " bytes, inner_node_nums=" << inner_node_nums << ", data_node_nums=" << data_node_nums <<
                     ", allocate inner node used time=" << timer.allocate_inner_node_time << "ms" <<
@@ -307,6 +321,9 @@ public:
         AEX_HINT("allocate inner node used time=" << timer.allocate_inner_node_time << "ms"
                 << ", allocate data node used time=" << timer.allocate_data_node_time << "ms");
     }
+    #else
+    inline void print_stats(){}
+    #endif
 
 
 #ifndef AEX_EXPERIMENT
@@ -323,7 +340,6 @@ private:
     std::map<node_ptr, size_type> node_id;
     std::vector<node_ptr> id_node;
     size_type max_node_id;
-
     #endif
 public:
     // status

@@ -10,7 +10,7 @@ using namespace std::chrono;
 using aex::aex_map;
 
 template<typename key_type, typename value_type>
-void aex_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
+void aex_range_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
     aex_map<key_type, value_type> index;
     index.bulk_load(data.data(), data.size());
     system_clock::time_point t1, t2;
@@ -130,39 +130,12 @@ void pgm_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type>
     size_t num_ops = query.size();
     size_t times = 1;
     value_type sum = 0;
-    printf("pgm query test...");
+    printf("stl map query test...");
     fflush(stdout);
     t1 = std::chrono::high_resolution_clock::now();
-    for (size_t T = 0; T < times; ++T){
-        for (size_t i = 0; i < num_ops; ++i){
-            sum += index.find(query[i])->second;
-        }
-    }
-    t2 = std::chrono::high_resolution_clock::now();
-    long long delta = duration_cast<microseconds>(t2 - t1).count();
-    double QPS = 1000000.0 * num_ops * times / delta;
-    
-    std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << std::endl;
-}
-
-template<typename key_type, typename value_type>
-void lipp_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
-    LIPP<key_type, value_type> index;
-    index.bulk_load(data.data(), data.size());
-    
-    system_clock::time_point t1, t2;
-
-    //size_t cnt = 0;
-    size_t num_ops = query.size();
-    size_t times = 1;
-    value_type sum = 0;
-    std::cout << "lipp query test..." << std::endl;
-    
-    t1 = std::chrono::high_resolution_clock::now();
-    for (size_t T = 0; T < times; ++T){
-        for (size_t i = 0; i < num_ops; ++i){
-            sum += index.at(query[i]);
-        }
+    for (size_t i = 0; i < times; ++i){
+        for (const auto&x : query)
+            sum += index.find(x)->second;
     }
     t2 = std::chrono::high_resolution_clock::now();
     long long delta = duration_cast<microseconds>(t2 - t1).count();

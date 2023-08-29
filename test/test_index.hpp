@@ -60,7 +60,7 @@ bool test_index(std::pair<K, V>* data, size_t n){
 
 template<typename key_type,
         typename value_type,
-        typename traits=test_traits<key_type, value_type>>
+        typename traits=aex_default_traits<key_type, value_type>>
 bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long n){
     AEX_HINT("[test index bulk load]");
 
@@ -116,7 +116,7 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
     
     system_clock::time_point t1, t2;
     double delta = 0;
-    const int ITER = 10;
+    const int ITER = 1;
     for (int T = 0; T < ITER; ++T){
         index.clear();
         t1 = std::chrono::high_resolution_clock::now();
@@ -134,7 +134,7 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
 
 template<typename key_type,
         typename value_type,
-        typename traits=test_traits<key_type, value_type>>
+        typename traits=aex_default_traits<key_type, value_type>>
 bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
     AEX_HINT("[test index lookup]");
     //typedef typename aex::aex_map<key_type, value_type, traits> Index;
@@ -143,27 +143,26 @@ bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, 
     vector<key_type> query;
     vector<value_type> answer;
     generate_query(data, n, query, answer, batch);
-    //AEX_PRINT("query[0]=" << query[0] << "answer[0]=" << answer[0]);
     std::sort(data, data + n);
     index.bulk_load(data, n);
     if (static_cast<long long>(index.size()) != n){
         AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);
         return false;
     }
-
-    index.print_stats();
-    index.print_detail();
+    
     for (int i = 0; i < batch; ++i){
         auto iter = index.find(query[i]);
         if (iter.data() != answer[i]){
-            AEX_ERROR("Answer Error!, query key=" << query[i] << ", node key=" << iter.key() <<  ", answer=" << answer[i] << ", find=" << iter.data());
+            AEX_ERROR("Answer Error!, i=" << i << "query key=" << query[i] << ", node key=" << iter.key() <<  ", answer=" << answer[i] << ", find=" << iter.data());
             return false;
         }
     }
+    index.print_stats();
+    index.print_detail();
     
     system_clock::time_point t1, t2;
     double delta = 0;
-    const int ITER = 10;
+    const int ITER = 1;
     value_type sum = 0;
     t1 = std::chrono::high_resolution_clock::now();
     for (int T = 0; T < ITER; ++T){
@@ -184,7 +183,7 @@ bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, 
 
 template<typename key_type,
         typename value_type,
-        typename traits=test_traits<key_type, value_type>>
+        typename traits=aex_default_traits<key_type, value_type>>
 bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
     AEX_HINT("[test index insert perf]");
     typedef mock_aex_tree<key_type, value_type, traits> tree;
@@ -208,7 +207,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
             return false;
         }
         if (iter.key() != insert_data[i].first || iter.data() != insert_data[i].second){
-            AEX_ERROR("return iterator is not equal insert item!");
+            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
             return false;
         }
     }
@@ -244,7 +243,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     }
 
     AEX_SUCCESS("Test success. Next test insert performance...");
-    const int ITER = 10;
+    const int ITER = 1;
     std::chrono::high_resolution_clock::time_point t1, t2;
     double delta = 0;
     for (int T = 0; T < ITER; ++T){
@@ -266,7 +265,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
 
 template<typename key_type,
         typename value_type,
-        typename traits=test_traits<key_type, value_type>>
+        typename traits=aex_default_traits<key_type, value_type>>
 bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
     AEX_HINT("[test index lookup]");
     typedef mock_aex_tree<key_type, value_type, traits> tree;
@@ -315,7 +314,7 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
     }
 
     index.clear();
-    const int ITER = 10;
+    const int ITER = 1;
     std::chrono::high_resolution_clock::time_point t1, t2;
     double delta = 0;
     for (int T = 0; T < ITER; ++T){
@@ -335,7 +334,7 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
 
 template<typename key_type,
         typename value_type,
-        typename traits=test_traits<key_type, value_type> >
+        typename traits=aex_default_traits<key_type, value_type> >
 bool test_index_range_query_perf(std::pair<key_type, value_type>* data, long long n, long long batch, double range_length){
     mock_aex_tree<key_type, value_type, traits> index;
     [[maybe_unused]]typedef typename mock_aex_tree<key_type, value_type, traits>::size_type size_type;

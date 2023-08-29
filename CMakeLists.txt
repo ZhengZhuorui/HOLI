@@ -29,6 +29,10 @@ include_directories(${ALEX_DIR})
 set(PGM_DIR ${CMAKE_SOURCE_DIR}/thirdparty/PGM-index-master)
 include_directories(${PGM_DIR}/include/pgm)
 
+# LIPP
+set(LIPP_DIR ${CMAKE_SOURCE_DIR}/thirdparty/lipp)
+include_directories(${LIPP_DIR}/src/core)
+
 # benchmark
 set(BENCHMARK_DIR ${CMAKE_SOURCE_DIR}/benchmark)
 file(GLOB_RECURSE BENCHMARK_SRC ${CMAKE_SOURCE_DIR}/benchmark/benchmark_*.cpp ${CMAKE_SOURCE_DIR}/benchmark/benchmark.cpp)

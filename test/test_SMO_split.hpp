@@ -91,6 +91,13 @@ bool test_SMO_data_split_with_linear_probe_perf(key_type* key, value_type* data,
                 return false;
             }
         }
+        //for (slot_type j = 0; j < inode->size; ++j)
+        //if (IS_ML_NODE(inode)){
+        //    if (std::abs(j - static_cast<data_node_ptr>(inode)->predict(static_cast<data_node_ptr>(inode)->key[j])) > traits::ERROR_BOUND){
+        //        AEX_ERROR("Model Error! j=" << j <<  "pred_pos=" << static_cast<data_node_ptr>(inode)->predict(static_cast<data_node_ptr>(inode)->key[j]) << "key[" << j << "]=" << key[j] << "size=" << inode->size);
+        //        return false;
+        //    }
+        //}
     }
 
     AEX_SUCCESS("mechine learing node rate=" << 1.0 * ml_node_cnt / data_node_buf.size());

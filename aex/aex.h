@@ -11,14 +11,6 @@
 #include <queue>
 #include <algorithm>
 
-#ifndef AEX_DEBUG
-#define AEX_DEBUG
-#endif
-
-#ifndef AEX_EXPERIMENT
-#define AEX_EXPERIMENT
-#endif
-
 #include "aex/aex_def.h"
 #include "aex/aex_balance.h"
 #include "aex/aex_traits.h"
@@ -78,7 +70,11 @@ public:
     typedef typename inner_node::Model inner_node_model;
 
     // data_node:
-    typedef aex_data_node<_Key, _Val, traits> data_node;
+    //typedef aex_data_node<_Key, _Val, traits> data_node;
+
+    typedef aex_static_data_node<_Key, _Val, traits> data_node;
+
+    //static_assert((traits::AllowDynamicDataNode::value && std::is_same<aex_static_data_node<_Key, _Val, traits>, data_node>::value) == false);
 
     typedef data_node* data_node_ptr;
     
@@ -151,6 +147,8 @@ private:
 
     double inner_node_few_ratio[traits::MAX_DEPTH], inner_node_full_ratio[traits::MAX_DEPTH];
 
+    size_type max_inner_node_slot_size[traits::MAX_DEPTH];
+
     typename std::false_type fp;
 
     constexpr static double lambda = 1 - 1.0 / traits::LAMBDA_;
@@ -208,10 +206,10 @@ public:
     
     std::pair<iterator, bool> insert(const key_type &key, const value_type &value);
 
-    iterator find(const key_type &x) {
+    inline iterator find(const key_type &x) {
         this->balance_stats.update_timestamp();
         iterator it = find_iterator(x);
-        if (it.key() != x) 
+        if (it == end() || it.key() != x) 
             return end();
         return it;
     }
@@ -235,7 +233,7 @@ public:
 
     bool exists(const key_type &x) {
         this->balance_stats.update_timestamp();
-        iterator it = find(x, this->allow_rw_balance);
+        iterator it = find(x);
         if (it.key() != x) return false;
         return true;
     }
@@ -377,16 +375,16 @@ private:
     // if no item greater than or equal to x, return end()
     inline iterator find_iterator(const key_type &x){
         data_node_ptr node = find_leaf(x);
+        //bool flag = true;
+        //slot_type pos = node->find_lower_pos(x, flag);
         slot_type pos = node->find_lower_pos(x);
         if (pos == node->size)
-            return end();
-
-        if (IS_ML_NODE(node))
-            if (std::abs(node->predict(x) - pos) >= traits::DATA_NODE_ERROR_BOUND * 2) {
-                fix_data_node(node);
-                node = find_leaf(x);
-                pos = node->find_lower_pos(x);
-            }
+            return end(); 
+        //if (!flag){
+        //    fix_data_node(node);
+        //    node = find_leaf(x);
+        //    pos = node->find_lower_pos(x);
+        //}
         return iterator(node, pos);
     }
 
@@ -398,16 +396,10 @@ private:
         return iterator(node, pos);
     }
 
-    inline node_ptr find(const inner_node_ptr node, const key_type &x){
-        return node->child_ptr[node->find(x)];
-    }
-
     inline data_node_ptr find_leaf(const key_type &key){
-        this->balance_stats.update_timestamp();
         node_ptr node = root;
         while (!IS_LEAF_NODE(node)){
-            node->balance_stats.update_read_frequency(this->balance_stats.get_timestamp());
-            node = find(static_cast<inner_node_ptr>(node), key);
+            node = static_cast<inner_node_ptr>(node)->child_ptr[static_cast<inner_node_ptr>(node)->find(key)];
         }
         return static_cast<data_node_ptr>(node);
     }
@@ -498,6 +490,8 @@ private:
     // split a ordered key array with data array to inner node array. Use linear probe(use greedy).
     void split_with_linear_probe(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
 
+    void split(data_node_ptr new_node, data_node_ptr old_node);
+
     slot_type linear_probe(const key_type* const key, const size_type n, data_node_model &m);
 
     // change the parent key of the child node.
@@ -559,25 +553,22 @@ private:
     }
 
     // copy keys and pointers of a node to key buffer and pointers buffer
-    static void copy_to_buffer(const inner_node_ptr __restrict__ node, key_type* __restrict__ key_buf, node_ptr* __restrict__ child_buf);
+    static void copy_to_buffer(const inner_node* const node, key_type* __restrict__ key_buf, node_ptr* __restrict__ child_buf);
 
     // copy keys of a node to key buffer
-    static void copy_to_buffer(const inner_node_ptr __restrict__ node, key_type* const __restrict__ key_buf);
+    static void copy_to_buffer(const inner_node* const node, key_type*  __restrict__ key_buf);
 
     // copy pointers of a node to pointers buffer
-    static void copy_to_buffer(const inner_node_ptr __restrict__ node, node_ptr* __restrict__ child_buf);
+    static void copy_to_buffer(const inner_node* const node, node_ptr* __restrict__ child_buf);
 
     void init();
 
 // debug
-#ifdef AEX_DEBUG
-public:
-
-
 friend inner_node;
 
 friend data_node;
-#endif
+
+friend NodeAllocator;
 
 #ifndef AEX_EXPERIMENT
 private:

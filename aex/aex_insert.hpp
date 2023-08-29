@@ -33,7 +33,23 @@ std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree<_Key, 
     node->balance_stats.update_write_frequency(this->balance_stats.get_timestamp());
     /* if data node is full, split the node */
     if (isfull(node)){
-        if ((!traits::AllowDynamicDataNode::value) || node->slot_size * 2 > traits::MAX_DATA_NODE_SLOT_SIZE || (check_split(node, true))){
+        if (!traits::AllowDynamicDataNode::value){
+            std::vector<key_type> insert_key(1);
+            std::vector<node_ptr> insert_node(1);
+            data_node_ptr new_node = node_allocator.allocate_data_node(traits::MIN_DATA_NODE_SLOT_SIZE, false);
+            split(new_node, node);
+            if (pos < new_node->size){
+                new_node->insert(key, value, pos);
+            }
+            else{
+                node->insert(key, value, pos - new_node->size);
+            }
+            insert_key[0] = new_node->key[new_node->size - 1];
+            insert_node[0] = new_node;
+            insert_ascend(node->parent, insert_key, insert_node);
+            ret = std::pair<iterator, bool>(find_iterator(key), true);
+        }
+        else if (node->slot_size * 2 > traits::MAX_DATA_NODE_SLOT_SIZE || (check_split(node, true))){
             std::vector<key_type> insert_key;
             std::vector<node_ptr> insert_node;
             insert_split(node, key, value, insert_key, insert_node);
@@ -42,7 +58,7 @@ std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree<_Key, 
             ret = std::pair<iterator, bool>(find_iterator(key), true);
         }
         else{
-            bool flag = rescale(node, node->slot_size << 1);
+            [[maybe_unused]] bool flag = rescale(node, node->slot_size << 1);
             AEX_ASSERT(flag == true);
             pos = node->insert(key, value);
             ret = std::pair<iterator, bool>(iterator(node, pos), true);
@@ -185,7 +201,7 @@ void aex_tree<_Key, _Val, traits>::insert_split(data_node_ptr node, const key_ty
     #ifdef AEX_EXPERIMENT
     ++opt_stats.data_node_split_cnt;
     #endif
-
+    
     std::vector<key_type> key_buf(node->size + 1), new_key_2;
     std::vector<value_type> data_buf(node->size + 1);
     std::vector<node_ptr> new_child_2;
@@ -200,9 +216,11 @@ void aex_tree<_Key, _Val, traits>::insert_split(data_node_ptr node, const key_ty
     node->key[pos] = key;
     node->data[pos] = data;
 
-    split_with_linear_probe(key_buf.data(), data_buf.data(), node->size / 2, new_key, new_child);
-    split_with_linear_probe(key_buf.data() + node->size / 2, data_buf.data() + node->size / 2, node->size - node->size / 2, new_key_2, new_child_2);
-
+    // split_with_linear_probe(key_buf.data(), data_buf.data(), node->size / 2, new_key, new_child);
+    // split_with_linear_probe(key_buf.data() + node->size / 2, data_buf.data() + node->size / 2, node->size - node->size / 2, new_key_2, new_child_2);
+    split_with_exponential_probe(key_buf.data(), data_buf.data(), node->size / 2, new_key, new_child);
+    split_with_exponential_probe(key_buf.data() + node->size / 2, data_buf.data() + node->size / 2, node->size - node->size / 2, new_key_2, new_child_2);
+    
     size_t new_m = new_key_2.size();
     for (size_t i = 0; i < new_m; ++i){
         new_key.push_back(new_key_2[i]);
@@ -247,7 +265,7 @@ void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, value_typ
     this->deconstruct(this->root);
     if (nums == 0)
         return;
-
+    this->m_stats.height = 1;
     std::vector<key_type> key_buf(nums), new_key_buf;
     std::vector<node_ptr> new_child_buf;
     std::vector<value_type> data_buf(nums);
@@ -264,11 +282,12 @@ void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, value_typ
     this->m_stats.max_key = key_buf[nums - 1];
 
     if (traits::AllowDynamicDataNode::value){
-        AEX_PRINT("AllowDynamicDataNode");
-        split_with_linear_probe(key_buf.data(), data_buf.data(), nums, new_key_buf, new_child_buf);
+        //split_with_linear_probe(key_buf.data(), data_buf.data(), nums, new_key_buf, new_child_buf);
+        split_with_exponential_probe(key_buf.data(), data_buf.data(), nums, new_key_buf, new_child_buf);
     }
-    else
+    else{
         split_to_static_data_node(key_buf.data(), data_buf.data(), nums, new_key_buf, new_child_buf);
+    }
     
     size_type m = new_child_buf.size();
     new_child_buf[0]->prev = nullptr;

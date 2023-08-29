@@ -23,7 +23,9 @@ public:
 
     typedef aex_iterator<_Key, _Val, traits> self;
 
-    typedef aex_data_node<_Key, _Val, traits> data_node;
+    typedef aex_tree<key_type, value_type, traits> base_tree;
+
+    typedef typename base_tree::data_node data_node;
 
     typedef data_node* data_node_ptr;
 
@@ -153,7 +155,9 @@ public:
 
     typedef aex_const_iterator<_Key, _Val, traits> self;
 
-    typedef aex_data_node<_Key, _Val, traits> data_node;
+    typedef aex_tree<key_type, value_type, traits> base_tree;
+
+    typedef typename base_tree::data_node data_node;
 
     typedef data_node* data_node_ptr;
 
@@ -289,7 +293,9 @@ public:
 
     typedef aex_reverse_iterator<_Key, _Val, traits> self;
 
-    typedef aex_data_node<_Key, _Val, traits> data_node;
+    typedef aex_tree<key_type, value_type, traits> base_tree;
+
+    typedef typename base_tree::data_node data_node;
 
     typedef data_node* data_node_ptr;
 
@@ -419,7 +425,9 @@ public:
 
     typedef aex_const_reverse_iterator<_Key, _Val, traits> self;
 
-    typedef aex_data_node<_Key, _Val, traits> data_node;
+    typedef aex_tree<key_type, value_type, traits> base_tree;
+
+    typedef typename base_tree::data_node data_node;
 
     typedef data_node* data_node_ptr;
 

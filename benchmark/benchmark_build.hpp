@@ -32,6 +32,9 @@ void aex_build_bench(vector<pair<key_type, value_type> > &data){
     double OPS = 1000000.0 * times / delta;
 
     std::cout << "code=" << sum << "used time=" << delta <<  " ms, QPS=" << OPS << std::endl;
+    aex::aex_map<key_type, value_type> index;
+    index.bulk_load(data.data(), data.size());
+    index.print_stats();
 }
 
 template<typename key_type, typename value_type>

@@ -65,6 +65,12 @@ void aex_tree<_Key, _Val, traits>::init(){
         this->inner_node_few_ratio[i] = this->inner_node_few_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
         this->inner_node_full_ratio[i] = this->inner_node_full_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
     }
+    this->max_inner_node_slot_size[0] = 8;
+    for (int i = 1; i < traits::MAX_DEPTH; ++i){
+        //this->max_inner_node_slot_size[i] = std::min(sqr(this->max_inner_node_slot_size[i - 1]), static_cast<size_type>(traits::MAX_INNER_NODE_SLOT_SIZE));
+        this->max_inner_node_slot_size[i] = traits::MAX_INNER_NODE_SLOT_SIZE;
+    }
+
     this->root = this->head_leaf = this->tail_leaf = nullptr;
     this->node_allocator.clear();
     this->m_stats = aex_stats();

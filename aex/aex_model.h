@@ -319,9 +319,9 @@ public:
     }
 
     // train model with an key array, array size n and slot size
-    bool train(const key_type* const key, const slot_type n){
+    inline bool train(const key_type* const key, const slot_type n){
         args.end = key[n - 1];
-        args.slope = 1 / (key[n - 1] - key[0]);
+        args.slope = 1.0 / (key[n - 1] - key[0]);
         return true;
     }
 
@@ -595,15 +595,10 @@ public:
 
     // return the predict position. value range from 0 to +inf.
     inline double predict(const key_type &key) const {
-        //return static_cast<slot_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
         double ret = 1;
-        //std::cout << "key=" << key << " : ";
-        for (unsigned int i = 0; i < this->args.seg_nums; ++i){
-            //std::cout << (key < args.end[i]) << " " << key - args.end[i] << " " << args.slope[i] << " " << (key < args.end[i]) * (key - args.end[i]) * args.slope[i] << ", "; 
+        for (unsigned int i = 0; i < args.seg_nums; ++i){
             ret += (key < args.end[i]) * (key - args.end[i]) * args.slope[i];
         }
-        //std::cout << ", ret=" << ret;
-
         return ret;
     }
 
@@ -617,24 +612,11 @@ public:
 
         AEX_ASSERT(n > 1);
 
-        //const double max_density = (1 + density) / 2;
         const double max_density = 2.0 / (1.0 + 1.0 / density); //harmonic mean
         const double gap = 1.0 / (n - 1) * max_density;
-        //const double gap = 1.0 / (slot_size - 1);
-
-        //const slot_type max_offset = 1.0 * traits::ERROR_BOUND / 2;
         const slot_type max_offset = traits::ERROR_BOUND - 2;
         const slot_type windows_size = ceil(1.0 * max_offset / (1 - max_density));
-        //AEX_PRINT("n=" << n << ", slot size=" << slot_size << ", max_offset=" << max_offset << ", windows_size=" << windows_size << ", max_density=" << max_density << ", gap=" << gap);
-        /*{
-            for (slot_type i = 0; i < n; ++i){
-                std::cout << key[i] << ", ";
-            }
-            std::cout << std::endl;
-        }*/
         std::vector<double> slope(n), windows_slope(windows_size), max_windows_slope(max_offset + 1);
-        
-        //AEX_PRINT("avg slope=" <<  1.0 * max_density/ (key[n - 1] - key[0]));
 
         std::fill(windows_slope.begin(), windows_slope.end(), 1.0 * max_density/ (key[n - 1] - key[0]));
         
@@ -658,13 +640,16 @@ public:
             //AEX_PRINT("slope[" << i << "]=" << slope[i] << ", real=" << gap / (key[i + 1] - key[i]));
         }
 
-        {
-            this->args.seg_nums = 0;
-            slot_type start[traits::MAX_SEGMENT_NUM], end[traits::MAX_SEGMENT_NUM];
-            double segment_slope[traits::MAX_SEGMENT_NUM]; 
-            unsigned int max_segment_num = std::min(traits::MAX_SEGMENT_NUM, n / 8);
+        std::fill(args.end, args.end + traits::MAX_SEGMENT_NUM, std::numeric_limits<key_type>::min());
+        std::fill(args.slope, args.slope + traits::MAX_SEGMENT_NUM, 0);
+        
+        slot_type start[traits::MAX_SEGMENT_NUM], end[traits::MAX_SEGMENT_NUM];
+        double segment_slope[traits::MAX_SEGMENT_NUM]; 
+
+        for (unsigned int max_segment_num = 1; max_segment_num <= static_cast<unsigned int>(std::min(traits::MAX_SEGMENT_NUM, n / 8)); max_segment_num <<= 1){
             slot_type seg_len = static_cast<slot_type>(ceil(1.0 * (n - 1) / max_segment_num));
             slot_type start_pos = 0;
+            int seg_nums = 0;
             for (unsigned int i = 0; i < max_segment_num; ++i){
                 slot_type end_pos = std::min(n - 2, start_pos + seg_len - 1);
                 start[i] = start_pos;
@@ -700,51 +685,41 @@ public:
                     else{
                         AEX_ASSERT(segment_slope[i - 1] < segment_slope[i]);
                         end[i - 1]++;
-                        this->args.end[this->args.seg_nums - 1] = key[end[i] + 1];
+                        this->args.end[seg_nums - 1] = key[end[i] + 1];
                     }
                 }
                 else{
-                    this->args.slope[this->args.seg_nums] = segment_slope[i];
-                    this->args.end[this->args.seg_nums] = key[end[i] + 1];
-                    this->args.seg_nums++;
+                    this->args.slope[seg_nums] = segment_slope[i];
+                    this->args.end[seg_nums] = key[end[i] + 1];
+                    seg_nums++;
                 }
             }
 
             double S = 0, last_key = key[0];
-            for (unsigned int i = 0; i < this->args.seg_nums; last_key = this->args.end[i], ++i)
+            for (int i = 0; i < seg_nums; last_key = this->args.end[i], ++i)
                 S += 1.0 * (this->args.end[i] - last_key) * this->args.slope[i];
 
-            //for (unsigned int i = 0; i < max_segment_num; ++i)
-            //    AEX_PRINT("segment[" << i << "] start=" << start[i] << ", end=" << end[i] << ", segment_slope=" << segment_slope[i]);
-            //AEX_PRINT("key[n-1]=" << key[n - 1]);
-            //for (unsigned int i = 0; i < this->args.seg_nums; ++i)
-            //  AEX_PRINT("slope=" << this->args.slope[i] << ", end=" << this->args.end[i]);
-
-            //AEX_PRINT("S=" << S);
             if (S > 1){
-                return false;
+                continue;
             }
             double left_slope = (1 - S) / (key[n - 1] - key[0]);
-            for (unsigned int i = 0; i < this->args.seg_nums; ++i)
+            for (int i = 0; i < seg_nums; ++i)
                 this->args.slope[i] += left_slope;
 
             S = 0;
             last_key = key[0];
-            for (unsigned int i = 0; i < this->args.seg_nums; last_key = this->args.end[i], ++i)
+            for (int i = 0; i < seg_nums; last_key = this->args.end[i], ++i)
                 S += 1.0 * (this->args.end[i] - last_key) * this->args.slope[i];
-            //AEX_PRINT("S=" << S);
+            
             AEX_ASSERT(abs(S - 1) < 1e-6);
 
-            for (unsigned int i = 0; i < this->args.seg_nums - 1; ++i)
-                this->args.slope[i] -= this->args.slope[i + 1];           
-
+            for (int i = 0; i < seg_nums - 1; ++i)
+                this->args.slope[i] -= this->args.slope[i + 1];
+            
+            args.seg_nums = max_segment_num;
+            return true;
         }
-
-        //for (unsigned int i = 0; i < this->args.seg_nums; ++i)
-        //    AEX_PRINT("slope=" << this->args.slope[i] << ", end=" << this->args.end[i]);
-        
-        return true;
-        
+        return false;
     }
 
     inline double RMSE(const key_type* const key, const slot_type n){

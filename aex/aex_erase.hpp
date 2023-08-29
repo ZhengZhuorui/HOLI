@@ -133,7 +133,8 @@ bool aex_tree<_Key, _Val, traits>::erase_merge(data_node_ptr __restrict__ left_n
     std::copy(left_node->data, left_node->data + left_node->size, data_buf.data());
     std::copy(right_node->key, right_node->key + right_node->size, key_buf.data() + left_node->size);
     std::copy(right_node->data, right_node->data + right_node->size, data_buf.data() + left_node->size);
-    split_with_linear_probe(key_buf.data(), data_buf.data(), right_node->level, new_key, new_child);
+    //split_with_linear_probe(key_buf.data(), data_buf.data(), right_node->level, new_key, new_child);
+    split_with_exponential_probe(key_buf.data(), data_buf.data(), right_node->level, new_key, new_child);
     right_node->balance_stats.update_train_frequency(this->balance_stats.get_timestamp());
     update_node_list_frequency(right_node, new_child.data(), new_child.size());
     link_node_list_and_replace_last_node(right_node, new_child);
