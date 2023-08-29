@@ -77,6 +77,10 @@ int main(int argc, char** argv){
                 upper = stoll(flags["upper"]);
             }
             generate_unique_dataset<double, std::uniform_real_distribution<double>, double>(data, num_keys, lower, upper);
+            int cnt = 0;
+            for (int i = 0; i < 128; ++i)
+                cnt += (data[i] > 0);
+            std::cout << "data < 0 size=" << 128 - cnt << ", data > 0 size=" << cnt;
             write_bineary_file(file, data);
         }
         else if (distribution == "normal"){

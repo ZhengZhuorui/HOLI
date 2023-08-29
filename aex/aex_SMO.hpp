@@ -157,7 +157,13 @@ void aex_tree<_Key, _Val, traits>::split(const key_type* const key, const node_p
         if (ans_slot_size == 0) {
             ans_slot_size = traits::MIN_INNER_NODE_SLOT_SIZE;
             ans_size = std::min(n - start, static_cast<size_type>(traits::MIN_INNER_NODE_SLOT_SIZE));
+<<<<<<< HEAD
         }        
+=======
+            flag = false;
+        }
+
+>>>>>>> dd70831881e0ac77af93e9b01b9d8a39425d3470
         inner_node_ptr new_node = node_allocator.allocate_inner_node(ans_slot_size, flag);
         ++this->m_stats.level_node[level];
         new_node->level = level;
@@ -181,6 +187,7 @@ void aex_tree<_Key, _Val, traits>::split_with_exponential_probe(const key_type* 
     data_node_model model;
     new_key.clear();
     new_child.clear();
+
     while (start < n){
         bool ml_flag = false;
         size_type slot_size = traits::MIN_ML_DATA_NODE_SLOT_SIZE, ans_slot_size = 0, ans_size = 0;
@@ -247,12 +254,10 @@ typename traits::slot_type aex_tree<_Key, _Val, traits>::linear_probe(const key_
     //double ERROR = traits::MAX_ALLOW_ERROR * log(std::max(traits::MIN_ML_DATA_NODE_SLOT_SIZE, i));
     double ERROR_BOUND = traits::DATA_NODE_ERROR_BOUND;
     for (slot_type i = 2; i < max_n; ++i){       
-        
         if (cross_product(key[0], -ERROR_BOUND, key[sta1[head1]], sta1[head1], key[i], i - ERROR_BOUND) > 0 || cross_product(key[0], ERROR_BOUND, key[sta2[head2]], sta2[head2], key[i], i + ERROR_BOUND) < 0){
             ret = i;
             break;
         }
-        
         while (top1 > 1 && cross_product(key[sta1[top1 - 2]], sta1[top1 - 2], key[sta1[top1 - 1]], sta1[top1 - 1], key[i], i) <= 0){
             --top1;
             sta1.pop_back();
@@ -296,14 +301,17 @@ void aex_tree<_Key, _Val, traits>::split_with_linear_probe(const key_type* const
     new_child.clear();
     while (start < n){
         data_node_model model;
-        bool ml_flag = true;
-        slot_type size = linear_probe(key + start, n - start, model);
-        slot_type slot_size = min_slot_size(size, traits::MIN_DATA_NODE_SLOT_SIZE);
-        
-        if (size < traits::MIN_DATA_NODE_SLOT_SIZE){
-            size = static_cast<slot_type>(std::min(n - start, static_cast<size_type>(slot_size)));
-            ml_flag = false;
+        bool ml_flag = false;
+        slot_type size;
+        if (n - start >= traits::MIN_ML_DATA_NODE_SLOT_SIZE){
+            size = linear_probe(key + start, n - start, model);
+            if (size >= traits::MIN_DATA_NODE_SLOT_SIZE)
+                ml_flag = true;
         }
+
+        if (!ml_flag)
+            size = static_cast<slot_type>(std::min(n - start, static_cast<size_type>(traits::MIN_DATA_NODE_SLOT_SIZE)));
+        slot_type slot_size = min_slot_size(size, traits::MIN_DATA_NODE_SLOT_SIZE);
 
         data_node_ptr new_node = node_allocator.allocate_data_node(slot_size, ml_flag);
         ++this->m_stats.level_node[0];

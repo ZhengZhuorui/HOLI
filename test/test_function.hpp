@@ -33,7 +33,6 @@ bool test_exponential_search_upper_bound(_Tp* data, size_t n){
     for (size_t i = 0; i < n; ++i){    
         long long predict = i;
         long long exp_search_pos = aex::exponential_search_upper_bound(data, data + n, data + predict, x) - data;
-        //AEX_PRINT("predict=" << i << ", exp_search_pos=" << exp_search_pos << ", real=" << real);
         if (exp_search_pos != real + 1){
             AEX_ERROR("Error!, item " << x << ", real position " << real << ", predict position " << predict <<  ", expenential search position " << exp_search_pos);
             return false; 

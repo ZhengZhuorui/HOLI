@@ -1,5 +1,7 @@
 # =================================================================================================
 # build time 
+# example: ./benchmark --key_type=float --index=stl_map --function=build --num_keys=20000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
 ./benchmark --key_type=float --index=aex --function=build --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./benchmark --key_type=float --index=stl_map --function=build --query_dis=uniform --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./benchmark --key_type=float --index=stx_btree --function=build --query_dis=uniform --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data

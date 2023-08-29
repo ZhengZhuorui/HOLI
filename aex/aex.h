@@ -112,13 +112,13 @@ public:
 
     #ifdef AEX_EXPERIMENT
     struct operation_stats{
-        operation_stats():inner_node_split_cnt(0), inner_node_merge_cnt(0), inner_node_rescale_cnt(0),
+        operation_stats():inner_node_split_cnt(0), inner_node_merge_cnt(0), inner_node_rescale_cnt(0), inner_node_balance_split_cnt(0),
                         data_node_split_cnt(0), data_node_merge_cnt(0), data_node_rescale_cnt(0){}
-        size_type inner_node_split_cnt, inner_node_merge_cnt, inner_node_rescale_cnt;
+        size_type inner_node_split_cnt, inner_node_merge_cnt, inner_node_rescale_cnt, inner_node_balance_split_cnt;
         size_type data_node_split_cnt, data_node_merge_cnt, data_node_rescale_cnt;
         void print_stats(){
             AEX_PRINT("[Operation status] inner node: split times=" << inner_node_split_cnt << ", merge times=" << inner_node_merge_cnt <<
-                    ", rescale times" << inner_node_rescale_cnt);
+                    ", rescale times" << inner_node_rescale_cnt << "inner_node_balance_split_cnt" << inner_node_balance_split_cnt);
             AEX_PRINT(" data node: split times=" << data_node_split_cnt << ", merge times=" << data_node_merge_cnt <<
                     ", rescale times" << data_node_rescale_cnt);
         }
@@ -388,12 +388,17 @@ private:
         return iterator(node, pos);
     }
 
+<<<<<<< HEAD
     // if no item greater than x, return NULL
     inline iterator find_upper(const data_node_ptr node, const key_type &x){
         slot_type pos = node->find_upper_pos(x);
         if (pos == node->size)
             return end();
         return iterator(node, pos);
+=======
+    inline node_ptr find(const inner_node_ptr node, const key_type &x){
+        return node->child_ptr[node->find(x)];
+>>>>>>> dd70831881e0ac77af93e9b01b9d8a39425d3470
     }
 
     inline data_node_ptr find_leaf(const key_type &key){
@@ -420,6 +425,7 @@ private:
     }
 
     bool check_split(data_node_ptr node, bool is_forced=false);
+    bool check_split(inner_node_ptr node);
 
     void update_node_list_frequency(node_ptr node, node_ptr* node_list, slot_type n);
 
