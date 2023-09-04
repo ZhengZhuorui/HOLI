@@ -314,10 +314,10 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
     
     if (IS_ML_NODE(child_buf[0]) == false){
         AEX_PRINT("node is not ml node");
-        return false;
+        //return false;
     }
     
-    inner_node_ptr node = tree.node_allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), true);
+    inner_node_ptr node = tree.node_allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), IS_ML_NODE(child_buf[0]));
     *node = *static_cast<inner_node_ptr>(child_buf[0]);
     AEX_PRINT("node->slot size=" << node->slot_size << ", size=" << node->size);
     for (size_t i = 0; i < batch; ++i){

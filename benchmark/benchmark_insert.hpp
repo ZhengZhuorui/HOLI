@@ -17,12 +17,13 @@ void aex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key
 
     //size_t cnt = 0;
     size_t M = insert_data.size();
-    size_t times = 10;
+    size_t times = 1;
     printf("aex insert test...\n");
     fflush(stdout);
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
-        aex::aex_map<key_type, value_type> index(data.begin(), data.end());
+        aex::aex_map<key_type, value_type> index;
+        index.bulk_load(data.data(), data.size());
         t1 = std::chrono::high_resolution_clock::now();
         for (const auto& x : insert_data){
             index.insert(x);
@@ -31,8 +32,7 @@ void aex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
     
-    
-    float QPS = 1000.0 * M * times / delta;
+    float QPS = 1.0 * 1e6 * M * times / delta;
     
     printf("used time=%lld us, QPS=%.2f\n", delta, QPS);
     fflush(stdout);
@@ -45,8 +45,8 @@ void stlmap_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<
     system_clock::time_point t1, t2;
 
     size_t M = insert_data.size();
-    size_t times = 10;
-    printf("stl map query test...\n");
+    size_t times = 1;
+    printf("stl map insert test...\n");
     fflush(stdout);
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
@@ -60,7 +60,7 @@ void stlmap_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<
     }
     float QPS = 1000.0 * M * times / delta;
     
-    printf("used time=%lld us, QPS=%.2f\n", delta, QPS);
+    printf("used time=%lld ms, QPS=%.2f\n", delta, QPS);
     fflush(stdout);
 }
 
@@ -74,12 +74,13 @@ void stx_btree_insert_bench(vector<pair<key_type, value_type> > &data, vector<pa
     system_clock::time_point t1, t2;
 
     size_t M = insert_data.size();
-    size_t times = 10;
-    printf("stl map query test...\n");
+    size_t times = 1;
+    printf("stx btree insert test...\n");
     fflush(stdout);
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
         stx::btree_map<key_type, value_type> index(data.begin(), data.end());
+        std::cout << "bulk load finish" << std::endl;
         t1 = std::chrono::high_resolution_clock::now();    
         for (const auto& x : insert_data){
             index.insert(x);
@@ -87,9 +88,9 @@ void stx_btree_insert_bench(vector<pair<key_type, value_type> > &data, vector<pa
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
-    float QPS = 1000.0 * M * times / delta;
+    float QPS = 1.0 * 1e6 * M * times / delta;
     
-    printf("used time=%lld us, QPS=%.2f\n", delta, QPS);
+    printf("used time=%lld ms, QPS=%.2f\n", delta, QPS);
     fflush(stdout);
 }
 
@@ -103,8 +104,8 @@ void alex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<ke
 
     //size_t cnt = 0;
     size_t M = insert_data.size();
-    size_t times = 10;
-    printf("stl map query test...\n");
+    size_t times = 1;
+    printf("alex insert test...\n");
     fflush(stdout);
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
@@ -116,9 +117,9 @@ void alex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<ke
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
-    float QPS = 1000.0 * M * times / delta;
+    float QPS = 1.0 * 1e6 * M * times / delta;
     
-    printf("used time=%lld us, QPS=%.2f\n", delta, QPS);
+    printf("used time=%lld ms, QPS=%.2f\n", delta, QPS);
     fflush(stdout);
 }
 
@@ -132,8 +133,8 @@ void pgm_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key
 
     //size_t cnt = 0;
     size_t M = insert_data.size();
-    size_t times = 10;
-    printf("stl map query test...\n");
+    size_t times = 1;
+    printf("stl map insert test...\n");
     fflush(stdout);
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
@@ -145,9 +146,9 @@ void pgm_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
-    float QPS = 1000.0 * M * times / delta;
+    float QPS = 1.0 * 1e6 * M * times / delta;
     
-    printf("used time=%lld us, QPS=%.2f\n", delta, QPS);
+    printf("used time=%lld ms, QPS=%.2f\n", delta, QPS);
     fflush(stdout);
 }
 

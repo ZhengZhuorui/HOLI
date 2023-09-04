@@ -121,10 +121,9 @@ inline int lowbit_loop_unroll(int k){
 template<typename traits>
 class aex_bitmap_impl{
 public:
+    typedef typename traits::size_type size_type;
 
-    typedef size_t size_type;
-
-    typedef unsigned long long ULL;
+    typedef typename traits::bitmap_base bitmap_base;
 
     typedef typename traits::bitmap bitmap;
 
@@ -140,7 +139,7 @@ public:
         return ((text[x >> 6] >> (x & 63)) & 1);
     }
 
-    static inline slot_type next_empty_slot(ULL* text, size_type x){
+    static inline slot_type next_empty_slot(bitmap* text, size_type x){
         /*
         //lower bound: 4
         int p = x >> 6, q = x & 64;

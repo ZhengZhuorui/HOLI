@@ -58,6 +58,8 @@ public:
     typedef typename traits::version_type version_type;
 
     typedef typename aex_bitmap_impl<traits>::bitmap bitmap;
+    
+    typedef typename aex_bitmap_impl<traits>::bitmap_base bitmap_base;
 
     #ifdef AEX_EXPERIMENT
     aex_node_allocator():inner_node_nums(0), data_node_nums(0), free_cnt(0), alloc_cnt(0), timer(), max_node_id(0), _memory_used(0){
@@ -140,7 +142,8 @@ public:
     }
 
     inline static size_type DATA_NODE_MEMORY_USED(size_type slot_size){
-        return align_8bytes(sizeof(data_node)) + KEY_MEMORY_USED(slot_size) + DATA_MEMORY_USED(slot_size);
+        return sizeof(data_node);
+        //return align_8bytes(sizeof(data_node)) + KEY_MEMORY_USED(slot_size) + DATA_MEMORY_USED(slot_size);
     }
 
     //inline static size_type MUTEX_MEMORY_USED(size_type slot_size){
@@ -204,6 +207,7 @@ public:
         this->_memory_used += DATA_NODE_MEMORY_USED(slot_size);
         data_node_ptr node = new data_node(slot_size);
         SET_FLAG(node, node_property::LEAF);
+        AEX_ASSERT(IS_LEAF_NODE(node));
         
         #ifdef AEX_EXPERIMENT
         node_id[static_cast<node_ptr>(node)] = max_node_id;
@@ -245,7 +249,7 @@ public:
     }
 
     inline void reallocate(data_node_ptr node, slot_type new_slot_size){
-        //this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) - \
+        //this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) -
         //                                DATA_MEMORY_USED(node->slot_size) + DATA_MEMORY_USED(new_slot_size);
         //key_type *new_key = static_cast<key_type*>(malloc(KEY_MEMORY_USED(new_slot_size)));
         //value_type *new_data = static_cast<value_type*>(malloc(DATA_MEMORY_USED(new_slot_size)));
@@ -307,7 +311,7 @@ public:
 
     inline void free_node(node_ptr p){      
         if (p != nullptr){
-            if (p->prop & node_property::LEAF) free_node(static_cast<data_node_ptr>(p));
+            if (IS_LEAF_NODE(p)) free_node(static_cast<data_node_ptr>(p));
             else free_node(static_cast<inner_node_ptr>(p));
         }
     }

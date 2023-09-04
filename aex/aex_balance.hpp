@@ -15,6 +15,9 @@ void aex_tree<_Key, _Val, traits>::update_node_list_frequency(node_ptr node, nod
 
 template<typename _Key, typename _Val, typename traits>
 bool aex_tree<_Key, _Val, traits>::check_insert_merge(node_ptr* node_buffer, slot_type size){
+    if (std::is_same<aex_static_data_node<key_type, value_type, traits>, data_node>::value == false) 
+        return false;
+
     // delta cost
     // 1. write cost 
     // 2. read cost
@@ -68,7 +71,10 @@ bool aex_tree<_Key, _Val, traits>::check_insert_merge(node_ptr* node_buffer, slo
 
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::merge_nodes(data_node_ptr* node_buffer, slot_type size){
-    AEX_ASSERT(size > 1);
+    //AEX_ASSERT(std::is_same<aex_data_node<key_type, value_type, traits>, data_node>::value == true);
+    if (std::is_same<aex_data_node<key_type, value_type, traits>, data_node>::value){
+        AEX_ASSERT(0==1);
+    }
     #ifdef AEX_EXPERIMENT
     ++this->opt_stats.data_node_merge_cnt;
     #endif

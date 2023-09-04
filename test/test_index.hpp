@@ -198,6 +198,8 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     std::sort(node_data.data(), node_data.data() + n - batch);
     index.bulk_load(node_data.data(), n - batch);
     index_bak = index;
+    index.print_stats();
+    index.print_detail();
     for (long long i = 0; i < batch; ++i){
         typename tree::iterator iter;
         bool inserted;
@@ -247,16 +249,15 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     std::chrono::high_resolution_clock::time_point t1, t2;
     double delta = 0;
     for (int T = 0; T < ITER; ++T){
-        //index.clear();
-        //index.bulk_load(node_data.data(), n - batch);
         index = index_bak;
+        //aex_tree<key_type, value_type, traits>::debug_level |= 1;
         t1 = std::chrono::high_resolution_clock::now();
         for (long long i = 0; i < batch; ++i)
             index.insert(insert_data[i]);
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
-    double OPS = 1.0 * 1e6 * ITER / delta;
+    double OPS = 1.0 * 1e6 * ITER * batch / delta;
     std::cout << std::scientific;
     std::cout << std::setprecision(3);  
     AEX_SUCCESS("insert use time " << delta << "ms, OPS=" << OPS);

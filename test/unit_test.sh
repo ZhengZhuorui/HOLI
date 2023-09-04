@@ -15,14 +15,11 @@
 # (Y)
 ./generate_dataset --key_type=float --num_keys=1000 --distribution=normal --output_file=/home/zzr/data/generate_data/normal_1K_0_1_float.bin --mean=0 --stddev=1
 
-<<<<<<< HEAD
 ./generate_dataset --key_type=float --num_keys=200000000 --distribution=normal --output_file=/home/zzr/data/generate_data/normal_200M_0_1_float.bin --mean=0 --stddev=1
 
 # (N)
 ./generate_dataset --key_type=float --num_keys=1000000 --distribution=lognormal --output_file=/home/zzr/data/generate_data/normal_1K_0_1_float.bin --mean=0 --stddev=1
 
-=======
->>>>>>> dd70831881e0ac77af93e9b01b9d8a39425d3470
 # (Y)
 ./generate_dataset --key_type=int --num_keys=1000000 --distribution=id_ascend --output_file=/home/zzr/data/generate_data/id_1M_int.bin
 
@@ -205,6 +202,7 @@
 
 # =================================================================================================
 # test inner node(gap array) and data node(dense array) query accuracy and performance
+./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=8 --batch=8 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
 ./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=64 --batch=64 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
@@ -218,11 +216,8 @@
 # (N)
 ./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=2048 --batch=64 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 
-<<<<<<< HEAD
 ./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=4096 --batch=64 --level=1 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 
-=======
->>>>>>> dd70831881e0ac77af93e9b01b9d8a39425d3470
 # (Y)
 ./unit_test --unit=node --key_type=float --node_type=inner_node --function=query --num_keys=64 --batch=64 --level=2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
@@ -386,9 +381,14 @@
 
 
 # test index insert accuracy
+a
 ./unit_test --unit=index --key_type=float --function=insert --num_keys=2000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=insert --num_keys=20000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=insert --num_keys=200000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+./unit_test --unit=index --key_type=float --function=insert --num_keys=1000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+./unit_test --unit=index --key_type=float --function=insert --num_keys=200000000 --batch=100000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 ./unit_test --unit=index --key_type=float --function=insert --num_keys=2000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=insert --num_keys=2000000 --batch=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data

@@ -76,6 +76,15 @@
 ./benchmark --key_type=float --index=lipp --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 
+# longtitude
+./benchmark --key_type=float --index=aex --function=insert --query_dis=uniform --num_keys=100000000 --num_ops=100000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=stl_map --function=insert --query_dis=uniform --num_keys=100000000 --num_ops=100000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=stx_btree --function=insert --query_dis=uniform --num_keys=100000000 --num_ops=100000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=alex --function=insert --query_dis=uniform --num_keys=100000000 --num_ops=100000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=pgm --function=insert --query_dis=uniform --num_keys=100000000 --num_ops=100000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=lipp --function=insert --query_dis=uniform --num_keys=100000000 --num_ops=100000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+
 # =================================================================================================
 # erase
 

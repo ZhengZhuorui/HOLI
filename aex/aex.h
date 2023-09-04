@@ -168,7 +168,8 @@ public:
 
     aex_tree& operator = (aex_tree &_index){
         this->init();
-        this->construct(_index.root, this->root);
+        this->root = this->construct(_index.root);
+        this->link_tree_ptr();
         this->m_stats = _index.m_stats;
         this->balance_stats = _index.balance_stats;
         this->node_allocator = _index.node_allocator;
@@ -350,6 +351,30 @@ public:
         #endif
     }
 
+    static void print_nodes(node_ptr node){
+        AEX_PRINT("node=" << node << "IS_LEAF_NODE?: " << IS_LEAF_NODE(node) << ", IS_ML_NODE?: " << IS_ML_NODE(node));
+        if (IS_LEAF_NODE(node)){
+            data_node_ptr _node = static_cast<data_node_ptr>(node);
+            for (slot_type i = 0; i < _node->size; ++i)
+                std::cout << "(" << _node->key[i] << ", " << _node->data[i] << "), ";
+            std::cout << std::endl;
+        }
+        else{
+            inner_node_ptr _node = static_cast<inner_node_ptr>(node);
+            if (IS_ML_NODE(node)){
+                for (slot_type i = 0; i < _node->slot_size; ++i)
+                if (bitmap_impl::at(_node->bitmap_ptr, i))
+                    std::cout << "(" << i << ", " << _node->key_ptr[i] << ", " << _node->child_ptr[i] << "), ";
+                std::cout << std::endl;
+            }
+            else{
+                for (slot_type i = 0; i < _node->size; ++i)
+                    std::cout << "(" << _node->key_ptr[i] << ", " << _node->child_ptr[i] << "), ";
+                std::cout << std::endl;
+            }
+        }
+    }
+
     inline size_type memory_used()const{
         // TODO
         return node_allocator._memory_used;
@@ -362,7 +387,9 @@ protected:
 private:    
 #endif
      
-    void construct(node_ptr node, node_ptr &new_node);
+    node_ptr construct(node_ptr node);
+
+    void link_tree_ptr();
 
     inline void deconstruct(node_ptr node){
         erase_tree_recursive(node);
@@ -388,23 +415,20 @@ private:
         return iterator(node, pos);
     }
 
-<<<<<<< HEAD
     // if no item greater than x, return NULL
     inline iterator find_upper(const data_node_ptr node, const key_type &x){
         slot_type pos = node->find_upper_pos(x);
         if (pos == node->size)
             return end();
         return iterator(node, pos);
-=======
-    inline node_ptr find(const inner_node_ptr node, const key_type &x){
-        return node->child_ptr[node->find(x)];
->>>>>>> dd70831881e0ac77af93e9b01b9d8a39425d3470
     }
 
     inline data_node_ptr find_leaf(const key_type &key){
         node_ptr node = root;
         while (!IS_LEAF_NODE(node)){
-            node = static_cast<inner_node_ptr>(node)->child_ptr[static_cast<inner_node_ptr>(node)->find(key)];
+            slot_type pos = static_cast<inner_node_ptr>(node)->find(key);
+            AEX_ASSERT(static_cast<inner_node_ptr>(node)->child_ptr[pos]->parent == node);
+            node = static_cast<inner_node_ptr>(node)->child_ptr[pos];
         }
         return static_cast<data_node_ptr>(node);
     }
@@ -559,13 +583,13 @@ private:
     }
 
     // copy keys and pointers of a node to key buffer and pointers buffer
-    static void copy_to_buffer(const inner_node* const node, key_type* __restrict__ key_buf, node_ptr* __restrict__ child_buf);
+    static void copy_to_buffer(const inner_node_ptr node, key_type* __restrict__ key_buf, node_ptr* __restrict__ child_buf);
 
     // copy keys of a node to key buffer
-    static void copy_to_buffer(const inner_node* const node, key_type*  __restrict__ key_buf);
+    static void copy_to_buffer(const inner_node_ptr node, key_type*  __restrict__ key_buf);
 
     // copy pointers of a node to pointers buffer
-    static void copy_to_buffer(const inner_node* const node, node_ptr* __restrict__ child_buf);
+    static void copy_to_buffer(const inner_node_ptr node, node_ptr* __restrict__ child_buf);
 
     void init();
 
@@ -595,8 +619,6 @@ int aex_tree<_Key, _Val, traits>::debug_level = 0;
 #include "aex/aex_init.hpp"
 
 #include "aex/aex_balance.hpp"
-
-#include "aex/aex_find.hpp"
 
 #include "aex/aex_insert.hpp"
 

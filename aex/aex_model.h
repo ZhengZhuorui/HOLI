@@ -593,6 +593,13 @@ public:
 
     typedef typename traits::slot_type slot_type;
 
+    piecewise_linear_model(){
+        this->args.seg_nums = 0;
+        std::fill(this->args.slope, this->args.slope + traits::MAX_SEGMENT_NUM, 0);
+    }
+
+    ~piecewise_linear_model(){}
+
     // return the predict position. value range from 0 to +inf.
     inline double predict(const key_type &key) const {
         double ret = 1;

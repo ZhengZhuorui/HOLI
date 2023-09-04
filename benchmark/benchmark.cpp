@@ -69,10 +69,11 @@ void benchmark_insert(FILE* file, long long num_keys, long long num_ops, string 
     read_bineary_file<key_type>(file, bin_data, num_keys + num_ops);
     pack_KV_dataset(bin_data, data);
 
-    vector<pair<key_type, value_type> > insert_data;
-    insert_data.resize(num_ops);
-    copy(data.begin() + data.size() - num_ops, data.end(), insert_data.begin());
-    data.resize(num_ops);
+    vector<pair<key_type, value_type> > insert_data(num_ops);
+    std::random_shuffle(data.data(), data.data() + num_keys + num_ops);
+    copy(data.data() + num_keys, data.data() + num_keys + num_ops, insert_data.data());
+    data.resize(num_keys);
+    std::sort(data.data(), data.data() + num_keys);
     if (index_name == "aex"){
         aex_insert_bench(data, insert_data);
     }
@@ -87,6 +88,9 @@ void benchmark_insert(FILE* file, long long num_keys, long long num_ops, string 
     }
     else if (index_name == "pgm"){
         pgm_insert_bench(data, insert_data);
+    }
+    else if (index_name == "lipp"){
+
     }
 }
 
