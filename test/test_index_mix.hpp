@@ -1,11 +1,12 @@
 template<typename key_type,
         typename value_type,
         typename traits=aex_default_traits<key_type, value_type>>
-bool test_index_RW_perf(std::pair<key_type, value_type>* data, long long n, long long batch, double rw_ratio){
+bool test_index_mix_perf(std::pair<key_type, value_type>* data, long long n, long long batch, double rw_ratio){
     typedef mock_aex_tree<key_type, value_type, traits> tree;
     [[maybe_unused]]typedef typename mock_aex_tree<key_type, value_type, traits>::size_type size_type;
     typedef typename tree::node_ptr node_ptr;
     mock_aex_tree<key_type, value_type, traits> index;
+    std::map<key_type, value_type> mp;
     long long insert_num = static_cast<long long>(rw_ratio * batch);
     long long query_num = batch - insert_num;
     std::vector<std::pair<key_type, value_type> > insert_data(insert_num), bulk_load_data(n);
@@ -50,7 +51,7 @@ bool test_index_RW_perf(std::pair<key_type, value_type>* data, long long n, long
         }
         index.print_stats();
         size_type leaf_num = 0, data_size = 0;
-        for (node_ptr inode = index.head_leaf; inode != nullptr; inode = inode->next){
+        for (node_ptr inode = index.head_leaf; inode != index.empty_leaf; inode = inode->next){
             //std::cout << "inode=" << inode << ", key[0]=" << static_cast<data_node_ptr>(inode)->key[0] << ;
             ++leaf_num;
             data_size += inode->size;
@@ -94,6 +95,7 @@ bool test_index_RW_perf(std::pair<key_type, value_type>* data, long long n, long
                 }
                 case OperationType::Insert:{
                     index.insert(insert_data[i]);
+                    break;
                 }
                 default:
                     break;
@@ -107,5 +109,89 @@ bool test_index_RW_perf(std::pair<key_type, value_type>* data, long long n, long
     std::cout << std::scientific;
     std::cout << std::setprecision(3);  
     AEX_SUCCESS("mix operation use time " << delta << "ms, OPS=" << OPS);
+    return true;
+}
+
+
+template<typename key_type,
+        typename value_type,
+        typename traits=aex_default_traits<key_type, value_type>>
+bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, long long read_nums, long long write_nums, long long erase_nums){
+    typedef mock_aex_tree<key_type, value_type, traits> tree;
+    [[maybe_unused]]typedef typename mock_aex_tree<key_type, value_type, traits>::size_type size_type;
+    [[maybe_unused]]typedef typename tree::node_ptr node_ptr;
+    mock_aex_tree<key_type, value_type, traits> index;
+    long long init_nums = n - write_nums, tot_nums = read_nums + write_nums + erase_nums;
+    std::vector<std::pair<key_type, value_type>> init_data(init_nums), index_data(init_nums);
+    std::vector<bool> is_delete(n);
+    std::vector<std::pair<key_type, value_type>> insert_data(init_nums);
+    std::random_shuffle(data, data + n);
+    std::copy(data, data + init_nums, init_data.data());
+    std::copy(data, data + init_nums, index_data.data());
+    std::copy(data + init_nums, data + n, insert_data.data());
+    std::sort(init_data.data(), init_data.data() + init_nums);
+    index.bulk_load(init_data.data(), init_nums);
+    AEX_PRINT("bulk_load finish...");
+    std::vector<OperationType> opt(read_nums + write_nums + erase_nums);
+    std::fill(opt.data(), opt.data() + read_nums, OperationType::Lookup);
+    std::fill(opt.data() + read_nums, opt.data() + read_nums + write_nums, OperationType::Insert);
+    std::fill(opt.data() + read_nums + write_nums, opt.data() + tot_nums, OperationType::Erase);
+    std::random_shuffle(opt.data(), opt.data() + tot_nums);
+    size_type insert_cnt = 0;
+    AEX_PRINT("prepare finish...");
+    for (long long i = 0; i < tot_nums; ++i){
+        switch (opt[i]){
+            case OperationType::Lookup:{
+                //AEX_PRINT("Lookup:");
+                size_type pos = rand() % index_data.size();
+                while (is_delete[pos] == true) 
+                    pos = rand() % index_data.size();
+                auto x = index.find(index_data[pos].first);
+                if (x == index.end()){
+                    AEX_ERROR("i=" << i << ", query error, pos=" << pos << ", key=" << index_data[pos].first << ", query no exists");
+                    return false;
+                }
+                if (x.key() != index_data[pos].first || x.data() != index_data[pos].second){
+                    AEX_ERROR("i=" << i << ", query error, query key=" << index_data[pos].first << ", data=" << index_data[pos].second << ", get key=" << x.key() << ", data=" << x.data());
+                    return false;
+                } 
+                break;
+            }
+            case OperationType::Insert:{
+                //AEX_PRINT("Insert:");
+                index_data.push_back(insert_data[insert_cnt]);
+                typename tree::iterator iter;
+                bool _;
+                std::tie(iter, _) = index.insert(insert_data[insert_cnt]);
+                if (_ == false){
+                    AEX_ERROR("i=" << i << ", insert error, insert_key=" << insert_data[insert_cnt].first);
+                    return false;
+                }
+                auto tmp = index.find(insert_data[insert_cnt].first);
+                if (tmp == index.end()){
+                    AEX_ERROR("i=" << i << ", insert error, insert_key=" << insert_data[insert_cnt].first << " not found");
+                    return false;
+                }
+                insert_cnt++;
+                break;
+            }
+            case OperationType::Erase:{
+                //AEX_PRINT("Erase:");
+                size_type pos = rand() % index_data.size();
+                while (is_delete[pos] == true) 
+                    pos = rand() % index_data.size();
+                auto _ = index.erase(index_data[pos].first);
+                is_delete[pos] = true;
+                if (_ == 0){
+                    AEX_ERROR("i=" << i << "erase error!");
+                    return false;
+                }
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
     return true;
 }

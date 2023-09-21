@@ -5,6 +5,7 @@
 #include "alex.h"
 #include "pgm_index.hpp"
 #include "pgm_index_dynamic.hpp"
+#include <ext/hash_map>
 
 using namespace std::chrono;
 using aex::aex_map;
@@ -21,8 +22,8 @@ void aex_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type>
     t1 = std::chrono::high_resolution_clock::now();
 
     for (size_t T = 0; T < times; ++T){
-        for (size_t i = 0; i < num_ops; ++i){
-            const auto iter = index.find(query[i]);
+        for (auto &x : query){
+            const auto iter = index.find(x);
             sum += iter.data();
         }
     }
@@ -100,8 +101,8 @@ void alex_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type
     long long num_ops = query.size();
     auto t1 = std::chrono::high_resolution_clock::now();
     for (size_t T = 0; T < times; ++T){
-        for (int i = 0; i < num_ops; ++i){
-            auto iter = index.find(query[i]);
+        for (auto &x : query){
+            auto iter = index.find(x);
             sum += iter.payload();
         }
     }
@@ -134,8 +135,8 @@ void pgm_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type>
     fflush(stdout);
     t1 = std::chrono::high_resolution_clock::now();
     for (size_t T = 0; T < times; ++T){
-        for (size_t i = 0; i < num_ops; ++i){
-            sum += index.find(query[i])->second;
+        for (auto &x : query){
+            sum += index.find(x)->second;
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
@@ -160,8 +161,8 @@ void lipp_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type
     
     t1 = std::chrono::high_resolution_clock::now();
     for (size_t T = 0; T < times; ++T){
-        for (size_t i = 0; i < num_ops; ++i){
-            sum += index.at(query[i]);
+        for (auto &x : query){
+            sum += index.at(x);
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
@@ -182,8 +183,8 @@ void bineary_search_query_bench(vector<pair<key_type, value_type> > &data, vecto
     t1 = std::chrono::high_resolution_clock::now();
 
     for (size_t T = 0; T < times; ++T){
-        for (size_t i = 0; i < num_ops; ++i){
-            size_t pos = std::lower_bound(data.data(), data.data() + sz, std::pair<key_type, value_type>(query[i], -1)) - data.data();
+        for (auto &x : query){
+            size_t pos = std::lower_bound(data.data(), data.data() + sz, std::pair<key_type, value_type>(x, -1)) - data.data();
             sum += data[pos].second;
         }
     }
@@ -192,5 +193,70 @@ void bineary_search_query_bench(vector<pair<key_type, value_type> > &data, vecto
     double QPS = 1000000.0 * num_ops * times / delta;
 
     std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << std::endl;
+}
 
+template<typename key_type, typename value_type>
+void hash_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
+    printf("hash map query test...");
+    std::unordered_map<key_type, value_type> index(data.begin(), data.end());
+
+    system_clock::time_point t1, t2;
+    size_t times = 1;
+    size_t num_ops = query.size();
+    value_type sum = 0;
+    t1 = std::chrono::high_resolution_clock::now();
+
+    for (size_t T = 0; T < times; ++T){
+        for (auto &x : query){
+            auto iter = index.find(x);
+            sum += iter->second;
+        }
+    }
+    t2 = std::chrono::high_resolution_clock::now();
+    long long delta = duration_cast<microseconds>(t2 - t1).count();
+    double QPS = 1000000.0 * num_ops * times / delta;
+
+    std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << std::endl;
+}
+
+template<typename key_type,
+        typename value_type>
+void benchmark_lookup(FILE* file, long long num_keys, long long num_ops, std::string &index_name, std::string &query_dis){
+    vector<key_type> bin_data;
+    vector<pair<key_type, value_type> > data;
+    read_bineary_file<key_type>(file, bin_data, num_keys);
+    pack_KV_dataset(bin_data, data);
+    vector<key_type> query;
+    vector<value_type> answer;
+    if (query_dis == "uniform")
+        generate_query<key_type, value_type, std::uniform_int_distribution<long long> >(data, query, answer, num_ops);
+    else if (query_dis == "zipfian")
+        generate_query_zipf<key_type, value_type>(data, query, answer, num_ops);
+
+    std::sort(data.begin(), data.end(), [](auto const &a, auto const &b){return a.first < b.first;});
+
+    if (index_name == "aex"){
+        aex_query_bench(data, query, answer);
+    }
+    else if (index_name == "stl_map"){
+        stlmap_query_bench(data, query, answer);
+    }
+    else if (index_name == "stx_btree"){
+        stx_btree_query_bench(data, query, answer);
+    }
+    else if (index_name == "alex"){
+        alex_query_bench(data, query, answer);
+    }
+    else if (index_name == "pgm"){
+        pgm_query_bench(data, query, answer);
+    }
+    else if (index_name == "lipp"){
+        lipp_query_bench(data, query, answer);
+    }
+    else if (index_name == "search"){
+        bineary_search_query_bench(data, query, answer);
+    }
+    else if (index_name == "hash"){
+        hash_query_bench(data, query, answer);
+    }
 }

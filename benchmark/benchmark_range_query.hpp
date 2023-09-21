@@ -10,22 +10,26 @@ using namespace std::chrono;
 using aex::aex_map;
 
 template<typename key_type, typename value_type>
-void aex_range_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
+void aex_range_query_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, key_type> > &query){
     aex_map<key_type, value_type> index;
     index.bulk_load(data.data(), data.size());
     system_clock::time_point t1, t2;
     size_t times = 1;
     size_t num_ops = query.size();
     value_type sum = 0;
-    printf("aex map query test...");
+    printf("aex map range query test...");
     t1 = std::chrono::high_resolution_clock::now();
 
     for (size_t T = 0; T < times; ++T){
-        for (size_t i = 0; i < num_ops; ++i){
-            const auto iter = index.find(query[i]);
-            sum += iter.data();
+        for (auto x : query){
+            auto iter = index.find(x.first);
+            while (iter != index.end() && iter.key() <= x.second){
+                sum += iter.data();
+                ++iter;
+            }
         }
     }
+
     t2 = std::chrono::high_resolution_clock::now();
     long long delta = duration_cast<microseconds>(t2 - t1).count();
     double QPS = 1000000.0 * num_ops * times / delta;
@@ -35,24 +39,24 @@ void aex_range_query_bench(vector<pair<key_type, value_type> > &data, vector<key
 }
 
 template<typename key_type, typename value_type>
-void stlmap_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
+void stlmap_range_query_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, key_type>> &query){
     
     std::map<key_type, value_type> index(data.begin(), data.end());
-    vector<value_type> result(data.size());
-
     system_clock::time_point t1, t2;
-
     //size_t cnt = 0;
     size_t M = query.size();
     size_t times = 1;
-    printf("stl map query test...\n");
+    printf("stl map range query test...\n");
     fflush(stdout);
     value_type sum = 0;
     t1 = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < times; ++i){
-        for (const auto& x : query){
-            const auto iter = index.find(x);
-            sum += iter->second;
+        for (auto& x : query){
+            auto iter = index.find(x.first);
+            while (iter != index.end() && iter->first <= x.second){
+                sum += iter->second;
+                ++iter;
+            }
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
@@ -63,22 +67,24 @@ void stlmap_query_bench(vector<pair<key_type, value_type> > &data, vector<key_ty
 }
 
 template<typename key_type, typename value_type>
-void stx_btree_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
-    
+void stx_btree_range_query_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, key_type> > &query){
     stx::btree_map<key_type, value_type> index(data.begin(), data.end());
     vector<value_type> result(data.size());
     system_clock::time_point t1, t2;
 
     size_t num_ops = query.size();
     size_t times = 1;
-    printf("stl map query test...");
+    printf("stx btree range query test...");
     fflush(stdout);
     value_type sum = 0;
     t1 = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < times; ++i){
         for (const auto& x : query){
-            const auto iter = index.find(x);
-            sum += iter->second;
+            typename stx::btree_map<key_type, value_type>::iterator iter = index.find(x.first);
+            while (iter != index.end() && iter.key() <= x.second){
+                sum += iter->second;
+                ++iter;
+            }
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
@@ -88,21 +94,24 @@ void stx_btree_query_bench(vector<pair<key_type, value_type> > &data, vector<key
 }
 
 template<typename key_type, typename value_type>
-void alex_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
-    printf("[alex query benchmark]\n");
+void alex_range_query_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, key_type> > &query){
     alex::Alex<key_type, value_type> index;
     std::cout << data.size() << std::endl;
     index.bulk_load(data.data(), data.size());
 
     [[maybe_unused]] size_t times = 1;
-    std::cout << "alex query test..." << std::endl;
     [[maybe_unused]] value_type sum = 0;
     long long num_ops = query.size();
+    printf("alex range query test...");
+    fflush(stdout);
     auto t1 = std::chrono::high_resolution_clock::now();
     for (size_t T = 0; T < times; ++T){
-        for (int i = 0; i < num_ops; ++i){
-            auto iter = index.find(query[i]);
-            sum += iter.payload();
+        for (auto &x : query){
+            auto iter = index.find(x.first);
+            while (iter != index.end() && iter.key() <= x.second){
+                sum += iter.payload();
+                iter++;
+            }
         }
     }
     auto t2 = std::chrono::high_resolution_clock::now();
@@ -114,28 +123,23 @@ void alex_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type
 }
 
 template<typename key_type, typename value_type>
-void pgm_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
+void pgm_range_query_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, key_type> > &query){
     pgm::DynamicPGMIndex<key_type, value_type> index(data.begin(), data.end());
-    /*
-    for (const auto& x : data){
-        ++cnt;
-        if (cnt % 10000 == 0) std::cout << "cnt=" << cnt << std::endl;
-        index.insert_or_assign(x);
-    }
-    */
-    
     system_clock::time_point t1, t2;
-
     //size_t cnt = 0;
     size_t num_ops = query.size();
     size_t times = 1;
     value_type sum = 0;
-    printf("stl map query test...");
+    printf("pgm range query test...");
     fflush(stdout);
     t1 = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < times; ++i){
-        for (const auto&x : query)
-            sum += index.find(x)->second;
+        for (auto&x : query){
+            auto result = index.range(x.first, x.second);
+            for (auto[k, v] : result){
+                sum += v;
+            }
+        }
     }
     t2 = std::chrono::high_resolution_clock::now();
     long long delta = duration_cast<microseconds>(t2 - t1).count();
@@ -145,25 +149,70 @@ void pgm_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type>
 }
 
 template<typename key_type, typename value_type>
-void bineary_search_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
+void dense_array_range_query_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, key_type> > &query){
     system_clock::time_point t1, t2;
-    size_t times = 1;
-    size_t sz = data.size();
+    //size_t cnt = 0;
     size_t num_ops = query.size();
+    size_t times = 1;
     value_type sum = 0;
-    printf("bineary search query test...");
+    printf("pgm range query test...");
+    fflush(stdout);
     t1 = std::chrono::high_resolution_clock::now();
-
-    for (size_t T = 0; T < times; ++T){
-        for (size_t i = 0; i < num_ops; ++i){
-            size_t pos = std::lower_bound(data.data(), data.data() + sz, std::pair<key_type, value_type>(query[i], -1)) - data.data();
-            sum += data[pos].second;
+    for (size_t i = 0; i < times; ++i){
+        for (auto&x : query){
+            //auto iter = data.lower(x.first);
+            auto iter = std::lower_bound(data.begin(), data.end(), x.first, [](auto x, auto y){return x.first < y;});
+            while (iter != data.end() && iter->first < x.second){
+                sum += iter->second;
+                ++iter;
+            }
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
     long long delta = duration_cast<microseconds>(t2 - t1).count();
-    double QPS = 1000000.0 * num_ops * times / delta;
-
+    double QPS = 1000000.0 * num_ops * times / delta;    
     std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << std::endl;
+}
 
+template<typename key_type, typename value_type>
+void benchmark_range_query(FILE* file, long long num_keys, long long num_ops, double length_ratio, std::string index_name){ //file, num_keys, num_ops, length_ratio
+    vector<key_type> bin_data;
+    vector<pair<key_type, value_type> > data;
+    read_bineary_file<key_type>(file, bin_data, num_keys);
+    pack_KV_dataset(bin_data, data);
+    vector<std::pair<key_type, key_type> > query;
+    vector<value_type> answer;
+    //generate_query<key_type, value_type, std::uniform_int_distribution<long long> >(data, query, answer, num_ops);
+    query.resize(num_ops);
+    vector<long long> query_pos(num_ops);
+    long long length = num_keys * length_ratio;
+    generate_data<long long, std::uniform_int_distribution<long long>, long long>(query_pos, num_ops, 0, data.size() - 1 - length);
+    for (long long i = 0; i < num_ops; ++i){
+        long long pos = query_pos[i];
+        query[i].first = data[pos].first;
+        query[i].second = data[pos + length - 1].first;
+    }
+    std::sort(data.begin(), data.end(), [](auto const &a, auto const &b){return a.first < b.first;});
+
+    if (index_name == "aex"){
+        aex_range_query_bench(data, query);
+    }
+    else if (index_name == "stl_map"){
+        stlmap_range_query_bench(data, query);
+    }
+    else if (index_name == "stx_btree"){
+        stx_btree_range_query_bench(data, query);
+    }
+    else if (index_name == "alex"){
+        alex_range_query_bench(data, query);
+    }
+    else if (index_name == "pgm"){
+        pgm_range_query_bench(data, query);
+    }
+    //else if (index_name == "lipp"){
+    //    lipp_range_query_bench(data, query);
+    //}
+    else if (index_name == "search"){
+        dense_array_range_query_bench(data, query);
+    }
 }

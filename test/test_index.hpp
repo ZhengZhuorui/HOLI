@@ -81,7 +81,7 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
         index.print_stats();
         index.print_detail();
         size_type leaf_num = 0, data_size = 0;
-        for (node_ptr inode = index.head_leaf; inode != nullptr; inode = inode->next){
+        for (node_ptr inode = index.head_leaf; inode != index.empty_leaf; inode = inode->next){
             ++leaf_num;
             data_size += inode->size;
         }
@@ -197,10 +197,12 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     std::sort(data, data + n);
     std::sort(node_data.data(), node_data.data() + n - batch);
     index.bulk_load(node_data.data(), n - batch);
-    index_bak = index;
+    AEX_PRINT("bulk load finish...");
     index.print_stats();
     index.print_detail();
+    index_bak = index;
     for (long long i = 0; i < batch; ++i){
+        AEX_PRINT("i=" << i);
         typename tree::iterator iter;
         bool inserted;
         std::tie(iter, inserted) = index.insert(insert_data[i]);
@@ -223,7 +225,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
         index.print_stats();
         index.print_detail();
         size_type leaf_num = 0, data_size = 0;
-        for (node_ptr inode = index.head_leaf; inode != nullptr; inode = inode->next){
+        for (node_ptr inode = index.head_leaf; inode != index.empty_leaf; inode = inode->next){
             ++leaf_num;
             data_size += inode->size;
         }
@@ -268,7 +270,7 @@ template<typename key_type,
         typename value_type,
         typename traits=aex_default_traits<key_type, value_type>>
 bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
-    AEX_HINT("[test index lookup]");
+    AEX_HINT("[test index erase]");
     typedef mock_aex_tree<key_type, value_type, traits> tree;
     mock_aex_tree<key_type, value_type, traits> index;
     typedef typename tree::node_ptr node_ptr;
@@ -276,22 +278,27 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
     std::vector<key_type> erase_key(batch);
     std::vector<std::pair<key_type, value_type> > left_data(n - batch);
     std::random_shuffle(data, data + n);
-    for (long long i = n - batch; i < n; ++i)
+    for (long long i = 0; i < batch; ++i)
         erase_key[i] = data[i].first;
-    std::copy(data, data + n - batch, left_data.data());
+    std::copy(data + batch, data + n, left_data.data());
     std::sort(data, data + n);
+    std::sort(left_data.data(), left_data.data() + n - batch);
     index.bulk_load(data, n);
+    index.print_stats();
+    index.print_detail();
+    AEX_PRINT("bulk load finish...");
     for (long long i = 0; i < batch; ++i)
         index.erase(erase_key[i]);
+    AEX_PRINT("erase finish...");
 
     {
-        if (static_cast<long long>(index.size()) != n){
-            AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);
+        if (static_cast<long long>(index.size()) != n - batch){
+            AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n - batch);
             return false;
         }
         index.print_stats();
         size_type leaf_num = 0, data_size = 0;
-        for (node_ptr inode = index.head_leaf; inode != nullptr; inode = inode->next){
+        for (node_ptr inode = index.head_leaf; inode != index.empty_leaf; inode = inode->next){
             ++leaf_num;
             data_size += inode->size;
         }
@@ -304,11 +311,23 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
         //AEX_PRINT("slot_size=" << index.begin()._M_node->slot_size);
         for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
             if (left_data[i].first != iter.key()){
-                AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << data[i].first);
+                AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << left_data[i].first);
                 return false;
             }
             if (left_data[i].second != iter.data()){
-                AEX_ERROR("data error, data[" << i << "]=" << iter.data() <<", real data=" << data[i].second);
+                AEX_ERROR("data error, data[" << i << "]=" << iter.data() <<", real data=" << left_data[i].second);
+                return false;
+            }
+        }
+
+        for (auto &x : left_data){
+            auto y = index.find(x.first);
+            if (y == index.end()){
+                AEX_ERROR("query no exists!");
+                return false;
+            }
+            if (y.key() != x.first || y.data() != x.second){
+                AEX_ERROR("query error! query key=" << x.first << ", data=" << x.second << ", get key=" << y.key() << ", data=" << y.data());
                 return false;
             }
         }
@@ -336,13 +355,59 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
 template<typename key_type,
         typename value_type,
         typename traits=aex_default_traits<key_type, value_type> >
-bool test_index_range_query_perf(std::pair<key_type, value_type>* data, long long n, long long batch, double range_length){
+bool test_index_range_query_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
     mock_aex_tree<key_type, value_type, traits> index;
     [[maybe_unused]]typedef typename mock_aex_tree<key_type, value_type, traits>::size_type size_type;
     std::vector<std::pair<key_type, key_type> > query(batch);
     std::vector<size_t> answer;
     std::sort(data, data + n);
     index.bulk_load(data, n);
-    return false;
+    double length_ratio = 0.001;
+    const int times = 1;
+    query.resize(batch);
+    vector<long long> query_pos(batch);
+    long long length = n * length_ratio;
+    generate_data<long long, std::uniform_int_distribution<long long>, long long>(query_pos, batch, 0, n - 1 - length);
+    value_type sum = 0, valid = 0;
+    for (long long i = 0; i < batch; ++i){
+        long long pos = query_pos[i];
+        query[i].first = data[pos].first;
+        query[i].second = data[pos + length - 1].first;
+        for (int j = pos; j < pos + length; ++j)
+            valid += data[j].second;
+    }
+    
+    for (auto x : query){
+        auto iter = index.find(x.first);
+        while (iter != index.end() && iter.key() <= x.second){
+            sum += iter.data();
+            ++iter;
+        }
+    }
+    if (sum != valid){
+        AEX_ERROR("sum=" << sum << ", valid=" << valid);
+        return false;
+    }
+    
+    const int ITER = 1;
+    std::chrono::high_resolution_clock::time_point t1, t2;
+    double delta = 0;
+    t1 = std::chrono::high_resolution_clock::now();
+    for (int T = 0; T < times; ++T){
+        sum = 0;
+        for (auto x : query){
+            auto iter = index.find(x.first);
+            while (iter != index.end() && iter.key() <= x.second){
+                sum += iter.data();
+                ++iter;
+            }
+        }
+    }
+    t2 = std::chrono::high_resolution_clock::now();
+    double OPS = 1.0 * 1e6 * ITER / delta;
+    std::cout << std::scientific;
+    std::cout << std::setprecision(3);  
+    AEX_SUCCESS("erase use time " << delta << "ms, OPS=" << OPS);
+    return true;
 }
 

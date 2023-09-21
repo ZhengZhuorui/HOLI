@@ -40,33 +40,89 @@ public:
     inner_node_ptr parent;
 
     // size: the child node of the node(inner node); the data of the node(data node)
-    // slot_size: the slot of the node
-    slot_type size, slot_size;
+    slot_type size; 
 
-    // prop
-    // level: node height
-    unsigned int prop, level;
-    
-    node_balance_stats balance_stats;
+    unsigned int prop;
 
-    aex_node_base():prev(nullptr), next(nullptr), parent(nullptr), size(0), slot_size(0), prop(0), level(0), balance_stats(){}
+    aex_node_base():prev(nullptr), next(nullptr), parent(nullptr), size(0), prop(0){}
 
-    explicit aex_node_base(slot_type _slot_size):prev(nullptr), next(nullptr), parent(nullptr), size(0), slot_size(_slot_size), prop(0), level(0), balance_stats(){}
-
-    aex_node_base(aex_node_base &other_node):prev(other_node.prev), next(other_node.next), parent(other_node.parent), size(other_node.size), slot_size(other_node.slot_size), 
-                                            prop(other_node.prop), level(other_node.level), balance_stats(other_node.balance_stats){}
-
-    aex_node_base(aex_node_base &&other_node):prev(other_node.prev), next(other_node.next), parent(other_node.parent), size(other_node.size), slot_size(other_node.slot_size), 
-                                            prop(other_node.prop), level(other_node.level), balance_stats(other_node.balance_stats){}
+    aex_node_base(aex_node_base &other_node):prev(other_node.prev), next(other_node.next), parent(other_node.parent), size(other_node.size), prop(other_node.prop){}
+    aex_node_base(aex_node_base &&other_node):prev(other_node.prev), next(other_node.next), parent(other_node.parent), size(other_node.size), prop(other_node.prop){}
 
     aex_node_base& operator = (aex_node_base &other_node){
         this->prev = other_node.prev;this->next = other_node.next;this->parent = other_node.parent;this->size = other_node.size;
-        this->slot_size = other_node.slot_size;this->prop = other_node.prop;this->level = other_node.level;this->balance_stats = other_node.balance_stats;
+        this->prop = other_node.prop;
         return *this;
     }
 
     aex_node_base& operator = (aex_node_base &&other_node){
         this->prev = other_node.prev;this->next = other_node.next;this->parent = other_node.parent;this->size = other_node.size;
+        this->prop = other_node.prop;
+        return *this;
+    }
+};
+
+
+template<typename _Key,
+        typename _Val,
+        typename traits>
+struct aex_dynamic_node_base: public aex_node_base<_Key, _Val, traits>{
+public:
+    typedef _Key key_type;
+
+    typedef _Val value_type;
+
+    typedef aex_tree<key_type, value_type, traits> base_tree;
+
+    typedef typename traits::size_type size_type;
+
+    typedef typename traits::slot_type slot_type;
+
+    typedef aex_node_base<key_type, value_type, traits> base_node;
+
+    typedef base_node* node_ptr;
+
+    typedef aex_dynamic_node_base<key_type, value_type, traits> self;
+
+    typedef aex_inner_node<_Key, _Val, traits> inner_node;
+
+    //typedef typename base_tree::data_node data_node;
+    typedef aex_static_data_node<_Key, _Val, traits> data_node;
+
+    typedef aex_node_balance_stats<typename traits::AllowBalance> node_balance_stats;
+
+    typedef inner_node* inner_node_ptr;
+
+    typedef data_node* data_node_ptr;
+
+    // size: the child node of the node(inner node); the data of the node(data node)
+    // slot_size: the slot of the node
+    slot_type slot_size;
+
+    // prop
+    // level: node height
+    unsigned int level;
+    
+    node_balance_stats balance_stats;
+
+    aex_dynamic_node_base():base_node(), slot_size(0),  level(0), balance_stats(){}
+
+    explicit aex_dynamic_node_base(slot_type _slot_size): base_node(), slot_size(_slot_size), level(0), balance_stats(){}
+
+    aex_dynamic_node_base(aex_dynamic_node_base &other_node):base_node(other_node), slot_size(other_node.slot_size), 
+                                            level(other_node.level), balance_stats(other_node.balance_stats){}
+
+    aex_dynamic_node_base(aex_dynamic_node_base &&other_node):base_node(other_node), slot_size(other_node.slot_size), 
+                                            level(other_node.level), balance_stats(other_node.balance_stats){}
+
+    aex_dynamic_node_base& operator = (aex_dynamic_node_base &other_node){
+        *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
+        this->slot_size = other_node.slot_size;this->prop = other_node.prop;this->level = other_node.level;this->balance_stats = other_node.balance_stats;
+        return *this;
+    }
+
+    aex_dynamic_node_base& operator = (aex_dynamic_node_base &&other_node){
+        *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
         this->slot_size = other_node.slot_size;this->prop = other_node.prop;this->level = other_node.level;this->balance_stats = other_node.balance_stats;
         return *this;
     }
@@ -85,7 +141,7 @@ public:
 template<typename _Key,
         typename _Val,
         typename traits>
-struct aex_inner_node : public aex_node_base<_Key, _Val, traits>{
+struct aex_inner_node : public aex_dynamic_node_base<_Key, _Val, traits>{
 public:
 
     typedef _Key key_type;
@@ -96,13 +152,17 @@ public:
 
     typedef typename traits::slot_type slot_type;
 
-    typedef aex_tree<_Key, _Val, traits> base_tree;
+    typedef aex_tree<key_type, value_type, traits> base_tree;
 
-    typedef aex_node_allocator<_Key, _Val, traits> NodeAllocator;
+    typedef aex_node_allocator<key_type, value_type, traits> NodeAllocator;
 
     typedef aex_node_base<key_type, value_type, traits> base_node;
     
     typedef base_node* node_ptr;
+
+    typedef aex_dynamic_node_base<key_type, value_type, traits> base_dynamic_node;
+
+    typedef base_dynamic_node* dynamic_node_ptr;
 
     typedef aex_bitmap_impl<traits> bitmap_impl;
 
@@ -125,7 +185,7 @@ public:
     typedef inner_node* inner_node_ptr;
 
 
-    explicit aex_inner_node(slot_type _slot_size):base_node(_slot_size){
+    explicit aex_inner_node(slot_type _slot_size):base_dynamic_node(_slot_size){
         this->key_ptr = static_cast<key_type*>(malloc(NodeAllocator::KEY_MEMORY_USED(this->slot_size)));
         this->child_ptr = static_cast<node_ptr*>(malloc(NodeAllocator::PTR_MEMORY_USED(this->slot_size)));
         this->bitmap_ptr = static_cast<bitmap>(malloc(NodeAllocator::BITMAP_MEMORY_USED(this->slot_size)));
@@ -140,14 +200,14 @@ public:
             free(this->bitmap_ptr);
     }
 
-    aex_inner_node(inner_node &other_node):base_node(other_node), model(other_node.model){
+    aex_inner_node(inner_node &other_node):base_dynamic_node(other_node), model(other_node.model){
         AEX_ASSERT(this->slot_size == other_node.slot_size);
         std::copy(other_node.key_ptr, other_node.key_ptr + other_node.slot_size, this->key_ptr);
         std::copy(other_node.child_ptr, other_node.child_ptr + other_node.slot_size, this->child_ptr);
         memcpy(this->bitmap_ptr, other_node.bitmap_ptr, NodeAllocator::BITMAP_MEMORY_USED(other_node.slot_size));
     }
 
-    aex_inner_node(inner_node &&other_node):base_node(other_node), model(other_node.model){
+    aex_inner_node(inner_node &&other_node):base_dynamic_node(other_node), model(other_node.model){
         if (this->key_ptr != nullptr)
             free(this->key_ptr);
         if (this->child_ptr != nullptr)
@@ -173,7 +233,7 @@ public:
 
     aex_inner_node& operator = (aex_inner_node &other_node){
         AEX_ASSERT(this->slot_size == other_node.slot_size);
-        *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
+        *static_cast<dynamic_node_ptr>(this) = static_cast<base_dynamic_node>(other_node);
         model = other_node.model;
         std::copy(other_node.key_ptr, other_node.key_ptr + other_node.slot_size, this->key_ptr);
         std::copy(other_node.child_ptr, other_node.child_ptr + other_node.slot_size, this->child_ptr);
@@ -182,7 +242,7 @@ public:
     }
 
     aex_inner_node& operator = (aex_inner_node &&other_node){
-        *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
+        *static_cast<dynamic_node_ptr>(this) = static_cast<base_dynamic_node>(other_node);
         model = other_node.model;
         if (this->key_ptr != nullptr)
             free(this->key_ptr);
@@ -198,8 +258,9 @@ public:
         other_node.bitmap_ptr = nullptr;
         if (IS_ML_NODE(this)){
             for (slot_type i = 0; i < this->slot_size; ++i)
-            if (bitmap_impl::at(this->bitmap_ptr, i))
+            if (bitmap_impl::at(this->bitmap_ptr, i)){
                 this->child_ptr[i]->parent = this;
+            }
         }
         else{
             for (slot_type i = 0; i < this->size; ++i)
@@ -226,6 +287,8 @@ public:
         this->size = n;
         std::copy(key, key + n, this->key_ptr);
         std::copy(child, child + n, this->child_ptr);
+        std::fill(this->key_ptr + n, this->key_ptr + this->slot_size, std::numeric_limits<key_type>::max());
+        std::fill(this->child_ptr + n, this->child_ptr + this->slot_size, child[n - 1]);
         for (slot_type i = 0; i < n; ++i)
             child[i]->parent = this;
     }
@@ -309,24 +372,31 @@ public:
     }
 
     // erase a node
-    bool erase(node_ptr node){
+    void erase(node_ptr node){
         slot_type pos = this->at(node);
-        if (pos == this->slot_size)
-            return false;
-        --this->size;
         if (IS_ML_NODE(this)){
+            AEX_ASSERT(pos != this->slot_size);
+            AEX_ASSERT(bitmap_impl::at(this->bitmap_ptr, pos) == true);
             bitmap_impl::set_zero(this->bitmap_ptr, pos);
             slot_type prev_pos = this->prev_item(pos);
             if (pos < this->slot_size - 1){
                 std::fill(this->key_ptr + prev_pos + 1, this->key_ptr + pos + 1, this->key_ptr[pos + 1]);
                 std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + pos + 1, this->child_ptr[pos + 1]);
             }
+            else{
+                std::fill(this->key_ptr + prev_pos + 1, this->key_ptr + pos + 1, std::numeric_limits<key_type>::max());
+                if (prev_pos >= 0)
+                    std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + pos + 1, this->child_ptr[prev_pos]);
+            }
         }
         else{
+            AEX_ASSERT(pos != this->size);
             std::move(this->key_ptr + pos + 1, this->key_ptr + this->size, this->key_ptr + pos);
             std::move(this->child_ptr + pos + 1, this->child_ptr + this->size, this->child_ptr + pos);
+            this->key_ptr[this->size - 1] = std::numeric_limits<key_type>::max();
+            this->child_ptr[this->size - 1] = this->child_ptr[this->size - 2];
         }
-        return true;
+        --this->size;
     }
 
     // return the slot of child node
@@ -344,13 +414,13 @@ public:
                 return i;
         }
         else{
-            if (this->size > traits::BINEARY_SEARCH_SIZE){
-                slot_type pos = std::lower_bound(this->key_ptr, this->key_ptr + this->size, node_key) - this->key_ptr;
-                return (pos == this->size) ? this->slot_size : pos;
-            }
-            else{
+            //if (this->size > traits::BINEARY_SEARCH_SIZE){
+            //    slot_type pos = std::lower_bound(this->key_ptr, this->key_ptr + this->size, node_key) - this->key_ptr;
+            //    return (pos == this->size) ? this->slot_size : pos;
+            //}
+            //else{
                 return std::find(child, child + this->size, node) - child;
-            }
+            //}
         }
         return this->slot_size;
     }
@@ -363,6 +433,13 @@ public:
     // return the last item position.
     // inline size_type last() const{ return this->slot_size - 1;}
     inline slot_type last() const {
+        //if (IS_ML_NODE(this)){
+        //    for (slot_type i = this->slot_size -  1; i >= 0; --i)
+        //    if (bitmap_impl::at(this->bitmap_ptr, i))
+        //        return false;
+        //}
+        //else
+        //    return this->size - 1;
         return (this->prop & ML_NODE) ? this->slot_size : this->size - 1;
     }
     
@@ -420,8 +497,8 @@ public:
         }
         else{
             slot_type pos = std::lower_bound(this->key_ptr, this->key_ptr + this->size, x) - this->key_ptr;
-            if (pos == this->size)
-                return this->slot_size;
+            //if (pos == this->size)
+            //    return this->slot_size;
             return pos;
         }
     }
@@ -444,7 +521,7 @@ public:
 template<typename _Key,
         typename _Val,
         typename traits>
-class aex_data_node : public aex_node_base<_Key, _Val, traits>{
+class aex_data_node : public aex_dynamic_node_base<_Key, _Val, traits>{
 public:
 
     typedef aex_node_allocator<_Key, _Val, traits> NodeAllocator;
@@ -452,6 +529,10 @@ public:
     typedef aex_node_base<_Key, _Val, traits> base_node;
     
     typedef base_node* node_ptr;
+
+    typedef aex_dynamic_node_base<_Key, _Val, traits> base_dynamic_node;
+    
+    typedef base_dynamic_node* base_dynamic_node_ptr;
 
     typedef aex_data_node<_Key, _Val, traits> data_node;
 
@@ -477,7 +558,7 @@ public:
 
     aex_data_node(){}
 
-    explicit aex_data_node(slot_type _slot_size):base_node(_slot_size){
+    explicit aex_data_node(slot_type _slot_size):base_dynamic_node(_slot_size){
         this->key = static_cast<key_type*>(malloc(NodeAllocator::KEY_MEMORY_USED(_slot_size)));
         this->data = static_cast<value_type*>(malloc(NodeAllocator::KEY_MEMORY_USED(_slot_size)));
     }
@@ -489,13 +570,13 @@ public:
             free(this->data);
     }
 
-    aex_data_node(aex_data_node &other_node):base_node(other_node), model(other_node.model){
+    aex_data_node(aex_data_node &other_node):base_dynamic_node(other_node), model(other_node.model){
         AEX_ASSERT(this->slot_size == other_node.slot_size);
         std::copy(other_node.key, other_node.key + other_node.size, this->key);
         std::copy(other_node.data, other_node.data + other_node.size, this->data);
     }
 
-    aex_data_node(aex_data_node &&other_node):base_node(other_node), model(other_node.model){
+    aex_data_node(aex_data_node &&other_node):base_dynamic_node(other_node), model(other_node.model){
         if (this->key != nullptr)
             free(this->key);
         if (this->data != nullptr)
@@ -508,7 +589,7 @@ public:
 
     aex_data_node& operator = (aex_data_node &other_node){
         AEX_ASSERT(this->slot_size == other_node.slot_size);
-        *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
+        *static_cast<base_dynamic_node_ptr>(this) = static_cast<base_dynamic_node>(other_node);
         model = other_node.model;
         std::copy(other_node.key, other_node.key + other_node.size, this->key);
         std::copy(other_node.data, other_node.data + other_node.size, this->data);
@@ -516,7 +597,7 @@ public:
     }
 
     aex_data_node& operator = (aex_data_node &&other_node){
-        *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
+        *static_cast<node_ptr>(this) = static_cast<base_dynamic_node>(other_node);
         model = other_node.model;
         if (this->key != nullptr)
             free(this->key);
@@ -579,6 +660,7 @@ public:
     }
 
     inline bool erase(const slot_type pos){
+        AEX_ASSERT(pos < this->size);
         std::move(this->key + pos + 1, this->key + this->size, this->key + pos);
         std::move(this->data + pos + 1, this->data + this->size, this->data + pos);
         this->size--;
@@ -658,7 +740,6 @@ public:
     }
 
     aex_static_data_node& operator = (aex_static_data_node &other_node){
-        AEX_ASSERT(this->slot_size == other_node.slot_size);
         *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
         std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
         std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
@@ -712,9 +793,9 @@ public:
     }
 
     inline bool erase(const slot_type pos){
+        AEX_ASSERT(pos < this->size);
         std::move(this->key + pos + 1, this->key + this->size, this->key + pos);
         std::move(this->data + pos + 1, this->data + this->size, this->data + pos);
-        this->key[this->size] = std::numeric_limits<key_type>::max();
         this->size--;
         return true;
     }

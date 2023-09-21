@@ -72,7 +72,9 @@ public:
 
     inline const_iterator find(const key_type &key) const { return _m.find(key); }
 
-    inline void range_query(const key_type &L, const key_type &R, std::vector<std::pair<key_type, value_type>>& answer){ return _m.range_query(L, R, answer);}
+    inline void range_query(const key_type &lower_key, const key_type &upper_key, std::vector<std::pair<key_type, value_type>>& answer){
+        return _m.range_query(lower_key, upper_key, answer);
+    }
 
     inline size_t erase(const key_type &key){ return _m.erase(key);}
     
@@ -125,6 +127,10 @@ public:
         return _m.equal_range(key);
     }
     */
+
+    inline size_type memory_used()const{
+        return _m._memory_used();
+    }
 
     #ifdef AEX_DEBUG
     void set_debug_level(int level){

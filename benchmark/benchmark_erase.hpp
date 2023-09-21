@@ -12,22 +12,22 @@
 using namespace std::chrono;
 
 template<typename key_type, typename value_type>
-void aex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, value_type> > &insert_data){
+void aex_erase_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &erase_data){
     
     system_clock::time_point t1, t2;
 
     //size_t cnt = 0;
-    size_t M = insert_data.size();
+    size_t M = erase_data.size();
     size_t times = 1;
-    printf("aex insert test...\n");
+    printf("aex erase test...\n");
     fflush(stdout);
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
         aex::aex_map<key_type, value_type> index;
         index.bulk_load(data.data(), data.size());
         t1 = std::chrono::high_resolution_clock::now();
-        for (const auto& x : insert_data){
-            index.insert(x);
+        for (const auto& x : erase_data){
+            index.erase(x);
         }
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
@@ -40,20 +40,20 @@ void aex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key
 }
 
 template<typename key_type, typename value_type>
-void stlmap_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, value_type> > & insert_data){
+void stlmap_erase_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &erase_data){
     
     system_clock::time_point t1, t2;
 
-    size_t M = insert_data.size();
+    size_t M = erase_data.size();
     size_t times = 1;
-    printf("stl map insert test...\n");
+    printf("stl map erase test...\n");
     fflush(stdout);
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
         std::map<key_type, value_type> index(data.begin(), data.end());
         t1 = std::chrono::high_resolution_clock::now();    
-        for (const auto& x : insert_data){
-            index.insert(x);
+        for (const auto& x : erase_data){
+            index.erase(x);
         }
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
@@ -65,21 +65,21 @@ void stlmap_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<
 }
 
 template<typename key_type, typename value_type>
-void stx_btree_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, value_type> > &insert_data){
+void stx_btree_erase_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &erase_data){
     
     system_clock::time_point t1, t2;
 
-    size_t M = insert_data.size();
+    size_t M = erase_data.size();
     size_t times = 1;
-    printf("stx btree insert test...\n");
+    printf("stx btree erase test...\n");
     fflush(stdout);
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
         stx::btree_map<key_type, value_type> index(data.begin(), data.end());
         std::cout << "bulk load finish" << std::endl;
         t1 = std::chrono::high_resolution_clock::now();    
-        for (const auto& x : insert_data){
-            index.insert(x);
+        for (const auto& x : erase_data){
+            index.erase(x);
         }
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
@@ -91,21 +91,21 @@ void stx_btree_insert_bench(vector<pair<key_type, value_type> > &data, vector<pa
 }
 
 template<typename key_type, typename value_type>
-void alex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, value_type> > &insert_data){
+void alex_erase_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &erase_data){
     
     system_clock::time_point t1, t2;
 
     //size_t cnt = 0;
-    size_t M = insert_data.size();
+    size_t M = erase_data.size();
     size_t times = 1;
-    printf("alex insert test...\n");
+    printf("alex erase test...\n");
     fflush(stdout);
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
         alex::Alex<key_type, value_type> index(data.begin(), data.end());
         t1 = std::chrono::high_resolution_clock::now();    
-        for (const auto& x : insert_data){
-            index.insert(x);
+        for (const auto& x : erase_data){
+            index.erase(x);
         }
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
@@ -117,20 +117,19 @@ void alex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<ke
 }
 
 template<typename key_type, typename value_type>
-void pgm_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, value_type> > &insert_data){
-    assert(std::is_integral<key_type>::value==true);
+void pgm_erase_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &erase_data){
     system_clock::time_point t1, t2;
     //size_t cnt = 0;
-    size_t M = insert_data.size();
+    size_t M = erase_data.size();
     size_t times = 1;
-    printf("pgm insert test...\n");
+    printf("pgm erase test...\n");
     fflush(stdout);
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
         pgm::DynamicPGMIndex<key_type, value_type> index(data.begin(), data.end());
         t1 = std::chrono::high_resolution_clock::now();    
-        for (const auto& x : insert_data){
-            index.insert_or_assign(x.first, x.second);
+        for (const auto& x : erase_data){
+            index.erase(x);
         }
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
@@ -142,38 +141,38 @@ void pgm_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key
 }
 
 template<typename key_type, typename value_type>
-void lipp_insert_bench(vector<pair<key_type, value_type>> &data, vector<pair<key_type, value_type>> &insert_data){
-    system_clock::time_point t1, t2;
-    //size_t cnt = 0;
-    size_t M = insert_data.size();
-    size_t times = 1;
-    printf("lipp insert test...\n");
-    fflush(stdout);
-    long long delta = 0;
-    for (size_t i = 0; i < times; ++i){
-        //pgm::DynamicPGMIndex<key_type, value_type> index(data.begin(), data.end());
-        LIPP<key_type, value_type> index;
-        index.bulk_load(data.data(), data.size());
-        t1 = std::chrono::high_resolution_clock::now();    
-        for (const auto& x : insert_data){
-            index.insert(x.first, x.second);
-        }
-        t2 = std::chrono::high_resolution_clock::now();
-        delta += duration_cast<microseconds>(t2 - t1).count();
-    }
-    float QPS = 1.0 * 1e6 * M * times / delta;
-    
-    printf("used time=%lld ms, QPS=%.2f\n", delta, QPS);
-    fflush(stdout);
+void lipp_erase_bench(vector<pair<key_type, value_type>> &data, vector<key_type> &erase_data){
+    // system_clock::time_point t1, t2;
+    // //size_t cnt = 0;
+    // size_t M = erase_data.size();
+    // size_t times = 1;
+    // printf("lipp erase test...\n");
+    // fflush(stdout);
+    // long long delta = 0;
+    // for (size_t i = 0; i < times; ++i){
+    //     //pgm::DynamicPGMIndex<key_type, value_type> index(data.begin(), data.end());
+    //     LIPP<key_type, value_type> index;
+    //     index.bulk_load(data.data(), data.size());
+    //     t1 = std::chrono::high_resolution_clock::now();    
+    //     for (const auto& x : erase_data){
+    //         index.erase(x);
+    //     }
+    //     t2 = std::chrono::high_resolution_clock::now();
+    //     delta += duration_cast<microseconds>(t2 - t1).count();
+    // }
+    // float QPS = 1.0 * 1e6 * M * times / delta;
+    // 
+    // printf("used time=%lld ms, QPS=%.2f\n", delta, QPS);
+    // fflush(stdout);
 }
 
 template<typename key_type, typename value_type>
-void hash_insert_bench(vector<pair<key_type, value_type>> &data, vector<pair<key_type, value_type>> &insert_data){
+void hash_erase_bench(vector<pair<key_type, value_type>> &data, vector<key_type> &erase_data){
     system_clock::time_point t1, t2;
     //size_t cnt = 0;
-    size_t M = insert_data.size();
+    size_t M = erase_data.size();
     size_t times = 1;
-    printf("hash insert test...\n");
+    printf("hash erase test...\n");
     fflush(stdout);
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
@@ -181,8 +180,8 @@ void hash_insert_bench(vector<pair<key_type, value_type>> &data, vector<pair<key
         //LIPP<key_type, value_type> index
         std::unordered_map<key_type, value_type> index(data.begin(), data.end());
         t1 = std::chrono::high_resolution_clock::now();    
-        for (const auto& x : insert_data){
-            index.insert(std::make_pair(x.first, x.second));
+        for (const auto& x : erase_data){
+            index.erase(x);
         }
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
@@ -195,36 +194,38 @@ void hash_insert_bench(vector<pair<key_type, value_type>> &data, vector<pair<key
 
 template<typename key_type,
         typename value_type>
-void benchmark_insert(FILE* file, long long num_keys, long long num_ops, std::string &index_name){
+void benchmark_erase(FILE* file, long long num_keys, long long num_ops, std::string &index_name){
     vector<key_type> bin_data;
     vector<pair<key_type, value_type> > data;
     read_bineary_file<key_type>(file, bin_data, num_keys + num_ops);
     pack_KV_dataset(bin_data, data);
 
-    vector<pair<key_type, value_type> > insert_data(num_ops);
+    //vector<pair<key_type, value_type> > erase_data(num_ops);
+    std::vector<key_type> erase_data;
     std::random_shuffle(data.data(), data.data() + num_keys + num_ops);
-    copy(data.data() + num_keys, data.data() + num_keys + num_ops, insert_data.data());
-    data.resize(num_keys);
+    //copy(data.data() + num_keys, data.data() + num_keys + num_ops, erase_data.data());
+    for (long long i = 0; i < num_ops; ++i)
+        erase_data[i] = data[i].first;
     std::sort(data.data(), data.data() + num_keys);
     if (index_name == "aex"){
-        aex_insert_bench(data, insert_data);
+        aex_erase_bench(data, erase_data);
     }
     else if (index_name == "stl_map"){
-        stlmap_insert_bench(data, insert_data);
+        stlmap_erase_bench(data, erase_data);
     }
     else if (index_name == "stx_btree"){
-        stx_btree_insert_bench(data, insert_data);
+        stx_btree_erase_bench(data, erase_data);
     }
     else if (index_name == "alex"){
-        alex_insert_bench(data, insert_data);
+        alex_erase_bench(data, erase_data);
     }
     else if (index_name == "pgm"){
-        pgm_insert_bench(data, insert_data);
+        pgm_erase_bench(data, erase_data);
     }
     else if (index_name == "lipp"){
-        lipp_insert_bench(data, insert_data);
+        lipp_erase_bench(data, erase_data);
     }
     else if (index_name == "hash"){
-        hash_insert_bench(data, insert_data);
+        hash_erase_bench(data, erase_data);
     }
 }

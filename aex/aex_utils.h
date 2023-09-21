@@ -65,16 +65,15 @@ inline std::string PURPLE_GREEN_FONT(std::string str){ return PURPLE_FONT_TAG + 
 enum node_property{
     LEAF=0x1,
     ML_NODE=0x2,
-    CHECK_MERGE=0x4,
-    CHECK_SPLIT=0x8,
-    APPEND_NODE=0x10,
-    SORTED_NODE=0x20,
+    STATIC_NODE=0x4,
 };
 
 template<typename _NodePtr>
 bool IS_ML_NODE(_NodePtr node){return ((node)->prop & node_property::ML_NODE) != 0;}
 template<typename _NodePtr>
 bool IS_LEAF_NODE(_NodePtr node){return ((node)->prop & node_property::LEAF) != 0;}
+template<typename _NodePtr>
+bool IS_STATIC_NODE(_NodePtr node){return ((node)->prop & node_property::STATIC_NODE) != 0;}
 template<typename _NodePtr>
 void SET_FLAG(_NodePtr node, unsigned int flag){(node)->prop |= flag; }
 template<typename _NodePtr>

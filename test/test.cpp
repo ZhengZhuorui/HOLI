@@ -146,7 +146,10 @@ bool test(map<string, string> &flags){
             return test_index_lookup_perf(data.data(), num_keys, batch);
         }
         if (func == "range_query"){
-
+            long long batch = stoll(flags["batch"]);
+            std::vector<std::pair<T, T> > data;
+            pack_KV_dataset(bin_data, data);
+            return test_index_range_query_perf(data.data(), num_keys, batch);
         }
         if (func == "erase"){
             long long batch = stoll(flags["batch"]);
@@ -159,12 +162,22 @@ bool test(map<string, string> &flags){
             double rw_ratio = stod(flags["read_ratio"]);
             std::vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
-            return test_index_RW_perf(data.data(), num_keys, batch, rw_ratio);
+            return test_index_mix_perf(data.data(), num_keys, batch, rw_ratio);
         }
         if (func == "demo"){
             vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
             return test_index(data.data(), data.size());
+        }
+        if (func == "tot"){
+            vector<std::pair<T, T>> data;
+            pack_KV_dataset(bin_data, data);
+            double read_nums = stoll(flags["read_nums"]);
+            double write_nums = stoll(flags["write_nums"]);
+            double erase_nums = stoll(flags["erase_nums"]);
+            AEX_ASSERT(write_nums <= num_keys);
+            AEX_ASSERT(erase_nums <= num_keys - write_nums);
+            return test_index_total_perf(data.data(), num_keys, read_nums, write_nums, erase_nums);
         }
     }
     else if (unit == "con_index"){

@@ -3,11 +3,11 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::update_node_list_frequency(node_ptr node, node_ptr* node_list, slot_type n){
+void aex_tree<_Key, _Val, traits>::update_node_list_frequency(dynamic_node_ptr node, node_ptr* node_list, slot_type n){
     unsigned long long recent_udpate_timestamp = node->balance_stats.get_recent_update_timestamp();
     double train_times = node->balance_stats.get_train_times(), write_times = node->balance_stats.get_write_times();
     for (slot_type i = 0; i < n; ++i){
-        node_list[i]->balance_stats = node_balance_stats(recent_udpate_timestamp,
+        ((dynamic_node_ptr)node_list[i])->balance_stats = node_balance_stats(recent_udpate_timestamp,
                                                         train_times, 
                                                         write_times * (1.0 * node_list[i]->size / node->size));
     }
@@ -15,9 +15,6 @@ void aex_tree<_Key, _Val, traits>::update_node_list_frequency(node_ptr node, nod
 
 template<typename _Key, typename _Val, typename traits>
 bool aex_tree<_Key, _Val, traits>::check_insert_merge(node_ptr* node_buffer, slot_type size){
-    if (std::is_same<aex_static_data_node<key_type, value_type, traits>, data_node>::value == false) 
-        return false;
-
     // delta cost
     // 1. write cost 
     // 2. read cost
@@ -32,6 +29,8 @@ bool aex_tree<_Key, _Val, traits>::check_insert_merge(node_ptr* node_buffer, slo
     size_type tot_size = 0;
     inner_node_ptr parent = node_buffer[0]->parent;
     AEX_ASSERT(parent != nullptr);
+    if (node_buffer[0]->level <= 1)
+        return false;
     parent->balance_stats.update_frequency(this->balance_stats.get_timestamp());
     for (slot_type i = 0; i < size; ++i){
         node_buffer[i]->balance_stats.update_frequency(this->balance_stats.get_timestamp());
@@ -70,11 +69,10 @@ bool aex_tree<_Key, _Val, traits>::check_insert_merge(node_ptr* node_buffer, slo
 }
 
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::merge_nodes(data_node_ptr* node_buffer, slot_type size){
+void aex_tree<_Key, _Val, traits>::merge_nodes(dynamic_data_node_ptr* node_buffer, slot_type size){
     //AEX_ASSERT(std::is_same<aex_data_node<key_type, value_type, traits>, data_node>::value == true);
-    if (std::is_same<aex_data_node<key_type, value_type, traits>, data_node>::value){
-        AEX_ASSERT(0==1);
-    }
+    AEX_ASSERT((std::is_same<data_node, dynamic_data_node>::value));
+
     #ifdef AEX_EXPERIMENT
     ++this->opt_stats.data_node_merge_cnt;
     #endif
@@ -172,7 +170,7 @@ inline bool aex_tree<_Key, _Val, traits>::check_split(inner_node_ptr node){
     // delta cost
     // 1. delta all read cost
     // 3. delta SMO cost
-    if (traits::AllowBalance::value == false)
+    if constexpr (traits::AllowBalance::value == false)
         return false;
     double lambda_timestamp = this->balance_stats.get_timestamp();
     double train_pro = 1.0 * node->balance_stats.get_train_times() / lambda_timestamp;
@@ -186,13 +184,14 @@ inline bool aex_tree<_Key, _Val, traits>::check_split(inner_node_ptr node){
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline bool aex_tree<_Key, _Val, traits>::check_split(data_node_ptr node, bool is_forced){
+inline bool aex_tree<_Key, _Val, traits>::check_split(dynamic_data_node_ptr node, bool is_forced){
     // delta cost
     // 1. delta write cost
     // 2. delta all read cost
     // 3. average SMO cost
-    if (traits::AllowBalance::value == false)
+    if constexpr (traits::AllowBalance::value == false)
         return false;
+    AEX_ASSERT((std::is_same<data_node, dynamic_data_node>::value == true));
     double lambda_timestamp = this->balance_stats.get_timestamp();
     node->balance_stats.update_frequency(this->balance_stats.get_timestamp());
     double write_pro = 1.0 * node->balance_stats.get_write_times() / lambda_timestamp;

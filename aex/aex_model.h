@@ -656,7 +656,6 @@ public:
         for (unsigned int max_segment_num = 1; max_segment_num <= static_cast<unsigned int>(std::min(traits::MAX_SEGMENT_NUM, n / 8)); max_segment_num <<= 1){
             slot_type seg_len = static_cast<slot_type>(ceil(1.0 * (n - 1) / max_segment_num));
             slot_type start_pos = 0;
-            int seg_nums = 0;
             for (unsigned int i = 0; i < max_segment_num; ++i){
                 slot_type end_pos = std::min(n - 2, start_pos + seg_len - 1);
                 start[i] = start_pos;
@@ -685,42 +684,34 @@ public:
             //    AEX_PRINT("segment[" << i << "] start=" << start[i] << ", end=" << end[i] << ", segment_slope=" << segment_slope[i]);
 
             for (unsigned int i = 0; i < max_segment_num; ++i){
-                if (start[i] == end[i]){
-                    if (i < max_segment_num - 1){
-                        start[i + 1]--;
-                    }
-                    else{
-                        AEX_ASSERT(segment_slope[i - 1] < segment_slope[i]);
-                        end[i - 1]++;
-                        this->args.end[seg_nums - 1] = key[end[i] + 1];
-                    }
-                }
-                else{
-                    this->args.slope[seg_nums] = segment_slope[i];
-                    this->args.end[seg_nums] = key[end[i] + 1];
-                    seg_nums++;
-                }
+                this->args.slope[i] = segment_slope[i];
+                this->args.end[i] = key[end[i] + 1];
             }
 
             double S = 0, last_key = key[0];
-            for (int i = 0; i < seg_nums; last_key = this->args.end[i], ++i)
+            for (unsigned int i = 0; i < max_segment_num; last_key = this->args.end[i], ++i)
                 S += 1.0 * (this->args.end[i] - last_key) * this->args.slope[i];
 
             if (S > 1){
                 continue;
             }
             double left_slope = (1 - S) / (key[n - 1] - key[0]);
-            for (int i = 0; i < seg_nums; ++i)
+            for (unsigned int i = 0; i < max_segment_num; ++i)
                 this->args.slope[i] += left_slope;
 
             S = 0;
             last_key = key[0];
-            for (int i = 0; i < seg_nums; last_key = this->args.end[i], ++i)
+            for (unsigned int i = 0; i < max_segment_num; last_key = this->args.end[i], ++i)
                 S += 1.0 * (this->args.end[i] - last_key) * this->args.slope[i];
             
-            AEX_ASSERT(abs(S - 1) < 1e-6);
+            if (!(std::abs(S - 1) < 1e-6)){
+                AEX_PRINT("S=" << S << ", n=" << n << ", slot_size=" << slot_size << ", max_segment_num=" << max_segment_num);
+                for (unsigned int i = 0; i < max_segment_num; ++i)
+                    AEX_PRINT("i=" << i << "end=" << this->args.end[i] << ", slope=" << this->args.slope[i] << ", node start=" << start[i] << ", end=" << end[i]);
+            }
+            AEX_ASSERT(std::abs(S - 1) < 1e-6);
 
-            for (int i = 0; i < seg_nums - 1; ++i)
+            for (unsigned int i = 0; i < max_segment_num - 1; ++i)
                 this->args.slope[i] -= this->args.slope[i + 1];
             
             args.seg_nums = max_segment_num;

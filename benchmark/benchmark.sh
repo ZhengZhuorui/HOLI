@@ -36,6 +36,8 @@
 ./benchmark --key_type=float --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./benchmark --key_type=float --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
+./benchmark --key_type=float --index=hash --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
 # longlat
 
 

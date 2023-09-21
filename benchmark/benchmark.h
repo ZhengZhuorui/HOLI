@@ -10,9 +10,12 @@
 //#include "alex_map.h"
 
 #include "benchmark_insert.hpp"
+#include "benchmark_erase.hpp"
 #include "benchmark_query.hpp"
 #include "benchmark_build.hpp"
+#include "benchmark_range_query.hpp"
 #include "benchmark_other.hpp"
+#include "benchmark_mix.hpp"
 /*
 template<typename key_type, typename value_type>
 void aex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, value_type> > &insert_data);

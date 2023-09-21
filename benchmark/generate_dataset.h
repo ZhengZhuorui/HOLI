@@ -73,13 +73,15 @@ void generate_unique_dataset(vector<key_type> &data, const long long n, ArgsType
     Distribution distribution(a, b);
     if (num < n){
         std::unordered_set<key_type> st;
-        for (long long i = 0; i < num; ++i) st.insert(data[i]);
+        for (long long i = 0; i < num; ++i)
+            st.insert(data[i]);
         for (long long i = num; i < n; ++i){
-            key_type random_x;
-            do{
+            key_type random_x = static_cast<key_type>(distribution(generator));;
+            while(st.find(random_x) != st.end()){
                 random_x = static_cast<key_type>(distribution(generator));
-            }while(st.find(random_x) == st.end());
+            }
             st.insert(random_x);
+            data[i] = random_x;
         }
     }
     std::random_shuffle(data.data(), data.data() + n);

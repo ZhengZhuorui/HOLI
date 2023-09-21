@@ -42,13 +42,8 @@ public:
     self& operator++(){
         ++offset;
         if (offset >= _M_node->size){
-            if (_M_node->next != nullptr){
-                offset = 0;
-                _M_node = static_cast<data_node_ptr>(_M_node->next);
-            }
-            else{
-                offset = _M_node->size;
-            }
+            offset = 0;
+            _M_node = static_cast<data_node_ptr>(_M_node->next);
         }
         return *this;
     }
@@ -57,13 +52,8 @@ public:
         self tmp = *this;
         ++offset;
         if (offset >= _M_node->size){
-            if (_M_node->next != nullptr){
-                offset = 0;
-                _M_node = static_cast<data_node_ptr>(_M_node->next);
-            }
-            else{
-                offset = _M_node->size;
-            }
+            offset = 0;
+            _M_node = static_cast<data_node_ptr>(_M_node->next);
         }
         return tmp;
     }
@@ -180,13 +170,8 @@ public:
     self& operator++(){
         ++offset;
         if (offset >= _M_node->size){
-            if (_M_node->next != nullptr){
-                offset = 0;
-                _M_node = static_cast<data_node_ptr>(_M_node->next);
-            }
-            else{
-                offset = _M_node->size;
-            }
+            offset = 0;
+            _M_node = static_cast<data_node_ptr>(_M_node->next);
         }
         return *this;
     }
@@ -195,13 +180,8 @@ public:
         self tmp = *this;
         ++offset;
         if (offset >= _M_node->size){
-            if (_M_node->next != nullptr){
-                offset = 0;
-                _M_node = static_cast<data_node_ptr>(_M_node->next);
-            }
-            else{
-                offset = _M_node->size;
-            }
+            offset = 0;
+            _M_node = static_cast<data_node_ptr>(_M_node->next);
         }
         return tmp;
     }
@@ -312,13 +292,8 @@ public:
     self& operator--(){
         ++offset;
         if (offset >= _M_node->size){
-            if (_M_node->next != nullptr){
-                offset = 0;
-                _M_node = static_cast<data_node_ptr>(_M_node->next);
-            }
-            else{
-                offset = _M_node->size;
-            }
+            offset = 0;
+            _M_node = static_cast<data_node_ptr>(_M_node->next);
         }
         return *this;
     }
@@ -327,13 +302,8 @@ public:
         self tmp = *this;
         ++offset;
         if (offset >= _M_node->size){
-            if (_M_node->next != nullptr){
-                offset = 0;
-                _M_node = static_cast<data_node_ptr>(_M_node->next);
-            }
-            else{
-                offset = _M_node->size;
-            }
+            offset = 0;
+            _M_node = static_cast<data_node_ptr>(_M_node->next);
         }
         return tmp;
     }
@@ -448,13 +418,8 @@ public:
     self& operator--(){
         ++offset;
         if (offset >= _M_node->size){
-            if (_M_node->next != nullptr){
-                offset = 0;
-                _M_node = static_cast<data_node_ptr>(_M_node->next);
-            }
-            else{
-                offset = _M_node->size;
-            }
+            offset = 0;
+            _M_node = static_cast<data_node_ptr>(_M_node->next);
         }
         return *this;
     }
@@ -463,13 +428,8 @@ public:
         self tmp = *this;
         ++offset;
         if (offset >= _M_node->size){
-            if (_M_node->next != nullptr){
-                offset = 0;
-                _M_node = static_cast<data_node_ptr>(_M_node->next);
-            }
-            else{
-                offset = _M_node->size;
-            }
+            offset = 0;
+            _M_node = static_cast<data_node_ptr>(_M_node->next);
         }
         return tmp;
     }

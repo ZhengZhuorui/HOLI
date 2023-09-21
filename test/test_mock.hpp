@@ -42,7 +42,11 @@ public:
     typedef typename inner_node::Model inner_node_model;
 
     // data_node:
-    //typedef typename aex::aex_data_node<_Key, _Val, traits> data_node;
+    typedef typename parent::dynamic_data_node dynamic_data_node;
+    typedef typename parent::static_data_node static_data_node;
+    typedef typename parent::dynamic_data_node_ptr dynamic_data_node_ptr;
+    typedef typename parent::static_data_node_ptr static_data_node_ptr;
+
     typedef typename parent::data_node data_node;
 
     typedef data_node* data_node_ptr;
@@ -64,9 +68,9 @@ public:
     }
     
     void dfs_detail(node_ptr node){
-        ++msg.level_node_nums[node->level];
-
+        if (node == nullptr) return;
         if (IS_LEAF_NODE(node)){
+            ++msg.level_node_nums[0];
             msg.data_node++;
             msg.ml_data_node += IS_ML_NODE(node);
             return;
@@ -75,6 +79,7 @@ public:
             msg.inner_node++;
             msg.ml_inner_node += IS_ML_NODE(node);
             inner_node_ptr in = static_cast<inner_node_ptr>(node);
+            ++msg.level_node_nums[in->level];
             node_ptr* node_child = in->child_ptr;
             if (IS_ML_NODE(node)){
                 bitmap bm = in->bitmap_ptr;
