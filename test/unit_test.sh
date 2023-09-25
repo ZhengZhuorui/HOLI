@@ -113,10 +113,7 @@
 ./unit_test --unit=model --key_type=float --num_keys=1024 --model_type=gap_linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 #(Y)
 ./unit_test --unit=model --key_type=float --num_keys=1024 --model_type=piecewise_linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
-<<<<<<< HEAD
 ./unit_test --unit=model --key_type=float --num_keys=4096 --model_type=piecewise_linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
-=======
->>>>>>> dd70831881e0ac77af93e9b01b9d8a39425d3470
 # Dataset: uniform
 # size: 1024
 # result(max error):
@@ -285,7 +282,6 @@
 # (X)
 ./unit_test --unit=node --key_type=float --node_type=inner_node --function=mixup --num_keys=64 --batch=8 --iter=8 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 
-
 # =================================================================================================
 # test index SMO
 
@@ -343,6 +339,7 @@
 # =================================================================================================
 # test index construction accuracy and performance
 # (Y)
+./unit_test --unit=index --key_type=float --function=bulk_load --num_keys=20000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=bulk_load --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=bulk_load --num_keys=20000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=bulk_load --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
@@ -350,9 +347,9 @@
 # linear + static data node + no balance:
 
 # piecewise_linear + static data node + no balance:
-# 2000000: 6.251e+06ms, OPS=1.6
-# 20000000: 6.711e+07ms, OPS=0.15
-# 200000000:
+# 2000000: 2.432e+05ms, OPS=4.1
+# 20000000: 2.5727e+06ms, OPS=0.3958
+# 200000000: 2.414e7ms, OPS=0.0414
 
 # piecewise_linear + dynamic data node + RW balance:
 # 2000000: 
@@ -363,21 +360,26 @@
 ./unit_test --unit=index --key_type=float --function=lookup --num_keys=2000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=lookup --num_keys=20000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=lookup --num_keys=200000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+./unit_test --unit=index --key_type=float --function=delta_lookup --num_keys=2000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=delta_lookup --num_keys=20000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=delta_lookup --num_keys=200000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
 # Result:
 # piecewise_linear + static data node + no balance:
-# 2000000 + 65536: 1.42e+05ms, QPS=4.6e6
-# 20000000 + 65536: 1.611e+05ms, QPS=4.068e+06
-# 200000000 + 65536: 2.119e+05ms, QPS=3.093e+06
+# 2000000 + 100000: 1.198e+05ms, QPS=8.35e6
+# 20000000 + 100000: 1.442e+05ms, QPS=6.933e+06
+# 200000000 + 100000: 1.786e+05ms, QPS=5.6e+06
 
 
 
 # test index insert accuracy
 ./unit_test --unit=index --key_type=float --function=insert --num_keys=2000 --batch=1 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./unit_test --unit=index --key_type=float --function=insert --num_keys=2000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./unit_test --unit=index --key_type=float --function=insert --num_keys=20000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./unit_test --unit=index --key_type=float --function=insert --num_keys=200000000 --batch=65536 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=insert --num_keys=2000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=insert --num_keys=20000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=insert --num_keys=200000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
-./unit_test --unit=index --key_type=float --function=insert --num_keys=1000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=insert --num_keys=2000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 ./unit_test --unit=index --key_type=float --function=insert --num_keys=200000000 --batch=100000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
@@ -405,6 +407,18 @@
 #./unit_test --unit=index --key_type=float --function=mix --num_keys=2000000 --batch=20000 --read_ratio=0.5 --input_file=/home/zzr/data/longitudes-200M.bin.data
 #./unit_test --unit=index --key_type=float --function=mix --num_keys=20000000 --batch=200000 --read_ratio=0.5 --input_file=/home/zzr/data/longitudes-200M.bin.data
 #./unit_test --unit=index --key_type=float --function=mix --num_keys=200000000 --batch=2000000 --read_ratio=0.5 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+# test index all interface
+# all write:
+./unit_test --unit=index --key_type=float --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=2000000 --erase_nums=0 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float --function=tot --num_keys=200000000 --read_nums=2000000 --write_nums=200000000 --erase_nums=0 --input_file=/home/zzr/data/longitudes-200M.bin.data
+# half write:
+./unit_test --unit=index --key_type=float --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=1000000 --erase_nums=0 --input_file=/home/zzr/data/longitudes-200M.bin.data
+# all read:
+./unit_test --unit=index --key_type=float --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=0 --erase_nums=0 --input_file=/home/zzr/data/longitudes-200M.bin.data
+# all erase:
+./unit_test --unit=index --key_type=float --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=0 --erase_nums=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
 ./unit_test --unit=index --key_type=float --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=1000000 --erase_nums=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=1000000 --erase_nums=0 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=tot --num_keys=20000000 --read_nums=20000000 --write_nums=10000000 --erase_nums=10000000 --input_file=/home/zzr/data/longitudes-200M.bin.data

@@ -35,7 +35,7 @@ void aex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key
     
     float QPS = 1.0 * 1e6 * M * times / delta;
     
-    printf("used time=%lld us, QPS=%.2f\n", delta, QPS);
+    printf("used time=%lld ms, QPS=%.2f\n", delta, QPS);
     fflush(stdout);
 }
 

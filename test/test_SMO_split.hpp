@@ -150,7 +150,7 @@ bool test_SMO_node_split_perf(key_type* key, size_t num_keys){
     for (size_t i = 0; i < inner_node_buf.size(); ++i){
         node_ptr inode = inner_node_buf[i];
         tree.copy_to_buffer(static_cast<inner_node_ptr>(inode), node_key.data() + cnt);
-        for (size_type j = cnt; j < cnt + inode->size; ++j){
+        for (size_type j = cnt; j < cnt + inode->size - 1; ++j){
             if (node_key[j] != key[j]){
                 AEX_ERROR("Key Error! key[" << cnt << "]=" << key[j] << "inner node key=" << node_key[j]);
                 return false;

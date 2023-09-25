@@ -41,7 +41,7 @@ bool test_inner_node_insert_balance_perf(vector<key_type> &data, size_t n, size_
     tree.split(node_data.data(), child_ptr, n, level, key_buf, child_buf);
     AEX_PRINT("cosntruct finish.");
 
-    if (key_buf.size() > 1){
+    if (child_buf.size() > 1){
         AEX_ERROR("can't be construct in a inner node.");
         return false;
     }

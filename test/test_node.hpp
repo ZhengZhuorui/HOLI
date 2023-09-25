@@ -17,9 +17,9 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
     vector<key_type> node_data(n);
     std::copy(data.begin(), data.end(), node_data.begin());
     vector<key_type> insert_data(batch);
-    printf("prepare dataset...\n");
+    AEX_PRINT("prepare dataset...");
     split_dataset(node_data, insert_data, batch);
-    printf("prepare dataset target 0\n");
+    AEX_PRINT("prepare dataset target 0");
     n -= batch;
     for (size_type i = 1; i < n; ++i)
         if (node_data[0] < node_data[i]) 
@@ -32,15 +32,13 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
     std::sort(node_data.begin(), node_data.end());
     node_ptr* child_ptr = tree.node_allocator.allocate_nodeptr_buffer(n);
     node_ptr* insert_node_ptr = tree.node_allocator.allocate_nodeptr_buffer(batch);
-
     construct_data_node_array<key_type, value_type, node_ptr>(node_data.data(), node_data.size(), child_ptr);
     construct_data_node_array<key_type, value_type, node_ptr>(insert_data.data(), insert_data.size(), insert_node_ptr);
-
     std::vector<key_type> key_buf;
     std::vector<node_ptr> child_buf;
     tree.split(node_data.data(), child_ptr, n, level, key_buf, child_buf);
 
-    if (key_buf.size() > 1){
+    if (child_buf.size() > 1){
         AEX_ERROR("can't be construct in a inner node.");
         return false;
     }
@@ -68,6 +66,17 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
         else final_node_data.push_back(insert_data[i]);
     }
     std::sort(final_node_data.begin(), final_node_data.end());
+    //for (auto &x : node_data)
+    //    std::cout << x << " ";
+    //std::cout << std::endl;
+    //for (auto &x : insert_data)
+    //    std::cout << x << " ";
+    //std::cout << std::endl;
+    //for (slot_type i = 0; i < node->slot_size; ++i){
+    //    std::cout << "(" << node->key_ptr[i] << ", " << node->child_ptr[i] << "), ";
+    //}
+    //std::cout << std::endl;
+
     AEX_ASSERT(final_node_data.size() == n + batch - insert_failed);
     printf("insert failed=%lld, fail ratio=%.4f\n", insert_failed, 1.0 * insert_failed / batch);
     size_type bit_cnt = 0;
@@ -105,7 +114,7 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
             }
             bit_cnt += ((bitmap_impl::at(node->bitmap_ptr, i)) != 0);
         }
-        if (bit_cnt != n + batch - insert_failed){
+        if (bit_cnt + 1 != n + batch - insert_failed){
             AEX_ERROR("bit one cnt not equal items, 1 bits=" << bit_cnt << " n=" << n + batch - insert_failed);
             return false;
         }
@@ -133,7 +142,9 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
     std::cout << std::setprecision(3);   
     AEX_SUCCESS("insert use " << delta << "ms, OPS=" << OPS);
     tree.node_allocator.deallocate(child_ptr);
+    AEX_PRINT("?");
     tree.node_allocator.deallocate(insert_node_ptr);
+    AEX_PRINT("??");
     return true;
 }
 
@@ -146,7 +157,7 @@ bool test_inner_node_erase_perf(vector<key_type> &data, size_t n, size_t batch, 
     AEX_ASSERT(n > batch);
     typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
     typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
-    typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
+    [[maybe_unused]]typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::size_type size_type;
     typedef typename traits::slot_type slot_type;
     typedef typename aex::aex_bitmap_impl<traits> bitmap_impl;
@@ -157,7 +168,7 @@ bool test_inner_node_erase_perf(vector<key_type> &data, size_t n, size_t batch, 
     vector<size_type> del_pos;
     vector<node_ptr> del_node(batch);
 
-    generate_unique_dataset<size_type, std::uniform_int_distribution<size_type>, size_type>(del_pos, batch, 1, n - 1);
+    generate_unique_dataset<size_type, std::uniform_int_distribution<size_type>, size_type>(del_pos, batch, 0, n - 2);
     for (size_t i = 0; i < batch; ++i)
         del_node[i] = child_ptr[del_pos[i]];
     
@@ -166,7 +177,7 @@ bool test_inner_node_erase_perf(vector<key_type> &data, size_t n, size_t batch, 
     tree.split(data.data(), child_ptr, n, level, key_buf, child_buf);
     AEX_PRINT("cosntruct finish.");
 
-    if (key_buf.size() > 1){
+    if (child_buf.size() > 1){
         AEX_PRINT("can't be construct in a inner node.");
         return false;
     }
@@ -178,11 +189,11 @@ bool test_inner_node_erase_perf(vector<key_type> &data, size_t n, size_t batch, 
     inner_node_ptr node = tree.node_allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), IS_ML_NODE(child_buf[0]));
     *node = *static_cast<inner_node_ptr>(child_buf[0]);
     AEX_PRINT("size=" << node->size << ", slot size=" << node->slot_size);
-    for (size_t i = 0; i < node->size; ++i)
+    for (int i = 0; i < node->size; ++i)
         AEX_PRINT("key=" << node->key_ptr[i] << ", child=" << node->child_ptr[i]);
     
     for (size_t i = 0; i < batch; ++i){
-        AEX_PRINT("i=" << i << "del_node=" << del_node[i]);
+        //AEX_PRINT("i=" << i << "del_node=" << del_node[i]);
         node->erase(del_node[i]);
     }
     
@@ -238,7 +249,7 @@ bool test_inner_node_erase_perf(vector<key_type> &data, size_t n, size_t batch, 
             }
             bit_cnt += ((bitmap_impl::at(node->bitmap_ptr, i)) != 0);
         }
-        if (bit_cnt != node->size){
+        if (bit_cnt + 1 != node->size){
             AEX_ERROR("bitmap error, bit cnt=" << bit_cnt << ", node->size=" << node->size);
         }
     }
@@ -316,7 +327,7 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
     tree.split(data.data(), child_ptr, n, level, key_buf, child_buf);
     AEX_PRINT("construct finish. ");
 
-    if (key_buf.size() > 1){
+    if (child_buf.size() > 1){
         AEX_PRINT("can't be construct in a inner node.");
         return false;
     }
@@ -406,9 +417,9 @@ bool test_data_node_insert_perf(std::pair<key_type, value_type>* data, size_t n,
     }
     
     tree.split_with_linear_probe(node_key.data(), node_value.data(), n, key_buf, child_buf);
-    AEX_PRINT("construct finish. data node size=" << key_buf.size());
-    if (key_buf.size() > 1){
-        AEX_ERROR("can't be construct in a data node, data node nums=" << key_buf.size());
+    AEX_PRINT("construct finish. data node size=" << child_buf.size());
+    if (child_buf.size() > 1){
+        AEX_ERROR("can't be construct in a data node, data node nums=" << child_buf.size());
         return false;
     }
     dynamic_data_node_ptr node = tree.node_allocator.allocate_dynamic_data_node(static_cast<dynamic_data_node_ptr>(child_buf[0])->slot_size, true);
@@ -489,8 +500,8 @@ bool test_data_node_query_perf(std::pair<key_type, value_type>* data, size_t n, 
         node_value[i] = data[i].second;
     }
     tree.split_with_linear_probe(node_key.data(), node_value.data(), n, key_buf, child_buf);
-    AEX_PRINT("construct finish. data node size=" << key_buf.size() );
-    if (key_buf.size() > 1){
+    AEX_PRINT("construct finish. data node size=" << child_buf.size() );
+    if (child_buf.size() > 1){
         AEX_PRINT("can't be construct in a data node.");
         return false;
     }
@@ -550,7 +561,7 @@ bool test_data_node_erase_perf(std::pair<key_type, value_type>* data, size_t n, 
 
     std::vector<size_type> del_pos;
     std::vector<key_type> del_key(batch);
-    generate_unique_dataset<size_type, std::uniform_int_distribution<size_type>, size_type>(del_pos, batch, 1, n - 1);
+    generate_unique_dataset<size_type, std::uniform_int_distribution<size_type>, size_type>(del_pos, batch, 0, n - 2);
 
     std::sort(del_pos.data(), del_pos.data() + batch);
     for (size_t i = 0; i < batch; ++i){
@@ -569,8 +580,8 @@ bool test_data_node_erase_perf(std::pair<key_type, value_type>* data, size_t n, 
     std::cout << std::endl;
 
     tree.split_with_linear_probe(node_key.data(), node_value.data(), n, key_buf, child_buf);
-    AEX_PRINT("construct finish. data node size=" << key_buf.size());
-    if (key_buf.size() > 1){
+    AEX_PRINT("construct finish. data node size=" << child_buf.size());
+    if (child_buf.size() > 1){
         AEX_PRINT("can't be construct in a data node.");
         return false;
     }

@@ -62,9 +62,10 @@ public:
         msg = detail_msg();
         msg.level_node_nums.resize(traits::MAX_DEPTH);
         dfs_detail(this->root);
-        AEX_PRINT("inner node number=" << msg.inner_node << ", data node number=" << msg.data_node << 
+        AEX_HINT("inner node number=" << msg.inner_node << ", data node number=" << msg.data_node << 
                 ", ml inner node number=" << msg.ml_inner_node << ", ml data node number=" << msg.ml_data_node);
-        AEX_PRINT("avg seg nums=" << 1.0 * msg.tot_seg_nums / msg.ml_inner_node);
+        AEX_HINT("data size=" << msg.data_size);
+        AEX_HINT("avg seg nums=" << 1.0 * msg.tot_seg_nums / msg.ml_inner_node);
     }
     
     void dfs_detail(node_ptr node){
@@ -73,6 +74,7 @@ public:
             ++msg.level_node_nums[0];
             msg.data_node++;
             msg.ml_data_node += IS_ML_NODE(node);
+            msg.data_size += node->size;
             return;
         }
         else{
@@ -89,6 +91,7 @@ public:
                         dfs_detail(node_child[i]);
                     }
                 }
+                dfs_detail(node_child[in->slot_size - 1]);
             }
             else{
                 for (slot_type i = 0; i < in->size; ++i){
@@ -99,21 +102,21 @@ public:
     }
     
     struct detail_msg{
-        detail_msg():level_node_nums(0), inner_node(0), data_node(0), ml_inner_node(0), ml_data_node(0), tot_seg_nums(0){}
+        detail_msg():level_node_nums(0), inner_node(0), data_node(0), ml_inner_node(0), ml_data_node(0), tot_seg_nums(0), data_size(0){}
         vector<size_type> level_node_nums;
         size_type inner_node, data_node;
         size_type ml_inner_node, ml_data_node;
-        size_type tot_seg_nums;
+        size_type tot_seg_nums, data_size;
     }msg;
 
     std::pair<key_type, bool> debug(node_ptr node){
         bool flag = true;
-        key_type first_key;
+        key_type max_key = std::numeric_limits<key_type>::lowest();
         if (IS_LEAF_NODE(node)){
             ++msg.data_node;
             data_node_ptr dn = static_cast<data_node_ptr>(node);
-            first_key = dn->key[0];
-            for (size_type i = 0; i < dn->size; ++i){
+            max_key = dn->key[dn->size - 1];
+            for (slot_type i = 0; i < dn->size; ++i){
                 if (i > 0 && dn->key[i] < dn->key[i - 1]){
                     AEX_PRINT("Error! node[" << i-1 << "]=" << dn->key[i - 1] << " node[" << i << "]=" << dn->key[i]);
                     flag = false;
@@ -128,52 +131,60 @@ public:
             if (IS_ML_NODE(node)){
                 size_type cnt = 0;
                 bitmap bm = in->bitmap_ptr;
-                first_key = node_key[0];
-                for (size_type i = 0; i < node->slot_size; ++i){
+                for (slot_type i = 0; i < in->slot_size; ++i){
                     // check if the key is larger than prev position key
                     if (i > 0 && node_key[i] < node_key[i - 1]){
-                        AEX_PRINT("Error! node[" << i - 1 << "]=" << node_key[i - 1] << " node[" << i << "]=" << node_key[i]);
+                        AEX_ERROR("Error! node[" << i - 1 << "]=" << node_key[i - 1] << " node[" << i << "]=" << node_key[i]);
                         flag = false;
                     }
                     if (bitmap_impl::at(bm, i)){
                         ++cnt;
                         auto res = debug(node_child[i]);
+                        AEX_ASSERT(max_key < res.first);
+                        //max_key = std::max(max_key, res.first);
+                        max_key = res.first;
                         flag &= res.second;
-                        // check the child last key is equal to the node key
-                        //if (node_key[i] != res.first){
-                        //    AEX_PRINT("Error! key=" << node_key[i] << " son node last key=" << res.first << " node=" << node << "son=" << node_child[i]);
-                        //    flag = false;
-                        //}
+                        if (node_key[i] < max_key){
+                            AEX_ERROR("i=" << i << "node key=" << node_key[i] << ", max_key=" << max_key);
+                        }
+                        
                         // check if the key position is smaller than predict position
                         slot_type pos = in->predict(node_key[i]);
                         if (i < pos || i - pos >= traits::ERROR_BOUND){
-                            AEX_PRINT("pos=" << i << " predict=" << pos);
+                            AEX_ERROR("pos=" << i << " predict=" << pos);
                             flag = false;
                         }
                     }
-                    
                 }
+                auto res = debug(node_child[in->slot_size - 1]);
+                AEX_ASSERT(max_key < res.first);
+                max_key = res.first;
+                flag &= res.second;
             }
             else{
-                first_key = node_key[0];
-                for (size_type i = 0; i < in->size; ++i){
+                for (slot_type i = 0; i < in->size; ++i){
                     // check if the key is larger than prev position key 
                     if (i > 0 && node_key[i] < node_key[i - 1]){
-                        AEX_PRINT("Error! node[" << i - 1 << "]=" << node_key[i - 1] << " node[" << i << "]=" << node_key[i]);
+                        AEX_ERROR("Error! node[" << i - 1 << "]=" << node_key[i - 1] << " node[" << i << "]=" << node_key[i]);
                         flag = false;
                     }
                     
-                    auto res = _debug(node_child[i]);
-                    if (node_key[i] != res.first){
-                        flag = false;
-                        AEX_PRINT("Error! key=" << node_key[i] << " son node last key=" << res.first << " node=" << node << "son=" << node_child[i]);
+                    auto res = debug(node_child[i]);
+                    if (max_key > res.first){
+                        AEX_ERROR("max_key=" << max_key << ", res.first=" << res.first);
                     }
+                    AEX_ASSERT(max_key < res.first);
+                    if (node_key[i] < res.first){
+                        flag = false;
+                        AEX_ERROR("Error! key=" << node_key[i] << " son node last key=" << res.first << " node=" << node << "son=" << node_child[i]);
+                    }
+                    max_key = res.first;
                     flag &= res.second; 
                     //AEX_ASSERT(i < node->predict(node_key[i]));
                 }
             }
         }
-        return std::make_pair(first_key, flag);
+        return std::make_pair(max_key, flag);
     }
 
     bool debug_error(){

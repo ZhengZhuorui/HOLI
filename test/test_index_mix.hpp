@@ -117,6 +117,7 @@ template<typename key_type,
         typename value_type,
         typename traits=aex_default_traits<key_type, value_type>>
 bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, long long read_nums, long long write_nums, long long erase_nums){
+    AEX_HINT("[test index all interface]");
     typedef mock_aex_tree<key_type, value_type, traits> tree;
     [[maybe_unused]]typedef typename mock_aex_tree<key_type, value_type, traits>::size_type size_type;
     [[maybe_unused]]typedef typename tree::node_ptr node_ptr;
@@ -124,7 +125,7 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
     long long init_nums = n - write_nums, tot_nums = read_nums + write_nums + erase_nums;
     std::vector<std::pair<key_type, value_type>> init_data(init_nums), index_data(init_nums);
     std::vector<bool> is_delete(n);
-    std::vector<std::pair<key_type, value_type>> insert_data(init_nums);
+    std::vector<std::pair<key_type, value_type>> insert_data(write_nums);
     std::random_shuffle(data, data + n);
     std::copy(data, data + init_nums, init_data.data());
     std::copy(data, data + init_nums, index_data.data());
@@ -142,13 +143,17 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
     for (long long i = 0; i < tot_nums; ++i){
         switch (opt[i]){
             case OperationType::Lookup:{
-                //AEX_PRINT("Lookup:");
+                //AEX_PRINT("i=" << i << "Lookup:");
+                if (index.size() < 100)
+                    continue;
                 size_type pos = rand() % index_data.size();
                 while (is_delete[pos] == true) 
                     pos = rand() % index_data.size();
                 auto x = index.find(index_data[pos].first);
                 if (x == index.end()){
                     AEX_ERROR("i=" << i << ", query error, pos=" << pos << ", key=" << index_data[pos].first << ", query no exists");
+                    index.print_stats();
+                    index.print_detail();
                     return false;
                 }
                 if (x.key() != index_data[pos].first || x.data() != index_data[pos].second){
@@ -158,7 +163,7 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
                 break;
             }
             case OperationType::Insert:{
-                //AEX_PRINT("Insert:");
+                //AEX_PRINT("i=" << i << "Insert:");
                 index_data.push_back(insert_data[insert_cnt]);
                 typename tree::iterator iter;
                 bool _;
@@ -173,10 +178,11 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
                     return false;
                 }
                 insert_cnt++;
+                //index.debug(index.root);
                 break;
             }
             case OperationType::Erase:{
-                //AEX_PRINT("Erase:");
+                //AEX_PRINT("i=" << i << ", Erase:");
                 size_type pos = rand() % index_data.size();
                 while (is_delete[pos] == true) 
                     pos = rand() % index_data.size();

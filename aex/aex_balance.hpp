@@ -13,6 +13,7 @@ void aex_tree<_Key, _Val, traits>::update_node_list_frequency(dynamic_node_ptr n
     }
 }
 
+
 template<typename _Key, typename _Val, typename traits>
 bool aex_tree<_Key, _Val, traits>::check_insert_merge(node_ptr* node_buffer, slot_type size){
     // delta cost
@@ -69,7 +70,7 @@ bool aex_tree<_Key, _Val, traits>::check_insert_merge(node_ptr* node_buffer, slo
 }
 
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::merge_nodes(dynamic_data_node_ptr* node_buffer, slot_type size){
+void aex_tree<_Key, _Val, traits>::merge_nodes(key_type* key_buffer, dynamic_data_node_ptr* node_buffer, slot_type size){
     //AEX_ASSERT(std::is_same<aex_data_node<key_type, value_type, traits>, data_node>::value == true);
     AEX_ASSERT((std::is_same<data_node, dynamic_data_node>::value));
 
@@ -94,11 +95,11 @@ void aex_tree<_Key, _Val, traits>::merge_nodes(dynamic_data_node_ptr* node_buffe
     node_allocator.reallocate(new_node, min_slot_size(data_size, traits::MIN_DATA_NODE_SLOT_SIZE));
 
     if (linear_probe(key_buf.data(), data_size, m) == size){
-        new_node->construct(key_buf.data(), data_buf.data(), key_buf.size(), m);
+        new_node->construct(key_buf.data(), data_buf.data(), data_buf.size(), m);
     }
     else{
         UNSET_FLAG(new_node, node_property::ML_NODE);
-        new_node->construct(key_buf.data(), data_buf.data(), key_buf.size());
+        new_node->construct(key_buf.data(), data_buf.data(), data_buf.size());
     }
 
     node_ptr prev_node = node_buffer[0]->prev, next_node = node_buffer[size - 1]->next;
@@ -116,7 +117,7 @@ void aex_tree<_Key, _Val, traits>::merge_nodes(dynamic_data_node_ptr* node_buffe
 }
 
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::merge_nodes(inner_node_ptr* node_buffer, slot_type size){
+void aex_tree<_Key, _Val, traits>::merge_nodes(key_type* key_buffer, inner_node_ptr* node_buffer, slot_type size){
     #ifdef AEX_EXPERIMENT
     ++this->opt_stats.inner_node_merge_cnt;
     #endif
@@ -132,22 +133,23 @@ void aex_tree<_Key, _Val, traits>::merge_nodes(inner_node_ptr* node_buffer, slot
     for (slot_type i = 0; i < size; ++i){
         copy_to_buffer(node_buffer[i], key_buf.data() + cnt, child_buf.data() + cnt);
         cnt += node_buffer[i]->size;
+        key_buf[cnt - 1] = key_buffer[i];
     }
 
     inner_node_model model;    
     bool ml_flag = child_size >= traits::MIN_ML_INNER_NODE_SIZE;
     slot_type ml_slot_size = min_slot_size(child_size, this->inner_node_few_ratio[node_buffer[0]->level], traits::MIN_INNER_NODE_SLOT_SIZE);
-    if (ml_flag) ml_flag &= check_collision(key_buf.data(), child_size, ml_slot_size, model);
+    if (ml_flag) ml_flag &= check_collision(key_buf.data(), child_size - 1, ml_slot_size, model);
     inner_node_ptr new_node = node_buffer[size - 1];
     if (ml_flag){
         SET_FLAG(new_node, node_property::ML_NODE);
         node_allocator.reallocate(new_node, ml_slot_size);
-        new_node->construct(key_buf.data(), child_buf.data(), key_buf.size(), model);
+        new_node->construct(key_buf.data(), child_buf.data(), child_buf.size(), model);
     }
     else{
         UNSET_FLAG(new_node, node_property::ML_NODE);
-        node_allocator.reallocate(new_node, min_slot_size(key_buf.size(), traits::MIN_INNER_NODE_SLOT_SIZE));
-        new_node->construct(key_buf.data(), child_buf.data(), key_buf.size());
+        node_allocator.reallocate(new_node, min_slot_size(child_buf.size(), traits::MIN_INNER_NODE_SLOT_SIZE));
+        new_node->construct(key_buf.data(), child_buf.data(), child_buf.size());
     }
 
     node_ptr prev_node = node_buffer[0]->prev, next_node = node_buffer[size - 1]->next;
@@ -177,10 +179,11 @@ inline bool aex_tree<_Key, _Val, traits>::check_split(inner_node_ptr node){
 
     double read_cost = 1.0 * (1.0 / this->m_stats.level_node[node->level]) * traits::MODEL_ARGS::INNER_NODE_MODEL_SEARCH_FACTOR;
     double SMO_cost = -(train_pro / 2) * traits::MODEL_ARGS::INNER_NODE_TRAIN_FACTOR * node->size;
+    AEX_PRINT("read cost=" << read_cost << ", SMO_cost=" << SMO_cost);
     double delta_cost = read_cost + SMO_cost;
     if (delta_cost < 0)
-        return false;
-    return true;
+        return true;
+    return false;
 }
 
 template<typename _Key, typename _Val, typename traits>

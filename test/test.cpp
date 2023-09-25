@@ -140,10 +140,15 @@ bool test(map<string, string> &flags){
         }
         if (func == "lookup"){
             long long batch = stoll(flags["batch"]);
-            //std::sort(bin_data.data(), bin_data.data() + num_keys);
             std::vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
             return test_index_lookup_perf(data.data(), num_keys, batch);
+        }
+        if (func == "delta_lookup"){
+            long long batch = stoll(flags["batch"]);
+            std::vector<std::pair<T, T> > data;
+            pack_KV_dataset(bin_data, data);
+            return test_index_delta_lookup_perf(data.data(), num_keys, batch);
         }
         if (func == "range_query"){
             long long batch = stoll(flags["batch"]);

@@ -4,7 +4,7 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(){
+aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
     AEX_HINT("BEGIN");
     this->init();
     AEX_HINT("END");
@@ -12,7 +12,7 @@ aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), tail
 
 template<typename _Key, typename _Val, typename traits>
 template<typename _InputIterator>
-aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(){
+aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
     this->init();
     /* TODO: insert data sequencely */
     std::vector<std::pair<key_type, value_type> > data;
@@ -23,7 +23,7 @@ aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __
 }
 
 template<typename _Key, typename _Val, typename traits>
-aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(){
+aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
     this->init();
     this->root = this->construct(_index.root);
     this->link_tree_ptr();
@@ -33,9 +33,8 @@ aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_l
 }
 
 template<typename _Key, typename _Val, typename traits>
-aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(){
-    this->erase_tree_recursive(this->root);
-    
+aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
+    this->erase_tree_recursive(this->root);    
     this->init();
     this->root = _index.root;
     _index.root = nullptr;
@@ -52,7 +51,8 @@ template<typename _Key, typename _Val, typename traits>
 aex_tree<_Key, _Val, traits>::~aex_tree(){
     this->erase_tree_recursive(this->root);
     this->root = this->head_leaf = this->tail_leaf = nullptr;
-    delete empty_leaf;
+    if (empty_leaf != nullptr)
+        delete empty_leaf;
 }
 
 
@@ -75,6 +75,7 @@ void aex_tree<_Key, _Val, traits>::init(){
         this->inner_node_few_ratio[i] = this->inner_node_few_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
         this->inner_node_full_ratio[i] = this->inner_node_full_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
     }
+
     this->max_inner_node_slot_size[0] = 8;
     for (int i = 1; i < traits::MAX_DEPTH; ++i){
         this->max_inner_node_slot_size[i] = traits::MAX_INNER_NODE_SLOT_SIZE;
@@ -119,8 +120,9 @@ typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::co
                 new_child[i]->parent = _new_node;
                 prev = i + 1;
             }
-            if (prev != _node->slot_size)
-                std::fill(new_child + prev, new_child + _node->slot_size, new_child[prev]);
+            new_child[_node->slot_size - 1] = construct(child[_node->slot_size - 1]);
+            std::fill(new_child + prev, new_child + _node->slot_size, new_child[_node->slot_size - 1]);
+            new_child[_node->slot_size - 1]->parent = _new_node;
         }
         else{
             for (slot_type i = 0; i < node->size; ++i){
@@ -164,6 +166,7 @@ void aex_tree<_Key, _Val, traits>::link_tree_ptr(){
         t ^= 1;
     }
     this->tail_leaf->next = empty_leaf;
+    empty_leaf->prev = this->tail_leaf;
 }
 
 }

@@ -12,6 +12,7 @@
 #include "benchmark_insert.hpp"
 #include "benchmark_erase.hpp"
 #include "benchmark_query.hpp"
+#include "benchmark_delta_query.hpp"
 #include "benchmark_build.hpp"
 #include "benchmark_range_query.hpp"
 #include "benchmark_other.hpp"

@@ -106,6 +106,19 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
                 return false;
             }
         }
+
+        for (long long i = 0; i < n; ++i){
+            auto x = data[i];
+            auto y = index.find(x.first);
+            if (y == index.end()){
+                AEX_ERROR("query no exists! i=" << i << "key=" << x.first);
+                return false;
+            }
+            if (y.key() != x.first || y.data() != x.second){
+                AEX_ERROR("query error! query key=" << x.first << ", data=" << x.second << ", get key=" << y.key() << ", data=" << y.data());
+                return false;
+            }
+        }
     }
     AEX_SUCCESS("bulk load finish...");
     index.clear();
@@ -152,6 +165,69 @@ bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, 
     
     for (int i = 0; i < batch; ++i){
         auto iter = index.find(query[i]);
+        if (iter == index.end()){
+            AEX_ERROR("Query no exists, i=" << i);
+            return false;
+        }
+        if (iter.key() != query[i]){
+            AEX_ERROR("Key Error!, i=" << i << "query key=" << query[i] << ", node key=" << iter.key() <<  ", answer=" << answer[i] << ", find=" << iter.data());
+        }
+        if (iter.data() != answer[i]){
+            AEX_ERROR("Answer Error!, i=" << i << "query key=" << query[i] << ", node key=" << iter.key() <<  ", answer=" << answer[i] << ", find=" << iter.data());
+            return false;
+        }
+    }
+    index.print_stats();
+    index.print_detail();
+    
+    system_clock::time_point t1, t2;
+    double delta = 0;
+    const int ITER = 1;
+    value_type sum = 0;
+    t1 = std::chrono::high_resolution_clock::now();
+    for (int T = 0; T < ITER; ++T){
+        for (long long i = 0; i < batch; ++i){
+            auto iter = index.find(query[i]);
+            sum += iter.data();
+        }
+    }
+    t2 = std::chrono::high_resolution_clock::now();
+    delta = duration_cast<microseconds>(t2 - t1).count();
+
+    double QPS = 1.0 * 1e6 * ITER * batch/ delta;
+    std::cout << std::scientific;
+    std::cout << std::setprecision(3);  
+    AEX_SUCCESS("code=" << sum << "query use time " << delta << "ms, QPS=" << QPS);
+    return true;
+}
+
+template<typename key_type,
+        typename value_type,
+        typename traits=aex_default_traits<key_type, value_type>>
+bool test_index_delta_lookup_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
+    AEX_HINT("[test index lookup]");
+    //typedef typename aex::aex_map<key_type, value_type, traits> Index;
+    mock_aex_tree<key_type, value_type, traits> index;
+    [[maybe_unused]] typedef typename traits::size_type size_type;
+    vector<key_type> query;
+    vector<value_type> answer;
+    generate_query(data, n, query, answer, batch);
+    for (long long i = 0; i < n; ++i)
+    index.insert(data[i]);
+    if (static_cast<long long>(index.size()) != n){
+        AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);
+        return false;
+    }
+    
+    for (int i = 0; i < batch; ++i){
+        auto iter = index.find(query[i]);
+        if (iter == index.end()){
+            AEX_ERROR("Query no exists, i=" << i);
+            return false;
+        }
+        if (iter.key() != query[i]){
+            AEX_ERROR("Key Error!, i=" << i << "query key=" << query[i] << ", node key=" << iter.key() <<  ", answer=" << answer[i] << ", find=" << iter.data());
+        }
         if (iter.data() != answer[i]){
             AEX_ERROR("Answer Error!, i=" << i << "query key=" << query[i] << ", node key=" << iter.key() <<  ", answer=" << answer[i] << ", find=" << iter.data());
             return false;
@@ -202,7 +278,6 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     index.print_detail();
     index_bak = index;
     for (long long i = 0; i < batch; ++i){
-        AEX_PRINT("i=" << i);
         typename tree::iterator iter;
         bool inserted;
         std::tie(iter, inserted) = index.insert(insert_data[i]);
@@ -217,6 +292,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     }
     AEX_SUCCESS("insert finish..");
 
+    
     {
         if (static_cast<long long>(index.size()) != n){
             AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);

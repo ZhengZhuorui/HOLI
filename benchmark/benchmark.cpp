@@ -73,6 +73,17 @@ void benchmark(std::map<string, string> flags){
         long long num_ops = stoll(flags["num_ops"]);
         benchmark_range_query<key_type, value_type>(file, num_keys, num_ops, length_ratio, index_name);
     }
+    else if (func == "delta_lookup"){
+        long long num_keys = stoll(flags["num_keys"]);
+        long long num_ops = 0;
+        if (flags.find("num_ops") != flags.end())
+            num_ops = stoll(flags["num_ops"]);
+        string index_name = flags["index"];
+        string query_dis = "uniform";
+        if (flags.find("query_dis") != flags.end())
+            query_dis = flags["query_dis"];
+        benchmark_delta_lookup<key_type, value_type>(file, num_keys, num_ops, index_name, query_dis);
+    }
 }
 
 #include <sys/time.h>

@@ -6,7 +6,7 @@
 ./benchmark --key_type=float --index=stl_map --function=build --query_dis=uniform --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./benchmark --key_type=float --index=stx_btree --function=build --query_dis=uniform --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./benchmark --key_type=float --index=alex --function=build --query_dis=uniform --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-
+./benchmark --key_type=float --index=lipp --function=build --query_dis=uniform --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 # Dataset: longtitudes
 # size: 200M
 # batch: 65536
@@ -59,6 +59,7 @@
 ./benchmark --key_type=float --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 
+
 # Dataset: longtitudes
 # size: 200M
 # batch: 65536
@@ -68,14 +69,38 @@
 # alex: 9.402e6, 6.97e6
 
 # =================================================================================================
+# delta_query
+# example
+./benchmark --key_type=float --index=aex --function=delta_lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=stl_map --function=delta_lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=stx_btree --function=delta_lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=alex --function=delta_lookup --query_dis=uniform --num_keys=200 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=lipp --function=delta_lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+
+./benchmark --key_type=float --index=aex --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=stl_map --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=stx_btree --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=alex --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=lipp --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=hash --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+./benchmark --key_type=float --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=hash --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+# =================================================================================================
 # insert
 # example
-./benchmark --key_type=float --index=aex --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=insert --query_dis=uniform --num_keys=200 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=pgm --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=aex --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=stl_map --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=stx_btree --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=alex --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=pgm --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float --index=lipp --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 
 # longtitude
