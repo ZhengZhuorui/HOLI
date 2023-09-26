@@ -302,15 +302,15 @@ public:
         key_type *new_key_ptr = static_cast<key_type*>(malloc(KEY_MEMORY_USED(new_slot_size)));
         node_ptr *new_child_ptr = static_cast<node_ptr*>(malloc(PTR_MEMORY_USED(new_slot_size)));
         bitmap new_bitmap_ptr = static_cast<bitmap>(malloc(BITMAP_MEMORY_USED(new_slot_size)));
+        AEX_ASSERT(node->key_ptr != nullptr);
         base_tree::copy_to_buffer(node, new_key_ptr, new_child_ptr);
-        if (node->key_ptr != nullptr){
-            free(node->key_ptr);
-            free(node->child_ptr);
-            free(node->bitmap_ptr);
-        }
+        free(node->key_ptr);
+        free(node->child_ptr);
+        free(node->bitmap_ptr);
         node->key_ptr = new_key_ptr;
         node->child_ptr = new_child_ptr;
         node->bitmap_ptr = new_bitmap_ptr;
+        node->slot_size = new_slot_size;
     }
 
     inline void reallocate(dynamic_data_node_ptr node, slot_type new_slot_size){

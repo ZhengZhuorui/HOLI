@@ -395,16 +395,6 @@ public:
         }
     }
 
-    inline bool insert(const key_type &key, node_ptr child, slot_type pos){
-        AEX_ASSERT((IS_ML_NODE(this) == false));
-        std::move_backward(this->key_ptr + pos, this->key_ptr + this->size, this->key_ptr + this->size + 1);
-        std::move_backward(this->child_ptr + pos, this->child_ptr + this->size, this->child_ptr + this->size + 1);
-        this->key_ptr[pos] = key;
-        this->child_ptr[pos] = child;
-        ++this->size;
-        child->parent = this;
-    }
-
     // erase a  node
     inline void erase(node_ptr node){
         AEX_ASSERT(node != this->child_ptr[this->slot_size - 1]);

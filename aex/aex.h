@@ -283,7 +283,7 @@ public:
             split((dynamic_data_node_ptr)node, new_key, new_child);
             AEX_ASSERT(new_key.size() > 1);
             if (new_key.size() > 1)
-                insert_ascend(node->parent, new_key, new_child);
+                insert_recursive(node->parent, new_key.data(), new_child.data(), new_key.size());
             find_iter = find_iterator(x);
         }
         AEX_ASSERT(find_iter._M_node != empty_leaf);
@@ -498,25 +498,33 @@ private:
     // A part of bulk load.
     void build_tree(std::vector<key_type>& key_buf, std::vector<node_ptr>& child_buf);
 
-    // a part of function "ml_node_insert_split_pipeline". If node can't insert to parent pipeline, then split and insert to parent together.
-    // start means the number of function "ml_node_insert_split_pipeline" split. key and child is the splited key and child. half_flag means 
-    void ml_node_insert_split_bulk_load(inner_node_ptr node, const slot_type start, const key_type key, node_ptr child, bool half_flag);
+    // a part of function "insert_split_pipeline". If node can't insert to parent pipeline, then split and insert to parent together.
+    // start means the number of function "insert_split_pipeline" split. key and child is the splited key and child. half_flag means 
+    void insert_split_bulk_load(inner_node_ptr node, const slot_type start, const key_type key, node_ptr child, bool half_flag);
     
     // insert child to node and split it, then insert them to node->parent pipeline
-    void ml_node_insert_split_pipeline(inner_node_ptr node, const key_type* const key, const node_ptr* const child, const slot_type n);
+    void insert_split_pipeline(inner_node_ptr node, const key_type* key, const node_ptr* child, const slot_type n);
+
+    // insert a new key and new child to a dense node (not ml node), then split it.
+    void dense_node_insert_split(inner_node_ptr node, key_type new_key, node_ptr new_child);
+
+    void insert_split_by_buffer(inner_node_ptr node, const key_type* new_key, node_ptr* new_child, const slot_type n, bool no_split=false);
 
     // insert one items to node from bottom to up. If node split, return false, else return true.
     bool insert_one(inner_node_ptr node, key_type new_key, node_ptr new_node);
+    // insert one items to node from bottom to up. If node split, return false, else return true.
+    bool insert_recursive(inner_node_ptr node, const key_type* new_key, node_ptr* new_node, const slot_type n);
 
     // insert some items to node from bottom to up. If node split, return false, else return true.
-    bool insert_ascend(inner_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
+    //bool insert_ascend(inner_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
 
     // insert some child to a inner node.
-    void insert_split(inner_node_ptr node, const key_type* const key, const node_ptr* const child, const slot_type n);
+    void insert_split(inner_node_ptr node, const key_type key, node_ptr new_child);
+    void insert_split(inner_node_ptr node, const key_type* key, node_ptr* new_child, const slot_type n);
     
     // insert some data to a dynamic data node.
-    void insert_split(dynamic_data_node_ptr node, const key_type key, const value_type data, 
-                    std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
+    void insert_split(dynamic_data_node_ptr node, const key_type key, const value_type data);
+        
 
     // ========== 4. erase ==========
 
@@ -555,19 +563,25 @@ private:
     // split a data node to at least two data node
     void split(dynamic_data_node_ptr node, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
     // split a ordered key array with child pointers array to inner node array.
-    void split(const key_type* const key, const node_ptr* const child, const size_type n, const unsigned int level, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child, bool can_retrain=true);
+    void split(const key_type* const key, node_ptr* child, const size_type n, const unsigned int level, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
     void split(const key_type* const key, const size_type n, const unsigned int level);
 
     // split a ordered key array with data array to node array.
     void split_to_static_data_node(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
-    // split a ordered key array with data array to node array.
+    // use exponential probe to split a ordered key array with data array to node array.
     void split_with_exponential_probe(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
-    // split a ordered key array with data array to inner node array. Use linear probe(use greedy).
+    // use exponential probe to split a ordered key array with data array to node array.
     void split_with_linear_probe(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<node_ptr> &new_child);
+    // a part of split_with_linear_probe.
+    slot_type linear_probe(const key_type* const key, const size_type n, data_node_model &m);
 
+    // split a ordered key array with data array to inner node array. Use linear probe(use greedy).
+    std::tuple<slot_type, slot_type, bool> split_with_exponential_probe(const key_type* const key, const size_type n, const unsigned int level);
+
+    key_type split_dense_inner_node(inner_node_ptr new_node, inner_node_ptr old_node);
     void split(data_node_ptr new_node, data_node_ptr old_node);
 
-    slot_type linear_probe(const key_type* const key, const size_type n, data_node_model &m);
+    
 
     bool update_childnode_ptr(inner_node_ptr __restrict__ parent, const node_ptr __restrict__ node, const node_ptr __restrict__ new_node){
         slot_type pos = parent->at(node);
@@ -590,17 +604,21 @@ private:
     bool rescale(node_ptr node, const slot_type new_slot_size);
 
     // link node_buf parent, prev and next pointer, the prev point of first node is node->prev, next too.
-    void link_node_list_and_replace_last_node(node_ptr node, std::vector<node_ptr> &new_child);
+    void link_node_list_and_replace_last_node(node_ptr node, node_ptr* new_child, slot_type m);
 
     void fix_data_node(dynamic_data_node_ptr node);
 
-    void add_root(key_type* key_buf, node_ptr* child_buf, slot_type n);
-    inline void add_root(key_type &new_key, node_ptr new_child){
-        node_ptr child_buf[2];
-        child_buf[0] = new_child;
-        child_buf[1] = root;
-        add_root(&new_key, &child_buf, 2);
+    void add_root(const key_type* key_buf, node_ptr* child_buf, slot_type n);
+
+    inline void link_to_next_node(node_ptr new_node, node_ptr old_node){
+        new_node->prev = old_node->prev;
+        if (old_node->prev != nullptr)
+            old_node->prev->next = new_node;
+        old_node->prev = new_node;
+        new_node->next = old_node;
     }
+
+    bool retrain(inner_node_ptr node);
 
     inline bool isfull(const dynamic_data_node_ptr node) const {
         return node->size >= node->slot_size;

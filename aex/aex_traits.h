@@ -90,7 +90,7 @@ struct aex_default_traits{
 
     static const slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 25;
 
-    static const slot_type MIN_DATA_NODE_SLOT_SIZE = 8;
+    static const slot_type MIN_DATA_NODE_SLOT_SIZE = 64;
 
     static const slot_type MAX_DATA_NODE_SLOT_SIZE= 1 << 20;
 

@@ -27,11 +27,7 @@ void aex_tree<_Key, _Val, traits>::erase_ascend(inner_node_ptr node){
         // if rescale failed, the model can't fix the data or the item is fewer than min size
         // if items is large than min size, train it again
         if (node->slot_size > traits::MIN_INNER_NODE_SLOT_SIZE){
-            std::vector<key_type> key_buf;
-            std::vector<node_ptr> child_buf;
-            split(node, key_buf, child_buf);
-            if (child_buf.size() > 1)
-                insert_ascend(node->parent, key_buf, child_buf);
+            insert_split_pipeline(node, nullptr, nullptr, 0);
             return;
         }
         // otherwise merge to near node
@@ -90,7 +86,7 @@ bool aex_tree<_Key, _Val, traits>::erase_merge(inner_node_ptr __restrict__ left_
     key_buf[left_node->size - 1] = parent->key_ptr[parent->at(left_node)];
     erase_link(left_node);
     erase_child_node(parent, left_node);
-    insert_ascend(right_node, key_buf, child_buf);
+    insert_split_by_buffer(right_node, key_buf.data(), child_buf.data(), left_node->size, true);
     return isfew(right_node->parent);
 }
 
@@ -128,13 +124,13 @@ bool aex_tree<_Key, _Val, traits>::erase_merge(dynamic_data_node_ptr __restrict_
     split_with_exponential_probe(key_buf.data(), data_buf.data(), right_node->level, new_key, new_child);
     right_node->balance_stats.update_train_frequency(this->balance_stats.get_timestamp());
     update_node_list_frequency(right_node, new_child.data(), new_child.size());
-    link_node_list_and_replace_last_node(right_node, new_child);
+    link_node_list_and_replace_last_node(right_node, new_child.data(), new_child.size());
     new_key.pop_back();
     new_child.pop_back();
     erase_link(left_node);
     erase_child_node(parent, left_node);
     if (new_key.size() > 0){
-        insert_ascend(parent, new_key, new_child);
+        insert_recursive(parent, new_key.size(), new_child.data(), new_child.size());
         return false;
     }
     else{

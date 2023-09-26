@@ -18,7 +18,7 @@
 ./generate_dataset --key_type=float --num_keys=200000000 --distribution=normal --output_file=/home/zzr/data/generate_data/normal_200M_0_1_float.bin --mean=0 --stddev=1
 
 # (N)
-./generate_dataset --key_type=float --num_keys=1000000 --distribution=lognormal --output_file=/home/zzr/data/generate_data/normal_1K_0_1_float.bin --mean=0 --stddev=1
+./generate_dataset --key_type=float --num_keys=200000000 --distribution=lognormal --output_file=/home/zzr/data/generate_data/lognormal_200M_0_1_float.bin --mean=0 --stddev=1
 
 # (Y)
 ./generate_dataset --key_type=int --num_keys=1000000 --distribution=id_ascend --output_file=/home/zzr/data/generate_data/id_1M_int.bin

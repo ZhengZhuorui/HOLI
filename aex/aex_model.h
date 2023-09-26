@@ -685,14 +685,12 @@ public:
                     }
                 }
             }
+
             //for (unsigned int i = 0; i < max_segment_num; ++i)
             //    AEX_PRINT("segment[" << i << "] start=" << start[i] << ", end=" << end[i] << ", segment_slope=" << segment_slope[i]);
-
-            for (unsigned int i = 0; i < max_segment_num; ++i){
-                this->args.slope[i] = segment_slope[i];
-                this->args.end[i] = key[end[i] + 1];
-            }
-
+            for (unsigned int i = 0; i < max_segment_num; ++i)
+                this->args.end[i] = key[end[i]];
+                
             double S = 0, last_key = key[0];
             for (unsigned int i = 0; i < max_segment_num; last_key = this->args.end[i], ++i)
                 S += 1.0 * (this->args.end[i] - last_key) * this->args.slope[i];
@@ -708,11 +706,11 @@ public:
             last_key = key[0];
             for (unsigned int i = 0; i < max_segment_num; last_key = this->args.end[i], ++i)
                 S += 1.0 * (this->args.end[i] - last_key) * this->args.slope[i];
-            
+                        
             if (!(std::abs(S - 1) < 1e-6)){
                 AEX_PRINT("S=" << S << ", n=" << n << ", slot_size=" << slot_size << ", max_segment_num=" << max_segment_num);
                 for (unsigned int i = 0; i < max_segment_num; ++i)
-                    AEX_PRINT("i=" << i << "end=" << this->args.end[i] << ", slope=" << this->args.slope[i] << ", node start=" << start[i] << ", end=" << end[i]);
+                    AEX_PRINT("i=" << i << "end=" << this->args.end[i] << ", slope=" << this->args.slope[i] << ", node start=" << start[i] << ", end=" << end[i] << ", key_start=" << key[start[i]] << ", key_end=" << key[end[i]]);
             }
             AEX_ASSERT(std::abs(S - 1) < 1e-6);
 

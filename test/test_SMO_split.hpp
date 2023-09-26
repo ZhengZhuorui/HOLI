@@ -135,7 +135,7 @@ bool test_SMO_node_split_perf(key_type* key, size_t num_keys){
     std::vector<key_type> key_buf;
     std::vector<node_ptr> inner_node_buf;
     std::sort(key, key + num_keys);
-    tree.split(key, nodeptr_buffer, num_keys, 2, key_buf, inner_node_buf, false);
+    tree.split(key, nodeptr_buffer, num_keys, 2, key_buf, inner_node_buf);
     size_type cnt = 0, ml_node_size = 0;
     std::vector<key_type> node_key(num_keys);
     for (size_t i = 0; i < inner_node_buf.size(); ++i){

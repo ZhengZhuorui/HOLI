@@ -110,7 +110,7 @@ void alex_range_query_bench(vector<pair<key_type, value_type> > &data, vector<pa
             auto iter = index.find(x.first);
             while (iter != index.end() && iter.key() <= x.second){
                 sum += iter.payload();
-                iter++;
+                ++iter;
             }
         }
     }
