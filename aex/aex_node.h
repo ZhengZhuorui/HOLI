@@ -310,6 +310,11 @@ public:
             slot_type pos = this->predict(key[i]);
             start = std::max(start, pos);
             bitmap_impl::set_one(bm, start);
+            //if (start - pos >= traits::ERROR_BOUND){
+            //    for (slot_type j = 0; j < n - 1; ++j)
+            //        AEX_PRINT(this->predict(key[i]) << ", " << this->model.predict(key[i]));
+            //    AEX_PRINT("check=" << base_tree::check_collision(key, n - 1, this->real_slot_size(), this->model));
+            //}
             AEX_ASSERT(start - pos < traits::ERROR_BOUND);
             AEX_ASSERT(start < this->slot_size - 1);
             std::fill(this->key_ptr + his_pos, this->key_ptr + start + 1, key[i]);

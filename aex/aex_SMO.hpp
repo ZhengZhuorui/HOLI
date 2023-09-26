@@ -45,10 +45,13 @@ void aex_tree<_Key, _Val, traits>::split(dynamic_data_node_ptr node, std::vector
 template<typename _Key, typename _Val, typename traits>
 inline bool aex_tree<_Key, _Val, traits>::retrain(inner_node_ptr node){
     node->update_train_frequency(this->balance_stats.get_timestamp());
-    if (node->model.train(node->key_ptr, node->size, node->slot_size))
+    if (node->model.train(node->key_ptr, node->size - 1, node->slot_size))
         if (check_collision(node->key_ptr, node->size, node->slot_size)){
             node->inplace_construct();
             return true;
+        }
+        else{
+            AEX_ERROR("can't check collision");
         }
     return false;
 }
@@ -62,20 +65,36 @@ std::tuple<typename traits::slot_type, typename traits::slot_type, bool> aex_tre
     for (; slot_size * this->inner_node_few_ratio[level] <= n && static_cast<size_type>(slot_size) <= this->max_inner_node_slot_size[level]; slot_size <<= 1){
         if (slot_size * this->inner_node_full_ratio[level] >= n){
             train_flag = model.train(key, n - 1, slot_size);
-            AEX_PRINT("slot_size=" << slot_size << ", n=" << n << ", flag=" << flag);
-            if (train_flag && self::check_collision(key, n - 1, slot_size, model))
-                return std::tuple(n, slot_size, true);
+            //AEX_PRINT("slot_size=" << slot_size << ", n=" << n << ", flag=" << flag);
+            if (train_flag){
+                if (self::check_collision(key, n - 1, slot_size, model))
+                    return std::tuple(n, slot_size, true);
+                else
+                    AEX_ERROR("can't check collision");
+            }
         }
         size_type size = std::min((size_type)(slot_size * this->inner_node_few_ratio[level]), n);
+        //AEX_PRINT("slot_size=" << slot_size << ", size=" << size);
+        //for (slot_type i = 0; i < size; ++i)
+        //    std::cout << key[i] << ", ";
+        //std::cout << std::endl;
+
         train_flag = model.train(key, size - 1, slot_size);
-        if (train_flag && self::check_collision(key, size - 1, slot_size, model)){
-            flag = true;
-            ans_slot_size = slot_size;
-            ans_size = size;
+        if (train_flag){
+            if (self::check_collision(key, size - 1, slot_size, model)){
+                flag = true;
+                ans_slot_size = slot_size;
+                ans_size = size;
+            }
+            else {
+                AEX_ERROR("can't check collision");
+                break;
+            }
         }
         else 
             break;
     }
+    //AEX_PRINT("ans_size=" << ans_size << "ans_slot_size=" << ans_slot_size);
     if (ans_slot_size == 0) {
         ans_slot_size = traits::MIN_INNER_NODE_SLOT_SIZE;
         ans_size = std::min(n, static_cast<size_type>(traits::MIN_INNER_NODE_SLOT_SIZE));
@@ -92,13 +111,16 @@ void aex_tree<_Key, _Val, traits>::split(const key_type* const key, node_ptr* ch
     AEX_ASSERT(level > 0);
     size_type start = 0, ans_slot_size, ans_size;
     bool flag;
+    AEX_PRINT("n=" << n);
     for (; start < n; start += ans_size){
         std::tie(ans_size, ans_slot_size, flag) = split_with_exponential_probe(key + start, n - start, level);
+        AEX_PRINT("ans_size=" << ans_size << ", left size=" << n - start);
         inner_node_ptr new_node = node_allocator.allocate_inner_node(ans_slot_size, flag);
         ++this->m_stats.level_node[level];
         new_node->level = level;
         if (IS_ML_NODE(new_node)){
             model.train(key + start, ans_size - 1, ans_slot_size);
+            AEX_ASSERT(self::check_collision(key + start, ans_size - 1, ans_slot_size, model) == true);
             new_node->construct(key + start, child + start, ans_size, model);
         }
         else
@@ -263,7 +285,7 @@ void aex_tree<_Key, _Val, traits>::split_with_linear_probe(const key_type* const
 // check if key buffer can put in a node with slot_size slot size. The model m will be trained if the answer is true
 template<typename _Key, typename _Val, typename traits>
 bool aex_tree<_Key, _Val, traits>::check_collision(const key_type* const key, const slot_type size, const slot_type slot_size, inner_node_model &m){
-    if (size < traits::MIN_ML_INNER_NODE_SIZE || slot_size < traits::MIN_ML_INNER_NODE_SLOT_SIZE)
+    if (size + 1 < traits::MIN_ML_INNER_NODE_SIZE || slot_size < traits::MIN_ML_INNER_NODE_SLOT_SIZE)
         return true;
     if (slot_size > traits::MAX_INNER_NODE_SLOT_SIZE)
         return false;
@@ -271,15 +293,16 @@ bool aex_tree<_Key, _Val, traits>::check_collision(const key_type* const key, co
     //    return true;
     slot_type start = 0;
     for (slot_type i = 0; i < size; ++i){            
-        slot_type pos = std::max(0, std::min(static_cast<slot_type>(m.predict(key[i]) * slot_size), static_cast<slot_type>(slot_size + traits::ERROR_BOUND - 1)));
+        slot_type pos = std::max(0, static_cast<slot_type>(m.predict(key[i]) * slot_size));
         start = std::max(start, pos);
-        if (start - pos >= traits::ERROR_BOUND || start >= slot_size + traits::ERROR_BOUND - 1){
+        //AEX_PRINT("start=" << start);
+        if (start - pos >= traits::ERROR_BOUND || start >= slot_size + traits::ERROR_BOUND - 2){
             //AEX_WARNING("i=" << i << "start=" << start << ", slot_size=" << slot_size << ", pos=" << pos << ", key=" << key[i] << ", prev_key=" << key[i-1]);
-            for (int j = 0; j < size; ++j)
-                AEX_PRINT("key=" << key[j] << ", pred_pos=" << m.predict(key[j]));
-            for (int j = 0; j < m.args.seg_nums; ++j)
-                AEX_PRINT("slope=" << m.args.slope[j] << ", end=" << m.args.end[j]);
-            exit(0);
+            //for (int j = 0; j < size; ++j)
+            //    AEX_PRINT("key=" << key[j] << ", pred_pos=" << m.predict(key[j]));
+            //for (int j = 0; j < m.args.seg_nums; ++j)
+            //    AEX_PRINT("slope=" << m.args.slope[j] << ", end=" << m.args.end[j]);
+            //exit(0);
             return false;
         }
         ++start;
@@ -299,7 +322,7 @@ inline bool aex_tree<_Key, _Val, traits>::rescale(inner_node_ptr node, const slo
     if (!IS_ML_NODE(node)){
         if (node->size > traits::MIN_ML_INNER_NODE_SIZE){
             //AEX_PRINT("train success?" << node->model.train(node->key_ptr, node->size, new_slot_size));
-            if (node->model.train(node->key_ptr, node->size, new_slot_size) && check_collision(node->key_ptr, node->size - 1, new_slot_size, node->model)){
+            if (node->model.train(node->key_ptr, node->size - 1, new_slot_size) && check_collision(node->key_ptr, node->size - 1, new_slot_size, node->model)){
                 return rescale_implement(node, new_slot_size);
             }
             else
@@ -420,7 +443,8 @@ void aex_tree<_Key, _Val, traits>::copy_to_buffer(const inner_node_ptr  node, no
         child_buf[n_slot++] = child[node->slot_size - 1];
     }
     else{
-        std::copy(child, child + node->size, child_buf);
+        if (node->child_ptr != child_buf)
+            std::copy(child, child + node->size, child_buf);
     }
 }
 

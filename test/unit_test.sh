@@ -361,6 +361,8 @@
 ./unit_test --unit=index --key_type=float --function=lookup --num_keys=20000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=lookup --num_keys=200000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
+./unit_test --unit=index --key_type=int --function=lookup --num_keys=200000000 --batch=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+
 ./unit_test --unit=index --key_type=float --function=delta_lookup --num_keys=2000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=delta_lookup --num_keys=20000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=delta_lookup --num_keys=200000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data

@@ -55,9 +55,10 @@ void benchmark(std::map<string, string> flags){
         string query_dis = flags["query_dis"];
         benchmark_mix<key_type, value_type>(file, num_keys, num_ops, read_ratio, index_name, query_dis);
     }
-    else if (func == "build"){
+    else if (func == "construct"){
         long long num_keys = stoll(flags["num_keys"]);
         string index_name = flags["index"];
+        std::cout << "?" << std::endl;
         benchmark_build<key_type, value_type>(file, num_keys, index_name);
     }
     else if (func == "erase"){
@@ -69,7 +70,7 @@ void benchmark(std::map<string, string> flags){
     else if (func == "range_query"){
         long long num_keys = stoll(flags["num_keys"]);
         string index_name = flags["index"];
-        long long length_ratio = stod(flags["length_ratio"]);
+        double length_ratio = stod(flags["length_ratio"]);
         long long num_ops = stoll(flags["num_ops"]);
         benchmark_range_query<key_type, value_type>(file, num_keys, num_ops, length_ratio, index_name);
     }
@@ -99,5 +100,6 @@ int main(int argc, char** argv){
     //    write_ratio = stod(flags["write_ratio"]);
 
     if (key_type == "int") benchmark<unsigned long long, unsigned long long>(flags);
-    else benchmark<double, double>(flags);
+    //else if (key_type == "uint") benchmark<unsigned long long, unsigned long long>(flags);
+    else if (key_type == "float") benchmark<double, double>(flags);
 }

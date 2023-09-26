@@ -19,7 +19,7 @@ void aex_build_bench(vector<pair<key_type, value_type> > &data){
     //size_t cnt = 0;
     size_t times = 1;
     size_t sum = 0;
-    printf("aex map query test...");
+    printf("aex map construct test...");
     t1 = std::chrono::high_resolution_clock::now();
     aex::aex_map<key_type, value_type> index;
     for (size_t i = 0; i < times; ++i){
@@ -41,7 +41,7 @@ void stlmap_build_bench(vector<pair<key_type, value_type> > &data){
     //size_t cnt = 0;
     size_t times = 1;
     size_t sum = 0;
-    printf("aex map query test...");
+    printf("aex map construct test...");
     t1 = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < times; ++i){
         std::map<key_type, value_type> mp(data.begin(), data.end());

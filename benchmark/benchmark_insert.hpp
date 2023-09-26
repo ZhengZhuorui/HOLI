@@ -98,11 +98,12 @@ void alex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<ke
     //size_t cnt = 0;
     size_t M = insert_data.size();
     size_t times = 1;
+    alex::Alex<key_type, value_type> index;
+    index.bulk_load(data.data(), data.size());
     printf("alex insert test...\n");
     fflush(stdout);
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
-        alex::Alex<key_type, value_type> index(data.begin(), data.end());
         t1 = std::chrono::high_resolution_clock::now();    
         for (const auto& x : insert_data){
             index.insert(x);

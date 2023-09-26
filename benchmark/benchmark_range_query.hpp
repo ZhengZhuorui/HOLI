@@ -179,21 +179,23 @@ void benchmark_range_query(FILE* file, long long num_keys, long long num_ops, do
     vector<key_type> bin_data;
     vector<pair<key_type, value_type> > data;
     read_bineary_file<key_type>(file, bin_data, num_keys);
+    std::sort(bin_data.data(), bin_data.data() + num_keys);
+    num_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
     pack_KV_dataset(bin_data, data);
+    //std::sort(data.begin(), data.end(), [](auto const &a, auto const &b){return a.first < b.first;});
     vector<std::pair<key_type, key_type> > query;
     vector<value_type> answer;
     //generate_query<key_type, value_type, std::uniform_int_distribution<long long> >(data, query, answer, num_ops);
     query.resize(num_ops);
     vector<long long> query_pos(num_ops);
-    long long length = num_keys * length_ratio;
-    generate_data<long long, std::uniform_int_distribution<long long>, long long>(query_pos, num_ops, 0, data.size() - 1 - length);
+    long long length = 1.0 * num_keys * length_ratio;
+    generate_data<long long, std::uniform_int_distribution<long long>, long long>(query_pos, num_ops, 0, num_keys - 1 - length);
     for (long long i = 0; i < num_ops; ++i){
         long long pos = query_pos[i];
         query[i].first = data[pos].first;
         query[i].second = data[pos + length - 1].first;
     }
-    std::sort(data.begin(), data.end(), [](auto const &a, auto const &b){return a.first < b.first;});
-
+    
     if (index_name == "aex"){
         aex_range_query_bench(data, query);
     }

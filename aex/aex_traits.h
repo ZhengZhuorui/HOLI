@@ -82,7 +82,7 @@ struct aex_default_traits{
 
     static const int DATA_NODE_ERROR_BOUND = 2;
 
-    static const slot_type MIN_INNER_NODE_SLOT_SIZE = 16;
+    static const slot_type MIN_INNER_NODE_SLOT_SIZE = 32;
 
     static const slot_type MIN_ML_INNER_NODE_SLOT_SIZE = 64;
 

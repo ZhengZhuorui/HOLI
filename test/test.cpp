@@ -29,6 +29,7 @@ bool test(map<string, string> &flags){
 
     vector<T> bin_data;
     read_bineary_file<T>(file, bin_data, num_keys);
+    num_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
     if (unit == "function"){
         auto func = flags["function"];
         if (func == "exp_lower_bound")
@@ -207,7 +208,7 @@ int main(int argc, char** argv){
     auto key_type = flags["key_type"];
     bool test_result = false;
     if (key_type == "int"){
-        test_result = test<long long>(flags);
+        test_result = test<unsigned long long>(flags);
     }
     else if (key_type == "float"){
         test_result = test<double>(flags);
