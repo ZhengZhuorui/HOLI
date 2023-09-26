@@ -688,8 +688,10 @@ public:
 
             //for (unsigned int i = 0; i < max_segment_num; ++i)
             //    AEX_PRINT("segment[" << i << "] start=" << start[i] << ", end=" << end[i] << ", segment_slope=" << segment_slope[i]);
-            for (unsigned int i = 0; i < max_segment_num; ++i)
+            for (unsigned int i = 0; i < max_segment_num; ++i){
                 this->args.end[i] = key[end[i]];
+                this->args.slope[i] = 
+            }
                 
             double S = 0, last_key = key[0];
             for (unsigned int i = 0; i < max_segment_num; last_key = this->args.end[i], ++i)
