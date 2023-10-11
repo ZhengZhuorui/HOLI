@@ -276,16 +276,16 @@ public:
             return false;
         if (find_iter.key() != x)
             return false; 
-        data_node_ptr node = find_iter._M_node;
-        if (std::is_same<data_node, dynamic_data_node>::value && check_split((dynamic_data_node_ptr)(node), false)){
-            std::vector<key_type> new_key;
-            std::vector<node_ptr> new_child;
-            split((dynamic_data_node_ptr)node, new_key, new_child);
-            AEX_ASSERT(new_key.size() > 1);
-            if (new_key.size() > 1)
-                insert_recursive(node->parent, new_key.data(), new_child.data(), new_key.size());
-            find_iter = find_iterator(x);
-        }
+        //data_node_ptr node = find_iter._M_node;
+        //if (std::is_same<data_node, dynamic_data_node>::value && check_split((dynamic_data_node_ptr)(node), false)){
+        //    std::vector<key_type> new_key;
+        //    std::vector<node_ptr> new_child;
+        //    split((dynamic_data_node_ptr)node, new_key, new_child);
+        //    AEX_ASSERT(new_key.size() > 1);
+        //    if (new_key.size() > 1)
+        //        insert_recursive(node->parent, new_key.data(), new_child.data(), new_key.size());
+        //    find_iter = find_iterator(x);
+        //}
         AEX_ASSERT(find_iter._M_node != empty_leaf);
         erase_iterator(find_iter);
         return true;
@@ -510,17 +510,13 @@ private:
 
     void insert_split_by_buffer(inner_node_ptr node, const key_type* new_key, node_ptr* new_child, const slot_type n, bool no_split=false);
 
-    // insert one items to node from bottom to up. If node split, return false, else return true.
-    bool insert_one(inner_node_ptr node, key_type new_key, node_ptr new_node);
-    // insert one items to node from bottom to up. If node split, return false, else return true.
-    bool insert_recursive(inner_node_ptr node, const key_type* new_key, node_ptr* new_node, const slot_type n);
+    // insert some nodes to an inner node from bottom to up. If node split, return false, else return true.
+    bool insert_nodes(inner_node_ptr node, const key_type* new_key, node_ptr* new_node, const slot_type n);
 
-    // insert some items to node from bottom to up. If node split, return false, else return true.
-    //bool insert_ascend(inner_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
+    void insert_split_dense_inner_node(inner_node_ptr node, const key_type* new_key, node_ptr* new_child, const slot_type n);
 
-    // insert some child to a inner node.
-    void insert_split(inner_node_ptr node, const key_type key, node_ptr new_child);
-    void insert_split(inner_node_ptr node, const key_type* key, node_ptr* new_child, const slot_type n);
+    // a helper function insert some child to a inner node.
+    void insert_split_helper(inner_node_ptr node, const key_type* key, node_ptr* new_child, const slot_type n);
     
     // insert some data to a dynamic data node.
     void insert_split(dynamic_data_node_ptr node, const key_type key, const value_type data);
@@ -532,7 +528,7 @@ private:
     void erase_tree_recursive(node_ptr node);
 
     // erase an node from bottom to up
-    void erase_ascend(inner_node_ptr node);
+    void erase_recursive(inner_node_ptr node);
 
     // erase one iterator
     void erase_iterator(const_iterator &iter);
@@ -544,7 +540,7 @@ private:
     // erase one item(iterator) from data_node
     void erase_data(iterator &iter);
 
-    bool erase_merge(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node);
+    void erase_merge(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node);
     bool erase_merge(dynamic_data_node_ptr __restrict__ left_node, dynamic_data_node_ptr __restrict__ right_node);
     bool erase_merge(static_data_node_ptr __restrict__ left_node, static_data_node_ptr __restrict__ right_node);
 

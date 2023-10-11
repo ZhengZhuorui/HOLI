@@ -414,6 +414,8 @@
 # all write:
 ./unit_test --unit=index --key_type=float --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=2000000 --erase_nums=0 --input_file=/home/zzr/data/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float --function=tot --num_keys=200000000 --read_nums=2000000 --write_nums=200000000 --erase_nums=0 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+./unit_test --unit=index --key_type=int --function=tot --num_keys=200000000 --read_nums=0 --write_nums=200000000 --erase_nums=0 --input_file=/home/zzr/data/fb_200M_uint64
 # half write:
 ./unit_test --unit=index --key_type=float --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=1000000 --erase_nums=0 --input_file=/home/zzr/data/longitudes-200M.bin.data
 # all read:

@@ -124,7 +124,10 @@ void alex_range_query_bench(vector<pair<key_type, value_type> > &data, vector<pa
 
 template<typename key_type, typename value_type>
 void pgm_range_query_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, key_type> > &query){
-    pgm::DynamicPGMIndex<key_type, value_type> index(data.begin(), data.end());
+    //pgm::DynamicPGMIndex<key_type, value_type> index(data.begin(), data.end());
+    pgm::DynamicPGMIndex<key_type, value_type> index;
+    for (auto &x : data)
+        index.insert_or_assign(x.first, x.second);
     system_clock::time_point t1, t2;
     //size_t cnt = 0;
     size_t num_ops = query.size();
@@ -181,6 +184,7 @@ void benchmark_range_query(FILE* file, long long num_keys, long long num_ops, do
     read_bineary_file<key_type>(file, bin_data, num_keys);
     std::sort(bin_data.data(), bin_data.data() + num_keys);
     num_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
+    std::cout << "num_keys=" << num_keys << std::endl;
     pack_KV_dataset(bin_data, data);
     //std::sort(data.begin(), data.end(), [](auto const &a, auto const &b){return a.first < b.first;});
     vector<std::pair<key_type, key_type> > query;

@@ -601,8 +601,8 @@ public:
     ~piecewise_linear_model(){}
 
     // return the predict position. value range from 0 to +inf.
-    inline double predict(const key_type &key) const {
-        double ret = 1;
+    inline long double predict(const key_type &key) const {
+        long double ret = 1;
         for (unsigned int i = 0; i < args.seg_nums; ++i){
             ret += (key < args.end[i]) * (key - args.end[i]) * args.slope[i];
         }
@@ -624,16 +624,16 @@ public:
 
         AEX_ASSERT(n > 1);
 
-        const double max_density = 2.0 / (1.0 + 1.0 / density); //harmonic mean
-        const double gap = 1.0 / (n - 1) * max_density;
+        const long double max_density = 2.0 / (1.0 + 1.0 / density); //harmonic mean
+        const long double gap = 1.0 / (n - 1) * max_density;
         const slot_type max_offset = traits::ERROR_BOUND - 2;
         const slot_type windows_size = ceil(1.0 * max_offset / (1 - max_density));
-        std::vector<double> slope(n), windows_slope(windows_size), max_windows_slope(max_offset + 1);
+        std::vector<long double> slope(n), windows_slope(windows_size), max_windows_slope(max_offset + 1);
 
         std::fill(windows_slope.begin(), windows_slope.end(), 1.0 * max_density/ (key[n - 1] - key[0]));
         
         for (slot_type i = n - 2; i >= 0; --i){
-            double k = gap / (key[i + 1] - key[i]);
+            long double k = gap / (key[i + 1] - key[i]);
             //AEX_PRINT("slope " << i << " = " << k);
             slope[i] = k;
             std::move_backward(windows_slope.data(), windows_slope.data() + windows_size - 1, windows_slope.data() + windows_size);
@@ -656,7 +656,7 @@ public:
         std::fill(args.slope, args.slope + traits::MAX_SEGMENT_NUM, 0);
         
         slot_type start[traits::MAX_SEGMENT_NUM], end[traits::MAX_SEGMENT_NUM];
-        double segment_slope[traits::MAX_SEGMENT_NUM]; 
+        long double segment_slope[traits::MAX_SEGMENT_NUM]; 
 
         for (unsigned int max_segment_num = 1; max_segment_num <= static_cast<unsigned int>(std::min(traits::MAX_SEGMENT_NUM, n / 8)); max_segment_num *= 2){
             slot_type seg_len = static_cast<slot_type>(ceil(1.0 * (n - 1) / max_segment_num));
@@ -696,7 +696,7 @@ public:
             }
             //for (unsigned int i = 0; i < max_segment_num; ++i)
             //    AEX_PRINT("segment[" << i << "] start=" << start[i] << ", end=" << end[i] << ", segment_slope=" << segment_slope[i]);  
-            double S = 0, last_key = key[0];
+            long double S = 0, last_key = key[0];
             for (unsigned int i = 0; i < max_segment_num; last_key = this->args.end[i], ++i)
                 S += 1.0 * (this->args.end[i] - last_key) * this->args.slope[i];
 
@@ -704,7 +704,7 @@ public:
             if (S > 1){
                 continue;
             }
-            double left_slope = (1 - S) / (key[n - 1] - key[0]);
+            long double left_slope = (1 - S) / (key[n - 1] - key[0]);
             //AEX_PRINT("left_slope=" << left_slope << ", S=" << S);
             for (unsigned int i = 0; i < max_segment_num; ++i)
                 this->args.slope[i] += left_slope;
@@ -735,8 +735,8 @@ public:
         return false;
     }
 
-    inline double RMSE(const key_type* const key, const slot_type n){
-        double sum = 0;
+    inline long double RMSE(const key_type* const key, const slot_type n){
+        long double sum = 0;
         //slot_type max_error = 0;
         for (slot_type i = 0; i < n; ++i){
             sum += sqr(this->predict(key[i]) * (n - 1) - i);
@@ -759,7 +759,7 @@ public:
     }
 
     struct piecewise_linear_model_arguments{
-        double end[traits::MAX_SEGMENT_NUM], slope[traits::MAX_SEGMENT_NUM];
+        long double end[traits::MAX_SEGMENT_NUM], slope[traits::MAX_SEGMENT_NUM];
         unsigned int seg_nums;
     }args;
     

@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 namespace aex{
 
 template<typename _Tp>
@@ -37,6 +38,8 @@ struct aex_default_balance_args{
     static constexpr double DATA_NODE_TRAIN_FACTOR = 1.0; // train a data node needs DATA_NODE_TRAIN_FACTOR * n cost
     static constexpr double INNER_NODE_TRAIN_FACTOR = 8.0; // train a inner node needs INNER_NODE_TRAIN_FACTOR * n cost
 };
+
+#define AEX_MAX(a, b) (((a) < (b)) ? (b) : (a))
 
 template<typename _Key, 
         typename _Val,
@@ -82,15 +85,15 @@ struct aex_default_traits{
 
     static const int DATA_NODE_ERROR_BOUND = 2;
 
-    static const slot_type MIN_INNER_NODE_SLOT_SIZE = 32;
+    static const slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type) + sizeof(void*)));
 
-    static const slot_type MIN_ML_INNER_NODE_SLOT_SIZE = 64;
+    static const slot_type MIN_ML_INNER_NODE_SLOT_SIZE = MIN_INNER_NODE_SLOT_SIZE << 1;
 
-    static const slot_type MIN_ML_INNER_NODE_SIZE = 64;
+    static const slot_type MIN_ML_INNER_NODE_SIZE = MIN_INNER_NODE_SLOT_SIZE << 1;
 
     static const slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 25;
 
-    static const slot_type MIN_DATA_NODE_SLOT_SIZE = 64;
+    static const slot_type MIN_DATA_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type)));
 
     static const slot_type MAX_DATA_NODE_SLOT_SIZE= 1 << 20;
 
@@ -101,6 +104,8 @@ struct aex_default_traits{
     static constexpr float DATA_NODE_FULL_RATIO = 1;
 
     static constexpr float DENSITY_NARROW_RATIO = 0.5;
+
+    static constexpr float EXPAND_RATIO = 2;
 
     static constexpr float MERGE_COST_PARA = 1;
 

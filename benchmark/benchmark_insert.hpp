@@ -75,8 +75,8 @@ void stx_btree_insert_bench(vector<pair<key_type, value_type> > &data, vector<pa
     fflush(stdout);
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
-        stx::btree_map<key_type, value_type> index(data.begin(), data.end());
-        std::cout << "bulk load finish" << std::endl;
+        stx::btree_map<key_type, value_type> index;
+        index.bulk_load(data.begin(), data.end());
         t1 = std::chrono::high_resolution_clock::now();    
         for (const auto& x : insert_data){
             index.insert(x);
@@ -199,14 +199,14 @@ template<typename key_type,
 void benchmark_insert(FILE* file, long long num_keys, long long num_ops, std::string &index_name){
     vector<key_type> bin_data;
     vector<pair<key_type, value_type> > data;
-    read_bineary_file<key_type>(file, bin_data, num_keys + num_ops);
+    read_bineary_file<key_type>(file, bin_data, num_keys);
     pack_KV_dataset(bin_data, data);
 
     vector<pair<key_type, value_type> > insert_data(num_ops);
-    std::random_shuffle(data.data(), data.data() + num_keys + num_ops);
-    copy(data.data() + num_keys, data.data() + num_keys + num_ops, insert_data.data());
-    data.resize(num_keys);
-    std::sort(data.data(), data.data() + num_keys);
+    std::random_shuffle(data.data(), data.data() + num_keys);
+    copy(data.data() + num_keys - num_ops, data.data() + num_keys, insert_data.data());
+    data.resize(num_keys - num_ops);
+    std::sort(data.data(), data.data() + num_keys - num_ops);
     if (index_name == "aex"){
         aex_insert_bench(data, insert_data);
     }

@@ -7,87 +7,77 @@ namespace aex{
 // TODO: 
 /* erase a node from button to up */
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::erase_ascend(inner_node_ptr node){
-    //AEX_PRINT("erase_ascend");
+void aex_tree<_Key, _Val, traits>::erase_recursive(inner_node_ptr node){
     if (node == nullptr) 
         return;
-    bool merge_flag = true; 
-
-    /* if the key is update */
-    while (merge_flag && static_cast<node_ptr>(node) != this->root){
-        merge_flag = false;
-        if (!isfew(node)) 
-            break;
-
-        // now node item is few. rescale it
-        if (rescale(node, node->real_slot_size() >> 1))
-            break;
-
-        inner_node_ptr parent = node->parent;
-        // if rescale failed, the model can't fix the data or the item is fewer than min size
-        // if items is large than min size, train it again
-        if (node->slot_size > traits::MIN_INNER_NODE_SLOT_SIZE){
-            insert_split_pipeline(node, nullptr, nullptr, 0);
-            return;
-        }
-        // otherwise merge to near node
-        else{
-            merge_flag = true;     
-            inner_node_ptr left_node = static_cast<inner_node_ptr>(node->prev);
-            if (left_node != nullptr)
-                if (left_node->parent != parent) left_node = nullptr;
-
-            inner_node_ptr right_node = static_cast<inner_node_ptr>(node->next);
-            if (right_node != nullptr)
-                if (right_node->parent != parent) right_node = nullptr;
-
-            //std::vector<key_type> key_buf(node->size);
-            //std::vector<node_ptr> child_buf(node->size);
-            if (right_node != nullptr)
-                merge_flag = erase_merge(node, right_node);
-            else if (left_node != nullptr && left_node->slot_size == right_node->slot_size)
-                merge_flag = erase_merge(left_node, node);
-            if (!merge_flag)
-                return;
-        }
-        node = parent;
+    if (node == root && node->size == 1){
+        node_ptr tmp = root;
+        root = static_cast<inner_node_ptr>(root)->child_ptr[0];
+        --m_stats.level_node[this->m_stats.height - 1];
+        --m_stats.height;
+        node_allocator.free_node(tmp);
     }
 
-    if (merge_flag){
-        /* if the root has one child, change the root*/
-        if (!IS_LEAF_NODE(node)){
-            if (root->size == 1){
-                node_ptr tmp = root;
-                root = static_cast<inner_node_ptr>(root)->child_ptr[0];
-                --m_stats.level_node[this->m_stats.height - 1];
-                --m_stats.height;
-                node_allocator.free_node(tmp);
-            }
+    // now node item is few. rescale it
+    while (isfew(node)){
+        if (!rescale(node, node->real_slot_size() >> 1)){
+            break;
         }
-        else if (node->size == 0){
-            root = head_leaf = tail_leaf = nullptr;
-            --m_stats.level_node[this->m_stats.height - 1];
-            --m_stats.height;
-            node_allocator.free_node(node);
+    }
+
+    if (!isfew(node))
+        return;
+    inner_node_ptr parent = node->parent;
+    // if rescale failed, the model can't fix the data or the item is fewer than min size
+    // if items is large than min size, train it again
+    if (node->slot_size >= traits::MIN_INNER_NODE_SLOT_SIZE){
+        insert_split_pipeline(node, nullptr, nullptr, 0);
+    }
+    // otherwise node->slot_size < MIN_INNER_NODE_SLOT_SIZE, means node->size < MIN_INNER_NODE_SIZE / 2
+    else{
+        if (node->size == 0){
+            erase_link(node);
+            erase_child_node(parent, node);
         }
+        else{
+            inner_node_ptr right_node = static_cast<inner_node_ptr>(node->next);
+            if (right_node != nullptr)
+                if (right_node->parent == parent){
+                    if (IS_ML_NODE(right_node) == false && node->size + right_node->size <= right_node->slot_size)
+                        erase_merge(node, right_node);
+                }
+            
+            inner_node_ptr left_node = static_cast<inner_node_ptr>(node->prev);
+            if (left_node != nullptr)
+                if (left_node->parent == parent){
+                    if (IS_ML_NODE(left_node) == false && left_node->size + node->size <= node->slot_size)
+                        erase_merge(left_node, node);
+                }
+        }
+            
+        if (parent != nullptr)
+            if (isfew(parent))
+                erase_recursive(parent);
     }
 }
 
-// return merge flag
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::erase_merge(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node){
+void aex_tree<_Key, _Val, traits>::erase_merge(inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node){
     AEX_WARNING("erase merge inner node");
     AEX_ASSERT(left_node->parent == right_node->parent);
+    AEX_ASSERT(left_node->size + right_node->size <= right_node->slot_size);
+    AEX_ASSERT(IS_ML_NODE(left_node) == false);
+    AEX_ASSERT(IS_ML_NODE(right_node) == false);
     inner_node_ptr parent = right_node->parent;
-    std::vector<key_type> key_buf(left_node->size), new_key;
-    std::vector<node_ptr> child_buf(left_node->size), new_child;
     AEX_ASSERT(parent != nullptr);
-    copy_to_buffer(left_node, key_buf.data(), child_buf.data());
-    key_buf[left_node->size - 1] = parent->key_ptr[parent->at(left_node)];
+    key_type split_key =  parent->key_ptr[parent->at(left_node)];
+    std::move_backward(right_node->key_ptr, right_node->key_ptr + right_node->size - 1, right_node->key_ptr + left_node->size + right_node->size);
+    std::move_backward(right_node->child_ptr, right_node->child_ptr + right_node->size, right_node->child_ptr + left_node->size + right_node->size);
+    std::move(left_node->key_ptr, left_node->key_ptr + left_node->size - 1, right_node->key_ptr);
+    std::move(left_node->child_ptr, left_node->child_ptr + left_node->size, right_node->child_ptr);
+    right_node->key_ptr[left_node->size] = split_key;
     erase_link(left_node);
     erase_child_node(parent, left_node);
-    insert_split_by_buffer(right_node, key_buf.data(), child_buf.data(), left_node->size, true);
-    return isfew(right_node->parent);
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -166,13 +156,12 @@ void aex_tree<_Key, _Val, traits>::erase_iterator(const_iterator &iter){
             }
             return;
         }
-
         inner_node_ptr parent = node->parent;
         if (node->size == 0){
             erase_link(node);
             erase_child_node(parent, node);
             if (isfew(parent))
-                erase_ascend(parent);
+                erase_recursive(parent);
             return;
         }
 
@@ -198,13 +187,13 @@ void aex_tree<_Key, _Val, traits>::erase_iterator(const_iterator &iter){
             }
         }
 
-        if (traits::AllowDynamicDataNode::value && left_node != nullptr)
-            while (isfew(left_node)) 
-                rescale(left_node, ((dynamic_node_ptr)node)->slot_size >> 1);
-            
-        if (traits::AllowDynamicDataNode::value && right_node != nullptr)
-            while (isfew(right_node)) 
-                rescale(right_node, ((dynamic_node_ptr)node)->slot_size >> 1);
+        //if (traits::AllowDynamicDataNode::value && left_node != nullptr)
+        //    while (isfew(left_node)) 
+        //        rescale(left_node, ((dynamic_node_ptr)node)->slot_size >> 1);
+        //    
+        //if (traits::AllowDynamicDataNode::value && right_node != nullptr)
+        //    while (isfew(right_node)) 
+        //        rescale(right_node, ((dynamic_node_ptr)node)->slot_size >> 1);
 
         bool merge_flag = true;
         if (left_node != nullptr && right_node != nullptr){
@@ -220,7 +209,7 @@ void aex_tree<_Key, _Val, traits>::erase_iterator(const_iterator &iter){
         
         if (merge_flag && parent != nullptr){
             if (isfew(parent))
-                erase_ascend(parent);
+                erase_recursive(parent);
         }
     }
 }

@@ -62,7 +62,7 @@ void stx_btree_build_bench(vector<pair<key_type, value_type> > &data){
     system_clock::time_point t1, t2;
 
     size_t times = 1;
-    printf("stl map build test...");
+    printf("stx btree build test...");
     fflush(stdout);
     size_t sum = 0;
     t1 = std::chrono::high_resolution_clock::now();
@@ -89,7 +89,7 @@ void alex_build_bench(vector<pair<key_type, value_type> > &data){
         sum += index.size();
     }
     auto t2 = std::chrono::high_resolution_clock::now();
-    double delta = duration_cast<nanoseconds>(t2 - t1).count();
+    double delta = duration_cast<microseconds>(t2 - t1).count();
     double QPS = 1000000.0 * times / delta;
     
     std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << std::endl;
@@ -150,5 +150,8 @@ void benchmark_build(FILE* file, long long num_keys, std::string &index_name){
     }
     else if (index_name == "alex"){
         alex_build_bench(data);
+    }
+    else if (index_name == "pgm"){
+        pgm_build_bench(data);
     }
 }
