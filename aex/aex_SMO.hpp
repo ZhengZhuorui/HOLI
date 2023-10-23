@@ -319,7 +319,10 @@ inline bool aex_tree<_Key, _Val, traits>::rescale(inner_node_ptr node, const slo
         return false;
     if (!IS_ML_NODE(node)){
         if (node->size >= traits::MIN_ML_INNER_NODE_SIZE){
-            //AEX_PRINT("train success?" << node->model.train(node->key_ptr, node->size, new_slot_size));
+            #ifdef AEX_EXPERIMENT
+            ++opt_stats.inner_node_train_cnt;
+            opt_stats.inner_node_train_tot_size += node->size;
+            #endif
             if (node->model.train(node->key_ptr, node->size - 1, new_slot_size) && check_collision(node->key_ptr, node->size - 1, new_slot_size, node->model)){
                 return rescale_implement(node, new_slot_size);
             }

@@ -5,6 +5,9 @@ namespace aex{
 
 template<typename _Key,
         typename _Val,
+#ifdef AEX_TLI
+        typename SearchClass,
+#endif
         typename traits>
 struct aex_node_base{
 public:
@@ -17,13 +20,20 @@ public:
     typedef typename traits::size_type size_type;
 
     typedef typename traits::slot_type slot_type;
+    
+    #ifdef AEX_TLI
+    typedef aex_node_base<key_type, value_type, SearchClass, traits> self;
+    
+    typedef aex_inner_node<_Key, _Val, SearchClass, traits> inner_node;
 
+    typedef aex_static_data_node<_Key, _Val, SearchClass, traits> data_node;
+    #else
     typedef aex_node_base<key_type, value_type, traits> self;
-
+    
     typedef aex_inner_node<_Key, _Val, traits> inner_node;
 
-    //typedef typename base_tree::data_node data_node;
     typedef aex_static_data_node<_Key, _Val, traits> data_node;
+    #endif
 
     typedef aex_node_balance_stats<typename traits::AllowBalance> node_balance_stats;
 
@@ -65,29 +75,42 @@ public:
 
 template<typename _Key,
         typename _Val,
+#ifdef AEX_TLI
+        typename SearchClass,
+#endif
         typename traits>
 struct aex_dynamic_node_base: public aex_node_base<_Key, _Val, traits>{
 public:
     typedef _Key key_type;
 
     typedef _Val value_type;
+    #ifdef AEX_TLI
+    typedef aex_tree<key_type, value_type, SearchClass, traits> base_tree;
+    
+    typedef aex_node_base<key_type, value_type, SearchClass, traits> base_node;
 
+    typedef aex_dynamic_node_base<key_type, value_type, SearchClass, traits> self;
+    
+    typedef aex_inner_node<_Key, _Val, traits> inner_node;
+
+    typedef aex_static_data_node<_Key, _Val, traits> data_node;
+    #else
     typedef aex_tree<key_type, value_type, traits> base_tree;
 
-    typedef typename traits::size_type size_type;
-
-    typedef typename traits::slot_type slot_type;
-
     typedef aex_node_base<key_type, value_type, traits> base_node;
-
-    typedef base_node* node_ptr;
 
     typedef aex_dynamic_node_base<key_type, value_type, traits> self;
 
     typedef aex_inner_node<_Key, _Val, traits> inner_node;
 
-    //typedef typename base_tree::data_node data_node;
     typedef aex_static_data_node<_Key, _Val, traits> data_node;
+    #endif
+
+    typedef typename traits::size_type size_type;
+
+    typedef typename traits::slot_type slot_type;
+
+    typedef base_node* node_ptr;
 
     typedef aex_node_balance_stats<typename traits::AllowBalance> node_balance_stats;
 
@@ -140,6 +163,9 @@ public:
 
 template<typename _Key,
         typename _Val,
+#ifdef AEX_TLI
+        typename SearchClass,
+#endif
         typename traits>
 struct aex_inner_node : public aex_dynamic_node_base<_Key, _Val, traits>{
 public:
@@ -152,15 +178,32 @@ public:
 
     typedef typename traits::slot_type slot_type;
 
+    #ifdef AEX_TLI
+    typedef aex_tree<key_type, value_type, SearchClass, traits> base_tree;
+
+    typedef aex_node_base<key_type, value_type, SearchClass, traits> base_node;
+
+    typedef aex_dynamic_node_base<key_type, value_type, SearchClass, traits> base_dynamic_node;
+
+    typedef aex_static_data_node<_Key, _Val, SearchClass, traits> data_node;
+
+    typedef aex_inner_node<_Key, _Val, SearchClass, traits> inner_node;
+
+    #else
     typedef aex_tree<key_type, value_type, traits> base_tree;
+
+    typedef aex_node_base<key_type, value_type, traits> base_node;
+
+    typedef aex_dynamic_node_base<key_type, value_type, traits> base_dynamic_node;
+
+    typedef aex_static_data_node<_Key, _Val, traits> data_node;
+
+    typedef aex_inner_node<_Key, _Val, traits> inner_node;
+    #endif
 
     typedef aex_node_allocator<key_type, value_type, traits> NodeAllocator;
 
-    typedef aex_node_base<key_type, value_type, traits> base_node;
-    
     typedef base_node* node_ptr;
-
-    typedef aex_dynamic_node_base<key_type, value_type, traits> base_dynamic_node;
 
     typedef base_dynamic_node* dynamic_node_ptr;
 
@@ -174,13 +217,10 @@ public:
     //typedef aex_model<key_type, traits> Model;
 
     //typedef gap_array_linear_model<key_type, traits> Model;
-    typedef piecewise_linear_model<key_type, traits> Model;
-
-    typedef aex_static_data_node<_Key, _Val, traits> data_node;
+    //typedef piecewise_linear_model<key_type, traits> Model;
+    typedef piecewise_linear_model_2<key_type, traits> Model;
 
     typedef data_node* data_node_ptr;
-
-    typedef aex_inner_node<_Key, _Val, traits> inner_node;
     
     typedef inner_node* inner_node_ptr;
 
@@ -531,16 +571,23 @@ public:
     inline slot_type find(const key_type& x) const{
         if (IS_ML_NODE(this)){
             slot_type pred_pos = this->predict(x);
-            //slot_type upper_bound = std::min(this->slot_size, pred_pos + traits::ERROR_BOUND + 1);
+            #ifdef AEX_TLI
+            return SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->slot_size, x, this->key_ptr + pred_pos) - this->key_ptr;
+            #else
             for (slot_type i = pred_pos; i < this->slot_size; ++i)
             if (x <= key_ptr[i]){
                 return i;
             }
             return this->slot_size - 1;
+            #endif
         }
         else{
+            #ifdef AEX_TLI
+            return SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x, this->key_ptr + pred_pos) - this->key_ptr;
+            #else
             slot_type pos = std::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x) - this->key_ptr;
             return pos;
+            #endif
         }
     }
 
@@ -557,21 +604,32 @@ public:
 
 template<typename _Key,
         typename _Val,
+#ifdef AEX_TLI
+        typename SearchClass,
+#endif
         typename traits>
 class aex_data_node : public aex_dynamic_node_base<_Key, _Val, traits>{
 public:
 
     typedef aex_node_allocator<_Key, _Val, traits> NodeAllocator;
 
-    typedef aex_node_base<_Key, _Val, traits> base_node;
-    
-    typedef base_node* node_ptr;
+    #ifdef AEX_TLI
+    typedef aex_node_base<_Key, _Val, SearchClass, traits> base_node;
 
-    typedef aex_dynamic_node_base<_Key, _Val, traits> base_dynamic_node;
+    typedef aex_data_node<_Key, _Val, SearchClass, traits> data_node;
     
-    typedef base_dynamic_node* base_dynamic_node_ptr;
+    typedef aex_dynamic_node_base<_Key, _Val, SearchClass, traits> base_dynamic_node;
+    #else
+    typedef aex_node_base<_Key, _Val, traits> base_node;
 
     typedef aex_data_node<_Key, _Val, traits> data_node;
+
+    typedef aex_dynamic_node_base<_Key, _Val, traits> base_dynamic_node;
+    #endif
+    
+    typedef base_node* node_ptr;
+    
+    typedef base_dynamic_node* base_dynamic_node_ptr;
 
     typedef data_node* data_node_ptr;
     
@@ -731,17 +789,26 @@ public:
 
 template<typename _Key,
         typename _Val,
+#ifdef AEX_TLI
+        typename SearchClass,
+#endif
         typename traits>
 class aex_static_data_node : public aex_node_base<_Key, _Val, traits>{
 public:
 
     typedef aex_node_allocator<_Key, _Val, traits> NodeAllocator;
 
-    typedef aex_node_base<_Key, _Val, traits> base_node;
+#ifdef AEX_TLI
+    typedef aex_node_base<_Key, _Val, SearchClass, traits> base_node;
     
-    typedef base_node* node_ptr;
+    typedef aex_static_data_node<_Key, _Val, SearchClass, traits> data_node;
+#else
+    typedef aex_node_base<_Key, _Val, traits> base_node;
 
     typedef aex_static_data_node<_Key, _Val, traits> data_node;
+#endif
+    
+    typedef base_node* node_ptr;
 
     typedef data_node* data_node_ptr;
     
@@ -849,15 +916,19 @@ public:
         //if (x <= key[i])
         //    return i;
         //return this->size;
+#ifdef AEX_TLI
+        return SearchClass::lower_bound(this->key, this->key + this->size, x, this->key) - this->key;
+#else
         return std::lower_bound(this->key, this->key + this->size, x) - this->key;
+#endif
     }
 
     inline slot_type find_upper_pos(const key_type &x){
-        slot_type pos = 0;
-        for (int i = 0; i < this->size; ++i)
-        if (x < key[i])
-            return i;
-        return pos;
+#ifdef AEX_TLI
+        return SearchClass::upper_bound(this->key, this->key + this->size, x, this->key) - this->key;
+#else
+        return std::upper_bound(this->key, this->key + this->size, x) - this->key;
+#endif  
     }
 
 };

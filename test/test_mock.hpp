@@ -2,6 +2,7 @@
 
 using namespace aex;
 
+
 template<typename _Key,
         typename _Val, 
         typename traits=aex::aex_default_traits<_Key, _Val, std::false_type> >
@@ -35,7 +36,7 @@ public:
     typedef base_node* node_ptr;
 
     // inner_node:    
-    typedef typename aex::aex_inner_node<_Key, _Val, traits> inner_node;
+    typedef typename parent::inner_node inner_node;
 
     typedef inner_node* inner_node_ptr;
 

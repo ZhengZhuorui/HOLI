@@ -7,6 +7,9 @@ namespace aex
 
 template<typename _Key, 
         typename _Val, 
+#ifdef AEX_TLI
+        typename SearchClass,
+#endif
         typename _Alloc = std::allocator<unsigned char>,
         typename traits=aex_default_traits<_Key, _Val, std::false_type> >
 class aex_map{
@@ -17,7 +20,11 @@ public:
 
     typedef std::pair<key_type, value_type> kv_type;
 
+    #ifdef AEX_TLI
+    typedef aex_tree<key_type, value_type, SearchClass, traits> tree;
+    #else
     typedef aex_tree<key_type, value_type, traits> tree;
+    #endif
 
     typedef typename tree::size_type size_type;
 

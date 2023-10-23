@@ -25,27 +25,26 @@ public:
 
     typedef _Val value_type;
 
-    //typedef aex_allocator<_Key, _Val, traits> allocator;
-
     typedef aex_node_allocator<_Key, _Val, traits> self;
 
     typedef aex_tree<_Key, _Val, traits> base_tree;
 
-    typedef aex_node_base<key_type, value_type, traits> base_node;
+    typedef typename base_tree::base_node base_node;
 
     typedef base_node* node_ptr;
 
-    typedef aex_inner_node<key_type, value_type, traits> inner_node;
+    typedef typename base_tree::inner_node inner_node;
 
     typedef inner_node* inner_node_ptr;
 
     typedef typename inner_node::Model Model;
 
-    //typedef aex_data_node<key_type, value_type, traits> data_node;
-
     typedef typename base_tree::dynamic_data_node dynamic_data_node;
+
     typedef typename base_tree::dynamic_data_node_ptr dynamic_data_node_ptr;
+
     typedef typename base_tree::static_data_node static_data_node;
+
     typedef typename base_tree::static_data_node_ptr static_data_node_ptr;
 
     typedef typename base_tree::data_node data_node;

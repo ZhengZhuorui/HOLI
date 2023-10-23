@@ -4,7 +4,9 @@ namespace aex{
 enum model_type{
     linear=0,
     exponential=1,
-    logarithmic=2
+    logarithmic=2,
+    piecewise_linear=3,
+    piecewise_linear_2=4,
 };
 
 // model template class
@@ -629,9 +631,7 @@ public:
         const slot_type max_offset = traits::ERROR_BOUND - 2;
         const slot_type windows_size = ceil(1.0 * max_offset / (1 - max_density));
         std::vector<long double> slope(n), windows_slope(windows_size), max_windows_slope(max_offset + 1);
-
-        std::fill(windows_slope.begin(), windows_slope.end(), 1.0 * max_density/ (key[n - 1] - key[0]));
-        
+        std::fill(windows_slope.begin(), windows_slope.end(), 1.0 * max_density / (key[n - 1] - key[0]));
         for (slot_type i = n - 2; i >= 0; --i){
             long double k = gap / (key[i + 1] - key[i]);
             //AEX_PRINT("slope " << i << " = " << k);
@@ -649,7 +649,7 @@ public:
                     }
                 slope[i] = std::min(slope[i], max_windows_slope[static_cast<slot_type>(floor(1.0 * (j + 1) * (1 - max_density)))]);
             }
-            //AEX_PRINT("slope[" << i << "]=" << slope[i] << ", real=" << gap / (key[i + 1] - key[i]));
+            AEX_PRINT("slope[" << i << "]=" << slope[i] << ", real=" << gap / (key[i + 1] - key[i]));
         }
 
         std::fill(args.end, args.end + traits::MAX_SEGMENT_NUM, std::numeric_limits<key_type>::min());
@@ -731,6 +731,155 @@ public:
             //AEX_PRINT("train_time=" << train_time);
             #endif
             return true;
+        }
+        return false;
+    }
+
+    inline long double RMSE(const key_type* const key, const slot_type n){
+        long double sum = 0;
+        //slot_type max_error = 0;
+        for (slot_type i = 0; i < n; ++i){
+            sum += sqr(this->predict(key[i]) * (n - 1) - i);
+        }
+        sum /= n;
+        sum = sqrt(sum);
+        return sum;
+    }
+
+    inline slot_type max_error(const key_type* const key, const slot_type n, const slot_type slot_size){
+        slot_type error = 0;
+        for (slot_type i = 0, start = 0; i < n; ++i){
+            slot_type pos = std::max(0, static_cast<slot_type>(this->predict(key[i]) * slot_size));
+            start = std::max(start, pos);
+            //AEX_PRINT("key=" << key[i] << ", pos=" << pos << ", start=" << start);
+            error = std::max(error, start - pos);
+            ++start;
+        }
+        return error;
+    }
+
+    struct piecewise_linear_model_arguments{
+        long double end[traits::MAX_SEGMENT_NUM], slope[traits::MAX_SEGMENT_NUM];
+        unsigned int seg_nums;
+    }args;
+    
+
+};
+
+template<typename _Tp,
+        typename traits>
+class piecewise_linear_model_2{
+public:
+    typedef _Tp key_type;
+
+    typedef linear_model<key_type, traits> self;
+
+    typedef typename traits::slot_type slot_type;
+
+    piecewise_linear_model_2(){
+        this->args.seg_nums = 0;
+        std::fill(this->args.slope, this->args.slope + traits::MAX_SEGMENT_NUM, 0);
+    }
+
+    ~piecewise_linear_model_2(){}
+
+    // return the predict position. value range from 0 to +inf.
+    inline long double predict(const key_type &key) const {
+        long double ret = 1;
+        for (unsigned int i = 0; i < args.seg_nums; ++i){
+            ret += (key < args.end[i]) * (key - args.end[i]) * args.slope[i];
+        }
+        return ret;
+    }
+
+    bool train(const key_type* const key, const slot_type n){
+        return false;
+    }
+
+    bool train(const key_type* const key, const slot_type n, const slot_type slot_size){
+        #ifdef AEX_EXPERIMENT
+        //std::chrono::system_clock::time_point t1, t2;
+        //t1 = std::chrono::high_resolution_clock::now();
+        //static double train_time = 0;
+        #endif
+        AEX_PRINT("train...");
+        long double density = 1.0 * n / slot_size;
+        long double max_density = 2.0 / (1.0 + 1.0 / density);
+        long double gap = 1.0 / (n - 1) * max_density;
+        AEX_PRINT("density=" << density << ", max_density=" << max_density << ", gap=" << gap);
+        slot_type max_error = traits::ERROR_BOUND / 2;
+        slot_type block_size = max_error;
+        slot_type block_num = n / block_size + (n % block_size != 0);
+        
+        //prepare: block_slope[i] = (block_size * i >= n) ? (key[n - 1] - key[block_size * i]): (key[block_size * (i + 1)] - key[block_size * i] * (block_size * gap))
+        auto block_slope = [&key, block_size, gap, n](int i){
+            return (block_size * i >= n) ? 
+                    (((n - block_size * i) * gap) / (key[n - 1] - key[block_size * i])) : 
+                    (1.0 * block_size * gap / (key[block_size * (i + 1)] - key[block_size * i]));
+            };
+
+        {
+            for (int i = 0; i < block_num; ++i)
+                AEX_PRINT("block_slope" << block_slope(i));
+        }
+            
+        int segment_start[traits::MAX_SEGMENT_NUM + 1];
+        for (int segment_nums = 1; segment_nums < traits::MAX_SEGMENT_NUM && segment_nums <= block_num; segment_nums <<= 1){
+            std::fill(args.slope, args.slope + segment_nums, 0);
+            int avg_segment_block_num = block_num / segment_nums;
+
+            for (int start = 0, i = 0; i < segment_nums; ++i, start += avg_segment_block_num)
+                segment_start[i] = start;
+            segment_start[segment_nums] = block_num;
+
+            for (int i = 0; i < segment_nums; ++i){
+                if (i > 0 && args.slope[i] < args.slope[i - 1]){
+                    while (segment_start[i] > segment_start[i - 1] && args.slope[i] <= block_slope(segment_start[i] - 1))
+                        --segment_start[i];
+                }
+                if (i < segment_nums - 1 && args.slope[i] < args.slope[i + 1]){
+                    while (segment_start[i + 1] < segment_start[i + 2] && args.slope[i] <= block_slope(segment_start[i + 1]))
+                        ++segment_start[i + 1];
+                }
+            }
+            for (int i = 0; i < segment_nums; ++i)
+                args.end[i] = key[std::min(n - 1, segment_start[i + 1] * block_size)];
+
+            long double S = 0, last_key = key[0];
+            for (int i = 0; i < segment_nums; last_key = this->args.end[i], ++i)
+                S += 1.0 * (this->args.end[i] - last_key) * this->args.slope[i];
+
+            //AEX_PRINT("segment_nums=" << segment_nums << ", S=" << S);
+            if (S > 1){
+                continue;
+            }
+            long double left_slope = (1 - S) / (key[n - 1] - key[0]);
+            //AEX_PRINT("left_slope=" << left_slope << ", S=" << S);
+            for (int i = 0; i < segment_nums; ++i)
+                this->args.slope[i] += left_slope;
+
+            #ifdef AEX_DEBUG
+            {
+                S = 0;
+                last_key = key[0];
+                for (int i = 0; i < segment_nums; last_key = this->args.end[i], ++i)
+                    S += 1.0 * (this->args.end[i] - last_key) * this->args.slope[i];
+                
+                //if (!(std::abs(S - 1) < 1e-6)){
+                //    AEX_PRINT("S=" << S << ", n=" << n << ", slot_size=" << slot_size << ", segment_nums=" << segment_nums);
+                //    for (int i = 0; i < segment_nums; ++i)
+                //        AEX_PRINT("i=" << i << "end=" << this->args.end[i] << ", slope=" << this->args.slope[i] << ", segment start=" << segment_start[i] << ", key_start=" << key[segment_start[i]] << ", key_end=" << key[segment_start[i + 1]]);
+                //}
+
+                AEX_ASSERT(std::abs(S - 1) < 1e-6);
+            }
+            #endif
+
+            for (int i = 0; i < segment_nums - 1; ++i)
+                this->args.slope[i] -= this->args.slope[i + 1];
+            args.seg_nums = segment_nums;
+            return true;
+            
         }
         return false;
     }

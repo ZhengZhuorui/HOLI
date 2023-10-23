@@ -110,7 +110,50 @@ bool test_piecewise_linear_model(T* data, size_t n){
     mock_aex_tree<T, T> tree;
     double ratio = tree.inner_node_few_ratio[2];
     piecewise_linear_model<T, traits> m;
-    slot_type slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE, size = slot_size * ratio;
+    slot_type size = traits::MIN_ML_INNER_NODE_SIZE;
+    slot_type slot_size = min_slot_size(size, ratio, traits::MIN_INNER_NODE_SLOT_SIZE);
+    //slot_type slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE, size = slot_size * ratio;
+    while (static_cast<size_t>(size) < n && m.train(data, size, slot_size) == true){
+        slot_size <<= 1;
+        size = slot_size * ratio;
+    }
+    slot_size >>= 1;
+    size = slot_size * ratio;
+    m.train(data, size, slot_size);
+    
+    if (slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE){
+        slot_type start = 0;
+        for (slot_type i = 0; i < size; ++i){
+            slot_type pos = std::max(0, std::min(static_cast<slot_type>(m.predict(data[i]) * slot_size), slot_size));    
+            start = std::max(start, pos);
+            ++start;
+        }
+    }
+    if (slot_size < traits::MIN_ML_INNER_NODE_SLOT_SIZE){
+        AEX_ERROR("TRAIN ERROR!");
+        return false;
+    }
+
+    slot_type max_error = m.max_error(data, slot_size * ratio, slot_size);
+    AEX_PRINT("slot_size=" << slot_size << ", RMSE=" << m.RMSE(data, n) << ", max_error=" << max_error);
+    if (max_error > traits::ERROR_BOUND){
+        AEX_ERROR("max error larger than ERROR_BOUND, max_error=" << max_error << ", ERROR_BOUND=" << traits::ERROR_BOUND);
+        return false;
+    }
+    AEX_SUCCESS("slot size=" << slot_size << ", max error=" << max_error << ", seg_nums=" << m.args.seg_nums);
+    return true;
+}
+
+template<typename T>
+bool test_piecewise_linear_model_2(T* data, size_t n){
+    AEX_HINT("[test piecewise linear model 2]");
+    typedef typename aex::aex_default_traits<T, T> traits;
+    typedef typename traits::slot_type slot_type;
+    mock_aex_tree<T, T> tree;
+    double ratio = tree.inner_node_few_ratio[2];
+    piecewise_linear_model_2<T, traits> m;
+    slot_type size = traits::MIN_ML_INNER_NODE_SIZE;
+    slot_type slot_size = min_slot_size(size, ratio, traits::MIN_INNER_NODE_SLOT_SIZE);
     while (static_cast<size_t>(size) < n && m.train(data, size, slot_size) == true){
         slot_size <<= 1;
         size = slot_size * ratio;

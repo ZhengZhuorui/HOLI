@@ -28,10 +28,9 @@ std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree<_Key, 
         ++this->m_stats.size;
         return std::pair<iterator, bool>(iterator(head_leaf, 0), true);
     }
-    //AEX_FORMAT("level=%u, size=%lld, root_size=%lld", root->level, this->m_stats.size);
+    
     data_node_ptr node = find_leaf(key);
     slot_type pos = node->find_lower_pos(key);
-    //AEX_PRINT("node=" << node << ", pos=" << pos << ", size=" << node->size );
 
     /* find the insert position */
     if (pos < node->size && node->key[pos] == key){
@@ -463,6 +462,9 @@ void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, value_typ
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_split_dense_inner_node(inner_node_ptr node, const key_type* new_key, node_ptr* new_child, const slot_type n){
+    #ifdef AEX_EXPERIMENT
+    ++this->opt_stats.inner_node_split_dense_node_cnt;
+    #endif
     AEX_PRINT("insert_split_dense_inner_node");
     AEX_ASSERT(IS_ML_NODE(node) == false);
     inner_node_ptr new_node = node_allocator.allocate_inner_node(node->real_slot_size(), false);
@@ -493,6 +495,9 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_dense_inner_node(inner_no
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_split_by_buffer(inner_node_ptr node, const key_type* key, node_ptr* child, const slot_type n, bool no_split){
+    #ifdef AEX_EXPERIMENT
+    ++this->opt_stats.inner_node_split_by_buffer_cnt;
+    #endif
     //AEX_PRINT("insert_split_by_buffer");
     std::vector<key_type> key_buf(node->size + n), new_key;
     std::vector<node_ptr> child_buf(node->size + n), new_child;

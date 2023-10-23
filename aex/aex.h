@@ -30,13 +30,14 @@ namespace aex{
 
 template<typename _Key, 
         typename _Val,
-        typename traits>
+#ifdef AEX_TLI
+        typename SearchClass,
+#endif
+        typename traits=aex_default_traits<_Key, _Val>>
 class aex_tree{
 public:
 
     static_assert(std::is_arithmetic<_Key>::value, "key types must be numeric.");
-
-    typedef aex_tree<_Key, _Val, traits> self;
 
     // type traits
     typedef typename traits::key_type key_type;
@@ -49,6 +50,36 @@ public:
 
     typedef typename traits::version_type version_type;
 
+#ifdef AEX_TLI
+
+    typedef aex_tree<_Key, _Val, SearchClass, traits> self;
+
+    typedef aex_node_base<_Key, _Val, SearchClass, traits> base_node;
+
+    typedef aex_dynamic_node_base<_Key, _Val, SearchClass, traits> base_dynamic_node;
+
+    typedef aex_inner_node<_Key, _Val, SearchClass, traits> inner_node;
+
+    typedef aex_data_node<_Key, _Val, SearchClass, traits> dynamic_data_node;
+
+    typedef aex_static_data_node<_Key, _Val, SearchClass, traits> static_data_node;
+
+#else
+    
+    typedef aex_tree<_Key, _Val, traits> self;
+
+    typedef aex_node_base<_Key, _Val, traits> base_node;
+
+    typedef aex_dynamic_node_base<_Key, _Val, traits> base_dynamic_node;
+
+    typedef aex_inner_node<_Key, _Val, traits> inner_node;
+
+    typedef aex_data_node<_Key, _Val, traits> dynamic_data_node;
+
+    typedef aex_static_data_node<_Key, _Val, traits> static_data_node;
+
+#endif
+
     // iterator:
     typedef aex_iterator<_Key, _Val, traits> iterator;
 
@@ -58,26 +89,19 @@ public:
 
     typedef aex_const_reverse_iterator<_Key, _Val, traits> const_reverse_iterator;
 
-    typedef aex_node_base<_Key, _Val, traits> base_node;
-
     typedef base_node* node_ptr;
-
-    typedef aex_dynamic_node_base<_Key, _Val, traits> base_dynamic_node;
 
     typedef base_dynamic_node* dynamic_node_ptr;
 
     // inner_node:    
-    typedef aex_inner_node<_Key, _Val, traits> inner_node;
 
     typedef inner_node* inner_node_ptr;
 
     typedef typename inner_node::Model inner_node_model;
 
     // data_node:
-    typedef aex_data_node<_Key, _Val, traits> dynamic_data_node;
     typedef dynamic_data_node* dynamic_data_node_ptr;
 
-    typedef aex_static_data_node<_Key, _Val, traits> static_data_node;
     typedef static_data_node* static_data_node_ptr;
 
     typedef static_data_node data_node;
@@ -121,14 +145,20 @@ public:
     #ifdef AEX_EXPERIMENT
     struct operation_stats{
         operation_stats():inner_node_split_cnt(0), inner_node_merge_cnt(0), inner_node_rescale_cnt(0), inner_node_balance_split_cnt(0),
+                        inner_node_split_pipeline_cnt(0), inner_node_split_bulk_load_cnt(0), inner_node_split_by_buffer_cnt(0), inner_node_split_dense_node_cnt(0),
                         data_node_split_cnt(0), data_node_merge_cnt(0), data_node_rescale_cnt(0){}
         size_type inner_node_split_cnt, inner_node_merge_cnt, inner_node_rescale_cnt, inner_node_balance_split_cnt;
+        size_type inner_node_split_pipeline_cnt, inner_node_split_bulk_load_cnt, inner_node_split_by_buffer_cnt, inner_node_split_dense_node_cnt; 
         size_type data_node_split_cnt, data_node_merge_cnt, data_node_rescale_cnt;
+        size_type inner_node_train_cnt, inner_node_train_tot_size;
         void print_stats(){
             AEX_PRINT("[Operation status] inner node: split times=" << inner_node_split_cnt << ", merge times=" << inner_node_merge_cnt <<
                     ", rescale times=" << inner_node_rescale_cnt << ", inner_node_balance_split_cnt=" << inner_node_balance_split_cnt);
+            AEX_PRINT("inner node: split pipeline times=" << inner_node_split_pipeline_cnt << ", bulk_load cnt=" << inner_node_split_bulk_load_cnt << ", by_buffer cnt=" << inner_node_split_by_buffer_cnt);
+            AEX_PRINT("inner node: train cnt=" << inner_node_train_cnt << ", train size=" << inner_node_train_tot_size);
             AEX_PRINT(" data node: split times=" << data_node_split_cnt << ", merge times=" << data_node_merge_cnt <<
                     ", rescale times=" << data_node_rescale_cnt);
+            
         }
     }opt_stats;
     #endif
@@ -704,5 +734,3 @@ int aex_tree<_Key, _Val, traits>::debug_level = 0;
 #include "aex/aex_erase.hpp"
 
 #include "aex/aex_SMO.hpp"
-
-#include "aex/aex_con.hpp"

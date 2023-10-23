@@ -61,6 +61,8 @@ bool test(map<string, string> &flags){
             return test_gap_array_linear_model(bin_data.data(), num_keys, spec_flag);
         else if (model_type == "piecewise_linear")
             return test_piecewise_linear_model(bin_data.data(), num_keys);
+        else if (model_type == "piecewise_linear_2")
+            return test_piecewise_linear_model_2(bin_data.data(), num_keys);
         else if (model_type == "all")
             return test_aex_model(bin_data.data(), num_keys, spec_flag);
     }

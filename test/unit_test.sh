@@ -114,6 +114,10 @@
 #(Y)
 ./unit_test --unit=model --key_type=float --num_keys=1024 --model_type=piecewise_linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
 ./unit_test --unit=model --key_type=float --num_keys=4096 --model_type=piecewise_linear --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+
+./unit_test --unit=model --key_type=float --num_keys=1024 --model_type=piecewise_linear_2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=model --key_type=float --num_keys=4096 --model_type=piecewise_linear_2 --input_file=/home/zzr/data/generate_data/uniform_1M_neg100to100_float.bin
+
 # Dataset: uniform
 # size: 1024
 # result(max error):
@@ -355,6 +359,8 @@
 # 2000000: 
 # 20000000: 
 # 200000000:
+
+# piecewise_linear_2 + static_data_node + no balance:
 
 # test index lookup accuracy
 ./unit_test --unit=index --key_type=float --function=lookup --num_keys=2000000 --batch=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
