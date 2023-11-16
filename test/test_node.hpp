@@ -39,7 +39,9 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
     tree.split(node_data.data(), child_ptr, n, level, key_buf, child_buf);
 
     if (child_buf.size() > 1){
-        AEX_ERROR("can't be construct in a inner node.");
+        AEX_ERROR("can't be construct in a inner node. nodes=" << child_buf.size());
+        for (size_t i = 0; i < child_buf.size(); ++i)
+            AEX_PRINT("slot size=" << static_cast<inner_node_ptr>(child_buf[i])->slot_size << ", size=" << child_buf[i]->size);
         return false;
     }
     if (IS_ML_NODE(child_buf[0]) == false)
@@ -55,7 +57,7 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
 
     for (size_t i = 0; i < batch; ++i){       
         if (tree.isfull(node)){
-            AEX_ERROR("node slot full, slot size=" << node->slot_size << ", size=" << node->size);
+            AEX_ERROR("node slot full, slot size=" << node->slot_size << ", size=" << node->size << "full ratio=" << tree.inner_node_full_ratio[level]);
             insert_failed += batch - i;
             break;
         }
@@ -297,7 +299,7 @@ template<typename key_type,
         typename value_type,
         typename traits=aex::aex_default_traits<key_type, value_type> >
 bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, int level){
-    AEX_HINT("[test data node insertion performance]");
+    AEX_HINT("[test data node query performance]");
     mock_aex_tree<key_type, value_type, traits> tree;
     typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
     typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
@@ -318,7 +320,7 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
     generate_query(pack_data, query, answer, batch);
     for (size_t i = 0; i < batch; ++i){
         slot_type pos = std::lower_bound(data.data(), data.data() + n, query[i]) - data.data();
-        if (static_cast<size_type>(pos) > 0)
+        if (static_cast<size_type>(pos) > 0 && !std::is_integral<key_type>::value)
             query[i] -= (1.0 * (rand() % 65536) / 65536) * (data[pos] - data[pos - 1]);
     }
     
@@ -344,7 +346,7 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
         slot_type pos = node->find(query[i]);
         if (node->child_ptr[pos] != answer[i]){
             AEX_ERROR("Query Error! query=" << query[i] << ", get pos=" << pos << ", get child=" << node->child_ptr[pos] << ", real child=" << answer[i]);
-            AEX_ERROR("query key=" << query[i] << "node key=" << node->key_ptr[pos]);
+            AEX_ERROR("query key=" << query[i] << ", node key=" << node->key_ptr[pos]);
             return false;
         }
     }

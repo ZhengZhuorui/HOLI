@@ -81,23 +81,25 @@ struct aex_default_traits{
 
     static_assert((AllowRWBalance::value | (!AllowDynamicDataNode::value)) == true);
     
-    static const int ERROR_BOUND = 8;
+    static constexpr int ERROR_BOUND = 8;
 
-    static const int DATA_NODE_ERROR_BOUND = 2;
+    static constexpr int DATA_NODE_ERROR_BOUND = 2;
 
-    static const slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type) + sizeof(void*)));
+    //static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(16, 256 / (sizeof(key_type) + sizeof(void*)));
+    static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = 8;
 
-    static const slot_type MIN_ML_INNER_NODE_SLOT_SIZE = MIN_INNER_NODE_SLOT_SIZE << 1;
+    //static constexpr slot_type MIN_DATA_NODE_SLOT_SIZE = AEX_MAX(16, 256 / (sizeof(key_type)));
+    static constexpr slot_type MIN_DATA_NODE_SLOT_SIZE = 8;
 
-    static const slot_type MIN_ML_INNER_NODE_SIZE = MIN_INNER_NODE_SLOT_SIZE << 1;
+    static constexpr slot_type MIN_ML_INNER_NODE_SLOT_SIZE = MIN_INNER_NODE_SLOT_SIZE;
 
-    static const slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 25;
+    static constexpr slot_type MIN_ML_INNER_NODE_SIZE = MIN_INNER_NODE_SLOT_SIZE;
 
-    static const slot_type MIN_DATA_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type)));
+    static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 25;
 
-    static const slot_type MAX_DATA_NODE_SLOT_SIZE= 1 << 20;
+    static constexpr slot_type MAX_DATA_NODE_SLOT_SIZE= 1 << 20;
 
-    static const slot_type MIN_ML_DATA_NODE_SLOT_SIZE = 32;
+    static constexpr slot_type MIN_ML_DATA_NODE_SLOT_SIZE = 32;
     
     static constexpr float DATA_NODE_FEW_RATIO = 0.5;
         
@@ -111,17 +113,19 @@ struct aex_default_traits{
 
     static constexpr float SPLIT_COST_PARA = 1;
 
-    static const int BINEARY_SEARCH_SIZE = 32;
+    static constexpr int BINEARY_SEARCH_SIZE = 32;
 
-    static const int NODE_MUTEX_SLOT_SIZE = ERROR_BOUND;
+    static constexpr int NODE_MUTEX_SLOT_SIZE = ERROR_BOUND;
 
-    static const int MAX_DEPTH = 16;
+    static constexpr int MAX_DEPTH = 16;
 
     static constexpr float MAX_ALLOW_ERROR = 0.5 / log(2);
 
-    static const bool debug = true;
+    static constexpr bool debug = true;
 
-    static const int MAX_SEGMENT_NUM = 4;
+    static constexpr int MAX_SEGMENT_NUM = 4;
+
+    static constexpr unsigned long long INNER_NODE_MAX_DIFFERENT_VALUE = 0x10000000000000ULL;
 };
 
 }

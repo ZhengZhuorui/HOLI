@@ -339,9 +339,10 @@ void aex_tree<_Key, _Val, traits>::build_tree(std::vector<key_type> &key_buf, st
     std::vector<key_type> new_key_buf;
     std::vector<node_ptr> new_child_buf;
     while (child_buf.size() > 1){    
-        AEX_PRINT("height++");
+        //AEX_PRINT("height++");
         ++this->m_stats.height;
         split(key_buf.data(), child_buf.data(), child_buf.size(), this->m_stats.height - 1, new_key_buf, new_child_buf);
+        
         size_type m = new_child_buf.size();
         
         new_child_buf[0]->prev = nullptr;
@@ -427,7 +428,7 @@ void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, value_typ
 //        bool split_flag = false;
 //        now_node->balance_stats.update_write_frequency(this->balance_stats.get_timestamp());
 //        if (isfull(now_node, num_buf - 1)) {
-//            if (rescale(now_node, now_node->real_slot_size() << 1) == false){
+//            if (rescale(now_node, now_node->real_slot_size << 1) == false){
 //                insert_split_pipeline(now_node, key_buf.data(), child_buf.data(), num_buf);
 //                split_flag = true;
 //                ret_flag = true;

@@ -13,7 +13,7 @@ using aex::aex_map;
 template<typename key_type, typename value_type>
 void aex_delta_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
     aex_map<key_type, value_type> index;
-    for (long long i = 0; i < data.size(); ++i){
+    for (size_t i = 0; i < data.size(); ++i){
         index.insert(data[i]);
     }
     system_clock::time_point t1, t2;

@@ -33,7 +33,7 @@ void aex_erase_bench(vector<pair<key_type, value_type> > &data, vector<key_type>
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
     
-    float QPS = 1.0 * 1e6 * M * times / delta;
+    double QPS = 1.0 * 1e6 * M * times / delta;
     
     printf("used time=%lld us, QPS=%.2f\n", delta, QPS);
     fflush(stdout);
@@ -58,7 +58,8 @@ void stlmap_erase_bench(vector<pair<key_type, value_type> > &data, vector<key_ty
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
-    float QPS = 1000.0 * M * times / delta;
+
+    double QPS = 1.0 * 1e6 * M * times / delta;
     
     printf("used time=%lld ms, QPS=%.2f\n", delta, QPS);
     fflush(stdout);
@@ -76,7 +77,6 @@ void stx_btree_erase_bench(vector<pair<key_type, value_type> > &data, vector<key
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
         stx::btree_map<key_type, value_type> index(data.begin(), data.end());
-        std::cout << "bulk load finish" << std::endl;
         t1 = std::chrono::high_resolution_clock::now();    
         for (const auto& x : erase_data){
             index.erase(x);
@@ -84,8 +84,8 @@ void stx_btree_erase_bench(vector<pair<key_type, value_type> > &data, vector<key
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
-    float QPS = 1.0 * 1e6 * M * times / delta;
-    
+    double QPS = 1.0 * 1e6 * M * times / delta;
+    std::cout << "M=" << M << "" << std::endl;
     printf("used time=%lld ms, QPS=%.2f\n", delta, QPS);
     fflush(stdout);
 }
@@ -110,7 +110,7 @@ void alex_erase_bench(vector<pair<key_type, value_type> > &data, vector<key_type
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
-    float QPS = 1.0 * 1e6 * M * times / delta;
+    double QPS = 1.0 * 1e6 * M * times / delta;
     
     printf("used time=%lld ms, QPS=%.2f\n", delta, QPS);
     fflush(stdout);
@@ -134,7 +134,7 @@ void pgm_erase_bench(vector<pair<key_type, value_type> > &data, vector<key_type>
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
-    float QPS = 1.0 * 1e6 * M * times / delta;
+    double QPS = 1.0 * 1e6 * M * times / delta;
     
     printf("used time=%lld ms, QPS=%.2f\n", delta, QPS);
     fflush(stdout);
@@ -197,15 +197,17 @@ template<typename key_type,
 void benchmark_erase(FILE* file, long long num_keys, long long num_ops, std::string &index_name){
     vector<key_type> bin_data;
     vector<pair<key_type, value_type> > data;
-    read_bineary_file<key_type>(file, bin_data, num_keys + num_ops);
+    read_bineary_file<key_type>(file, bin_data, num_keys);
+    std::sort(bin_data.data(), bin_data.data() + num_keys);
+    num_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
+    std::cout << "unique num_keys=" << num_keys << std::endl;
     pack_KV_dataset(bin_data, data);
-
     //vector<pair<key_type, value_type> > erase_data(num_ops);
-    std::vector<key_type> erase_data;
-    std::random_shuffle(data.data(), data.data() + num_keys + num_ops);
-    //copy(data.data() + num_keys, data.data() + num_keys + num_ops, erase_data.data());
+    std::vector<key_type> erase_data(num_ops);
+    std::random_shuffle(data.data(), data.data() + num_keys);
     for (long long i = 0; i < num_ops; ++i)
         erase_data[i] = data[i].first;
+    std::cout << erase_data.size() << std::endl;
     std::sort(data.data(), data.data() + num_keys);
     if (index_name == "aex"){
         aex_erase_bench(data, erase_data);

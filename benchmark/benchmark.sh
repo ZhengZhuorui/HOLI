@@ -1,12 +1,12 @@
 # =================================================================================================
 # build time 
-# example: ./benchmark --key_type=float --index=stl_map --function=build --num_keys=20000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+# example: ./benchmark --key_type=float64 --index=stl_map --function=build --num_keys=20000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
-./benchmark --key_type=float --index=aex --function=build --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=build --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=build --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=build --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=build --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=build --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=build --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=build --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=build --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=build --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 # Dataset: longtitudes
 # size: 200M
 # batch: 65536
@@ -14,136 +14,139 @@
 
 # =================================================================================================
 # construct
-./benchmark --key_type=float --index=aex --function=construct --num_keys=2000000  --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=construct --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=construct --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=construct --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=construct --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=construct --num_keys=2000000  --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=construct --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=construct --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=construct --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=construct --num_keys=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
-./benchmark --key_type=float --index=aex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=construct--num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=construct --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=construct --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=hash --function=construct --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=construct--num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=construct --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=construct --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=hash --function=construct --num_keys=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
-./benchmark --key_type=int --index=aex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=stl_map --function=construct --num_keys=200000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=construct --num_keys=200000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=alex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=pgm --function=construct --num_keys=200000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=lipp --function=construct --num_keys=200000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=construct --num_keys=200000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=construct --num_keys=200000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=construct --num_keys=200000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=construct --num_keys=200000000 --input_file=/home/zzr/data/fb_200M_uint64
 
-./benchmark --key_type=int --index=aex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=stl_map --function=construct --num_keys=200000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=construct --num_keys=200000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=alex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=pgm --function=construct --num_keys=200000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=lipp --function=construct --num_keys=200000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=construct --num_keys=200000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=construct --num_keys=200000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=construct --num_keys=200000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=construct --num_keys=200000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
 
-./benchmark --key_type=int --index=aex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=stl_map --function=construct --num_keys=200000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=stx_btree --function=construct --num_keys=200000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=alex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=pgm --function=construct --num_keys=200000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=lipp --function=construct --num_keys=200000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=aex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=construct --num_keys=200000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=construct --num_keys=200000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=alex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=construct --num_keys=200000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=construct --num_keys=200000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
 
-./benchmark --key_type=int --index=aex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=stl_map --function=construct --num_keys=200000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=construct --num_keys=200000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=alex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=pgm --function=construct --num_keys=200000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=lipp --function=construct --num_keys=200000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=construct --num_keys=200000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=construct --num_keys=200000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=construct --num_keys=200000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=construct --num_keys=200000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=construct --num_keys=200000000 --input_file=/home/zzr/data/books_200M_uint64
 
 # =================================================================================================
 # lookup
 
 # example
-./benchmark --key_type=float --index=aex --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=lookup --query_dis=uniform --num_keys=200 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=lookup --query_dis=uniform --num_keys=200 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
-./benchmark --key_type=int --index=aex --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=stl_map --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=stx_btree --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=alex --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=pgm --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=aex --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=stl_map --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=alex --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=pgm --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/ycsb-200M.bin.data
 
 #longtitude
-./benchmark --key_type=float --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=hash --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=hash --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+# piecewise model1 + no avx + segment num=4 
 
 # longlat
-./benchmark --key_type=float --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longlat-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longlat-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longlat-200M.bin.data
-./benchmark --key_type=float --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longlat-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longlat-200M.bin.data
-./benchmark --key_type=float --index=hash --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longlat-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longlat-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longlat-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longlat-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longlat-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longlat-200M.bin.data
+./benchmark --key_type=float64 --index=hash --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longlat-200M.bin.data
 
 # uniform
 
 # normal
-./benchmark --key_type=float --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=search --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=search --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 #ycsb
-./benchmark --key_type=int --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=pgm --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=int --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=uint64 --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=pgm --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=uint64 --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 # lognormal
-./benchmark --key_type=float --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=float --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=float --index=pgm --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=float64 --index=pgm --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 # facebook
-./benchmark --key_type=int --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=pgm --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=search --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
 
 # wiki
-./benchmark --key_type=int --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=pgm --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
 
 # osm
-./benchmark --key_type=int --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=pgm --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
 
 # book
-./benchmark --key_type=int --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=pgm --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=10000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=10000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=10000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=10000000 --input_file=/home/zzr/data/books_200M_uint64
 
 # Dataset: longtitudes
 # size: 200M
@@ -156,201 +159,210 @@
 # =================================================================================================
 # delta_query
 # example
-./benchmark --key_type=float --index=aex --function=delta_lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=delta_lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=delta_lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=delta_lookup --query_dis=uniform --num_keys=200 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=delta_lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=delta_lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=delta_lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=delta_lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=delta_lookup --query_dis=uniform --num_keys=200 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=delta_lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 
-./benchmark --key_type=float --index=aex --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=hash --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=hash --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
-./benchmark --key_type=float --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=hash --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=hash --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
-./benchmark --key_type=int --index=pgm --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=pgm --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=pgm --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=pgm --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=delta_lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/books_200M_uint64
 
 # =================================================================================================
 # insert
 # example
-./benchmark --key_type=float --index=aex --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=pgm --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=pgm --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=insert --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 
 # longtitude
-./benchmark --key_type=float --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=pgm --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=pgm --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 # ycsb
-./benchmark --key_type=int --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/ycsb-200M.bin.data
 
 # lognormal 
-./benchmark --key_type=float --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/lognormal_200M_0_1_float.bin
-./benchmark --key_type=float --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/lognormal_200M_0_1_float.bin
-./benchmark --key_type=float --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/lognormal_200M_0_1_float.bin
-./benchmark --key_type=float --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/lognormal_200M_0_1_float.bin
-./benchmark --key_type=float --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/lognormal_200M_0_1_float.bin
-./benchmark --key_type=float --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/lognormal_200M_0_1_float.bin
+./benchmark --key_type=float64 --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/lognormal_200M_0_1_float.bin
+./benchmark --key_type=float64 --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/lognormal_200M_0_1_float.bin
+./benchmark --key_type=float64 --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/lognormal_200M_0_1_float.bin
+./benchmark --key_type=float64 --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/lognormal_200M_0_1_float.bin
+./benchmark --key_type=float64 --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/lognormal_200M_0_1_float.bin
+./benchmark --key_type=float64 --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/lognormal_200M_0_1_float.bin
 
 # facebook
-./benchmark --key_type=int --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=pgm --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
 
 # wiki
-./benchmark --key_type=int --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=pgm --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/wiki_ts_200M_uint64
 
 # Osmc
-./benchmark --key_type=int --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=pgm --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/osm_cellids_800M_uint64
 
 # Amzn
-./benchmark --key_type=int --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=pgm --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/books_200M_uint64
 
 # =================================================================================================
 # all insert
-./benchmark --key_type=float --index=aex --function=insert --num_keys=2000000 --num_ops=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=insert --num_keys=2000000 --num_ops=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=insert --num_keys=2000000 --num_ops=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=insert --num_keys=2000000 --num_ops=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=pgm --function=insert --num_keys=2000000 --num_ops=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=insert --num_keys=2000000 --num_ops=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=insert --num_keys=2000000 --num_ops=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=insert --num_keys=2000000 --num_ops=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=insert --num_keys=2000000 --num_ops=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=insert --num_keys=2000000 --num_ops=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=pgm --function=insert --num_keys=2000000 --num_ops=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=insert --num_keys=2000000 --num_ops=2000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 # longtitude
-./benchmark --key_type=float --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=pgm --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=pgm --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 #facebook
-./benchmark --key_type=int --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=pgm --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=hash --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=200000000 --input_file=/home/zzr/data/fb_200M_uint64
 
 
 # =================================================================================================
 # erase
-# ./benchmark --key_type=int --index=aex --function=erase --query_dis=uniform --num_keys=2000000 --num_ops=10000 --input_file=/home/zzr/data/fb_200M_uint64
+# ./benchmark --key_type=uint64 --index=aex --function=erase --query_dis=uniform --num_keys=2000000 --num_ops=10000 --input_file=/home/zzr/data/fb_200M_uint64
 
-./benchmark --key_type=int --index=aex --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=stl_map --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=alex --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=pgm --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=lipp --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=hash --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+# longtitude
+./benchmark --key_type=float64 --index=aex --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=pgm --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/longitudes-200M.bin.data
+
+
+./benchmark --key_type=uint64 --index=aex --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=hash --function=erase --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/fb_200M_uint64
 
 # =================================================================================================
 # range query
 # example:
-./benchmark --key_type=float --index=aex --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.001 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.001 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.001 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.001 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=pgm --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.001 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.001 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.001 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.001 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.001 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.001 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=pgm --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.001 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.001 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
-./benchmark --key_type=int --index=aex --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.1 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=stl_map --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.1 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=stx_btree --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.1 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=alex --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.1 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=pgm --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.1 --input_file=/home/zzr/data/ycsb-200M.bin.data
-./benchmark --key_type=int --index=lipp --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.001 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=aex --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.1 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=stl_map --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.1 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=stx_btree --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.1 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=alex --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.1 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=pgm --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.1 --input_file=/home/zzr/data/ycsb-200M.bin.data
+./benchmark --key_type=uint64 --index=lipp --function=range_query --query_dis=uniform --num_keys=2000000 --num_ops=10000 --length_ratio=0.001 --input_file=/home/zzr/data/ycsb-200M.bin.data
 
 # longtitude
-./benchmark --key_type=float --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stl_map --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=alex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=pgm --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/longitudes-200M.bin.data
-./benchmark --key_type=float --index=lipp --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stl_map --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=alex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=pgm --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/longitudes-200M.bin.data
+./benchmark --key_type=float64 --index=lipp --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/longitudes-200M.bin.data
 
 # facebook
-./benchmark --key_type=int --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=stl_map --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=alex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=pgm --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=lipp --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/fb_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/fb_200M_uint64
 
 # wiki
-./benchmark --key_type=int --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=stl_map --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=alex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=pgm --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/wiki_ts_200M_uint64
-./benchmark --key_type=int --index=lipp --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/wiki_ts_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/wiki_ts_200M_uint64
 
 
 # osm
-./benchmark --key_type=int --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=stl_map --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=alex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=pgm --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/osm_cellids_800M_uint64
-./benchmark --key_type=int --index=lipp --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=alex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/osm_cellids_800M_uint64
 
 # book
-./benchmark --key_type=int --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=stl_map --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=alex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=pgm --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/books_200M_uint64
-./benchmark --key_type=int --index=lipp --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/books_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/books_200M_uint64
 
 # =================================================================================================
 # read + write mix

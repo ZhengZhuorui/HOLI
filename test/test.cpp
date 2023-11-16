@@ -21,6 +21,14 @@ const int N = 10000000, M = 10000;
 template <typename T>
 bool test(map<string, string> &flags){
     auto unit = flags["unit"];
+
+    if (unit == "avx"){
+        auto func = flags["function"];
+        if (func == "lower_bound_with_error_bound")
+            return test_lower_bound_with_error_bound_avx<T>();
+        return false;
+    }
+    
     auto dataset = flags["dataset"];
     
     string file_name = flags["input_file"];
@@ -34,13 +42,13 @@ bool test(map<string, string> &flags){
         auto func = flags["function"];
         if (func == "exp_lower_bound")
             return test_exponential_search_lower_bound(bin_data.data(), num_keys);
-        if (func == "exp_upper_bound")
+        else if (func == "exp_upper_bound")
             return test_exponential_search_upper_bound(bin_data.data(), num_keys);
-        if (func == "search_perf")
+        else if (func == "search_perf")
             return test_search_perf(bin_data.data(), num_keys);
-        if (func == "search_with_error_bound_perf")
+        else if (func == "search_with_error_bound_perf")
             return test_search_with_error_bound_perf(bin_data.data(), num_keys);
-        if (func == "linear_probe")
+        else if (func == "linear_probe")
             return test_linear_probe<T, T, aex_default_traits<T, T> >(bin_data.data(), num_keys);    
     }
     else if (unit == "model"){
@@ -63,6 +71,10 @@ bool test(map<string, string> &flags){
             return test_piecewise_linear_model(bin_data.data(), num_keys);
         else if (model_type == "piecewise_linear_2")
             return test_piecewise_linear_model_2(bin_data.data(), num_keys);
+        else if (model_type == "piecewise_linear_avx_perf"){
+            long long batch = stoll(flags["batch"]);
+            return test_piecewise_linear_model_avx_perf(bin_data.data(), num_keys, batch);
+        }
         else if (model_type == "all")
             return test_aex_model(bin_data.data(), num_keys, spec_flag);
     }
@@ -209,11 +221,23 @@ int main(int argc, char** argv){
     auto flags = parse_flags(argc, argv);
     auto key_type = flags["key_type"];
     bool test_result = false;
-    if (key_type == "int"){
+    if (key_type == "uint64"){
         test_result = test<unsigned long long>(flags);
     }
-    else if (key_type == "float"){
+    else if (key_type == "float64"){
         test_result = test<double>(flags);
+    }
+    else if (key_type == "int64"){
+        test_result = test<long long>(flags);
+    }
+    else if (key_type == "float32"){
+        test_result = test<float>(flags);
+    }
+    else if (key_type == "uint32"){
+        test_result = test<unsigned int>(flags);
+    }
+    else if (key_type == "int32"){
+        test_result = test<int>(flags);
     }
 
     if (test_result == false)

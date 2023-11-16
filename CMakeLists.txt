@@ -8,7 +8,7 @@ set(AEX_VERSION_STRING ${AEX_VERSION_MAJOR}.${AEX_VERSION_MINOR}.${AEX_VERSION_P
 
 #set(CMAKE_CXX_STANDARD 17)
 
-set(CMAKE_CXX_FLAGS "-O3 -Wall -march=native -fopenmp -fmax-errors=3 -std=c++17")
+set(CMAKE_CXX_FLAGS "-O3 -Wall -march=native -fopenmp -fmax-errors=3 -std=c++17 -mavx -mavx2")
 #set(CMAKE_CXX_FLAGS "-g -Wall -march=native -fopenmp -fmax-errors=3 -std=c++17")
 
 include_directories(${CMAKE_SOURCE_DIR})

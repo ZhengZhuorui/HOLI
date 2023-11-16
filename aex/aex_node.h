@@ -120,6 +120,7 @@ public:
 
     // size: the child node of the node(inner node); the data of the node(data node)
     // slot_size: the slot of the node
+    // slot_type slot_size, real_slot_size;
     slot_type slot_size;
 
     // prop
@@ -130,23 +131,27 @@ public:
 
     aex_dynamic_node_base():base_node(), slot_size(0),  level(0), balance_stats(){}
 
-    explicit aex_dynamic_node_base(slot_type _slot_size): base_node(), slot_size(_slot_size), level(0), balance_stats(){}
+    explicit aex_dynamic_node_base(slot_type _slot_size): base_node(), slot_size(_slot_size), level(0), balance_stats(){
+        //this->real_slot_size = slot_size + (slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE) * traits::ERROR_BOUND;
+    }
 
-    aex_dynamic_node_base(aex_dynamic_node_base &other_node):base_node(other_node), slot_size(other_node.slot_size), 
+    aex_dynamic_node_base(aex_dynamic_node_base &other_node):base_node(other_node), slot_size(other_node.slot_size),  /* real_slot_size(other_node.real_slot_size), */
                                             level(other_node.level), balance_stats(other_node.balance_stats){}
 
-    aex_dynamic_node_base(aex_dynamic_node_base &&other_node):base_node(other_node), slot_size(other_node.slot_size), 
+    aex_dynamic_node_base(aex_dynamic_node_base &&other_node):base_node(other_node), slot_size(other_node.slot_size), /* real_slot_size(other_node.real_slot_size), */
                                             level(other_node.level), balance_stats(other_node.balance_stats){}
 
     aex_dynamic_node_base& operator = (aex_dynamic_node_base &other_node){
         *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
-        this->slot_size = other_node.slot_size;this->prop = other_node.prop;this->level = other_node.level;this->balance_stats = other_node.balance_stats;
+        this->slot_size = other_node.slot_size;//this->real_slot_size = other_node.real_slot_size;
+        this->prop = other_node.prop;this->level = other_node.level;this->balance_stats = other_node.balance_stats;
         return *this;
     }
 
     aex_dynamic_node_base& operator = (aex_dynamic_node_base &&other_node){
         *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
-        this->slot_size = other_node.slot_size;this->prop = other_node.prop;this->level = other_node.level;this->balance_stats = other_node.balance_stats;
+        this->slot_size = other_node.slot_size;//this->real_slot_size = other_node.real_slot_size;
+        this->prop = other_node.prop;this->level = other_node.level;this->balance_stats = other_node.balance_stats;
         return *this;
     }
 
@@ -217,13 +222,13 @@ public:
     //typedef aex_model<key_type, traits> Model;
 
     //typedef gap_array_linear_model<key_type, traits> Model;
-    //typedef piecewise_linear_model<key_type, traits> Model;
-    typedef piecewise_linear_model_2<key_type, traits> Model;
+    typedef piecewise_linear_model<key_type, traits> Model;
+    //typedef piecewise_linear_model_2<key_type, traits> Model;
+    //typedef piecewise_linear_model_avx<key_type, traits> Model;
 
     typedef data_node* data_node_ptr;
     
     typedef inner_node* inner_node_ptr;
-
 
     explicit aex_inner_node(slot_type _slot_size):base_dynamic_node(_slot_size){
         this->key_ptr = static_cast<key_type*>(malloc(NodeAllocator::KEY_MEMORY_USED(this->slot_size)));
@@ -309,6 +314,8 @@ public:
         }
         return *this;
     }
+
+    forceinline slot_type real_slot_size() const {return this->slot_size - traits::ERROR_BOUND;}
 
     // clear bitmap
     inline void clear_bitmap(){
@@ -414,17 +421,13 @@ public:
             // the distance between insert position of shift item and the predict position should be less than ERROR_BOUND
             slot_type max_slot = std::min(inserted_pos + traits::ERROR_BOUND, this->slot_size - 1);
             for (slot_type i = inserted_pos; i < max_slot; ++i){
-                //if (bitmap_impl::at(this->bitmap_ptr, i)){
-                //    slot_type shift_pos = this->predict(this->key_ptr[i]);
-                //    if (i + 1 - shift_pos >= traits::ERROR_BOUND){
-                //        //static int shift_key_error_large = 0;
-                //        //++shift_key_error_large;
-                //        //AEX_PRINT("shift_key_error_large=" << shift_key_error_large);
-                //        return false;
-                //    }
-                //}
-                //else{
-                if (!bitmap_impl::at(this->bitmap_ptr, i)){
+                if (bitmap_impl::at(this->bitmap_ptr, i)){
+                    slot_type shift_pos = this->predict(this->key_ptr[i]);
+                    if (i + 1 - shift_pos >= traits::ERROR_BOUND)
+                        return false;
+                }
+                else{
+                //if (!bitmap_impl::at(this->bitmap_ptr, i)){
                     std::move_backward(this->key_ptr + inserted_pos, this->key_ptr + i, this->key_ptr + i + 1);
                     std::move_backward(this->child_ptr + inserted_pos, this->child_ptr + i, this->child_ptr + i + 1);
                     bitmap_impl::set_one(this->bitmap_ptr, i);
@@ -553,17 +556,11 @@ public:
             return (pos >= this->size) ? this->slot_size : pos + 1;
     }
 
-    // real_slot_size() mean slot size minus error bound
-    inline slot_type real_slot_size() const{
-        //return IS_ML_NODE(this) ? (this->slot_size - traits::ERROR_BOUND) : this->slot_size;
-        return (this->slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE) ? (this->slot_size - traits::ERROR_BOUND) : this->slot_size;
-    }
-
     // only node_property::ML_NODE can use it. check if node_property::ML_NODE first
     // position range [0, slot_size)
     inline slot_type predict(const key_type& key) const {
-        AEX_ASSERT(model.predict(key) < 1.0 + 1e-6);
-        //return std::max((slot_type)0, std::min(static_cast<slot_type>(model.predict(key) * this->real_slot_size()), this->slot_size - 1));
+        //AEX_ASSERT(model.predict(key) < 1.0 + 1e-6);
+        //return std::max((slot_type)0, std::min(static_cast<slot_type>(model.predict(key) * this->real_slot_size), this->slot_size - 1));
         return std::max(0, static_cast<slot_type>(model.predict(key) * this->real_slot_size()));
     }
 
@@ -574,6 +571,10 @@ public:
             #ifdef AEX_TLI
             return SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->slot_size, x, this->key_ptr + pred_pos) - this->key_ptr;
             #else
+            //slot_type res = lower_bound_with_error_bound<key_type, traits::ERROR_BOUND>(this->key_ptr + pred_pos, this->key_ptr + this->slot_size, x) - this->key_ptr;
+            //AEX_ASSERT(res < this->slot_size);
+            //return res;
+            //slot_type max_slot = std::min(this->slot_size, pred_pos + traits::ERROR_BOUND);
             for (slot_type i = pred_pos; i < this->slot_size; ++i)
             if (x <= key_ptr[i]){
                 return i;

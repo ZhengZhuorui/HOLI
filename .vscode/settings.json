@@ -92,5 +92,6 @@
         "queue": "cpp",
         "stack": "cpp",
         "version": "cpp"
-    }
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

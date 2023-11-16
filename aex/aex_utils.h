@@ -2,6 +2,22 @@
 #include <atomic>
 namespace aex{
 
+#if !defined(forceinline)
+#ifdef _MSC_VER
+#define forceinline __forceinline
+#elif defined(__GNUC__)
+#define forceinline inline __attribute__((__always_inline__))
+#elif defined(__CLANG__)
+#if __has_attribute(__always_inline__)
+#define forceinline inline __attribute__((__always_inline__))
+#else
+#define forceinline inline
+#endif
+#else
+#define forceinline inline
+#endif
+#endif
+
 #define UNF 0xFFFFFFFFFFFFFFFFLL
 //#define RED_FONT(str) ("\033[31m"+(str)+"\033[0m")
 //#define GREEN_FONT(str) ("\033[32m"+(str)+"\033[0m")

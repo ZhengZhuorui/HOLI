@@ -15,7 +15,9 @@
 #include "aex/aex_balance.h"
 #include "aex/aex_traits.h"
 #include "aex/aex_utils.h"
+#include "aex/aex_utils_avx.h"
 #include "aex/aex_model.h"
+#include "aex/aex_model_avx.h"
 #include "aex/aex_node.h"
 #include "aex/aex_allocator.h"
 #include "aex/aex_iterator.h"
@@ -146,7 +148,8 @@ public:
     struct operation_stats{
         operation_stats():inner_node_split_cnt(0), inner_node_merge_cnt(0), inner_node_rescale_cnt(0), inner_node_balance_split_cnt(0),
                         inner_node_split_pipeline_cnt(0), inner_node_split_bulk_load_cnt(0), inner_node_split_by_buffer_cnt(0), inner_node_split_dense_node_cnt(0),
-                        data_node_split_cnt(0), data_node_merge_cnt(0), data_node_rescale_cnt(0){}
+                        data_node_split_cnt(0), data_node_merge_cnt(0), data_node_rescale_cnt(0),
+                        inner_node_train_cnt(0), inner_node_train_tot_size(0){}
         size_type inner_node_split_cnt, inner_node_merge_cnt, inner_node_rescale_cnt, inner_node_balance_split_cnt;
         size_type inner_node_split_pipeline_cnt, inner_node_split_bulk_load_cnt, inner_node_split_by_buffer_cnt, inner_node_split_dense_node_cnt; 
         size_type data_node_split_cnt, data_node_merge_cnt, data_node_rescale_cnt;
@@ -620,7 +623,8 @@ private:
     }
 
     // check if key buffer can put in a node with slot_size slot size. The model m will be trained if the answer is true
-    static bool check_collision(const key_type* const key, const slot_type size, const slot_type slot_size, inner_node_model &m);
+    template<typename Model>
+    static bool check_collision(const key_type* const key, const slot_type size, const slot_type slot_size, Model &m);
 
     // Rescale a node slot_size. ratio > 1 means expand and ratio < 1 means narrow. 
     // if node expand or narrow successed, the old node will free and return true. Otherwise return false.
@@ -667,6 +671,7 @@ private:
     }
 
     inline bool isfull(const inner_node_ptr node) const {
+        //AEX_PRINT("node->size=" << node->size << "node->real_slot_size=" << node->real_slot_size << ", full size=" << node->real_slot_size * ((IS_ML_NODE(node) ? this->inner_node_full_ratio[node->level] : traits::DATA_NODE_FULL_RATIO)));
         return node->size >= node->real_slot_size() * ((IS_ML_NODE(node) ? this->inner_node_full_ratio[node->level] : traits::DATA_NODE_FULL_RATIO));
     }
 
@@ -676,7 +681,7 @@ private:
     
     inline bool isfew(const inner_node_ptr node) const {
         return node->size < node->real_slot_size() * ((IS_ML_NODE(node) ? this->inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * traits::DENSITY_NARROW_RATIO;
-        //return node->size < node->real_slot_size() * ((IS_ML_NODE(node) ? this->inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * traits::DENSITY_NARROW_RATIO;
+        //return node->size < node->real_slot_size * ((IS_ML_NODE(node) ? this->inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * traits::DENSITY_NARROW_RATIO;
     }
 
     inline bool isfew(const inner_node_ptr node, const slot_type offset) const {

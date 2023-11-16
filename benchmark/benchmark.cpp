@@ -63,7 +63,7 @@ void benchmark(std::map<string, string> flags){
     }
     else if (func == "erase"){
         long long num_keys = stoll(flags["num_keys"]);
-        long long num_ops = stoll(flags["num_keys"]);
+        long long num_ops = stoll(flags["num_ops"]);
         string index_name = flags["index"];
         benchmark_erase<key_type, value_type>(file, num_keys, num_ops, index_name);
     }
@@ -99,7 +99,7 @@ int main(int argc, char** argv){
     //if (flags.find("write_ratio") != flags.end())
     //    write_ratio = stod(flags["write_ratio"]);
 
-    if (key_type == "int") benchmark<unsigned long long, unsigned long long>(flags);
+    if (key_type == "uint64") benchmark<unsigned long long, unsigned long long>(flags);
     //else if (key_type == "uint") benchmark<unsigned long long, unsigned long long>(flags);
-    else if (key_type == "float") benchmark<double, double>(flags);
+    else if (key_type == "float64") benchmark<double, double>(flags);
 }

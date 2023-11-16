@@ -222,6 +222,7 @@ void hash_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type
 template<typename key_type,
         typename value_type>
 void benchmark_lookup(FILE* file, long long num_keys, long long num_ops, std::string &index_name, std::string &query_dis){
+    std::cout << "benchmark lookup: " << index_name << std::endl;
     vector<key_type> bin_data;
     vector<pair<key_type, value_type> > data;
     read_bineary_file<key_type>(file, bin_data, num_keys);

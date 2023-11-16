@@ -58,7 +58,7 @@ void stlmap_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
-    float QPS = 1000.0 * M * times / delta;
+    float QPS = 1000000.0 * M * times / delta;
     
     printf("used time=%lld ms, QPS=%.2f\n", delta, QPS);
     fflush(stdout);

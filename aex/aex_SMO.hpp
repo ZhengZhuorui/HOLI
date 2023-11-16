@@ -50,9 +50,9 @@ inline bool aex_tree<_Key, _Val, traits>::retrain(inner_node_ptr node){
             node->inplace_construct();
             return true;
         }
-        else{
-            AEX_ERROR("can't check collision");
-        }
+        //else{
+        //    AEX_ERROR("can't check collision");
+        //}
     }
     return false;
 }
@@ -64,23 +64,10 @@ std::tuple<typename traits::slot_type, typename traits::slot_type, bool> aex_tre
     bool flag = false, train_flag;
     inner_node_model model;
     for (; slot_size * this->inner_node_few_ratio[level] <= n && static_cast<size_type>(slot_size) <= this->max_inner_node_slot_size[level]; slot_size <<= 1){
-        if (slot_size * this->inner_node_full_ratio[level] >= n){
-            train_flag = model.train(key, n - 1, slot_size);
-            //AEX_PRINT("slot_size=" << slot_size << ", n=" << n << ", flag=" << flag);
-            if (train_flag){
-                if (self::check_collision(key, n - 1, slot_size, model))
-                    return std::tuple(n, slot_size, true);
-                else
-                    AEX_ERROR("can't check collision");
-            }
-        }
         size_type size = std::min((size_type)(slot_size * this->inner_node_few_ratio[level]), n);
-        //AEX_PRINT("slot_size=" << slot_size << ", size=" << size);
-        //for (slot_type i = 0; i < size; ++i)
-        //    std::cout << key[i] << ", ";
-        //std::cout << std::endl;
-
         train_flag = model.train(key, size - 1, slot_size);
+        //if (level == 2)
+        //    AEX_PRINT("slot_size=" << slot_size << ", size=" << size << ", flag=" << train_flag);
         if (train_flag){
             if (self::check_collision(key, size - 1, slot_size, model)){
                 flag = true;
@@ -88,13 +75,25 @@ std::tuple<typename traits::slot_type, typename traits::slot_type, bool> aex_tre
                 ans_size = size;
             }
             else {
-                AEX_ERROR("can't check collision");
+                //AEX_ERROR("can't check collision");
                 break;
             }
         }
         else 
             break;
     }
+    if (static_cast<size_type>(ans_size) < n && ans_slot_size * this->inner_node_full_ratio[level] >= n){
+        train_flag = model.train(key, n - 1, ans_slot_size);
+        //if (level == 2)
+        //    AEX_PRINT("slot_size=" << slot_size << ", n=" << n << ", flag=" << train_flag);
+        if (train_flag){
+            if (self::check_collision(key, n - 1, ans_slot_size, model))
+                return std::tuple(n, ans_slot_size, true);
+            //else
+            //    AEX_ERROR("can't check collision");
+        }
+    }
+
     //AEX_PRINT("ans_size=" << ans_size << "ans_slot_size=" << ans_slot_size);
     if (ans_slot_size == 0) {
         ans_slot_size = traits::MIN_INNER_NODE_SLOT_SIZE;
@@ -111,10 +110,17 @@ void aex_tree<_Key, _Val, traits>::split(const key_type* const key, node_ptr* ch
     AEX_ASSERT(level > 0);
     size_type start = 0, ans_slot_size, ans_size;
     bool flag;
-    //AEX_PRINT("n=" << n);
+    //if (level == 2){
+    //    AEX_PRINT("n=" << n);
+    //    for (size_type i = 0; i < n; ++i)
+    //        AEX_PRINT("key[" << i << "]=" << key[i]);
+    //}
     for (; start < n; start += ans_size){
-        std::tie(ans_size, ans_slot_size, flag) = split_with_exponential_probe(key + start, n - start, level);
+        //std::tie(ans_size, ans_slot_size, flag) = split_with_exponential_probe(key + start, n - start, level);
+        auto [ans_size, ans_slot_size, flag] = split_with_exponential_probe(key + start, n - start, level);
         //AEX_PRINT("ans_size=" << ans_size << ", left size=" << n - start << ", ans_slot_size=" << ans_slot_size);
+        //if (level == 2)
+        //    AEX_PRINT("ans_size=" << ans_size << ", ans_slot_size=" << ans_slot_size);
         inner_node_ptr new_node = node_allocator.allocate_inner_node(ans_slot_size, flag);
         ++this->m_stats.level_node[level];
         new_node->level = level;
@@ -282,7 +288,8 @@ void aex_tree<_Key, _Val, traits>::split_with_linear_probe(const key_type* const
 
 // check if key buffer can put in a node with slot_size slot size. The model m will be trained if the answer is true
 template<typename _Key, typename _Val, typename traits>
-bool aex_tree<_Key, _Val, traits>::check_collision(const key_type* const key, const slot_type size, const slot_type slot_size, inner_node_model &m){
+template<typename Model>
+bool aex_tree<_Key, _Val, traits>::check_collision(const key_type* const key, const slot_type size, const slot_type slot_size, Model &m){
     if (size + 1 < traits::MIN_ML_INNER_NODE_SIZE || slot_size < traits::MIN_ML_INNER_NODE_SLOT_SIZE)
         return true;
     if (slot_size > traits::MAX_INNER_NODE_SLOT_SIZE)
@@ -295,12 +302,14 @@ bool aex_tree<_Key, _Val, traits>::check_collision(const key_type* const key, co
         start = std::max(start, pos);
         //AEX_PRINT("start=" << start);
         if (start - pos >= traits::ERROR_BOUND || start >= slot_size + traits::ERROR_BOUND - 2){
-            //AEX_WARNING("i=" << i << "start=" << start << ", slot_size=" << slot_size << ", pos=" << pos << ", key=" << key[i] << ", prev_key=" << key[i-1]);
-            //for (int j = 0; j < size; ++j)
-            //    AEX_PRINT("key=" << key[j] << ", pred_pos=" << m.predict(key[j]));
-            //for (int j = 0; j < m.args.seg_nums; ++j)
+        //    AEX_WARNING("size=" << size << ", i=" << i << ", start=" << start << ", slot_size=" << slot_size << ", pos=" << pos << ", key=" << key[i] << ", prev_key=" << key[i-1] << ", max error=" << m.max_error(key, size, slot_size));
+        //    for (int j = 0; j < size; ++j){
+        //        [[maybe_unused]]slot_type pos = std::max(0, static_cast<slot_type>(m.predict(key[j]) * slot_size));
+        //        AEX_PRINT("key=" << key[j] << ", pred_pos=" << m.predict(key[j]) << ", pos=" << pos);
+        //    }
+            //for (unsigned int j = 0; j < m.args.seg_nums; ++j)
             //    AEX_PRINT("slope=" << m.args.slope[j] << ", end=" << m.args.end[j]);
-            //exit(0);
+        //    exit(0);
             return false;
         }
         ++start;

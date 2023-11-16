@@ -29,6 +29,7 @@ void construct_data_node_array(key_type* key, size_t num_keys, node_ptr* child_b
     }
 }
 
+#include "test/test_avx.hpp"
 #include "test/test_function.hpp"
 #include "test/test_model.hpp"
 #include "test/test_node.hpp"

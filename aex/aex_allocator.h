@@ -160,7 +160,7 @@ public:
     //    return align_8bytes(sizeof(version_type) * slot_size / traits::ERROR_BOUND);
     //}
 
-    inline inner_node_ptr allocate_inner_node(slot_type slot_size, bool ml_node_flag){
+    inline inner_node_ptr allocate_inner_node(slot_type real_slot_size, bool ml_node_flag){
         /*
         *   TODO: memory pool
         */
@@ -171,25 +171,21 @@ public:
         #ifdef AEX_EXPERIMENT
         ++inner_node_nums;
         #endif
-        AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
 
-        size_type real_slot_size = slot_size;
+        slot_type slot_size = real_slot_size;
+
+        AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
 
         if (ml_node_flag == true)
             AEX_ASSERT(slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE);
 
-        if (real_slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE) 
-            real_slot_size += traits::ERROR_BOUND;
+        if (slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE) 
+            slot_size += traits::ERROR_BOUND;
 
-        size_type memory_used = INNER_NODE_MEMORY_USED(real_slot_size);
+        size_type memory_used = INNER_NODE_MEMORY_USED(slot_size);
         this->_memory_used += memory_used;
-        inner_node_ptr node = new inner_node(real_slot_size);
-        //inner_node_ptr node;// = new inner_node(real_slot_size);
-        //if (node_buffer.size() == 0){
-        //    inner_node_ptr* node_buffer = ;
-        //    for (inner_node_ptr i = 0; i < ; ++i)
-        //        
-        //}
+        inner_node_ptr node = new inner_node(slot_size);
+        //node->real_slot_size = real_slot_size;
 
         #ifdef AEX_EXPERIMENT
         node_id[static_cast<node_ptr>(node)] = max_node_id;

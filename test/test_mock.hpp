@@ -86,7 +86,7 @@ public:
             node_ptr* node_child = in->child_ptr;
             if (IS_ML_NODE(node)){
                 bitmap bm = in->bitmap_ptr;
-                msg.tot_seg_nums += in->model.args.seg_nums;
+                //msg.tot_seg_nums += in->model.args.seg_nums;
                 for (slot_type i = 0; i <= in->slot_size; ++i){
                     if (bitmap_impl::at(bm, i)){
                         dfs_detail(node_child[i]);
