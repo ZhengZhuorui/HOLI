@@ -63,11 +63,17 @@ std::tuple<typename traits::slot_type, typename traits::slot_type, bool> aex_tre
     slot_type ans_slot_size = 0, ans_size = 0;
     bool flag = false, train_flag;
     inner_node_model model;
-    for (; slot_size * this->inner_node_few_ratio[level] <= n && static_cast<size_type>(slot_size) <= this->max_inner_node_slot_size[level]; slot_size <<= 1){
+    for (; slot_size * this->inner_node_few_ratio[level] <= n && static_cast<size_type>(slot_size) <= this->max_inner_node_slot_size[level]; slot_size <<= 1){        
+        //if (slot_size * this->inner_node_full_ratio[level] >= n){
+        //    train_flag = model.train(key, n - 1, slot_size);
+        //    if (train_flag && self::check_collision(key, n - 1, slot_size, model))
+        //        return std::tuple(n, slot_size, true);
+        //}
+
         size_type size = std::min((size_type)(slot_size * this->inner_node_few_ratio[level]), n);
         train_flag = model.train(key, size - 1, slot_size);
         //if (level == 2)
-        //    AEX_PRINT("slot_size=" << slot_size << ", size=" << size << ", flag=" << train_flag);
+            //AEX_PRINT("slot_size=" << slot_size << ", size=" << size << ", flag=" << train_flag);
         if (train_flag){
             if (self::check_collision(key, size - 1, slot_size, model)){
                 flag = true;
@@ -75,17 +81,17 @@ std::tuple<typename traits::slot_type, typename traits::slot_type, bool> aex_tre
                 ans_size = size;
             }
             else {
-                //AEX_ERROR("can't check collision");
                 break;
             }
         }
         else 
             break;
     }
+    
     if (static_cast<size_type>(ans_size) < n && ans_slot_size * this->inner_node_full_ratio[level] >= n){
         train_flag = model.train(key, n - 1, ans_slot_size);
         //if (level == 2)
-        //    AEX_PRINT("slot_size=" << slot_size << ", n=" << n << ", flag=" << train_flag);
+        //    AEX_PRINT("slot_size=" << ans_slot_size << ", n=" << n << ", flag=" << train_flag);
         if (train_flag){
             if (self::check_collision(key, n - 1, ans_slot_size, model))
                 return std::tuple(n, ans_slot_size, true);
@@ -93,6 +99,7 @@ std::tuple<typename traits::slot_type, typename traits::slot_type, bool> aex_tre
             //    AEX_ERROR("can't check collision");
         }
     }
+    
 
     //AEX_PRINT("ans_size=" << ans_size << "ans_slot_size=" << ans_slot_size);
     if (ans_slot_size == 0) {
@@ -115,9 +122,8 @@ void aex_tree<_Key, _Val, traits>::split(const key_type* const key, node_ptr* ch
     //    for (size_type i = 0; i < n; ++i)
     //        AEX_PRINT("key[" << i << "]=" << key[i]);
     //}
-    for (; start < n; start += ans_size){
-        //std::tie(ans_size, ans_slot_size, flag) = split_with_exponential_probe(key + start, n - start, level);
-        auto [ans_size, ans_slot_size, flag] = split_with_exponential_probe(key + start, n - start, level);
+    for (; start < n; start += ans_size){ 
+        std::tie(ans_size, ans_slot_size, flag) = split_with_exponential_probe(key + start, n - start, level);
         //AEX_PRINT("ans_size=" << ans_size << ", left size=" << n - start << ", ans_slot_size=" << ans_slot_size);
         //if (level == 2)
         //    AEX_PRINT("ans_size=" << ans_size << ", ans_slot_size=" << ans_slot_size);
@@ -134,6 +140,7 @@ void aex_tree<_Key, _Val, traits>::split(const key_type* const key, node_ptr* ch
         new_child.push_back(new_node);
     }
     AEX_ASSERT(start == n);
+    AEX_ASSERT(new_key.size() + 1 == new_child.size());
 }
 
 // split a ordered key array with data array to data nodes.

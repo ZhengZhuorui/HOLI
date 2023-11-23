@@ -621,7 +621,6 @@ public:
         //t1 = std::chrono::high_resolution_clock::now();
         //static double train_time = 0;
         #endif
-
         const double density = 1.0 * n / slot_size;
 
         AEX_ASSERT(n > 1);
@@ -657,8 +656,8 @@ public:
         
         slot_type start[traits::MAX_SEGMENT_NUM], end[traits::MAX_SEGMENT_NUM];
         long double segment_slope[traits::MAX_SEGMENT_NUM]; 
-
-        for (unsigned int max_segment_num = 1; max_segment_num <= static_cast<unsigned int>(std::min(traits::MAX_SEGMENT_NUM, n / 8)); max_segment_num *= 2){
+        for (unsigned int max_segment_num = 1; max_segment_num <= static_cast<unsigned int>(std::min(traits::MAX_SEGMENT_NUM, n / 4)); max_segment_num *= 2){
+            
             slot_type seg_len = static_cast<slot_type>(ceil(1.0 * (n - 1) / max_segment_num));
             slot_type start_pos = 0;
             for (unsigned int i = 0; i < max_segment_num; ++i){

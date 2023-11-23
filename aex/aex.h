@@ -463,6 +463,8 @@ private:
         node_ptr node = root;
         while (!IS_LEAF_NODE(node)){
             slot_type pos = static_cast<inner_node_ptr>(node)->find(key);
+            //AEX_PRINT("pos=" << pos << ", size=" << node->size << ", slot_size=" << static_cast<inner_node_ptr>(node)->slot_size);
+            //AEX_PRINT("key=" << static_cast<inner_node_ptr>(node)->key_ptr[pos] << ", child=" << static_cast<inner_node_ptr>(node)->child_ptr[pos]);
             //if (static_cast<inner_node_ptr>(node)->child_ptr[pos]->parent != node){
             //    AEX_PRINT("root=" << this->root << ", node=" << node << ", child=" << static_cast<inner_node_ptr>(node)->child_ptr[pos] << ", child->parent=" << static_cast<inner_node_ptr>(node)->child_ptr[pos]->parent);
             //}

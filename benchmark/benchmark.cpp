@@ -102,4 +102,8 @@ int main(int argc, char** argv){
     if (key_type == "uint64") benchmark<unsigned long long, unsigned long long>(flags);
     //else if (key_type == "uint") benchmark<unsigned long long, unsigned long long>(flags);
     else if (key_type == "float64") benchmark<double, double>(flags);
+    else if (key_type == "uint32") benchmark<unsigned int, unsigned int>(flags);
+    else if (key_type == "int64") benchmark<long long, long long>(flags);
+    else if (key_type == "float32") benchmark<float, float>(flags);
+    else if (key_type == "int32") benchmark<int, int>(flags);
 }

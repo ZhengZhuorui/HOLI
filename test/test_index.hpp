@@ -108,6 +108,7 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
         }
 
         for (long long i = 0; i < n; ++i){
+            //AEX_PRINT("key[" << i << "]=" << data[i].first);
             auto x = data[i];
             auto y = index.find(x.first);
             if (y == index.end()){
@@ -162,11 +163,13 @@ bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, 
         AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);
         return false;
     }
+    AEX_HINT("bulk load finish...");
     
     for (int i = 0; i < batch; ++i){
+        //AEX_PRINT("key=" << query[i]);
         auto iter = index.find(query[i]);
         if (iter == index.end()){
-            AEX_ERROR("Query no exists, i=" << i);
+            AEX_ERROR("Query no exists, i=" << i << ", key=" << query[i]);
             return false;
         }
         if (iter.key() != query[i]){

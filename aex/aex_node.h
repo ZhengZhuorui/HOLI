@@ -222,9 +222,9 @@ public:
     //typedef aex_model<key_type, traits> Model;
 
     //typedef gap_array_linear_model<key_type, traits> Model;
-    typedef piecewise_linear_model<key_type, traits> Model;
+    //typedef piecewise_linear_model<key_type, traits> Model;
     //typedef piecewise_linear_model_2<key_type, traits> Model;
-    //typedef piecewise_linear_model_avx<key_type, traits> Model;
+    typedef piecewise_linear_model_avx<key_type, traits> Model;
 
     typedef data_node* data_node_ptr;
     
@@ -315,7 +315,7 @@ public:
         return *this;
     }
 
-    forceinline slot_type real_slot_size() const {return this->slot_size - traits::ERROR_BOUND;}
+    inline slot_type real_slot_size() const {return this->slot_size - traits::ERROR_BOUND;}
 
     // clear bitmap
     inline void clear_bitmap(){
@@ -335,7 +335,6 @@ public:
         if (!IS_ML_NODE(this)){
             std::copy(key, key + n - 1, this->key_ptr);
             std::copy(child, child + n, this->child_ptr);
-            //std::fill(this->child_ptr + n, this->child_ptr + this->slot_size, child[n - 1]);
             for (slot_type i = 0; i < n; ++i)
                 child[i]->parent = this;
         }
@@ -579,6 +578,7 @@ public:
             if (x <= key_ptr[i]){
                 return i;
             }
+            AEX_ASSERT(0 == 1);
             return this->slot_size - 1;
             #endif
         }
@@ -586,8 +586,16 @@ public:
             #ifdef AEX_TLI
             return SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x, this->key_ptr + pred_pos) - this->key_ptr;
             #else
-            slot_type pos = std::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x) - this->key_ptr;
-            return pos;
+            if (static_cast<size_t>(this->size) < traits::BINSEARCH_THRESHOLD){
+                for (slot_type i = 0; i < this->size - 1; ++i)
+                if (x <= this->key_ptr[i])
+                    return i;
+                return this->size - 1;
+            }
+            else{
+                slot_type pos = std::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x) - this->key_ptr;
+                return pos;
+            }
             #endif
         }
     }
@@ -920,7 +928,16 @@ public:
 #ifdef AEX_TLI
         return SearchClass::lower_bound(this->key, this->key + this->size, x, this->key) - this->key;
 #else
-        return std::lower_bound(this->key, this->key + this->size, x) - this->key;
+        if constexpr (traits::MIN_DATA_NODE_SLOT_SIZE < traits::BINSEARCH_THRESHOLD){
+            for (int i = 0; i < this->size; ++i)
+            if (x <= key[i])
+                return i;
+            AEX_ASSERT(0 == 1);
+            return this->size;
+        }
+        else {
+            return std::lower_bound(this->key, this->key + this->size, x) - this->key;
+        }
 #endif
     }
 

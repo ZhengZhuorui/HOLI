@@ -356,6 +356,7 @@ void aex_tree<_Key, _Val, traits>::build_tree(std::vector<key_type> &key_buf, st
         new_key_buf.clear();
         new_child_buf.clear();
     }
+    
     root = child_buf[0];
 }
 

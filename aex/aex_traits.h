@@ -85,11 +85,11 @@ struct aex_default_traits{
 
     static constexpr int DATA_NODE_ERROR_BOUND = 2;
 
-    //static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(16, 256 / (sizeof(key_type) + sizeof(void*)));
-    static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = 8;
+    static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(16, 256 / (sizeof(key_type) + sizeof(void*)));
+    //static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = 8;
 
-    //static constexpr slot_type MIN_DATA_NODE_SLOT_SIZE = AEX_MAX(16, 256 / (sizeof(key_type)));
-    static constexpr slot_type MIN_DATA_NODE_SLOT_SIZE = 8;
+    static constexpr slot_type MIN_DATA_NODE_SLOT_SIZE = AEX_MAX(16, 256 / (sizeof(key_type)));
+    //static constexpr slot_type MIN_DATA_NODE_SLOT_SIZE = 8;
 
     static constexpr slot_type MIN_ML_INNER_NODE_SLOT_SIZE = MIN_INNER_NODE_SLOT_SIZE;
 
@@ -97,7 +97,7 @@ struct aex_default_traits{
 
     static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 25;
 
-    static constexpr slot_type MAX_DATA_NODE_SLOT_SIZE= 1 << 20;
+    static constexpr slot_type MAX_DATA_NODE_SLOT_SIZE = 1 << 20;
 
     static constexpr slot_type MIN_ML_DATA_NODE_SLOT_SIZE = 32;
     
@@ -123,9 +123,11 @@ struct aex_default_traits{
 
     static constexpr bool debug = true;
 
-    static constexpr int MAX_SEGMENT_NUM = 4;
+    static constexpr int MAX_SEGMENT_NUM = 8;
 
     static constexpr unsigned long long INNER_NODE_MAX_DIFFERENT_VALUE = 0x10000000000000ULL;
+
+    static constexpr size_t BINSEARCH_THRESHOLD = 256;
 };
 
 }
