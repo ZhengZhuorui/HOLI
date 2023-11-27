@@ -3,12 +3,6 @@
 
 namespace aex{
 
-template<typename key_type,
-        int K>
-void predict(const key_type &key){
-
-}
-
 
 template<typename _Tp,
         typename traits>
@@ -20,7 +14,7 @@ public:
 
     typedef typename traits::slot_type slot_type;
 
-    typedef piecewise_linear_model_2<_Tp, traits> Model;
+    typedef piecewise_linear_model<_Tp, traits> Model;
 
     piecewise_linear_model_avx(){}
 
@@ -42,12 +36,9 @@ public:
             __m256d block_position_tensor = _mm256_mul_pd(mask_tensor, slope_tensor);
             position_tensor = _mm256_add_pd(position_tensor, block_position_tensor);
         }
-        //_mm256_store_pd(position, position_tensor);
-        //position[0] = (position[0] + position[1] + position[2] + position[3]) + 1;
         position_tensor = _mm256_hadd_pd(position_tensor, position_tensor);
         _mm256_store_pd(position, position_tensor);
         position[0] = (position[0] + position[2]) + 1;
-        //AEX_PRINT("pos=" << position[0]);
         return position[0];
     }
 

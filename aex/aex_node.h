@@ -578,7 +578,6 @@ public:
             if (x <= key_ptr[i]){
                 return i;
             }
-            AEX_ASSERT(0 == 1);
             return this->slot_size - 1;
             #endif
         }
@@ -586,16 +585,16 @@ public:
             #ifdef AEX_TLI
             return SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x, this->key_ptr + pred_pos) - this->key_ptr;
             #else
-            if (static_cast<size_t>(this->size) < traits::BINSEARCH_THRESHOLD){
-                for (slot_type i = 0; i < this->size - 1; ++i)
-                if (x <= this->key_ptr[i])
-                    return i;
-                return this->size - 1;
-            }
-            else{
+            //if (static_cast<size_t>(this->size) < traits::BINSEARCH_THRESHOLD){
+            //    for (slot_type i = 0; i < this->size - 1; ++i)
+            //    if (x <= this->key_ptr[i])
+            //        return i;
+            //    return this->size - 1;
+            //}
+            //else{
                 slot_type pos = std::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x) - this->key_ptr;
                 return pos;
-            }
+            //}
             #endif
         }
     }
@@ -871,7 +870,7 @@ public:
 
     inline void construct(const key_type *_key, const value_type *_data, slot_type nums){
         AEX_ASSERT(IS_ML_NODE(this) == false);
-        AEX_ASSERT(nums >= traits::MIN_DATA_NODE_SLOT_SIZE / 2);
+        //AEX_ASSERT(nums >= traits::MIN_DATA_NODE_SLOT_SIZE / 2);
         std::copy(_key, _key + nums, this->key);
         std::copy(_data, _data + nums, this->data);
         this->size = nums;
@@ -928,16 +927,16 @@ public:
 #ifdef AEX_TLI
         return SearchClass::lower_bound(this->key, this->key + this->size, x, this->key) - this->key;
 #else
-        if constexpr (traits::MIN_DATA_NODE_SLOT_SIZE < traits::BINSEARCH_THRESHOLD){
-            for (int i = 0; i < this->size; ++i)
-            if (x <= key[i])
-                return i;
-            AEX_ASSERT(0 == 1);
-            return this->size;
-        }
-        else {
+        //if (this->size < traits::BINSEARCH_THRESHOLD){
+        //    for (int i = 0; i < this->size; ++i)
+        //    if (x <= key[i])
+        //        return i;
+        //    AEX_ASSERT(0 == 1);
+        //    return this->size;
+        //}
+        //else {
             return std::lower_bound(this->key, this->key + this->size, x) - this->key;
-        }
+        //}
 #endif
     }
 

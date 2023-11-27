@@ -64,7 +64,8 @@ public:
         msg.level_node_nums.resize(traits::MAX_DEPTH);
         dfs_detail(this->root);
         AEX_HINT("inner node number=" << msg.inner_node << ", data node number=" << msg.data_node << 
-                ", ml inner node number=" << msg.ml_inner_node << ", ml data node number=" << msg.ml_data_node);
+                ", ml inner node number=" << msg.ml_inner_node << ", ml data node number=" << msg.ml_data_node <<
+                ", ml inner node ratio=" << 1.0 * msg.ml_inner_node / msg.inner_node);
         AEX_HINT("data size=" << msg.data_size);
         AEX_HINT("avg seg nums=" << 1.0 * msg.tot_seg_nums / msg.ml_inner_node);
     }

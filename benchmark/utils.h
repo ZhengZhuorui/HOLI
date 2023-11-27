@@ -52,9 +52,11 @@ void read_bineary_file(FILE* file, T* &data, size_t n){
 
 template<typename T>
 void write_bineary_file(FILE* file, vector<T> &data){
-
     std::cout << "write data...\n";
     size_t n = data.size();
+    std::cout << "example: " << std::endl;
+    for (size_t i = 0; i < std::min(n, (size_t)100); ++i)
+        std::cout << data[i] << ", ";
     fwrite(data.data(), sizeof(T), n, file);
     std::cout << "write data end\n";
 }

@@ -104,7 +104,7 @@ bool test_gap_array_linear_model(T* data, size_t n, bool spec_flag){
 
 template<typename T>
 bool test_piecewise_linear_model(T* data, size_t n){
-    AEX_HINT("[test piecewise linear model]");
+    AEX_HINT("[test piecewise linear model] n=" << n);
     typedef typename aex::aex_default_traits<T, T> traits;
     typedef typename traits::slot_type slot_type;
     mock_aex_tree<T, T> tree;
@@ -112,6 +112,7 @@ bool test_piecewise_linear_model(T* data, size_t n){
     piecewise_linear_model<T, traits> m;
     slot_type size = traits::MIN_ML_INNER_NODE_SIZE;
     slot_type slot_size = min_slot_size(size, ratio, traits::MIN_INNER_NODE_SLOT_SIZE);
+    
     //slot_type slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE, size = slot_size * ratio;
     while (static_cast<size_t>(size) < n && m.train(data, size, slot_size) == true){
         slot_size <<= 1;

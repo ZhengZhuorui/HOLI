@@ -179,8 +179,8 @@ public:
         if (ml_node_flag == true)
             AEX_ASSERT(slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE);
 
-        if (slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE) 
-            slot_size += traits::ERROR_BOUND;
+        //if (slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE) 
+        slot_size += traits::ERROR_BOUND;
 
         size_type memory_used = INNER_NODE_MEMORY_USED(slot_size);
         this->_memory_used += memory_used;

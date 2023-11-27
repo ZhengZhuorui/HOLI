@@ -100,7 +100,7 @@ typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::co
     node_ptr new_node;
     if (IS_LEAF_NODE(node)){
         //new_node = node_allocator.allocate_data_node(node->slot_size, IS_ML_NODE(node));
-        if (IS_STATIC_NODE(node))
+        if constexpr (std::is_same<data_node, static_data_node>::value == true)
             new_node = node_allocator.allocate_static_data_node();
         else
             new_node = node_allocator.allocate_dynamic_data_node(static_cast<dynamic_data_node_ptr>(node)->slot_size, IS_ML_NODE(node));

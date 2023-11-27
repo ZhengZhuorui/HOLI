@@ -176,11 +176,14 @@ inline bool aex_tree<_Key, _Val, traits>::check_split(inner_node_ptr node){
         return false;
     double lambda_timestamp = this->balance_stats.get_timestamp();
     double train_pro = 1.0 * node->balance_stats.get_train_times() / lambda_timestamp;
+    double write_pro = 1.0 * node->balance_stats.get_write_times() / lambda_timestamp;
 
     double read_cost = 1.0 * (1.0 / this->m_stats.level_node[node->level]) * traits::MODEL_ARGS::INNER_NODE_MODEL_SEARCH_FACTOR;
     double SMO_cost = -(train_pro / 2) * traits::MODEL_ARGS::INNER_NODE_TRAIN_FACTOR * node->size;
-    AEX_PRINT("read cost=" << read_cost << ", SMO_cost=" << SMO_cost);
-    double delta_cost = read_cost + SMO_cost;
+    double write_cost = (IS_ML_NODE(node)) ? 0 : -1.0 * write_pro * (node->size / 2) * traits::MODEL_ARGS::DENSE_ARRAY_INSERT_FACTOR;
+    double delta_cost = read_cost + SMO_cost + write_cost;
+    //if ()
+        AEX_PRINT("read cost=" << read_cost << ", SMO_cost=" << SMO_cost << ", write_cost=" << write_cost << ", delta_cost=" << delta_cost);
     if (delta_cost < 0)
         return true;
     return false;

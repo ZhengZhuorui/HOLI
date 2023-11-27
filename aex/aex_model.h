@@ -621,29 +621,57 @@ public:
         //t1 = std::chrono::high_resolution_clock::now();
         //static double train_time = 0;
         #endif
+        //const double density = 1.0 * n / slot_size;
+        //
+        //AEX_ASSERT(n > 1);
+        //
+        //const long double max_density = 2.0 / (1.0 + 1.0 / density); //harmonic mean
+        //const long double gap = 1.0 / (n - 1) * max_density;
+        //const slot_type max_offset = traits::ERROR_BOUND - 2;
+        //const slot_type windows_size = ceil(1.0 * max_offset / (1 - max_density));
+        //std::vector<long double> slope(n), windows_slope(windows_size), max_windows_slope(max_offset + 1);
+        //std::fill(windows_slope.begin(), windows_slope.end(), 1.0 * max_density / (key[n - 1] - key[0]));
+        //for (slot_type i = n - 2; i >= 0; --i){
+        //    long double k = gap / (key[i + 1] - key[i]);
+        //    //AEX_PRINT("slope " << i << " = " << k);
+        //    slope[i] = k;
+        //    std::move_backward(windows_slope.data(), windows_slope.data() + windows_size - 1, windows_slope.data() + windows_size);
+        //    windows_slope[0] = k;
+        //    
+        //    std::fill(max_windows_slope.data(), max_windows_slope.data() + max_offset + 1, 0);
+        //    for (slot_type j = 0; j < windows_size; ++j){
+        //        for (slot_type k = 0; k < max_offset + 1; ++k)
+        //            if (windows_slope[j] > max_windows_slope[k]){
+        //                std::move_backward(max_windows_slope.data() + k, max_windows_slope.data() + max_offset, max_windows_slope.data() + max_offset + 1);
+        //                max_windows_slope[k] = windows_slope[j];
+        //                break;
+        //            }
+        //        slope[i] = std::min(slope[i], max_windows_slope[static_cast<slot_type>(floor(1.0 * (j + 1) * (1 - max_density)))]);
+        //    }
+        //    //AEX_PRINT("slope[" << i << "]=" << slope[i] << ", real=" << gap / (key[i + 1] - key[i]));
+        //}
+        //AEX_PRINT("train...");
         const double density = 1.0 * n / slot_size;
-
         AEX_ASSERT(n > 1);
-
         const long double max_density = 2.0 / (1.0 + 1.0 / density); //harmonic mean
         const long double gap = 1.0 / (n - 1) * max_density;
         const slot_type max_offset = traits::ERROR_BOUND - 2;
         const slot_type windows_size = ceil(1.0 * max_offset / (1 - max_density));
         std::vector<long double> slope(n), windows_slope(windows_size), max_windows_slope(max_offset + 1);
         std::fill(windows_slope.begin(), windows_slope.end(), 1.0 * max_density / (key[n - 1] - key[0]));
+
         for (slot_type i = n - 2; i >= 0; --i){
             long double k = gap / (key[i + 1] - key[i]);
-            //AEX_PRINT("slope " << i << " = " << k);
             slope[i] = k;
-            std::move_backward(windows_slope.data(), windows_slope.data() + windows_size - 1, windows_slope.data() + windows_size);
-            windows_slope[0] = k;
+            windows_slope[i % windows_size] = k;
             
             std::fill(max_windows_slope.data(), max_windows_slope.data() + max_offset + 1, 0);
             for (slot_type j = 0; j < windows_size; ++j){
+                long double now_slope = windows_slope[(j + i) % windows_size];
                 for (slot_type k = 0; k < max_offset + 1; ++k)
-                    if (windows_slope[j] > max_windows_slope[k]){
+                    if (now_slope > max_windows_slope[k]){
                         std::move_backward(max_windows_slope.data() + k, max_windows_slope.data() + max_offset, max_windows_slope.data() + max_offset + 1);
-                        max_windows_slope[k] = windows_slope[j];
+                        max_windows_slope[k] = now_slope;
                         break;
                     }
                 slope[i] = std::min(slope[i], max_windows_slope[static_cast<slot_type>(floor(1.0 * (j + 1) * (1 - max_density)))]);
@@ -653,72 +681,49 @@ public:
 
         std::fill(args.end, args.end + traits::MAX_SEGMENT_NUM, std::numeric_limits<key_type>::min());
         std::fill(args.slope, args.slope + traits::MAX_SEGMENT_NUM, 0);
+
+        slot_type segment_start[traits::MAX_SEGMENT_NUM + 1];
         
-        slot_type start[traits::MAX_SEGMENT_NUM], end[traits::MAX_SEGMENT_NUM];
         long double segment_slope[traits::MAX_SEGMENT_NUM]; 
         for (unsigned int max_segment_num = 1; max_segment_num <= static_cast<unsigned int>(std::min(traits::MAX_SEGMENT_NUM, n / 4)); max_segment_num *= 2){
             
             slot_type seg_len = static_cast<slot_type>(ceil(1.0 * (n - 1) / max_segment_num));
-            slot_type start_pos = 0;
-            for (unsigned int i = 0; i < max_segment_num; ++i){
-                slot_type end_pos = std::min(n - 2, start_pos + seg_len - 1);
-                start[i] = start_pos;
-                end[i] = end_pos;
-                segment_slope[i] = 0;
-                for (slot_type k = start_pos; k <= end_pos; ++k) 
-                    segment_slope[i] = std::max(segment_slope[i], slope[k]);
-                start_pos = end_pos + 1;
-            }
-            end[max_segment_num - 1] = n - 2;
+            for (unsigned int i = 0; i < max_segment_num; ++i)
+                segment_start[i] = seg_len * i;
+            segment_start[max_segment_num] = n - 1;
 
-            //for (unsigned int i = 0; i < max_segment_num; ++i)
-            //    AEX_PRINT("start=" << start[i] << ", end=" << end[i]);
+            std::fill(segment_slope, segment_slope + traits::MAX_SEGMENT_NUM, 0);
+            for (unsigned int i = 0; i < max_segment_num; ++i)
+            for (slot_type j = segment_start[i] ; j < segment_start[i + 1]; ++j)
+                segment_slope[i] =  std::max(segment_slope[i], slope[j]);
 
             for (unsigned int i = 0; i < max_segment_num; ++i){
                 if (i > 0 && segment_slope[i] < segment_slope[i - 1]){
-                    for (slot_type j = end[i - 1]; j >= start[i - 1] && slope[j] <= segment_slope[i]; --j){
-                        --start[i];
-                        --end[i - 1];
-                    }
+                    for (slot_type j = segment_start[i]; j > segment_start[i - 1] && slope[j] <= segment_slope[i]; --j)
+                        --segment_start[i];
                 }
                 if (i < max_segment_num - 1 && segment_slope[i] < segment_slope[i + 1]){
-                    for (slot_type j = start[i + 1]; j <= end[i + 1] && slope[j] <= segment_slope[i]; ++j){
-                        ++end[i];
-                        ++start[i + 1];
-                    }
+                    for (slot_type j = segment_start[i + 1]; j < segment_start[i + 2] && slope[j] <= segment_slope[i]; ++j)
+                        ++segment_start[i + 1];
                 }
             }
 
+            long double S = 0;
             for (unsigned int i = 0; i < max_segment_num; ++i){
                 this->args.slope[i] = segment_slope[i];
-                this->args.end[i] = key[end[i] + 1];
+                this->args.end[i] = key[segment_start[i + 1]];
+                S += 1.0 * (key[segment_start[i + 1]] - key[segment_start[i]]) * segment_slope[i];
             }
-            //for (unsigned int i = 0; i < max_segment_num; ++i)
-            //    AEX_PRINT("segment[" << i << "] start=" << start[i] << ", end=" << end[i] << ", segment_slope=" << segment_slope[i]);  
-            long double S = 0, last_key = key[0];
-            for (unsigned int i = 0; i < max_segment_num; last_key = this->args.end[i], ++i)
-                S += 1.0 * (this->args.end[i] - last_key) * this->args.slope[i];
 
             //AEX_PRINT("S=" << S);
             if (S > 1){
                 continue;
             }
-            long double left_slope = (1 - S) / (key[n - 1] - key[0]);
+
+            long double left_slope = (1.0 - S) / (key[n - 1] - key[0]);
             //AEX_PRINT("left_slope=" << left_slope << ", S=" << S);
             for (unsigned int i = 0; i < max_segment_num; ++i)
                 this->args.slope[i] += left_slope;
-
-            S = 0;
-            last_key = key[0];
-            for (unsigned int i = 0; i < max_segment_num; last_key = this->args.end[i], ++i)
-                S += 1.0 * (this->args.end[i] - last_key) * this->args.slope[i];
-                        
-            //if (!(std::abs(S - 1) < 1e-6)){
-            //    AEX_PRINT("S=" << S << ", n=" << n << ", slot_size=" << slot_size << ", max_segment_num=" << max_segment_num);
-            //    for (unsigned int i = 0; i < max_segment_num; ++i)
-            //        AEX_PRINT("i=" << i << "end=" << this->args.end[i] << ", slope=" << this->args.slope[i] << ", node start=" << start[i] << ", end=" << end[i] << ", key_start=" << key[start[i]] << ", key_end=" << key[end[i]]);
-            //}
-            AEX_ASSERT(std::abs(S - 1) < 1e-6);
 
             for (unsigned int i = 0; i < max_segment_num - 1; ++i)
                 this->args.slope[i] -= this->args.slope[i + 1];
@@ -761,8 +766,6 @@ public:
         long double end[traits::MAX_SEGMENT_NUM], slope[traits::MAX_SEGMENT_NUM];
         unsigned int seg_nums;
     }args;
-    
-
 };
 
 template<typename _Tp,
@@ -958,6 +961,208 @@ public:
 
 };
 
+
+
+template<typename _Tp,
+        typename traits>
+class piecewise_linear_model_3{
+public:
+    typedef _Tp key_type;
+
+    typedef linear_model<key_type, traits> self;
+
+    typedef typename traits::slot_type slot_type;
+
+    piecewise_linear_model_3(){
+        this->args.seg_nums = 0;
+        std::fill(this->args.slope, this->args.slope + traits::MAX_SEGMENT_NUM, 0);
+    }
+
+    ~piecewise_linear_model_3(){}
+
+    // return the predict position. value range from 0 to +inf.
+    forceinline long double predict(const key_type &key) const {
+        long double ret = 1;
+        for (unsigned int i = 0; i < args.seg_nums; ++i){
+            ret += (key < args.end[i]) * (key - args.end[i]) * args.slope[i];
+        }
+        return ret;
+    }
+
+    bool train(const key_type* const key, const slot_type n){
+        return false;
+    }
+
+    bool train(const key_type* const key, const slot_type n, const slot_type slot_size){
+        #ifdef AEX_EXPERIMENT
+        //std::chrono::system_clock::time_point t1, t2;
+        //t1 = std::chrono::high_resolution_clock::now();
+        //static double train_time = 0;
+        #endif
+        //const double density = 1.0 * n / slot_size;
+        //
+        //AEX_ASSERT(n > 1);
+        //
+        //const long double max_density = 2.0 / (1.0 + 1.0 / density); //harmonic mean
+        //const long double gap = 1.0 / (n - 1) * max_density;
+        //const slot_type max_offset = traits::ERROR_BOUND - 2;
+        //const slot_type windows_size = ceil(1.0 * max_offset / (1 - max_density));
+        //std::vector<long double> slope(n), windows_slope(windows_size), max_windows_slope(max_offset + 1);
+        //std::fill(windows_slope.begin(), windows_slope.end(), 1.0 * max_density / (key[n - 1] - key[0]));
+        //for (slot_type i = n - 2; i >= 0; --i){
+        //    long double k = gap / (key[i + 1] - key[i]);
+        //    //AEX_PRINT("slope " << i << " = " << k);
+        //    slope[i] = k;
+        //    std::move_backward(windows_slope.data(), windows_slope.data() + windows_size - 1, windows_slope.data() + windows_size);
+        //    windows_slope[0] = k;
+        //    
+        //    std::fill(max_windows_slope.data(), max_windows_slope.data() + max_offset + 1, 0);
+        //    for (slot_type j = 0; j < windows_size; ++j){
+        //        for (slot_type k = 0; k < max_offset + 1; ++k)
+        //            if (windows_slope[j] > max_windows_slope[k]){
+        //                std::move_backward(max_windows_slope.data() + k, max_windows_slope.data() + max_offset, max_windows_slope.data() + max_offset + 1);
+        //                max_windows_slope[k] = windows_slope[j];
+        //                break;
+        //            }
+        //        slope[i] = std::min(slope[i], max_windows_slope[static_cast<slot_type>(floor(1.0 * (j + 1) * (1 - max_density)))]);
+        //    }
+        //    //AEX_PRINT("slope[" << i << "]=" << slope[i] << ", real=" << gap / (key[i + 1] - key[i]));
+        //}
+
+        const double density = 1.0 * n / slot_size;
+        AEX_ASSERT(n > 1);
+        const long double max_density = 2.0 / (1.0 + 1.0 / density); //harmonic mean
+        const long double gap = 1.0 / (n - 1) * max_density;
+        const slot_type max_offset = traits::ERROR_BOUND - 2;
+        const slot_type windows_size = ceil(1.0 * max_offset / (1 - max_density));
+        std::vector<long double> slope(n), windows_slope(windows_size), max_windows_slope(max_offset + 1);
+        std::fill(windows_slope.begin(), windows_slope.end(), 1.0 * max_density / (key[n - 1] - key[0]));
+
+        for (slot_type i = n - 2; i >= 0; --i){
+            long double k = gap / (key[i + 1] - key[i]);
+            slope[i] = k;
+            windows_slope[i % windows_size] = k;
+            
+            std::fill(max_windows_slope.data(), max_windows_slope.data() + max_offset + 1, 0);
+            for (slot_type j = 0; j < windows_size; ++j){
+                long double now_slope = windows_slope[(j + i) % windows_size];
+                for (slot_type k = 0; k < max_offset + 1; ++k)
+                    if (now_slope > max_windows_slope[k]){
+                        std::move_backward(max_windows_slope.data() + k, max_windows_slope.data() + max_offset, max_windows_slope.data() + max_offset + 1);
+                        max_windows_slope[k] = now_slope;
+                        break;
+                    }
+                slope[i] = std::min(slope[i], max_windows_slope[static_cast<slot_type>(floor(1.0 * (j + 1) * (1 - max_density)))]);
+            }
+        }
+
+        std::fill(args.end, args.end + traits::MAX_SEGMENT_NUM, std::numeric_limits<key_type>::min());
+        std::fill(args.slope, args.slope + traits::MAX_SEGMENT_NUM, 0);
+        
+        int block_size = std::min(n - 1, 1 << traits::MAX_SEGMENT_NUM);
+        long double block_slope[block_size];
+        std::fill(block_slope, block_slope + block_size, 0);
+        slot_type block_start[block_size + 1];
+        for (int i = 0; i < block_size; ++i)
+            block_start[i] = static_cast<slot_type>(floor(1.0 * (n - 1) / block_size * i));
+        block_start[block_size] = n - 1;
+        for (int i = 0; i < block_size; ++i)
+            for (slot_type j = block_start[i]; j < block_start[i + 1]; ++j)
+                block_slope[i] = std::max(block_slope[i], slope[j]);
+
+        std::pair<slot_type, slot_type> segment[traits::MAX_SEGMENT_NUM];
+        segment[0] = std::pair(0, block_size);
+        int segment_num = 1;
+        for (int i = 0; i < traits::MAX_SEGMENT_NUM; ++i){
+            for (int j = 0; j < traits::MAX_SEGMENT_NUM; ++i);
+                
+        }
+
+
+        slot_type segment_start[traits::MAX_SEGMENT_NUM + 1];
+        
+        long double segment_slope[traits::MAX_SEGMENT_NUM]; 
+        for (unsigned int max_segment_num = 1; max_segment_num <= static_cast<unsigned int>(std::min(traits::MAX_SEGMENT_NUM, n / 4)); max_segment_num *= 2){
+            
+            slot_type seg_len = static_cast<slot_type>(ceil(1.0 * (n - 1) / max_segment_num));
+            for (unsigned int i = 0; i < max_segment_num; ++i)
+                segment_start[i] = seg_len * i;
+            segment_start[max_segment_num] = n - 1;
+
+            for (unsigned int i = 0; i < max_segment_num; ++i)
+            for (slot_type j = segment_start[i] ; j < segment_start[i + 1]; ++j)
+                segment_slope[i] =  std::max(segment_slope[i], slope[j]);
+
+            for (unsigned int i = 0; i < max_segment_num; ++i){
+                if (i > 0 && segment_slope[i] < segment_slope[i - 1]){
+                    for (slot_type j = segment_start[i]; j > segment_start[i - 1] && slope[j] <= segment_slope[i]; --j)
+                        --segment_start[i];
+                }
+                if (i < max_segment_num - 1 && segment_slope[i] < segment_slope[i + 1]){
+                    for (slot_type j = segment_start[i + 1]; j <= segment_start[i + 2] && slope[j] <= segment_slope[i]; ++j)
+                        ++segment_start[i + 1];
+                }
+            }
+
+            long double S = 0;
+            for (unsigned int i = 0; i < max_segment_num; ++i){
+                this->args.slope[i] = segment_slope[i];
+                this->args.end[i] = key[segment_start[i + 1]];
+                S += 1.0 * (key[segment_start[i + 1]] - key[segment_start[i]]) * segment_slope[i];
+            }
+
+            //AEX_PRINT("S=" << S);
+            if (S > 1){
+                continue;
+            }
+
+            long double left_slope = (1.0 - S) / (key[n - 1] - key[0]);
+            //AEX_PRINT("left_slope=" << left_slope << ", S=" << S);
+            for (unsigned int i = 0; i < max_segment_num; ++i)
+                this->args.slope[i] += left_slope;
+
+            for (unsigned int i = 0; i < max_segment_num - 1; ++i)
+                this->args.slope[i] -= this->args.slope[i + 1];
+            
+            args.seg_nums = max_segment_num;
+            #ifdef AEX_EXPERIMENT
+            //t2 = std::chrono::high_resolution_clock::now();
+            //train_time += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+            //AEX_PRINT("train_time=" << train_time);
+            #endif
+            return true;
+        }
+        return false;
+    }
+
+    inline long double RMSE(const key_type* const key, const slot_type n){
+        long double sum = 0;
+        //slot_type max_error = 0;
+        for (slot_type i = 0; i < n; ++i){
+            sum += sqr(this->predict(key[i]) * (n - 1) - i);
+        }
+        sum /= n;
+        sum = sqrt(sum);
+        return sum;
+    }
+
+    inline slot_type max_error(const key_type* const key, const slot_type n, const slot_type slot_size){
+        slot_type error = 0;
+        for (slot_type i = 0, start = 0; i < n; ++i){
+            slot_type pos = std::max(0, static_cast<slot_type>(this->predict(key[i]) * slot_size));
+            start = std::max(start, pos);
+            //AEX_PRINT("key=" << key[i] << ", pos=" << pos << ", start=" << start);
+            error = std::max(error, start - pos);
+            ++start;
+        }
+        return error;
+    }
+
+    struct piecewise_linear_model_arguments{
+        long double end[traits::MAX_SEGMENT_NUM], slope[traits::MAX_SEGMENT_NUM];
+        unsigned int seg_nums;
+    }args;
+};
 
 
 }

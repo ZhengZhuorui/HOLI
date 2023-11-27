@@ -30,7 +30,7 @@ int main(int argc, char** argv){
     FILE* file = fopen(output_files.c_str(), "wb");
     //printf("%s\n", output_files.c_str());
     
-    if (key_type == "int"){
+    if (key_type == "uint64"){
         if (distribution == "uniform"){
             vector<long long> data;
             data.resize(num_keys);
@@ -65,7 +65,7 @@ int main(int argc, char** argv){
             write_bineary_file(file, data);
         }
     }
-    else if (key_type == "float"){
+    else if (key_type == "float64"){
         if (distribution == "uniform"){
             vector<double> data;
             data.resize(num_keys);
@@ -101,5 +101,6 @@ int main(int argc, char** argv){
             write_bineary_file(file, data);
         }
     }
+    
     fclose(file);
 }

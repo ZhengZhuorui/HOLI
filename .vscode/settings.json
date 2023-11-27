@@ -91,7 +91,14 @@
         "locale": "cpp",
         "queue": "cpp",
         "stack": "cpp",
-        "version": "cpp"
+        "version": "cpp",
+        "ranges": "cpp",
+        "span": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "coroutine": "cpp",
+        "numbers": "cpp",
+        "stop_token": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
