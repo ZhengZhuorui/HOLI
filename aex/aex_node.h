@@ -131,9 +131,7 @@ public:
 
     aex_dynamic_node_base():base_node(), slot_size(0),  level(0), balance_stats(){}
 
-    explicit aex_dynamic_node_base(slot_type _slot_size): base_node(), slot_size(_slot_size), level(0), balance_stats(){
-        //this->real_slot_size = slot_size + (slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE) * traits::ERROR_BOUND;
-    }
+    explicit aex_dynamic_node_base(slot_type _slot_size): base_node(), slot_size(_slot_size), level(0), balance_stats(){}
 
     aex_dynamic_node_base(aex_dynamic_node_base &other_node):base_node(other_node), slot_size(other_node.slot_size),  /* real_slot_size(other_node.real_slot_size), */
                                             level(other_node.level), balance_stats(other_node.balance_stats){}

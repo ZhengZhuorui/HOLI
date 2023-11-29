@@ -65,13 +65,13 @@ struct aex_default_traits{
     typedef _AllowMultiThread AllowMultiThread;
 
     // Allow balance inner node and data node when read and write frequency update?
-    typedef std::false_type AllowRWBalance;
+    typedef std::true_type AllowRWBalance;
 
     // Allow balance inner node when insert an item?
-    typedef std::false_type AllowInsertBalance;
+    typedef std::true_type AllowInsertBalance;
 
     // Allow tree balance tree struct in lookup, insert and erase.
-    typedef std::false_type AllowBalance;
+    typedef std::true_type AllowBalance;
 
     static_assert((AllowRWBalance::value | AllowInsertBalance::value) == AllowBalance::value);
 
@@ -93,7 +93,7 @@ struct aex_default_traits{
 
     //static constexpr slot_type MAX_DENSE_INNER_NODE_SLOT_SIZE = 128;
 
-    static constexpr slot_type MIN_ML_INNER_NODE_SLOT_SIZE = 64;
+    //static constexpr slot_type MIN_ML_INNER_NODE_SLOT_SIZE = 64;
 
     static constexpr slot_type MIN_ML_INNER_NODE_SIZE = 64;
 

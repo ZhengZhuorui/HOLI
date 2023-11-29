@@ -153,7 +153,6 @@ bool aex_tree<_Key, _Val, traits>::insert_node(const inner_node_ptr node, const 
 
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::insert_split_bulk_load(inner_node_ptr node, const slot_type start, const key_type key, node_ptr child, bool half_flag){
-    AEX_WARNING("insert_split_bulk_load");
     std::vector<key_type> new_key, new_key_2;
     std::vector<node_ptr> new_child, new_child_2;
     new_key.push_back(key);
@@ -161,7 +160,7 @@ void aex_tree<_Key, _Val, traits>::insert_split_bulk_load(inner_node_ptr node, c
     slot_type n = node->size;
     slot_type left_size = n / 2;
     if (half_flag && start < left_size){
-        AEX_WARNING("? start=" << start << "left_size=" << left_size << "< n=" << n);
+        //AEX_WARNING("? start=" << start << "left_size=" << left_size << "< n=" << n);
         split(node->key_ptr + start, node->child_ptr + start, left_size - start, node->level, new_key_2, new_child_2);
         for (unsigned int i = 0; i < new_key_2.size(); ++i){
             new_key.push_back(new_key_2[i]);
@@ -544,19 +543,26 @@ template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_split_helper(inner_node_ptr node, const key_type* new_key, node_ptr* new_child, const slot_type n){
     //AEX_PRINT("insert_split_helper");
     if (node == root){
+        AEX_HINT("[helper]: insert_split_by_buffer 1");
         insert_split_by_buffer(node, new_key, new_child, n);
         return;
     }
     if (!IS_ML_NODE(node)){
-        if (node->slot_size * traits::EXPAND_RATIO < traits::MIN_ML_INNER_NODE_SIZE && n < node->slot_size / 2)
+        if (node->slot_size * traits::EXPAND_RATIO < traits::MIN_ML_INNER_NODE_SIZE && n < node->slot_size / 2){
+            AEX_HINT("[helper]: insert_split_dense_inner_node 1");
             insert_split_dense_inner_node(node, new_key, new_child, n);
-        else
+        }
+        else{
+            AEX_HINT("[helper]: insert_split_by_buffer 2");
             insert_split_by_buffer(node, new_key, new_child, n);
+        }
     }
     else if (node->size + n < node->slot_size){
+        AEX_HINT("[helper]: insert_split_by_buffer 1");
         insert_split_pipeline(node, new_key, new_child, n);
     }
     else{
+        AEX_HINT("[helper]: insert_split_by_buffer 3");
         insert_split_by_buffer(node, new_key, new_child, n);
     }
 }

@@ -10,8 +10,8 @@ bool test_linear_model(T* data, size_t n, bool spec_flag){
     m.train(data, n);
     std::cout << "slope=" << m.args.slope << "inter=" << m.args.inter << "end=" <<  m.args.end << std::endl;
     printf("RMSE=%.4f\n", m.RMSE(data, n));
-    size_t slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE;
-    while (slot_size * tree.inner_node_few_ratio[1] < n) slot_size <<= 1;
+    size_t slot_size = min_slot_size(n, tree.inner_node_few_ratio[1], traits::MIN_INNER_NODE_SLOT_SIZE);
+    //while (slot_size * tree.inner_node_few_ratio[1] < n) slot_size <<= 1;
     long long max_error = m.max_error(data, n, slot_size);
     AEX_SUCCESS("slot size=" << slot_size << ", max error=" << max_error);
     return true;
@@ -91,8 +91,7 @@ bool test_gap_array_linear_model(T* data, size_t n, bool spec_flag){
     mock_aex_tree<T, T> tree;
     typedef typename aex::aex_default_traits<T, T> traits;
     aex::gap_array_linear_model<T, aex::aex_default_traits<T, T>> m;
-    size_t slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE;
-    while (slot_size * tree.inner_node_full_ratio[1] < n) slot_size <<= 1;
+    size_t slot_size = min_slot_size(n, traits::MIN_INNER_NODE_SLOT_SIZE);
     m.train(data, n);
     std::cout << "slope=" << m.args.slope << "end=" <<  m.args.end << std::endl;
     long long max_error = m.max_error(data, n, slot_size);
@@ -105,6 +104,7 @@ bool test_gap_array_linear_model(T* data, size_t n, bool spec_flag){
 template<typename T>
 bool test_piecewise_linear_model(T* data, size_t n){
     AEX_HINT("[test piecewise linear model] n=" << n);
+    typedef mock_aex_tree<T, T> Index;
     typedef typename aex::aex_default_traits<T, T> traits;
     typedef typename traits::slot_type slot_type;
     mock_aex_tree<T, T> tree;
@@ -113,7 +113,6 @@ bool test_piecewise_linear_model(T* data, size_t n){
     slot_type size = traits::MIN_ML_INNER_NODE_SIZE;
     slot_type slot_size = min_slot_size(size, ratio, traits::MIN_INNER_NODE_SLOT_SIZE);
     
-    //slot_type slot_size = traits::MIN_ML_INNER_NODE_SLOT_SIZE, size = slot_size * ratio;
     while (static_cast<size_t>(size) < n && m.train(data, size, slot_size) == true){
         slot_size <<= 1;
         size = slot_size * ratio;
@@ -121,17 +120,14 @@ bool test_piecewise_linear_model(T* data, size_t n){
     slot_size >>= 1;
     size = slot_size * ratio;
     m.train(data, size, slot_size);
-    
-    if (slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE){
-        slot_type start = 0;
-        for (slot_type i = 0; i < size; ++i){
-            slot_type pos = std::max(0, std::min(static_cast<slot_type>(m.predict(data[i]) * slot_size), slot_size));    
-            start = std::max(start, pos);
-            ++start;
-        }
-    }
-    if (slot_size < traits::MIN_ML_INNER_NODE_SLOT_SIZE){
+
+    if (slot_size < traits::MIN_INNER_NODE_SLOT_SIZE){
         AEX_ERROR("TRAIN ERROR!");
+        return false;
+    }
+
+    if (Index::check_collision(data, size, slot_size, m) == false){
+        AEX_ERROR("Data Collision!");
         return false;
     }
 
@@ -148,6 +144,7 @@ bool test_piecewise_linear_model(T* data, size_t n){
 template<typename T>
 bool test_piecewise_linear_model_2(T* data, size_t n){
     AEX_HINT("[test piecewise linear model 2]");
+    typedef mock_aex_tree<T, T> Index;
     typedef typename aex::aex_default_traits<T, T> traits;
     typedef typename traits::slot_type slot_type;
     mock_aex_tree<T, T> tree;
@@ -163,20 +160,12 @@ bool test_piecewise_linear_model_2(T* data, size_t n){
     size = slot_size * ratio;
     m.train(data, size, slot_size);
     
-    if (slot_size >= traits::MIN_ML_INNER_NODE_SLOT_SIZE){
-        slot_type start = 0;
-        for (slot_type i = 0; i < size; ++i){
-            slot_type pos = std::max(0, std::min(static_cast<slot_type>(m.predict(data[i]) * slot_size), slot_size));    
-            start = std::max(start, pos);
-            ++start;
-        }
-    }
-    if (slot_size < traits::MIN_ML_INNER_NODE_SLOT_SIZE){
+    if (slot_size < traits::MIN_INNER_NODE_SLOT_SIZE){
         AEX_ERROR("TRAIN ERROR!");
         return false;
     }
 
-    if (tree.check_collision(data, size, slot_size, m) == false){
+    if (Index::check_collision(data, size, slot_size, m) == false){
         AEX_ERROR("Data Collision!");
         return false;
     }
@@ -214,12 +203,6 @@ bool test_piecewise_linear_model_avx_perf(T* data, size_t n, size_t qn){
     size = slot_size * ratio;
     m.train(data, size, slot_size);
     ori_m.train(data, size, slot_size);
-    
-    //if (size < traits::MIN_ML_INNER_NODE_SLOT_SIZE){
-    //    AEX_ERROR("TRAIN ERROR! size=" << size << ", MIN_ML_INNER_NODE_SLOT_SIZE=" << traits::MIN_ML_INNER_NODE_SLOT_SIZE);
-    //    AEX_ERROR("size < traits::MIN_ML_INNER_NODE_SLOT_SIZE?" << (size < traits::MIN_ML_INNER_NODE_SLOT_SIZE));
-    //    return false;
-    //}
 
     slot_type start = 0;
     AEX_HINT("size=" << size);

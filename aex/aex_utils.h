@@ -40,6 +40,8 @@ inline std::string PURPLE_GREEN_FONT(std::string str){ return PURPLE_FONT_TAG + 
 
 #ifdef AEX_DEBUG
 
+#define AEX_DEBUG_FLAG true
+
 //#define private public
 
 #define AEX_PRINT(x)  do { std::cout << "File: " << __FILE__ << ":" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << std::endl; } while(0)
@@ -55,6 +57,8 @@ inline std::string PURPLE_GREEN_FONT(std::string str){ return PURPLE_FONT_TAG + 
 #define AEX_PRINT_ELEMENT(x) do { AEX_PRINT(##x << "=" << x); } while(0)
 
 #else
+
+#define AEX_DEBUG_FLAG false
 
 #define AEX_PRINT(x) 
 
