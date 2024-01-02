@@ -1,15 +1,31 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.10)
 project(AEX)
 
 set(AEX_VERSION_MAJOR "1")
-set(AEX_VERSION_MINOR "1")
-set(AEX_VERSION_PATCH "3")
+set(AEX_VERSION_MINOR "0")
+set(AEX_VERSION_PATCH "0")
 set(AEX_VERSION_STRING ${AEX_VERSION_MAJOR}.${AEX_VERSION_MINOR}.${AEX_VERSION_PATCH})
 
-#set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-set(CMAKE_CXX_FLAGS "-O3 -Wall -march=native -fopenmp -fmax-errors=3 -std=c++17 -mavx -mavx2")
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
+set(CMAKE_CXX_FLAGS_DEBUG "-Wall -march=native -fopenmp -ffast-math -fmax-errors=3 -mavx -mavx2 -O0 -g -DDEBUG -lpthread")
+set(CMAKE_CXX_FLAGS_RELEASE "-Wall -march=native -fopenmp -ffast-math -fmax-errors=3 -mavx -mavx2 -O3 -lpthread")
+
 #set(CMAKE_CXX_FLAGS "-g -Wall -march=native -fopenmp -fmax-errors=3 -std=c++17")
+#
+#if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+#elseif(CMKAE_BUILD_TYPE STREQUAL "Release")
+#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+#endif()
+
+#message(STATUS "BUILD TYPE:" ${CMAKE_BUILD_TYPE})
+#message(STATUS "FLAGS:" ${CMAKE_CXX_FLAGS})
 
 include_directories(${CMAKE_SOURCE_DIR})
 

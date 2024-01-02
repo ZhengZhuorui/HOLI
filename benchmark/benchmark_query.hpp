@@ -5,7 +5,6 @@
 #include "alex.h"
 #include "pgm_index.hpp"
 #include "pgm_index_dynamic.hpp"
-#include <ext/hash_map>
 
 using namespace std::chrono;
 using aex::aex_map;

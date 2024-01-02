@@ -5,10 +5,10 @@
 #include "alex.h"
 #include "pgm_index.hpp"
 #include "pgm_index_dynamic.hpp"
-#include <ext/hash_map>
 
 using namespace std::chrono;
 using aex::aex_map;
+
 
 template<typename key_type, typename value_type>
 void aex_delta_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){

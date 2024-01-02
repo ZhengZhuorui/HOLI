@@ -35,7 +35,7 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
     construct_data_node_array<key_type, value_type, node_ptr>(node_data.data(), node_data.size(), child_ptr);
     construct_data_node_array<key_type, value_type, node_ptr>(insert_data.data(), insert_data.size(), insert_node_ptr);
     std::vector<key_type> key_buf;
-    std::vector<node_ptr> child_buf;
+    std::vector<inner_node_ptr> child_buf;
     tree.split(node_data.data(), child_ptr, n, level, key_buf, child_buf);
 
     if (child_buf.size() > 1){
@@ -175,7 +175,7 @@ bool test_inner_node_erase_perf(vector<key_type> &data, size_t n, size_t batch, 
         del_node[i] = child_ptr[del_pos[i]];
     
     std::vector<key_type> key_buf;
-    std::vector<node_ptr> child_buf;
+    std::vector<inner_node_ptr> child_buf;
     tree.split(data.data(), child_ptr, n, level, key_buf, child_buf);
     AEX_PRINT("cosntruct finish.");
 
@@ -325,7 +325,7 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
     }
     
     std::vector<key_type> key_buf;
-    std::vector<node_ptr> child_buf;
+    std::vector<inner_node_ptr> child_buf;
     tree.split(data.data(), child_ptr, n, level, key_buf, child_buf);
     AEX_PRINT("construct finish. ");
 
@@ -410,7 +410,7 @@ bool test_data_node_insert_perf(std::pair<key_type, value_type>* data, size_t n,
     std::sort(node_data.data(), node_data.data() + n);
 
     std::vector<key_type> key_buf, node_key(n);
-    std::vector<node_ptr> child_buf;
+    std::vector<dynamic_data_node_ptr> child_buf;
     std::vector<value_type> node_value(n);
 
     for (size_t i = 0; i < n; ++i){
@@ -480,7 +480,7 @@ bool test_data_node_query_perf(std::pair<key_type, value_type>* data, size_t n, 
     AEX_HINT("[test data node query performance]");
     mock_aex_tree<key_type, value_type, traits> tree;
     typedef typename mock_aex_tree<key_type, value_type, traits>::dynamic_data_node_ptr dynamic_data_node_ptr;
-    typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
+    [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
     [[maybe_unused]] typedef typename traits::size_type size_type;
     typedef typename traits::slot_type slot_type;
 
@@ -495,7 +495,7 @@ bool test_data_node_query_perf(std::pair<key_type, value_type>* data, size_t n, 
     std::sort(data, data + n);
 
     std::vector<key_type> key_buf, node_key(n);
-    std::vector<node_ptr> child_buf;
+    std::vector<dynamic_data_node_ptr> child_buf;
     std::vector<value_type> node_value(n);
     for (size_t i = 0; i < n; ++i){
         node_key[i] = data[i].first;
@@ -572,7 +572,7 @@ bool test_data_node_erase_perf(std::pair<key_type, value_type>* data, size_t n, 
     }
 
     std::vector<key_type> key_buf, node_key(n);
-    std::vector<node_ptr> child_buf;
+    std::vector<dynamic_data_node_ptr> child_buf;
     std::vector<value_type> node_value(n);
     for (size_t i = 0; i < n; ++i){
         node_key[i] = data[i].first;

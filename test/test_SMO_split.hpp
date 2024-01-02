@@ -7,13 +7,14 @@ bool test_SMO_data_split_with_exponential_probe_perf(key_type* key, value_type* 
     AEX_HINT("[test SMO--data split ]");
     typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
     [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
+    typedef typename mock_aex_tree<key_type, value_type, traits>::dynamic_data_node_ptr dynamic_data_node_ptr;
     typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::size_type size_type;
     typedef typename traits::slot_type slot_type;
 
     mock_aex_tree<key_type, value_type, traits> tree;
     std::vector<key_type> key_buf;
-    std::vector<node_ptr> data_node_buf;
+    std::vector<dynamic_data_node_ptr> data_node_buf;
     std::sort(key, key + num_keys);
     tree.split_with_exponential_probe(key, data, num_keys, key_buf, data_node_buf);
     AEX_IMPORTANT("split data node size=" << data_node_buf.size());
@@ -60,15 +61,16 @@ template<typename key_type,
         typename traits=aex::aex_default_traits<key_type, value_type>>
 bool test_SMO_data_split_with_linear_probe_perf(key_type* key, value_type* data, size_t num_keys){
     AEX_HINT("[test SMO--data split with linear probe]");
-    typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
+    [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
     [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
-    typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
+    [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::dynamic_data_node_ptr dynamic_data_node_ptr;
+    [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::size_type size_type;
     typedef typename traits::slot_type slot_type;
 
     mock_aex_tree<key_type, value_type, traits> tree;
     std::vector<key_type> key_buf;
-    std::vector<node_ptr> data_node_buf;
+    std::vector<dynamic_data_node_ptr> data_node_buf;
     std::sort(key, key + num_keys);
     tree.split_with_linear_probe(key, data, num_keys, key_buf, data_node_buf);
     AEX_IMPORTANT("split data node size=" << data_node_buf.size());
@@ -84,10 +86,10 @@ bool test_SMO_data_split_with_linear_probe_perf(key_type* key, value_type* data,
     }
     cnt = 0;
     for (size_t i = 0; i < data_node_buf.size(); ++i){
-        node_ptr inode = data_node_buf[i];
+        dynamic_data_node_ptr inode = data_node_buf[i];
         for (slot_type j = 0; j < inode->size; ++j, ++cnt){
-            if (static_cast<data_node_ptr>(inode)->key[j] != key[cnt]){
-                AEX_ERROR("Key Error! key[" << cnt << "]=" << key[cnt] << "data node key=" << static_cast<data_node_ptr>(inode)->key[j]);
+            if (inode->key[j] != key[cnt]){
+                AEX_ERROR("Key Error! key[" << cnt << "]=" << key[cnt] << "data node key=" << inode->key[j]);
                 return false;
             }
         }
@@ -133,7 +135,7 @@ bool test_SMO_node_split_perf(key_type* key, size_t num_keys){
     construct_data_node_array<key_type, value_type, node_ptr>(key, num_keys, nodeptr_buffer);
 
     std::vector<key_type> key_buf;
-    std::vector<node_ptr> inner_node_buf;
+    std::vector<inner_node_ptr> inner_node_buf;
     std::sort(key, key + num_keys);
     tree.split(key, nodeptr_buffer, num_keys, 2, key_buf, inner_node_buf);
     size_type cnt = 0, ml_node_size = 0;

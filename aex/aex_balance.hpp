@@ -172,6 +172,9 @@ inline bool aex_tree<_Key, _Val, traits>::check_split(inner_node_ptr node){
     // delta cost
     // 1. delta all read cost
     // 3. delta SMO cost
+    #ifdef AEX_EXPERIMENT
+    ++opt_stats.inner_node_balance_check_split_cnt;
+    #endif
     if constexpr (traits::AllowBalance::value == false)
         return false;
     double lambda_timestamp = this->balance_stats.get_timestamp();
@@ -183,9 +186,13 @@ inline bool aex_tree<_Key, _Val, traits>::check_split(inner_node_ptr node){
     double write_cost = (IS_ML_NODE(node)) ? 0 : -1.0 * write_pro * (node->size / 2) * traits::MODEL_ARGS::DENSE_ARRAY_INSERT_FACTOR;
     double delta_cost = read_cost + SMO_cost + write_cost;
     //if ()
-        AEX_PRINT("read cost=" << read_cost << ", SMO_cost=" << SMO_cost << ", write_cost=" << write_cost << ", delta_cost=" << delta_cost);
-    if (delta_cost < 0)
+    //    AEX_PRINT("read cost=" << read_cost << ", SMO_cost=" << SMO_cost << ", write_cost=" << write_cost << ", delta_cost=" << delta_cost);
+    if (delta_cost < 0){
+        #ifdef AEX_EXPERIMENT
+        ++opt_stats.inner_node_balance_split_cnt;
+        #endif
         return true;
+    }
     return false;
 }
 

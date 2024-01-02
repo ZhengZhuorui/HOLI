@@ -5,10 +5,8 @@ namespace aex{
 
 template<typename _Key,
         typename _Val,
-#ifdef AEX_TLI
-        typename SearchClass,
-#endif
-        typename traits>
+        typename traits,
+        typename component>
 struct aex_node_base{
 public:
     typedef _Key key_type;
@@ -21,21 +19,15 @@ public:
 
     typedef typename traits::slot_type slot_type;
     
-    #ifdef AEX_TLI
-    typedef aex_node_base<key_type, value_type, SearchClass, traits> self;
-    
-    typedef aex_inner_node<_Key, _Val, SearchClass, traits> inner_node;
-
-    typedef aex_static_data_node<_Key, _Val, SearchClass, traits> data_node;
-    #else
     typedef aex_node_base<key_type, value_type, traits> self;
     
     typedef aex_inner_node<_Key, _Val, traits> inner_node;
 
     typedef aex_static_data_node<_Key, _Val, traits> data_node;
-    #endif
 
-    typedef aex_node_balance_stats<typename traits::AllowBalance> node_balance_stats;
+    //typedef aex_node_balance_stats<typename traits::AllowBalance, traits> node_balance_stats;
+    typedef typename component::node_balance_stats node_balance_stats;
+    typedef typename component::node_mutex node_mutex;
 
     typedef inner_node* inner_node_ptr;
 
@@ -52,49 +44,39 @@ public:
     // size: the child node of the node(inner node); the data of the node(data node)
     slot_type size; 
 
-    unsigned int prop;
+    unsigned int level, prop;
 
-    aex_node_base():prev(nullptr), next(nullptr), parent(nullptr), size(0), prop(0){}
+    node_mutex mutex;
 
-    aex_node_base(aex_node_base &other_node):prev(other_node.prev), next(other_node.next), parent(other_node.parent), size(other_node.size), prop(other_node.prop){}
-    aex_node_base(aex_node_base &&other_node):prev(other_node.prev), next(other_node.next), parent(other_node.parent), size(other_node.size), prop(other_node.prop){}
+    aex_node_base():prev(nullptr), next(nullptr), parent(nullptr), size(0), level(0), prop(0){}
+
+    aex_node_base(aex_node_base &other_node):prev(other_node.prev), next(other_node.next), parent(other_node.parent), size(other_node.size), level(other_node.level), prop(other_node.prop){}
+    aex_node_base(aex_node_base &&other_node):prev(other_node.prev), next(other_node.next), parent(other_node.parent), size(other_node.size), level(other_node.level), prop(other_node.prop){}
 
     aex_node_base& operator = (aex_node_base &other_node){
-        this->prev = other_node.prev;this->next = other_node.next;this->parent = other_node.parent;this->size = other_node.size;
+        this->prev = other_node.prev;this->next = other_node.next;this->parent = other_node.parent;this->size = other_node.size;this->level = other_node.level;
         this->prop = other_node.prop;
         return *this;
     }
 
     aex_node_base& operator = (aex_node_base &&other_node){
-        this->prev = other_node.prev;this->next = other_node.next;this->parent = other_node.parent;this->size = other_node.size;
+        this->prev = other_node.prev;this->next = other_node.next;this->parent = other_node.parent;this->size = other_node.size;this->level = other_node.level;
         this->prop = other_node.prop;
         return *this;
     }
+
 };
 
 
 template<typename _Key,
         typename _Val,
-#ifdef AEX_TLI
-        typename SearchClass,
-#endif
         typename traits>
 struct aex_dynamic_node_base: public aex_node_base<_Key, _Val, traits>{
 public:
     typedef _Key key_type;
 
     typedef _Val value_type;
-    #ifdef AEX_TLI
-    typedef aex_tree<key_type, value_type, SearchClass, traits> base_tree;
     
-    typedef aex_node_base<key_type, value_type, SearchClass, traits> base_node;
-
-    typedef aex_dynamic_node_base<key_type, value_type, SearchClass, traits> self;
-    
-    typedef aex_inner_node<_Key, _Val, traits> inner_node;
-
-    typedef aex_static_data_node<_Key, _Val, traits> data_node;
-    #else
     typedef aex_tree<key_type, value_type, traits> base_tree;
 
     typedef aex_node_base<key_type, value_type, traits> base_node;
@@ -104,7 +86,7 @@ public:
     typedef aex_inner_node<_Key, _Val, traits> inner_node;
 
     typedef aex_static_data_node<_Key, _Val, traits> data_node;
-    #endif
+
 
     typedef typename traits::size_type size_type;
 
@@ -112,7 +94,7 @@ public:
 
     typedef base_node* node_ptr;
 
-    typedef aex_node_balance_stats<typename traits::AllowBalance> node_balance_stats;
+    typedef aex_node_balance_stats<typename traits::AllowBalance, traits> node_balance_stats;
 
     typedef inner_node* inner_node_ptr;
 
@@ -122,34 +104,28 @@ public:
     // slot_size: the slot of the node
     // slot_type slot_size, real_slot_size;
     slot_type slot_size;
-
-    // prop
-    // level: node height
-    unsigned int level;
     
     node_balance_stats balance_stats;
 
-    aex_dynamic_node_base():base_node(), slot_size(0),  level(0), balance_stats(){}
+    aex_dynamic_node_base():base_node(), slot_size(0), balance_stats(){}
 
-    explicit aex_dynamic_node_base(slot_type _slot_size): base_node(), slot_size(_slot_size), level(0), balance_stats(){}
+    explicit aex_dynamic_node_base(slot_type _slot_size): base_node(), slot_size(_slot_size), balance_stats(){}
 
-    aex_dynamic_node_base(aex_dynamic_node_base &other_node):base_node(other_node), slot_size(other_node.slot_size),  /* real_slot_size(other_node.real_slot_size), */
-                                            level(other_node.level), balance_stats(other_node.balance_stats){}
+    aex_dynamic_node_base(aex_dynamic_node_base &other_node):base_node(other_node), slot_size(other_node.slot_size), balance_stats(other_node.balance_stats){}
 
-    aex_dynamic_node_base(aex_dynamic_node_base &&other_node):base_node(other_node), slot_size(other_node.slot_size), /* real_slot_size(other_node.real_slot_size), */
-                                            level(other_node.level), balance_stats(other_node.balance_stats){}
+    aex_dynamic_node_base(aex_dynamic_node_base &&other_node):base_node(other_node), slot_size(other_node.slot_size), balance_stats(other_node.balance_stats){}
 
     aex_dynamic_node_base& operator = (aex_dynamic_node_base &other_node){
         *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
         this->slot_size = other_node.slot_size;//this->real_slot_size = other_node.real_slot_size;
-        this->prop = other_node.prop;this->level = other_node.level;this->balance_stats = other_node.balance_stats;
+        this->prop = other_node.prop;this->balance_stats = other_node.balance_stats;
         return *this;
     }
 
     aex_dynamic_node_base& operator = (aex_dynamic_node_base &&other_node){
         *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
         this->slot_size = other_node.slot_size;//this->real_slot_size = other_node.real_slot_size;
-        this->prop = other_node.prop;this->level = other_node.level;this->balance_stats = other_node.balance_stats;
+        this->prop = other_node.prop;this->balance_stats = other_node.balance_stats;
         return *this;
     }
 
@@ -159,7 +135,9 @@ public:
 /*
     memory layout:
     meta(const size): size, prop, level, Model, slot size
-    key array(variable size)
+    key array(variable size):
+    dense array: [key_1, key_2, ..., key_(n-1)]
+    gap array: [x, key_1, x, key_2, ..., key_(n-1), x, max()]
     pointer array(variable size)
     bitmap array(variable size)
 */
@@ -181,12 +159,12 @@ public:
 
     typedef typename traits::slot_type slot_type;
 
+    typedef aex_node_base<key_type, value_type, traits> base_node;
+
+    typedef aex_dynamic_node_base<key_type, value_type, traits> base_dynamic_node;
+
     #ifdef AEX_TLI
     typedef aex_tree<key_type, value_type, SearchClass, traits> base_tree;
-
-    typedef aex_node_base<key_type, value_type, SearchClass, traits> base_node;
-
-    typedef aex_dynamic_node_base<key_type, value_type, SearchClass, traits> base_dynamic_node;
 
     typedef aex_static_data_node<_Key, _Val, SearchClass, traits> data_node;
 
@@ -195,9 +173,8 @@ public:
     #else
     typedef aex_tree<key_type, value_type, traits> base_tree;
 
-    typedef aex_node_base<key_type, value_type, traits> base_node;
 
-    typedef aex_dynamic_node_base<key_type, value_type, traits> base_dynamic_node;
+    
 
     typedef aex_static_data_node<_Key, _Val, traits> data_node;
 
@@ -300,11 +277,14 @@ public:
         other_node.child_ptr = nullptr;
         other_node.bitmap_ptr = nullptr;
         if (IS_ML_NODE(this)){
+            //int cnt = 0;
             for (slot_type i = 0; i < this->slot_size; ++i)
             if (bitmap_impl::at(this->bitmap_ptr, i)){
                 this->child_ptr[i]->parent = this;
+                //++cnt;
             }
             this->child_ptr[this->slot_size - 1]->parent = this;
+            //AEX_ASSERT(cnt + 1 == this->size);
         }
         else{
             for (slot_type i = 0; i < this->size; ++i)
@@ -406,12 +386,6 @@ public:
             }
             // the distance between insert position of inserted item and the predict position should be less than ERROR_BOUND
             if (inserted_pos >= this->slot_size - 1 || inserted_pos - pred_pos >= traits::ERROR_BOUND){
-                //static int insert_pos_large = 0;
-                //insert_pos_large += (inserted_pos >= this->slot_size - 1);
-                //AEX_PRINT("insert_pos_large=" << insert_pos_large);
-                //static int insert_error_large = 0;
-                //insert_error_large += inserted_pos - pred_pos >= traits::ERROR_BOUND;
-                //AEX_PRINT("insert_error_large=" << insert_error_large);
                 return false;
             }
 
@@ -655,6 +629,8 @@ public:
 
     value_type *data;
 
+    bool is_dirty;
+
     //typedef linear_model<key_type, traits> Model;
 
     aex_data_node(){}
@@ -773,14 +749,15 @@ public:
     // if no item greater than or equal x, return slot_size
     inline slot_type find_lower_pos(const key_type &x){
         slot_type pos;
-        if (traits::AllowDynamicDataNode::value && IS_ML_NODE(this)){
+        if (IS_ML_NODE(this)){
             slot_type pred_pos = this->predict(x);
+            slot_type upper_bound = std::min(pred_pos + traits::DATA_NODE_ERROR_BOUND + 1, this->size);
+            for (slot_type i = std::max(0, pred_pos); i < upper_bound; ++i)
+            if (x <= key[pos])
             pos = aex::exponential_search_lower_bound(this->key, this->key + this->size, this->key + pred_pos, x) - this->key;
         }
         else{
-            for (pos = 0; pos < this->size; ++pos)
-            if (x <= key[pos])
-                break;
+            return std::lower_bound(this->key, this->key + this->size, x) - this->key;
         }
         return pos;
     }
@@ -933,7 +910,7 @@ public:
         //    return this->size;
         //}
         //else {
-            return std::lower_bound(this->key, this->key + this->size, x) - this->key;
+        return std::lower_bound(this->key, this->key + this->size, x) - this->key;
         //}
 #endif
     }

@@ -68,7 +68,7 @@ struct aex_default_traits{
     typedef std::true_type AllowRWBalance;
 
     // Allow balance inner node when insert an item?
-    typedef std::true_type AllowInsertBalance;
+    typedef std::false_type AllowInsertBalance;
 
     // Allow tree balance tree struct in lookup, insert and erase.
     typedef std::true_type AllowBalance;
@@ -79,16 +79,18 @@ struct aex_default_traits{
     // If data node slot size is dynamic(lazy update), it must AllowRWBalance.
     typedef std::false_type AllowDynamicDataNode;
 
+    typedef aex_node_mutex<AllowMultiThread> node_mutex;
+
     static_assert((AllowRWBalance::value | (!AllowDynamicDataNode::value)) == true);
     
     static constexpr int ERROR_BOUND = 8;
 
-    static constexpr int DATA_NODE_ERROR_BOUND = 2;
+    static constexpr int DATA_NODE_ERROR_BOUND = 4;
 
     static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type) + sizeof(void*)));
     //static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = 8;
 
-    static constexpr slot_type MIN_DATA_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type)));
+    static constexpr slot_type MIN_DATA_NODE_SLOT_SIZE = AEX_MAX(8, 128 / (sizeof(key_type)));
     //static constexpr slot_type MIN_DATA_NODE_SLOT_SIZE = 8;
 
     //static constexpr slot_type MAX_DENSE_INNER_NODE_SLOT_SIZE = 128;
@@ -117,7 +119,7 @@ struct aex_default_traits{
 
     static constexpr int BINEARY_SEARCH_SIZE = 32;
 
-    static constexpr int NODE_MUTEX_SLOT_SIZE = ERROR_BOUND;
+    static constexpr int NODE_MUTEX_SLOT_SIZE = 64;
 
     static constexpr int MAX_DEPTH = 16;
 
@@ -130,6 +132,9 @@ struct aex_default_traits{
     static constexpr unsigned long long INNER_NODE_MAX_DIFFERENT_VALUE = 0x10000000000000ULL;
 
     static constexpr size_t BINSEARCH_THRESHOLD = 256;
+
+    static constexpr double FORGET_RATE = 1 - 0.00001;
 };
+
 
 }

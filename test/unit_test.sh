@@ -124,14 +124,19 @@
 #(Y)
 ./unit_test --unit=model --key_type=float64 --num_keys=1024 --model_type=gap_linear --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 #(Y)
+./unit_test --unit=model --key_type=float64 --num_keys=256 --level=2 --model_type=piecewise_linear --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 ./unit_test --unit=model --key_type=float64 --num_keys=1024 --model_type=piecewise_linear --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-./unit_test --unit=model --key_type=float64 --num_keys=4096 --model_type=piecewise_linear --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=model --key_type=float64 --num_keys=4096 --level=2 --model_type=piecewise_linear --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=model --key_type=float64 --num_keys=65536 --level=2 --model_type=piecewise_linear --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 
-./unit_test --unit=model --key_type=float64 --num_keys=4096 --model_type=piecewise_linear_2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-./unit_test --unit=model --key_type=float64 --num_keys=4096 --model_type=piecewise_linear_2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-./unit_test --unit=model --key_type=float64 --num_keys=4096 --model_type=piecewise_linear_2 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+./unit_test --unit=model --key_type=float64 --num_keys=4096 --level=2 --model_type=piecewise_linear_2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=model --key_type=float64 --num_keys=4096 --level=2 --model_type=piecewise_linear_2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=model --key_type=float64 --num_keys=4096 --level=2 --model_type=piecewise_linear_2 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=model --key_type=uint64 --num_keys=4096 --model_type=piecewise_linear --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./unit_test --unit=model --key_type=uint64 --num_keys=4096 --model_type=piecewise_linear_2 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
+./unit_test --unit=model --key_type=float64 --num_keys=65536 --level=1 --model_type=piecewise_linear_3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=model --key_type=float64 --num_keys=65536 --level=2 --model_type=piecewise_linear_3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 
 ./unit_test --unit=model --key_type=float64 --num_keys=10000000 --batch=10000000 --model_type=piecewise_linear_avx_perf --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
@@ -365,6 +370,10 @@
 ./unit_test --unit=SMO --key_type=float64 --function=node_split --num_keys=2000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=SMO --key_type=float64 --function=node_split --num_keys=20000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
+./unit_test --unit=SMO --key_type=float64 --function=node_rescale --num_keys=1024 --ratio=2.0 --level=2 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+./unit_test --unit=SMO --key_type=float64 --function=node_rescale --num_keys=1024 --ratio=0.5 --level=2 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+
+
 # =================================================================================================
 # test index construction accuracy and performance
 # (Y)
@@ -438,6 +447,9 @@
 
 # test index insert accuracy
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000 --batch=1 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+
+./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000000 --batch=50000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000000 --batch=2000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=20000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=200000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
@@ -466,12 +478,6 @@
 ./unit_test --unit=index --key_type=float64 --function=range_query --num_keys=2000000 --batch=1000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=range_query --num_keys=20000000 --batch=1000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=range_query --num_keys=200000000 --batch=1000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
-
-# test index read/write accuracy
-#./unit_test --unit=index --key_type=float64 --function=mix --num_keys=2000000 --batch=2 --read_ratio=0.5 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
-#./unit_test --unit=index --key_type=float64 --function=mix --num_keys=2000000 --batch=20000 --read_ratio=0.5 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
-#./unit_test --unit=index --key_type=float64 --function=mix --num_keys=20000000 --batch=200000 --read_ratio=0.5 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
-#./unit_test --unit=index --key_type=float64 --function=mix --num_keys=200000000 --batch=2000000 --read_ratio=0.5 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
 # test index all interface
 # all write:

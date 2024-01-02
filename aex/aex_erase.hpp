@@ -20,7 +20,7 @@ void aex_tree<_Key, _Val, traits>::erase_recursive(inner_node_ptr node){
 
     // now node item is few. rescale it
     while (isfew(node)){
-        if (!rescale(node, node->real_slot_size() >> 1)){
+        if (!narrow(node)){
             break;
         }
     }
@@ -132,9 +132,7 @@ bool aex_tree<_Key, _Val, traits>::erase_merge(dynamic_data_node_ptr __restrict_
 template<typename _Key, typename _Val, typename traits>
 void aex_tree<_Key, _Val, traits>::erase_iterator(const_iterator &iter){
     this->balance_stats.update_timestamp();
-
     data_node_ptr node = iter._M_node;
-    
     if constexpr (traits::AllowDynamicDataNode::value){
         ((dynamic_node_ptr)node)->balance_stats.update_write_frequency(this->balance_stats.get_timestamp());
     }
@@ -143,8 +141,10 @@ void aex_tree<_Key, _Val, traits>::erase_iterator(const_iterator &iter){
     node->erase(iter.offset);
     --this->m_stats.size;
 
-    if (traits::AllowDynamicDataNode::value && isfew(node)){
-        rescale(node, ((dynamic_node_ptr)node)->slot_size >> 1);
+    if constexpr(std::is_same<data_node, dynamic_data_node>::value){
+        if (isfew(node)){
+            rescale(node, ((dynamic_node_ptr)node)->slot_size >> 1);
+        }
     }
 
     /* if data node is few, means rescale failed.  merge the near leaf */

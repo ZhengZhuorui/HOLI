@@ -18,6 +18,7 @@ namespace aex{
 #endif
 #endif
 
+
 #define UNF 0xFFFFFFFFFFFFFFFFLL
 //#define RED_FONT(str) ("\033[31m"+(str)+"\033[0m")
 //#define GREEN_FONT(str) ("\033[32m"+(str)+"\033[0m")
@@ -83,21 +84,22 @@ inline std::string PURPLE_GREEN_FONT(std::string str){ return PURPLE_FONT_TAG + 
 #define AEX_IMPORTANT(x) AEX_PRINT_TAG(x, PURPLE_FONT_TAG, "[IMPORTANT]")
 
 enum node_property{
-    LEAF=0x1,
-    ML_NODE=0x2,
-    STATIC_NODE=0x4,
+    ML_NODE=0x1,
+    STATIC_NODE=0x2,
+    LEAF=0x4,
+    MULTI_THREAD=0x8,
 };
 
 template<typename _NodePtr>
-bool IS_ML_NODE(_NodePtr node){return ((node)->prop & node_property::ML_NODE) != 0;}
+inline bool IS_ML_NODE(_NodePtr node){return (node)->prop & 1;}
 template<typename _NodePtr>
-bool IS_LEAF_NODE(_NodePtr node){return ((node)->prop & node_property::LEAF) != 0;}
+inline bool IS_LEAF_NODE(_NodePtr node){return (node)->level == 0;}
 template<typename _NodePtr>
-bool IS_STATIC_NODE(_NodePtr node){return ((node)->prop & node_property::STATIC_NODE) != 0;}
+inline bool IS_STATIC_NODE(_NodePtr node){return ((node)->prop & node_property::STATIC_NODE) != 0;}
 template<typename _NodePtr>
-void SET_FLAG(_NodePtr node, unsigned int flag){(node)->prop |= flag; }
+inline void SET_FLAG(_NodePtr node, unsigned int flag){(node)->prop |= flag; }
 template<typename _NodePtr>
-void UNSET_FLAG(_NodePtr node, unsigned int flag){(node)->prop &= ~flag; }
+inline void UNSET_FLAG(_NodePtr node, unsigned int flag){(node)->prop &= ~flag; }
 
 template<typename _Tp>
 inline _Tp rapid_pow(_Tp base, unsigned long long x){

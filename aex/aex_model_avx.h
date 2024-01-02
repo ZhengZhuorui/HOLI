@@ -37,7 +37,7 @@ public:
             position_tensor = _mm256_add_pd(position_tensor, block_position_tensor);
         }
         position_tensor = _mm256_hadd_pd(position_tensor, position_tensor);
-        _mm256_store_pd(position, position_tensor);
+        _mm256_storeu_pd(position, position_tensor);
         position[0] = (position[0] + position[2]) + 1;
         return position[0];
     }

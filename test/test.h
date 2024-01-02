@@ -34,6 +34,13 @@ void construct_data_node_array(key_type* key, size_t num_keys, node_ptr* child_b
 #include "test/test_model.hpp"
 #include "test/test_node.hpp"
 #include "test/test_SMO_split.hpp"
+#include "test/test_SMO_rescale.hpp"
+
 
 #include "test/test_index.hpp"
 #include "test/test_index_mix.hpp"
+
+// muthi thread
+#include "thread_pool.hpp"
+#include "test/test_con_unit.hpp"
+#include "test/test_index_con.hpp"

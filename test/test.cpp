@@ -22,6 +22,10 @@ template <typename T>
 bool test(map<string, string> &flags){
     auto unit = flags["unit"];
 
+    #ifdef DEBUG
+    AEX_HINT("unit test...");
+    #endif
+
     if (unit == "avx"){
         auto func = flags["function"];
         if (func == "lower_bound_with_error_bound")
@@ -67,13 +71,22 @@ bool test(map<string, string> &flags){
             return test_quad_model(bin_data.data(), num_keys, spec_flag);
         else if (model_type == "gap_linear")
             return test_gap_array_linear_model(bin_data.data(), num_keys, spec_flag);
-        else if (model_type == "piecewise_linear")
-            return test_piecewise_linear_model(bin_data.data(), num_keys);
-        else if (model_type == "piecewise_linear_2")
-            return test_piecewise_linear_model_2(bin_data.data(), num_keys);
+        else if (model_type == "piecewise_linear"){
+            int level = stoi(flags["level"]);
+            return test_piecewise_linear_model(bin_data.data(), num_keys, level);
+        }
+        else if (model_type == "piecewise_linear_2"){
+            int level = stoi(flags["level"]);
+            return test_piecewise_linear_model_2(bin_data.data(), num_keys, level);
+        }
+        else if (model_type == "piecewise_linear_3"){
+            int level = stoi(flags["level"]);
+            return test_piecewise_linear_model_3(bin_data.data(), num_keys, level);
+        }
         else if (model_type == "piecewise_linear_avx_perf"){
             long long batch = stoll(flags["batch"]);
-            return test_piecewise_linear_model_avx_perf(bin_data.data(), num_keys, batch);
+            int level = stoi(flags["level"]);
+            return test_piecewise_linear_model_avx_perf(bin_data.data(), num_keys, batch, level);
         }
         else if (model_type == "all")
             return test_aex_model(bin_data.data(), num_keys, spec_flag);
@@ -132,6 +145,11 @@ bool test(map<string, string> &flags){
         }
         if (func == "node_split") {
             return test_SMO_node_split_perf<T, T>(bin_data.data(), num_keys);
+        }
+        if (func == "node_rescale"){
+            double ratio = stod(flags["ratio"]);
+            int level = stoi(flags["level"]);
+            return test_SMO_node_rescale_perf<T, T>(bin_data.data(), num_keys, ratio, level);
         }
         if (func == "insert_split"){
             return false;
@@ -201,10 +219,17 @@ bool test(map<string, string> &flags){
         }
     }
     else if (unit == "con_index"){
-        
+        if (func == "tot"){
+            long long batch = stoll(flags["batch"]);
+            double rw_ratio = stod(flags["read_ratio"]);
+            std::vector<std::pair<T, T> > data;
+            pack_KV_dataset(bin_data, data);
+            return test_index_mix_con_perf(data.data(), num_keys, batch, rw_ratio);
+        }
     }
     return false;
 }
+
 
 /*
  * Required flags:
