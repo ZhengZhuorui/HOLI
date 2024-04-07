@@ -197,7 +197,8 @@ template<typename key_type,
 void benchmark_erase(FILE* file, long long num_keys, long long num_ops, std::string &index_name){
     vector<key_type> bin_data;
     vector<pair<key_type, value_type> > data;
-    read_bineary_file<key_type>(file, bin_data, num_keys);
+    size_t _ = read_bineary_file<key_type>(file, bin_data, std::is_same_v<key_type, unsigned long long>);
+    assert((long long)_ == num_keys);
     std::sort(bin_data.data(), bin_data.data() + num_keys);
     num_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
     std::cout << "unique num_keys=" << num_keys << std::endl;

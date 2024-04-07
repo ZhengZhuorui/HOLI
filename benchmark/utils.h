@@ -36,18 +36,26 @@ std::map<std::string, std::string> parse_flags(int argc, char** argv) {
 }
 
 template<typename T>
-void read_bineary_file(FILE* file, vector<T> &data, size_t n){
+size_t read_bineary_file(FILE* file, vector<T> &data, size_t n, bool is_head=true){
     std::cout << "read data...\n";
     data.resize(n);
-    [[maybe_unused]] size_t data_size = fread(data.data(), sizeof(T), n, file);
+    size_t _;
+    if (is_head)
+        fread(&_, sizeof(size_t), 1, file);
+    size_t data_size = fread(data.data(), sizeof(T), n, file);
     std::cout << "read data end\n";
+    return data_size;
 }
 
 template<typename T>
-void read_bineary_file(FILE* file, T* &data, size_t n){
+size_t read_bineary_file(FILE* file, T* &data, size_t n, bool is_head=true){
     std::cout << "read data...\n" ;
-    [[maybe_unused]] size_t data_size = fread(data, sizeof(T), n, file);
+    size_t _;
+    if (is_head)
+        fread(&_, sizeof(size_t), 1, file);
+    size_t data_size = fread(data, sizeof(T), n, file);
     std::cout << "read data end\n";
+    return data_size;
 }
 
 template<typename T>

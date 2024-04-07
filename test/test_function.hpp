@@ -6,6 +6,7 @@ using namespace std::chrono;
 
 template<typename _Tp>
 bool test_exponential_search_lower_bound(_Tp* data, size_t n){
+    
     AEX_PRINT("[test_exponential_search_lower_bound]");
     std::sort(data, data + n);
 
@@ -25,6 +26,7 @@ bool test_exponential_search_lower_bound(_Tp* data, size_t n){
 
 template<typename _Tp>
 bool test_exponential_search_upper_bound(_Tp* data, size_t n){
+    
     AEX_PRINT("[test_exponential_search_lower_bound]");
     std::sort(data, data + n);
 
@@ -134,6 +136,7 @@ bool test_search_perf(_Tp* data, size_t n){
     delta = duration_cast<microseconds>(t2 - t1).count();
     printf("stl lower bound used time=%lld us\n", delta);
 
+    
     AEX_PRINT("code=" << sum);
     return true;
 }
@@ -222,7 +225,7 @@ bool test_linear_probe(key_type* data, size_t n){
     typedef typename traits::size_type size_type;
     typedef typename traits::slot_type slot_type;
     std::sort(data, data + n);
-    typename mock_aex_tree<key_type, value_type, traits>::data_node_model m;
+    typename mock_aex_tree<key_type, value_type, traits>::DataNodeModel m;
     slot_type ret = tree.linear_probe(data, n, m);
     AEX_PRINT("ret=" << ret << ", end=" << m.args.end << ", slope=" << m.args.slope << ", inter=" << m.args.inter);
     for (slot_type i = 0; i < ret; ++i){

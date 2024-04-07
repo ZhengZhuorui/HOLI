@@ -64,6 +64,15 @@ int main(int argc, char** argv){
                 data[i] = i;
             write_bineary_file(file, data);
         }
+        else if (distribution == "multikey"){
+            std::vector<long long> data(num_keys);
+            for (long long i = 0; i < num_keys; ){
+                long long j = std::min(num_keys, i + rand()%65536);
+                long long x = rand();
+                while (i < j) data[i++] = x;
+            }
+            write_bineary_file(file, data);
+        }
     }
     else if (key_type == "float64"){
         if (distribution == "uniform"){

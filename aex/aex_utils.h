@@ -39,6 +39,38 @@ inline std::string BLUE_FONT(std::string str){ return BLUE_FONT_TAG + str + WHIT
 //inline std::string DARK_GREEN_FONT(std::string str){ return DARK_GREEN_FONT_TAG + str + WHITE_FONT_TAG; }
 inline std::string PURPLE_GREEN_FONT(std::string str){ return PURPLE_FONT_TAG + str + WHITE_FONT_TAG; }
 
+struct AEX_LOG{
+    AEX_LOG(){
+        #ifdef AEX_DEBUG
+        ++recursive_cnt;
+        #endif
+    }
+    void operator()(const char* File, int Line, const char* Function, std::string x){
+        #ifdef AEX_DEBUG
+        for (int i = 0; i < recursive_cnt - 1; ++i)
+            std::cout << "| ";
+        std::cout << x;
+        std::cout << "( File: " << File << ":" << Line << ", Function:" << Function << ")" << std::endl;
+        #endif
+    }
+    void operator()(const char* font, const char* name, const char* File, int Line, const char* Function, std::string x){
+        #ifdef AEX_DEBUG
+        std::cout << font;
+        for (int i = 0; i < recursive_cnt - 1; ++i)
+            std::cout << "| ";
+        std::cout << x;
+        std::cout << "( [" << name << "] File: " << File << ":" << Line << ", Function:" << Function << ")" << WHITE_FONT_TAG << std::endl;
+        #endif
+    }
+    ~AEX_LOG(){
+        #ifdef AEX_DEBUG
+        --recursive_cnt;
+        #endif
+    }
+    static int recursive_cnt;
+};
+
+
 #ifdef AEX_DEBUG
 
 #define AEX_DEBUG_FLAG true
@@ -46,10 +78,10 @@ inline std::string PURPLE_GREEN_FONT(std::string str){ return PURPLE_FONT_TAG + 
 //#define private public
 
 #define AEX_PRINT(x)  do { std::cout << "File: " << __FILE__ << ":" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << std::endl; } while(0)
-
-//#define AEX_PRINT_TAG(x, TAG)  do { std::cout << TAG << "File: " << __FILE__ << ":" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << WHITE_FONT_TAG << std::endl; } while(0)
+//#define AEX_PRINT(...)  do { ____(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__); } while(0)
 
 #define AEX_PRINT_TAG(x, TAG_FONT, TAG_NAME)  do { std::cout << TAG_FONT << TAG_NAME << " File: " << __FILE__ << ":" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << WHITE_FONT_TAG << std::endl; } while(0)
+//#define AEX_PRINT_TAG(x, TAG_FONT, TAG_NAME)  do { ____(TAG_FONT, TAG_NAME, __FILE__, __LINE__, __FUNCTION__); } while(0)
 
 #define AEX_FORMAT(FORMAT, ...) do{ printf("File: %s:%d, Function: %s, output: ", __FILE__, __LINE__, __FUNCTION__); printf(FORMAT, ##__VA_ARGS__); printf("\n"); fflush(stdout);} while(0);
 
@@ -58,6 +90,7 @@ inline std::string PURPLE_GREEN_FONT(std::string str){ return PURPLE_FONT_TAG + 
 #define AEX_PRINT_ELEMENT(x) do { AEX_PRINT(##x << "=" << x); } while(0)
 
 #else
+
 
 #define AEX_DEBUG_FLAG false
 
@@ -87,7 +120,7 @@ enum node_property{
     ML_NODE=0x1,
     STATIC_NODE=0x2,
     LEAF=0x4,
-    MULTI_THREAD=0x8,
+    CONCURRENCE=0x8,
 };
 
 template<typename _NodePtr>
@@ -224,6 +257,51 @@ inline RandomIter exponential_search_upper_bound(RandomIter first, RandomIter la
 
 inline double cross_product(double x0, double y0, double x1, double y1, double x2, double y2){
     return (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
+}
+
+template<typename _Tp>
+inline _Tp MID_KEY(_Tp x, _Tp y){
+    return (x + y) / 2;
+}
+
+template<typename _Tp>
+inline std::pair<_Tp, size_t> argmax(_Tp* x, size_t n){
+    _Tp v = x[0];
+    size_t p = 0;
+    for (size_t i = 1; i < n; ++i)
+    if (x[i] > v){
+        v = x[i];
+        p = i;
+    }
+    return std::make_pair(v, p);
+}
+
+template<typename _Tp>
+inline std::pair<_Tp, size_t> argmin(_Tp* x, size_t n){
+    _Tp v = x[0];
+    size_t p = 0;
+    for (size_t i = 1; i < n; ++i)
+    if (x[i] > v){
+        v = x[i];
+        p = i;
+    }
+    return std::make_pair(v, p);
+}
+
+template<typename _Tp>
+inline _Tp max(_Tp* x, size_t n){
+    _Tp ret = x[0];
+    for (size_t i = 1; i < n; ++i)
+        ret = std::max(ret, x[i]);
+    return ret;
+}
+
+template<typename _Tp>
+inline _Tp min(_Tp* x, size_t n){
+    _Tp ret = x[0];
+    for (size_t i = 1; i < n; ++i)
+        ret = std::min(ret, x[i]);
+    return ret;
 }
 
 }

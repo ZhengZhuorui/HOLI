@@ -43,12 +43,15 @@ struct aex_default_balance_args{
 
 template<typename _Key, 
         typename _Val,
-        typename _AllowMultiThread=std::false_type>
+        typename _SearchClass=void,
+        bool _AllowConcurrency=false>
 struct aex_default_traits{
 
     typedef _Key key_type;
 
     typedef _Val value_type;
+
+    typedef _SearchClass SearchClass;
 
     typedef unsigned long long size_type;
 
@@ -62,26 +65,30 @@ struct aex_default_traits{
 
     typedef aex_default_balance_args MODEL_ARGS;
 
-    typedef _AllowMultiThread AllowMultiThread;
+    static constexpr bool AllowMultiKey = true;
+
+    static constexpr bool AllowConcurrency = _AllowConcurrency;
 
     // Allow balance inner node and data node when read and write frequency update?
-    typedef std::true_type AllowRWBalance;
+    //typedef std::true_type AllowRWBalance;
+    static constexpr bool AllowRWBalance = false;
 
     // Allow balance inner node when insert an item?
-    typedef std::false_type AllowInsertBalance;
+    //typedef std::false_type AllowInsertBalance;
+    static constexpr bool AllowInsertBalance = false;
 
     // Allow tree balance tree struct in lookup, insert and erase.
-    typedef std::true_type AllowBalance;
+    //typedef std::true_type AllowBalance;
+    static constexpr bool AllowBalance = false;
 
-    static_assert((AllowRWBalance::value | AllowInsertBalance::value) == AllowBalance::value);
+    static_assert((AllowRWBalance | AllowInsertBalance) == AllowBalance);
 
     // Allow data node slot size dynamic? (static data node slot size is MIN_DATA_NODE_SLOT_SIZE)
     // If data node slot size is dynamic(lazy update), it must AllowRWBalance.
-    typedef std::false_type AllowDynamicDataNode;
+    //typedef std::false_type AllowDynamicDataNode;
+    static constexpr bool AllowDynamicDataNode = false;
 
-    typedef aex_node_mutex<AllowMultiThread> node_mutex;
-
-    static_assert((AllowRWBalance::value | (!AllowDynamicDataNode::value)) == true);
+    static_assert((AllowRWBalance | (!AllowDynamicDataNode)) == true);
     
     static constexpr int ERROR_BOUND = 8;
 

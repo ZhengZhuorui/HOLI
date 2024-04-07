@@ -4,7 +4,7 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
+inline aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
     AEX_HINT("BEGIN");
     this->init();
     AEX_HINT("END");
@@ -12,7 +12,7 @@ aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), tail
 
 template<typename _Key, typename _Val, typename traits>
 template<typename _InputIterator>
-aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
+inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
     this->init();
     /* TODO: insert data sequencely */
     std::vector<std::pair<key_type, value_type> > data;
@@ -23,7 +23,7 @@ aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __
 }
 
 template<typename _Key, typename _Val, typename traits>
-aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
+inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
     this->init();
     this->root = this->construct(_index.root);
     this->link_tree_ptr();
@@ -33,7 +33,7 @@ aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_l
 }
 
 template<typename _Key, typename _Val, typename traits>
-aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
+inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
     this->erase_tree_recursive(this->root);    
     this->init();
     this->root = _index.root;
@@ -48,27 +48,31 @@ aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(n
 }
 
 template<typename _Key, typename _Val, typename traits>
-aex_tree<_Key, _Val, traits>::~aex_tree(){
+inline aex_tree<_Key, _Val, traits>::~aex_tree(){
     this->erase_tree_recursive(this->root);
-    this->root = this->head_leaf = this->tail_leaf = nullptr;
+    this->root = nullptr;
+    this->head_leaf = this->tail_leaf = nullptr;
     if (empty_leaf != nullptr)
         delete empty_leaf;
 }
 
 
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::init(){
+inline void aex_tree<_Key, _Val, traits>::init(){
+    #ifdef AEX_TLI
+    std::cout << "TLI test" << std::endl;
+    #endif
     if (this->root != nullptr){
         this->deconstruct(this->root);
     }
     if (empty_leaf == nullptr){
-        empty_leaf = node_allocator.allocate_static_data_node();
+        empty_leaf = node_allocator.allocate_data_node();
         empty_leaf->prev = nullptr;
         empty_leaf->next = empty_leaf;
         empty_leaf->size = 0;
     }
 
-    //this->m_stats.max_key = std::numeric_limits<key_type>::min();
+    //this->m_stats.max_key = std::numeric_limits<key_type>::lowest();
     //this->m_stats.min_key = std::numeric_limits<key_type>::max();
     this->inner_node_few_ratio[0] = traits::DATA_NODE_FEW_RATIO;
     this->inner_node_full_ratio[0] = traits::DATA_NODE_FULL_RATIO;
@@ -93,17 +97,17 @@ void aex_tree<_Key, _Val, traits>::init(){
 }
 
 template<typename _Key, typename _Val, typename traits>
-typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::construct(node_ptr node){
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::construct(node_ptr node){
     //AEX_PRINT("node=" << node << ", IS LEAF?" << IS_LEAF_NODE(node));
     if (node == nullptr)
         return nullptr;
     node_ptr new_node;
     if (IS_LEAF_NODE(node)){
         //new_node = node_allocator.allocate_data_node(node->slot_size, IS_ML_NODE(node));
-        if constexpr (std::is_same<data_node, static_data_node>::value == true)
-            new_node = node_allocator.allocate_static_data_node();
+        if constexpr (traits::AllowDynamicDataNode)
+            new_node = node_allocator.allocate_data_node(node->slot_size, IS_ML_NODE(node));
         else
-            new_node = node_allocator.allocate_dynamic_data_node(static_cast<dynamic_data_node_ptr>(node)->slot_size, IS_ML_NODE(node));
+            new_node = node_allocator.allocate_data_node();
         ++this->m_stats.level_node[0];
         data_node_ptr _node = static_cast<data_node_ptr>(node), _new_node = static_cast<data_node_ptr>(new_node);
         *_new_node = *_node;
@@ -122,17 +126,14 @@ typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::co
             if (bitmap_impl::at(bm, i)){
                 new_child[i] = construct(child[i]);
                 std::fill(new_child + prev, new_child + i, new_child[i]);
-                new_child[i]->parent = _new_node;
                 prev = i + 1;
             }
             new_child[_node->slot_size - 1] = construct(child[_node->slot_size - 1]);
             std::fill(new_child + prev, new_child + _node->slot_size, new_child[_node->slot_size - 1]);
-            new_child[_node->slot_size - 1]->parent = _new_node;
         }
         else{
             for (slot_type i = 0; i < node->size; ++i){
                 new_child[i] = construct(child[i]);
-                new_child[i]->parent = _new_node;
             }
         }
     }
@@ -140,7 +141,7 @@ typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::co
 }
 
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::link_tree_ptr(){
+inline void aex_tree<_Key, _Val, traits>::link_tree_ptr(){
     if (this->root == nullptr)
         return;
     std::vector<node_ptr> child_buf[2];

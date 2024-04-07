@@ -2,23 +2,14 @@
 
 template<typename key_type,
         typename value_type,
-        typename traits=aex_default_traits<key_type, value_type>>
+        typename traits=aex_default_traits<key_type, value_type, void, true>>
 bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long n, long long read_nums, long long write_nums, long long erase_nums){
-    AEX_HINT("[test index all interface]");
-    typedef mock_aex_tree<key_type, value_type, traits> tree;
+    
+    AEX_HINT("[test index concurrency with all interface]");
+    typedef mock_aex_tree_con<key_type, value_type, traits> tree;
     [[maybe_unused]]typedef typename mock_aex_tree<key_type, value_type, traits>::size_type size_type;
     [[maybe_unused]]typedef typename tree::node_ptr node_ptr;
-}
-
-template<typename key_type,
-        typename value_type,
-        typename traits=aex_default_traits<key_type, value_type>>
-bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long n, long long read_nums, long long write_nums, long long erase_nums){
-    AEX_HINT("[test index all interface]");
-    typedef mock_aex_tree<key_type, value_type, traits> tree;
-    [[maybe_unused]]typedef typename mock_aex_tree<key_type, value_type, traits>::size_type size_type;
-    [[maybe_unused]]typedef typename tree::node_ptr node_ptr;
-    mock_aex_tree<key_type, value_type, traits> index;
+    mock_aex_tree_con<key_type, value_type, traits> index;
     long long init_nums = n - write_nums, tot_nums = read_nums + write_nums + erase_nums;
     std::vector<std::pair<key_type, value_type>> init_data(init_nums), index_data(init_nums);
     std::vector<bool> is_delete(n);
@@ -41,28 +32,17 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
     for (long long i = 0; i < tot_nums; ++i){
         switch (opt[i]){
             case OperationType::Lookup:{
-                tp.add_task(test_lookup_con_unit, index, index_data[pos], id);
-
                 size_type pos = rand() % index_data.size();
-                while (is_delete[pos] == true) 
-                    pos = rand() % index_data.size();
-
-                auto x = index.find(index_data[pos].first);
-                if (x == index.end()){
-                    AEX_ERROR("i=" << i << ", query error, pos=" << pos << ", key=" << index_data[pos].first << ", query no exists");
-                    index.print_stats();
-                    index.print_detail();
-                    return false;
-                }
-                if (x.key() != index_data[pos].first || x.data() != index_data[pos].second){
-                    AEX_ERROR("i=" << i << ", query error, query key=" << index_data[pos].first << ", data=" << index_data[pos].second << ", get key=" << x.key() << ", data=" << x.data());
-                    return false;
-                } 
+                std::function<void()> t = std::bind(test_lookup_con_unit<key_type, value_type>, index, index_data[pos], i);
+                //std::function<void()> t = std::bind(test_lookup_con_unit<key_type, value_type>, index, index_data[pos], i);
+                tp.add_task(t);
                 break;
             }
             case OperationType::Insert:{
                 index_data.push_back(insert_data[insert_cnt]);
-                std::thread t2(test_insert_con_unit, index, index_data[insert_data[insert_cnt]]);
+                //std::thread t2(test_insert_con_unit, index, insert_data[insert_cnt]);
+                std::function<void()> t = std::bind(test_insert_con_unit<key_type, value_type>, index, insert_data[insert_cnt], i);
+                tp.add_task(t);
                 insert_cnt++;
                 break;
             }
@@ -71,19 +51,16 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
                 size_type pos = rand() % index_data.size();
                 while (is_delete[pos] == true) 
                     pos = rand() % index_data.size();
-                tp.add_task(test_index_erase_unit, index, index_data[pos].first, id);
+                std::function<void()> t = std::bind(test_erase_con_unit<key_type, value_type>, index, index_data[pos].first, i);
+                tp.add_task(t);
                 is_delete[pos] = true;
-                if (_ == 0){
-                    AEX_ERROR("i=" << i << "erase error!");
-                    return false;
-                }
                 break;
             }
             default:
                 break;
         }
         tp.synchronize();
-        if (index.size() != n - erase_nums){
+        if (static_cast<long long>(index.size()) != n - erase_nums){
             AEX_ERROR("CONCURRENCY ERROR!");
             return false;
         }

@@ -3,7 +3,7 @@
 
 template<typename _Key, 
         typename _Val,
-        typename _AllowMultiThread=std::false_type>
+        typename _AllowConcurrency=std::false_type>
 struct test_traits{
 
     typedef _Key key_type;
@@ -22,7 +22,7 @@ struct test_traits{
 
     typedef aex::aex_default_balance_args MODEL_ARGS;
 
-    typedef _AllowMultiThread AllowMultiThread;
+    typedef _AllowConcurrency AllowConcurrency;
 
     // Allow balance inner node and data node when read and write frequency update?
     typedef std::true_type AllowRWBalance;
@@ -93,7 +93,7 @@ struct test_traits{
 
 template<typename _Key, 
         typename _Val,
-        typename _AllowMultiThread=std::false_type>
+        typename _AllowConcurrency = std::false_type>
 struct test_dynamic_data_node_traits{
 
     typedef _Key key_type;
@@ -112,7 +112,7 @@ struct test_dynamic_data_node_traits{
 
     typedef aex::aex_default_balance_args MODEL_ARGS;
 
-    typedef _AllowMultiThread AllowMultiThread;
+    typedef _AllowConcurrency AllowConcurrency;
 
     // Allow balance inner node and data node when read and write frequency update?
     typedef std::true_type AllowRWBalance;

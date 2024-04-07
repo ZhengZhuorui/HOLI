@@ -2,12 +2,6 @@
 #include "aex/aex_node.h"
 namespace aex{
 
-template<typename _Key, typename _Val, typename traits> class aex_tree;
-template<typename _Key, typename _Val, typename traits> class aex_node_allocator;
-
-template<typename _Key, typename _Val, typename traits> struct aex_inner_node;
-template<typename _Key, typename _Val, typename traits> struct aex_data_node;
-
 /*
     memory layout:
     meta(const size): size, prop, level, Model, slot size
@@ -19,24 +13,44 @@ template<typename _Key, typename _Val, typename traits> struct aex_data_node;
 
 template<typename _Key,
         typename _Val,
-#ifdef AEX_TLI
-        typename SearchClass,
-#endif
         typename traits>
 struct aex_inner_node_con : public aex_inner_node<_Key, _Val, traits>{
-    #ifdef AEX_TLI
-    typedef aex_inner_node<_Key, _Val, SearchClass, traits> base_inner_node;
-    typedef aex_inner_node_con<_Key, _Val, SearchClass, traits> inner_node_con;
-    #else
-    typedef aex_inner_node<_Key, _Val, traits> base_inner_node;
-    typedef aex_inner_node_con<_Key, _Val, traits> inner_node_con;
-    #endif
 
+    static_assert(traits::AllowConcurrency == true, "aex_inner_node_con must allow concurrency");
+    typedef _Key key_type;
+    typedef _Val value_type;
+
+    typedef aex_tree_con<_Key, _Val, traits> base_tree;
+    
+    typedef aex_default_components<traits> components;
+
+    typedef aex_inner_node<_Key, _Val, traits> base_inner_node;
+    typedef aex_inner_node_con<_Key, _Val, traits> inner_node;
+
+    typedef typename components::bitmap_impl bitmap_impl;
+    //typedef typename components::inner_node inner_node;
+    typedef typename components::base_node base_node;
+    typedef typename components::data_node data_node;
+
+    typedef typename components::InnerNodeModel Model;
+    typedef typename components::NodeAllocator NodeAllocator;
+    typedef typename components::Lock Lock;
+    typedef typename components::RWLock RWLock;
+
+    typedef typename traits::size_type size_type;
+    typedef typename traits::slot_type slot_type;
+
+    typedef base_node* node_ptr;
     typedef base_inner_node* base_inner_node_ptr;
-    typedef inner_node_con* inner_node_ptr;
-public:
-    aex_inner_node_con(slot_type _slot_size):base_inner_node(_slot_size){
-        node_mutex_array_ptr = new std::shared_mutex[_slot_size / traits::NODE_MUTEX_SLOT_SIZE + (_slot_size % traits::NODE_MUTEX_SLOT_SIZE == 0)];
+    typedef inner_node* inner_node_ptr;
+
+    //using base_inner_node::key_ptr;
+    //using base_inner_node::child_ptr;
+    //using base_inner_node::bitmap_ptr;
+    //using base_node::node_mutex;
+
+    aex_inner_node_con(slot_type _slot_size) : base_inner_node(_slot_size){
+        node_mutex_array_ptr = (RWLock*)(malloc(NodeAllocator::MUTEX_MEMORY_USED(_slot_size)));
     }
 
     ~aex_inner_node_con(){
@@ -44,136 +58,153 @@ public:
             delete node_mutex_array_ptr;
     }
 
-    //aex_inner_node_con(aex_inner_node_con &other_node):base_inner_node(other_node){}
-    //aex_inner_node_con(aex_inner_node_con &&other_node):base_inner_node(other_node){}
-    aex_inner_node_con(aex_inner_node &other_node):base_inner_node(other_node){
-        node_mutex_array_ptr = new std::shared_mutex[_slot_size / traits::NODE_MUTEX_SLOT_SIZE + (_slot_size % traits::NODE_MUTEX_SLOT_SIZE == 0)];
+    aex_inner_node_con(aex_inner_node_con &other_node):base_inner_node(other_node){
+
     }
-    aex_inner_node_con(aex_inner_node &&other_node):base_inner_node(other_node){
-        node_mutex_array_ptr = new std::shared_mutex[_slot_size / traits::NODE_MUTEX_SLOT_SIZE + (_slot_size % traits::NODE_MUTEX_SLOT_SIZE == 0)];
+    aex_inner_node_con(aex_inner_node_con &&other_node):base_inner_node(other_node){
+
     }
 
-    inner_node_con& operator = (inner_node_con &other_node){
-        other_node.lock_shared();
-        this->mutex.lock();
+    aex_inner_node_con(base_inner_node &other_node):base_inner_node(other_node){
+        AEX_ASSERT(this->slot_size == other_node.slot_size);
+        std::copy(other_node.key_ptr, other_node.key_ptr + other_node.slot_size, this->key_ptr);
+        std::copy(other_node.child_ptr, other_node.child_ptr + other_node.slot_size, this->child_ptr);
+        memcpy(this->bitmap_ptr, other_node.bitmap_ptr, NodeAllocator::BITMAP_MEMORY_USED(other_node.slot_size));
+        node_mutex_array_ptr = node_mutex_array_ptr = (RWLock*)(malloc(NodeAllocator::MUTEX_MEMORY_USED(this->slot_size)));;
+    }
+
+    aex_inner_node_con(base_inner_node &&other_node):base_inner_node(other_node){
+        AEX_ASSERT(this->slot_size == other_node.slot_size);
+        if (this->key_ptr != nullptr)
+            free(this->key_ptr);
+        if (this->child_ptr != nullptr)
+            free(this->key_ptr);
+        if (this->bitmap_ptr != nullptr)
+            free(this->bitmap_ptr);
+        this->key_ptr = other_node->key_ptr;
+        this->child_ptr = other_node->child_ptr;
+        this->bitmap_ptr = other_node->bitmap_ptr;
+        other_node->key_ptr = nullptr;
+        other_node->child_ptr = nullptr;
+        other_node->bitmap_ptr = nullptr;
+        node_mutex_array_ptr = (RWLock*)(malloc(NodeAllocator::MUTEX_ARRAY_MEMORY_USED(other_node.slot_size)));;
+    }
+
+    inner_node& operator = (base_inner_node &other_node){
+        AEX_ASSERT(this->slot_size != other_node.slot_size);
         *static_cast<base_inner_node_ptr>(this) = static_cast<base_inner_node>(other_node);
-        this->mutex.unlock();
-        other_node.unlock_shared();
         return this;
     }
 
-    inner_node_con& operator = (inner_node_con &&other_node){
-        other_node.lock();
-        this->mutex.lock();
+    inner_node& operator = (base_inner_node &&other_node){
+        AEX_ASSERT(this->slot_size != other_node.slot_size);
         *static_cast<base_inner_node_ptr>(this) = std::move(static_cast<base_inner_node>(other_node));
         if (this->node_mutex_array_ptr != nullptr)
             delete this->node_mutex_array_ptr;
         this->node_mutex_array_ptr = other_node.node_mutex_array_ptr;
-        this->mutex.unlock();
-        other_node.lock();
         return this;
     }
 
-    inner_node_con& operator = (inner_node &other_node){
-        this->mutex.lock();
+    inner_node& operator = (inner_node &other_node){
         *static_cast<base_inner_node_ptr>(this) = static_cast<base_inner_node>(other_node);
-        this->mutex.unlock();
+        return *this;
     }
 
-    inner_node_con& operator = (inner_node &&other_node){
-        this->mutex.lock();
+    inner_node& operator = (inner_node &&other_node){
         *static_cast<base_inner_node_ptr>(this) = std::move(static_cast<base_inner_node>(other_node));
-        this->mutex.unlock();
-        return this;
+        return *this;
     }
 
-    inline void lock_array_reader(slot_type lower_slot, slot_type upper_slot){
+    inline void lock_array_shared(slot_type lower_slot, slot_type upper_slot){
         slot_type lower_mutex = lower_slot / (traits::NODE_MUTEX_SLOT_SIZE << this->level), upper_mutex = upper_slot / (traits::NODE_MUTEX_SLOT_SIZE << this->level);
         for (slot_type i = lower_mutex; i <= upper_mutex; ++i)
             this->node_mutex_array_ptr[i].lock_shared();
     }
 
-    inline void unlock_array_reader(slot_type lower_slot, slot_type upper_slot){
+    inline void unlock_array_shared(slot_type lower_slot, slot_type upper_slot){
         slot_type lower_mutex = lower_slot / (traits::NODE_MUTEX_SLOT_SIZE << this->level), upper_mutex = upper_slot / (traits::NODE_MUTEX_SLOT_SIZE << this->level);
         for (slot_type i = lower_mutex; i <= upper_mutex; ++i)
             this->node_mutex_array_ptr[i].unlock_shared();
     }
 
-    inline void lock_array_writer(slot_type lower_slot, slot_type upper_slot){
+    //inline void lock_array_writer(slot_type lower_slot, slot_type upper_slot){
+    //    slot_type lower_mutex = lower_slot / (traits::NODE_MUTEX_SLOT_SIZE << this->level), upper_mutex = upper_slot / (traits::NODE_MUTEX_SLOT_SIZE << this->level);
+    //    for (slot_type i = lower_mutex; i <= upper_mutex; ++i)
+    //        this->node_mutex_array_ptr[i].lock();
+    //}
+
+    //inline void unlock_array_writer(slot_type lower_slot, slot_type upper_slot){
+    //    slot_type lower_mutex = lower_slot / (traits::NODE_MUTEX_SLOT_SIZE << this->level), upper_mutex = upper_slot / (traits::NODE_MUTEX_SLOT_SIZE << this->level);
+    //    for (slot_type i = lower_mutex; i <= upper_mutex; ++i)
+    //        this->node_mutex_array_ptr[i].unlock();
+    //}
+
+    inline bool try_lock_array_shared(const slot_type lower_slot, const slot_type upper_slot){
+        slot_type lower_mutex = lower_slot / (traits::NODE_MUTEX_SLOT_SIZE << this->level), upper_mutex = upper_slot / (traits::NODE_MUTEX_SLOT_SIZE << this->level);
+        AEX_ASSERT(upper_mutex - lower_mutex <= 1);
+        if (lower_mutex == upper_mutex)
+            return this->node_mutex_array_ptr[lower_mutex].try_lock_shared();
+        else{
+            for (slot_type i = lower_mutex; i <= upper_mutex; ++i){
+                if (this->node_mutex_array_ptr[i].try_lock_shared() == false){
+                    for (slot_type j = lower_mutex; j < i; ++j)
+                        this->node_mutex_array_ptr[j].unlock_shared();
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    inline void lock_array(const slot_type lower_slot, const slot_type upper_slot){
         slot_type lower_mutex = lower_slot / (traits::NODE_MUTEX_SLOT_SIZE << this->level), upper_mutex = upper_slot / (traits::NODE_MUTEX_SLOT_SIZE << this->level);
         for (slot_type i = lower_mutex; i <= upper_mutex; ++i)
             this->node_mutex_array_ptr[i].lock();
     }
 
-    inline void unlock_array_writer(slot_type lower_slot, slot_type upper_slot){
+    inline void unlock_array(const slot_type lower_slot, const slot_type upper_slot){
         slot_type lower_mutex = lower_slot / (traits::NODE_MUTEX_SLOT_SIZE << this->level), upper_mutex = upper_slot / (traits::NODE_MUTEX_SLOT_SIZE << this->level);
         for (slot_type i = lower_mutex; i <= upper_mutex; ++i)
             this->node_mutex_array_ptr[i].unlock();
     }
 
-    inline void construct(const key_type* const key, node_ptr* child, const slot_type n){
-        this->node_mutex.lock();
-        this->base_inner_node::construct(key, child, n);
-        this->node_mutex.unlock();
-    }
+    using base_inner_node::find;
 
-
-    inline void construct(const key_type* const key, node_ptr* child, const slot_type n, const Model &m){
-        this->node_mutex.lock();
-        this->base_inner_node::construct(key, child, n, m);
-        this->node_mutex.unlock();
-    }
-
-    inline void gap_array_construct(const key_type* const key, node_ptr* child, const slot_type n){
-        this->node_mutex.lock();
-        this->base_inner_node::gap_array_construct(key, child, n);
-        this->node_mutex.unlock();
-    }
-
-    inline void inplace_construct(slot_type n){
-        this->node_mutex.lock();
-        this->base_inner_node::inplace_construct(n);
-        this->node_mutex.unlock();
-    }
-
-    inline pos_type find(const key_type& x) const{
-        slot_type ret;
-        this->node_mutex.lock_shared();
+    inline bool find(const key_type& x, slot_type &ret) {
         if (IS_ML_NODE(this)){
             slot_type pred_pos = this->predict(x);
             slot_type upper_pos = std::min(pred_pos + traits::ERROR_BOUND, this->slot_size - 1);
-            this->mutex.lock_array_reader(pred_pos, upper_pos);
+            bool _ = this->try_lock_array_shared(pred_pos, upper_pos);
+            if (_)
+                return false;
             #ifdef AEX_TLI
             return SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->slot_size, x, this->key_ptr + pred_pos) - this->key_ptr;
             #else
             ret = this->slot_size - 1;
             for (slot_type i = pred_pos; i < this->slot_size; ++i)
-            if (x <= key_ptr[i]){
+            if (x <= this->key_ptr[i]){
                 ret = i;
                 break;
             }
-            this->mutex.unlock_array_reader(pred_pos, upper_pos);
+            this->unlock_array_shared(pred_pos, upper_pos);
             #endif
         }
         else{
             ret = this->base_inner_node::find(x);
         }
-        this->node_mutex.unlock_shared();
-        return ret;
+        return true;
     }
 
     bool insert(const key_type &key, const node_ptr child){
         bool ret;
         if (!IS_ML_NODE(this)) {
-            node_mutex.lock();
             ret = this->base_inner_node::insert(key, child);
-            node_mutex.unlock();
         }
         else{
-            node_mutex.lock_shared();
             slot_type pred_pos = this->predict(key);
             slot_type upper_pos = std::min(this->slot_size, pred_pos + 2 * traits::ERROR_BOUND);
-            this->mutex.lock_array_reader(pred_pos, upper_pos);
+            slot_type lower_pos = this->prev_item(pred_pos);
+            this->lock_array(lower_pos, upper_pos);
             slot_type inserted_pos = pred_pos, upper_bound = std::min(this->slot_size - 1, pred_pos + traits::ERROR_BOUND);
             for (; inserted_pos < upper_bound; ++inserted_pos)
             if (key < this->key_ptr[inserted_pos]){
@@ -193,82 +224,65 @@ public:
                         return false;
                 }
                 else{
-                    slot_type prev_pos = this->prev_item(inserted_pos);
-                    mutex_mutex.lock();
-                    this->unlock_array_reader(pred_pos, upper_pos);
-                    this->lock_array_writer(prev_pos, i + 1);
-                    mutex_mutex.unlock();
+                    slot_type prev_pos = this->prev_item(pred_pos);
+                    this->unlock_array(pred_pos, i + 1);
+                    this->lock_array(prev_pos, i + 1);
                     std::move_backward(this->key_ptr + inserted_pos, this->key_ptr + i, this->key_ptr + i + 1);
                     std::move_backward(this->child_ptr + inserted_pos, this->child_ptr + i, this->child_ptr + i + 1);
                     bitmap_impl::set_one(this->bitmap_ptr, i);
                     std::fill(this->key_ptr + prev_pos + 1, this->key_ptr + inserted_pos + 1, key);
                     std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + inserted_pos + 1, child);
                     ++this->size; 
-                    child->parent = this;
-                    this->unlock_array_writer(prev_pos, i + 1);
-                    node_mutex.unlock_shared();
+                    this->unlock_array(prev_pos, i + 1);
                     return true;
                 }
             }
             ret = false;
-            this->mutex.unlock_array_reader(pred_pos, upper_pos);
-            node_mutex.unlock_shared();
+            this->unlock_array(lower_pos, upper_pos);
         }
         return ret;
     }
 
-    bool erase(node_ptr node){
-        bool ret;
-        node_mutex.lock_shared();
-        if (!IS_ML_NODE(node)){
-            mutex_mutex.lock();
-            node_mutex.unlock_shared();
-            node_mutex.lock();
-            mutex_mutex.unlock();
-            ret = this->base_inner_node::erase(node);
-            node_mutex.unlock();
-        }
-        else{
-            pos_type pos = this->at(node);
-        }
-        return true;
-    }
+    using base_inner_node::erase;
 
 public:
-    std::shared_mutex* node_mutex_array_ptr;
+    RWLock* node_mutex_array_ptr;
 };
 
 template<typename _Key,
         typename _Val,
-#ifdef AEX_TLI
-        typename SearchClass,
-#endif
         typename traits>
-class aex_static_data_node_con : public aex_static_data_node<_Key, _Val, traits>{
+struct aex_data_node_con : public aex_static_data_node<_Key, _Val, traits>{
 public:
+    static_assert(traits::AllowConcurrency == true, "aex_data_node_con must allow concurrency");
 
-#ifdef AEX_TLI
-    typedef aex_static_data_node<_Key, _Val, SearchClass, traits> base_data_node;
-    
-    typedef aex_static_data_node_con<_Key, _Val, SearchClass, traits> data_node_con;
-#else
     typedef aex_static_data_node<_Key, _Val, traits> base_data_node;
 
-    typedef aex_static_data_node_con<_Key, _Val, traits> data_node_con;
-#endif
+    typedef aex_data_node_con<_Key, _Val, traits> self;
+
+    typedef aex_data_node_con<_Key, _Val, traits> data_node;
 
     typedef base_data_node* base_data_node_ptr;
 
-    typedef data_node_con* data_node_con_ptr;
+    typedef data_node* data_node_ptr;
 
-    aex_static_data_node_con(){}
+    aex_data_node_con(){}
 
-    ~aex_static_data_node_con(){}
+    ~aex_data_node_con(){}
 
-    aex_static_data_node_con(aex_static_data_node_con &other_node):base_data_node(other_node){}
+    aex_data_node_con(aex_data_node_con &other_node):base_data_node(other_node){}
 
-    aex_static_data_node_con(aex_static_data_node_con &&other_node):base_data_node(other_node){}
+    aex_data_node_con(aex_data_node_con &&other_node):base_data_node(other_node){}
 
+    self& operator= (self &x){
+        *static_cast<base_data_node_ptr>(this) = static_cast<base_data_node>(x);
+        return *this;
+    }
+
+    self& operator= (self &&x){
+        *static_cast<base_data_node_ptr>(this) = std::move(static_cast<base_data_node>(x));
+        return *this;
+    }
 
 };
 

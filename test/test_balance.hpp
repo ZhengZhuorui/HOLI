@@ -6,6 +6,7 @@ template<typename key_type,
         typename value_type,
         typename traits=test_allow_dynamic_data_node_traits<key_type, value_type> >
 bool test_inner_node_insert_balance_perf(vector<key_type> &data, size_t n, size_t batch, int level){
+    
     AEX_PRINT("[test data node insertion performance]");
     mock_aex_tree<key_type, value_type, traits> tree;
     typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;

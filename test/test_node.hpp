@@ -5,6 +5,7 @@ template<typename key_type,
         typename value_type,
         typename traits=aex::aex_default_traits<key_type, value_type> >
 bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch, int level){
+    
     AEX_PRINT("[test data node insertion performance]");
     mock_aex_tree<key_type, value_type, traits> tree;
     typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
@@ -154,6 +155,7 @@ template<typename key_type,
         typename value_type,
         typename traits=aex::aex_default_traits<key_type, value_type>>
 bool test_inner_node_erase_perf(vector<key_type> &data, size_t n, size_t batch, int level){
+    
     AEX_HINT("[test data node erase performance]");
     mock_aex_tree<key_type, value_type, traits> tree;
     AEX_ASSERT(n > batch);
@@ -299,6 +301,7 @@ template<typename key_type,
         typename value_type,
         typename traits=aex::aex_default_traits<key_type, value_type> >
 bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, int level){
+    
     AEX_HINT("[test data node query performance]");
     mock_aex_tree<key_type, value_type, traits> tree;
     typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
@@ -315,7 +318,7 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
     vector<key_type> query;
     vector<node_ptr> answer;
     for (size_t i = 0; i < n; ++i)
-        pack_data[i] = make_pair(data[i], child_ptr[i]);
+        pack_data[i] = std::make_pair(data[i], child_ptr[i]);
 
     generate_query(pack_data, query, answer, batch);
     for (size_t i = 0; i < batch; ++i){
@@ -380,11 +383,17 @@ template<typename key_type,
         typename value_type,
         typename traits=aex::aex_default_traits<key_type, value_type> >
 bool test_data_node_insert_perf(std::pair<key_type, value_type>* data, size_t n, size_t batch){
+    
+    if constexpr (!traits::AllowDynamicDataNode){
+        AEX_ERROR("index not allow dynamic data node!");
+        return false;
+    }
+    else{
     AEX_PRINT("[test data node insertion performance]");
     mock_aex_tree<key_type, value_type, traits> tree;
     [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
     [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
-    typedef typename mock_aex_tree<key_type, value_type, traits>::dynamic_data_node_ptr dynamic_data_node_ptr;
+    typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     [[maybe_unused]] typedef typename traits::size_type size_type;
     typedef typename traits::slot_type slot_type;
 
@@ -410,7 +419,7 @@ bool test_data_node_insert_perf(std::pair<key_type, value_type>* data, size_t n,
     std::sort(node_data.data(), node_data.data() + n);
 
     std::vector<key_type> key_buf, node_key(n);
-    std::vector<dynamic_data_node_ptr> child_buf;
+    std::vector<data_node_ptr> child_buf;
     std::vector<value_type> node_value(n);
 
     for (size_t i = 0; i < n; ++i){
@@ -424,8 +433,8 @@ bool test_data_node_insert_perf(std::pair<key_type, value_type>* data, size_t n,
         AEX_ERROR("can't be construct in a data node, data node nums=" << child_buf.size());
         return false;
     }
-    dynamic_data_node_ptr node = tree.node_allocator.allocate_dynamic_data_node(static_cast<dynamic_data_node_ptr>(child_buf[0])->slot_size, true);
-    *node = *static_cast<dynamic_data_node_ptr>(child_buf[0]);
+    data_node_ptr node = tree.node_allocator.allocate_data_node(child_buf[0]->slot_size, true);
+    *node = *static_cast<data_node_ptr>(child_buf[0]);
     for (size_t i = 0; i < batch; ++i){       
         if (tree.isfull(node)){
             AEX_ERROR("node slot full");
@@ -454,9 +463,9 @@ bool test_data_node_insert_perf(std::pair<key_type, value_type>* data, size_t n,
     system_clock::time_point t1, t2;
     const int ITER = 1000;
     double delta = 0;
-    std::vector<dynamic_data_node_ptr> node_array(ITER);
+    std::vector<data_node_ptr> node_array(ITER);
     for (int i = 0; i < ITER; ++i){
-        *node_array[i] = *static_cast<dynamic_data_node_ptr>(child_buf[0]);
+        *node_array[i] = *static_cast<data_node_ptr>(child_buf[0]);
     }
     t1 = std::chrono::high_resolution_clock::now();
     for (int T = 0; T < ITER; ++T){
@@ -471,180 +480,195 @@ bool test_data_node_insert_perf(std::pair<key_type, value_type>* data, size_t n,
     double OPS = 1.0 * 1e6 * ITER * batch / delta;
     AEX_SUCCESS("query used time=" << delta << "ms, OPS=" << OPS);
     return true;
+    }
 }
 
 template<typename key_type,
         typename value_type,
         typename traits=aex::aex_default_traits<key_type, value_type> >
 bool test_data_node_query_perf(std::pair<key_type, value_type>* data, size_t n, size_t batch){
-    AEX_HINT("[test data node query performance]");
-    mock_aex_tree<key_type, value_type, traits> tree;
-    typedef typename mock_aex_tree<key_type, value_type, traits>::dynamic_data_node_ptr dynamic_data_node_ptr;
-    [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
-    [[maybe_unused]] typedef typename traits::size_type size_type;
-    typedef typename traits::slot_type slot_type;
-
-    vector<key_type> ori_data(n);
-    for (size_t i = 0; i < n; ++i)
-        ori_data[i] = data[i].first;
-
-    vector<key_type> query;
-    vector<value_type> answer;
-    generate_query<key_type, value_type>(data, n, query, answer, batch);
     
-    std::sort(data, data + n);
-
-    std::vector<key_type> key_buf, node_key(n);
-    std::vector<dynamic_data_node_ptr> child_buf;
-    std::vector<value_type> node_value(n);
-    for (size_t i = 0; i < n; ++i){
-        node_key[i] = data[i].first;
-        node_value[i] = data[i].second;
-    }
-    tree.split_with_linear_probe(node_key.data(), node_value.data(), n, key_buf, child_buf);
-    AEX_PRINT("construct finish. data node size=" << child_buf.size() );
-    if (child_buf.size() > 1){
-        AEX_PRINT("can't be construct in a data node.");
+    if constexpr (!traits::AllowDynamicDataNode){
+        AEX_ERROR("index not allow dynamic data node!");
         return false;
     }
-    dynamic_data_node_ptr node = tree.node_allocator.allocate_dynamic_data_node(static_cast<dynamic_data_node_ptr>(child_buf[0])->slot_size, true);
-    *node = *static_cast<dynamic_data_node_ptr>(child_buf[0]);
-    AEX_PRINT("node slot size=" << node->slot_size);
+    else{
+        AEX_HINT("[test data node query performance]");
+        mock_aex_tree<key_type, value_type, traits> tree;
+        typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
+        [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
+        [[maybe_unused]] typedef typename traits::size_type size_type;
+        typedef typename traits::slot_type slot_type;
 
-    AEX_PRINT("is ml node?(0 or 1): " << IS_ML_NODE(node));
+        vector<key_type> ori_data(n);
+        for (size_t i = 0; i < n; ++i)
+            ori_data[i] = data[i].first;
 
-    if (!IS_ML_NODE(node)) return false;
-    for (size_t i = 0; i < batch; ++i){
-        slot_type pos = std::lower_bound(ori_data.data(), ori_data.data() + n, query[i]) - ori_data.data();
-        if (pos > 0)
-            query[i] -= (1.0 * (rand() % 65536) / 65536) * (ori_data[pos] - ori_data[pos - 1]);
-    }
+        vector<key_type> query;
+        vector<value_type> answer;
+        generate_query<key_type, value_type>(data, n, query, answer, batch);
+        
+        std::sort(data, data + n);
 
-    for (size_t i = 0; i < batch; ++i){       
-        [[maybe_unused]] slot_type pos = node->find_lower_pos(query[i]);
-        if (answer[i] != node->data[pos]){
-            AEX_PRINT("answer wrong! key=" << query[i] << ", answer=" << answer[i] << ", data=" << node->data[i]);
+        std::vector<key_type> key_buf, node_key(n);
+        std::vector<data_node_ptr> child_buf;
+        std::vector<value_type> node_value(n);
+        for (size_t i = 0; i < n; ++i){
+            node_key[i] = data[i].first;
+            node_value[i] = data[i].second;
         }
-    }
+        tree.split_with_linear_probe(node_key.data(), node_value.data(), n, key_buf, child_buf);
+        AEX_PRINT("construct finish. data node size=" << child_buf.size() );
+        if (child_buf.size() > 1){
+            AEX_PRINT("can't be construct in a data node.");
+            return false;
+        }
+        data_node_ptr node = tree.node_allocator.allocate_data_node(child_buf[0]->slot_size, true);
+        *node = *child_buf[0];
+        AEX_PRINT("node slot size=" << node->slot_size);
 
-    AEX_PRINT("test query data node performance");
-    system_clock::time_point t1, t2;
-    value_type sum = 0;
-    const int ITER = 1000;
-    double delta = 0;
-    t1 = std::chrono::high_resolution_clock::now();
-    for (int T = 0; T < ITER; ++T){
+        AEX_PRINT("is ml node?(0 or 1): " << IS_ML_NODE(node));
+
+        if (!IS_ML_NODE(node)) return false;
         for (size_t i = 0; i < batch; ++i){
-            sum += node->find_lower_pos(query[i]);
+            slot_type pos = std::lower_bound(ori_data.data(), ori_data.data() + n, query[i]) - ori_data.data();
+            if (pos > 0)
+                query[i] -= (1.0 * (rand() % 65536) / 65536) * (ori_data[pos] - ori_data[pos - 1]);
         }
-        delta += duration_cast<microseconds>(t2 - t1).count();
-    }
-    t2 = std::chrono::high_resolution_clock::now();
 
-    //printf("msed time=%lld us\n", delta);
-    double QPS = 1.0 * 1e6 * ITER * batch / delta;
-    std::cout << std::scientific;
-    std::cout << std::setprecision(3);   
-    AEX_SUCCESS("query used time=" << delta << " ms, QPS=" << QPS);
-    return true;
+        for (size_t i = 0; i < batch; ++i){       
+            [[maybe_unused]] slot_type pos = node->find_lower_pos(query[i]);
+            if (answer[i] != node->data[pos]){
+                AEX_PRINT("answer wrong! key=" << query[i] << ", answer=" << answer[i] << ", data=" << node->data[i]);
+            }
+        }
+
+        AEX_PRINT("test query data node performance");
+        system_clock::time_point t1, t2;
+        value_type sum = 0;
+        const int ITER = 1000;
+        double delta = 0;
+        t1 = std::chrono::high_resolution_clock::now();
+        for (int T = 0; T < ITER; ++T){
+            for (size_t i = 0; i < batch; ++i){
+                sum += node->find_lower_pos(query[i]);
+            }
+            delta += duration_cast<microseconds>(t2 - t1).count();
+        }
+        t2 = std::chrono::high_resolution_clock::now();
+
+        //printf("msed time=%lld us\n", delta);
+        double QPS = 1.0 * 1e6 * ITER * batch / delta;
+        std::cout << std::scientific;
+        std::cout << std::setprecision(3);   
+        AEX_SUCCESS("query used time=" << delta << " ms, QPS=" << QPS);
+        return true;
+    }
 }
 
 template<typename key_type,
         typename value_type,
         typename traits=aex::aex_default_traits<key_type, value_type> >
 bool test_data_node_erase_perf(std::pair<key_type, value_type>* data, size_t n, size_t batch){
+    
     AEX_PRINT("[test data node erase performance]");
-    mock_aex_tree<key_type, value_type, traits> tree;
-    [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
-    [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
-    typedef typename mock_aex_tree<key_type, value_type, traits>::dynamic_data_node_ptr dynamic_data_node_ptr;
-    [[maybe_unused]] typedef typename traits::size_type size_type;
-    typedef typename traits::slot_type slot_type;
-
-    std::vector<size_type> del_pos;
-    std::vector<key_type> del_key(batch);
-    generate_unique_dataset<size_type, std::uniform_int_distribution<size_type>, size_type>(del_pos, batch, 0, n - 2);
-
-    std::sort(del_pos.data(), del_pos.data() + batch);
-    for (size_t i = 0; i < batch; ++i){
-        AEX_PRINT("del pos=" << del_pos[i]);
-        del_key[i] = data[del_pos[i]].first;
-    }
-
-    std::vector<key_type> key_buf, node_key(n);
-    std::vector<dynamic_data_node_ptr> child_buf;
-    std::vector<value_type> node_value(n);
-    for (size_t i = 0; i < n; ++i){
-        node_key[i] = data[i].first;
-        node_value[i] = data[i].second;
-        std::cout << node_key[i] << " ";
-    }
-    std::cout << std::endl;
-
-    tree.split_with_linear_probe(node_key.data(), node_value.data(), n, key_buf, child_buf);
-    AEX_PRINT("construct finish. data node size=" << child_buf.size());
-    if (child_buf.size() > 1){
-        AEX_PRINT("can't be construct in a data node.");
+    if constexpr (!traits::AllowDynamicDataNode){
+        AEX_ERROR("index not allow dynamic data node!");
         return false;
     }
-    dynamic_data_node_ptr node = tree.node_allocator.allocate_dynamic_data_node(static_cast<dynamic_data_node_ptr>(child_buf[0])->slot_size, true);
-    *node = *static_cast<dynamic_data_node_ptr>(child_buf[0]);
-    for (size_t i = 0; i < batch; ++i){       
-        if (tree.isfew(node)){
-            AEX_PRINT("node slot few");
-        }
-        slot_type pos = node->find_lower_pos(del_key[i]);
-        node->erase(pos);
-    }
+    else{
+        mock_aex_tree<key_type, value_type, traits> tree;
+        [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
+        [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
+        typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
+        [[maybe_unused]] typedef typename traits::size_type size_type;
+        typedef typename traits::slot_type slot_type;
 
-    std::vector<key_type> left_key;
-    for (size_t i = 0, j = 0; i < n; ++i){
-        if (del_pos[j] == i)
-            ++j;
-        else{
-            left_key.push_back(data[i].first);
-        }
-    }
+        std::vector<size_type> del_pos;
+        std::vector<key_type> del_key(batch);
+        generate_unique_dataset<size_type, std::uniform_int_distribution<size_type>, size_type>(del_pos, batch, 0, n - 2);
 
-    if (static_cast<size_t>(node->size) != n - batch){
-        AEX_ERROR("key size=" << node->size << ", real size=" << n - batch);
-    }
-
-    for (slot_type i = 0; i < node->size; ++i){
-        if (node->key[i] != left_key[i]){
-            AEX_PRINT("Key Error! key[" << i << "]="<< node->key[i] << ", real key=" << left_key[i]);
-            return false;
-        }
-        if (i > 1 && node->key[i] < node->key[i - 1]){
-            AEX_PRINT("Key Error! slot[" << i << "]=" << node->key[i] << ", slot[" << i - 1 << "]=" << node->key[i - 1]);
-            return false;
-        }
-    }
-
-    AEX_SUCCESS("Test inner node erase success. Next test erase performance");
-
-    AEX_HINT("test insert data node erase performance");
-    system_clock::time_point t1, t2;
-    const int ITER = 1000;
-    double delta = 0;
-    std::vector<dynamic_data_node_ptr> node_array(ITER);
-    for (int i  = 0; i < ITER; ++i){
-        node_array[i] = tree.node_allocator.allocate_dynamic_data_node(static_cast<dynamic_data_node_ptr>(child_buf[0])->slot_size, IS_ML_NODE(child_buf[0]));
-        *node_array[i] = *static_cast<dynamic_data_node_ptr>(child_buf[0]);
-    }
-    t1 = std::chrono::high_resolution_clock::now();
-    for (int T = 0; T < ITER; ++T){
+        std::sort(del_pos.data(), del_pos.data() + batch);
         for (size_t i = 0; i < batch; ++i){
-            slot_type pos = node_array[T]->find_lower_pos(del_key[i]);
-            node_array[T]->erase(pos);
+            AEX_PRINT("del pos=" << del_pos[i]);
+            del_key[i] = data[del_pos[i]].first;
         }
-    }
-    t2 = std::chrono::high_resolution_clock::now();
-    delta = duration_cast<microseconds>(t2 - t1).count();
 
-    std::cout << std::scientific;
-    std::cout << std::setprecision(3);   
-    double OPS = 1.0 * 1e6 * ITER * batch / delta;
-    AEX_SUCCESS("query used time=" << delta << "ms, OPS=" << OPS);
-    return true;
+        std::vector<key_type> key_buf, node_key(n);
+        std::vector<data_node_ptr> child_buf;
+        std::vector<value_type> node_value(n);
+        for (size_t i = 0; i < n; ++i){
+            node_key[i] = data[i].first;
+            node_value[i] = data[i].second;
+            std::cout << node_key[i] << " ";
+        }
+        std::cout << std::endl;
+
+        tree.split_with_linear_probe(node_key.data(), node_value.data(), n, key_buf, child_buf);
+        AEX_PRINT("construct finish. data node size=" << child_buf.size());
+        if (child_buf.size() > 1){
+            AEX_PRINT("can't be construct in a data node.");
+            return false;
+        }
+        data_node_ptr node = tree.node_allocator.allocate_data_node(child_buf[0]->slot_size, true);
+        *node = *child_buf[0];
+        for (size_t i = 0; i < batch; ++i){       
+            if (tree.isfew(node)){
+                AEX_PRINT("node slot few");
+            }
+            slot_type pos = node->find_lower_pos(del_key[i]);
+            node->erase(pos);
+        }
+
+        std::vector<key_type> left_key;
+        for (size_t i = 0, j = 0; i < n; ++i){
+            if (del_pos[j] == i)
+                ++j;
+            else{
+                left_key.push_back(data[i].first);
+            }
+        }
+
+        if (static_cast<size_t>(node->size) != n - batch){
+            AEX_ERROR("key size=" << node->size << ", real size=" << n - batch);
+        }
+
+        for (slot_type i = 0; i < node->size; ++i){
+            if (node->key[i] != left_key[i]){
+                AEX_PRINT("Key Error! key[" << i << "]="<< node->key[i] << ", real key=" << left_key[i]);
+                return false;
+            }
+            if (i > 1 && node->key[i] < node->key[i - 1]){
+                AEX_PRINT("Key Error! slot[" << i << "]=" << node->key[i] << ", slot[" << i - 1 << "]=" << node->key[i - 1]);
+                return false;
+            }
+        }
+
+        AEX_SUCCESS("Test inner node erase success. Next test erase performance");
+
+        AEX_HINT("test insert data node erase performance");
+        system_clock::time_point t1, t2;
+        const int ITER = 1000;
+        double delta = 0;
+        std::vector<data_node_ptr> node_array(ITER);
+        for (int i  = 0; i < ITER; ++i){
+            node_array[i] = tree.node_allocator.allocate_data_node(static_cast<data_node_ptr>(child_buf[0])->slot_size, IS_ML_NODE(child_buf[0]));
+            *node_array[i] = *static_cast<data_node_ptr>(child_buf[0]);
+        }
+        t1 = std::chrono::high_resolution_clock::now();
+        for (int T = 0; T < ITER; ++T){
+            for (size_t i = 0; i < batch; ++i){
+                slot_type pos = node_array[T]->find_lower_pos(del_key[i]);
+                node_array[T]->erase(pos);
+            }
+        }
+        t2 = std::chrono::high_resolution_clock::now();
+        delta = duration_cast<microseconds>(t2 - t1).count();
+
+        std::cout << std::scientific;
+        std::cout << std::setprecision(3);   
+        double OPS = 1.0 * 1e6 * ITER * batch / delta;
+        AEX_SUCCESS("query used time=" << delta << "ms, OPS=" << OPS);
+        return true;
+    }
 }

@@ -21,7 +21,7 @@ const int N = 10000000, M = 10000;
 template <typename T>
 bool test(map<string, string> &flags){
     auto unit = flags["unit"];
-
+    using default_traits = aex_default_traits<T, T>;
     #ifdef DEBUG
     AEX_HINT("unit test...");
     #endif
@@ -40,7 +40,11 @@ bool test(map<string, string> &flags){
     long long num_keys = stoll(flags["num_keys"]);
 
     vector<T> bin_data;
-    read_bineary_file<T>(file, bin_data, num_keys);
+    size_t _ = read_bineary_file<T>(file, bin_data, num_keys, std::is_same_v<T, unsigned long long>);
+    assert((long long)_ == num_keys);
+    
+    std::cout << "Data Example: " << bin_data[0] << ", " << bin_data[num_keys / 2] << ", " << bin_data[num_keys - 1] << std::endl;
+
     num_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
     if (unit == "function"){
         auto func = flags["function"];
@@ -73,20 +77,30 @@ bool test(map<string, string> &flags){
             return test_gap_array_linear_model(bin_data.data(), num_keys, spec_flag);
         else if (model_type == "piecewise_linear"){
             int level = stoi(flags["level"]);
-            return test_piecewise_linear_model(bin_data.data(), num_keys, level);
+            return test_model<T, piecewise_linear_model<T, aex::aex_default_traits<T, T> > >(bin_data.data(), num_keys, level);
         }
         else if (model_type == "piecewise_linear_2"){
             int level = stoi(flags["level"]);
-            return test_piecewise_linear_model_2(bin_data.data(), num_keys, level);
+            return test_model<T, piecewise_linear_model_2<T, aex::aex_default_traits<T, T> > >(bin_data.data(), num_keys, level);
         }
         else if (model_type == "piecewise_linear_3"){
             int level = stoi(flags["level"]);
-            return test_piecewise_linear_model_3(bin_data.data(), num_keys, level);
+            return test_model<T, piecewise_linear_model_3<T, aex::aex_default_traits<T, T> > >(bin_data.data(), num_keys, level);
         }
-        else if (model_type == "piecewise_linear_avx_perf"){
-            long long batch = stoll(flags["batch"]);
+        else if (model_type == "piecewise_linear_4"){
             int level = stoi(flags["level"]);
-            return test_piecewise_linear_model_avx_perf(bin_data.data(), num_keys, batch, level);
+            return test_model<T, piecewise_linear_model_4<T, aex::aex_default_traits<T, T> > >(bin_data.data(), num_keys, level);
+        }
+        else if (model_type == "piecewise_linear_4_avx"){
+            int level = stoi(flags["level"]);
+            using piecewise_linear_model_4_avx = piecewise_linear_model_avx<T, piecewise_linear_model_4<T, default_traits>, default_traits>;
+            return test_model<T, piecewise_linear_model_4_avx>(bin_data.data(), num_keys, level);
+        }
+        else if (model_type == "piecewise_linear_1_avx"){
+            int level = stoi(flags["level"]);
+            //return test_piecewise_linear_model_avx_perf(bin_data.data(), num_keys, batch, level);
+            using piecewise_linear_model_1_avx = piecewise_linear_model_avx<T, piecewise_linear_model<T, default_traits>, default_traits>;
+            return test_model<T, piecewise_linear_model_1_avx>(bin_data.data(), num_keys, level);
         }
         else if (model_type == "all")
             return test_aex_model(bin_data.data(), num_keys, spec_flag);
@@ -210,21 +224,25 @@ bool test(map<string, string> &flags){
         if (func == "tot"){
             vector<std::pair<T, T>> data;
             pack_KV_dataset(bin_data, data);
-            double read_nums = stoll(flags["read_nums"]);
-            double write_nums = stoll(flags["write_nums"]);
-            double erase_nums = stoll(flags["erase_nums"]);
+            long long read_nums = stoll(flags["read_nums"]);
+            long long write_nums = stoll(flags["write_nums"]);
+            long long erase_nums = stoll(flags["erase_nums"]);
             AEX_ASSERT(write_nums <= num_keys);
             AEX_ASSERT(erase_nums <= num_keys - write_nums);
             return test_index_total_perf(data.data(), num_keys, read_nums, write_nums, erase_nums);
         }
     }
     else if (unit == "con_index"){
+        auto func = flags["function"];
         if (func == "tot"){
-            long long batch = stoll(flags["batch"]);
-            double rw_ratio = stod(flags["read_ratio"]);
             std::vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
-            return test_index_mix_con_perf(data.data(), num_keys, batch, rw_ratio);
+            long long read_nums = stoll(flags["read_nums"]);
+            long long write_nums = stoll(flags["write_nums"]);
+            long long erase_nums = stoll(flags["erase_nums"]);
+            AEX_ASSERT(write_nums <= num_keys);
+            AEX_ASSERT(erase_nums <= num_keys - write_nums);
+            return test_index_total_con_perf(data.data(), num_keys, read_nums, write_nums, erase_nums);
         }
     }
     return false;

@@ -98,7 +98,8 @@
         "concepts": "cpp",
         "coroutine": "cpp",
         "numbers": "cpp",
-        "stop_token": "cpp"
+        "stop_token": "cpp",
+        "*.ipp": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

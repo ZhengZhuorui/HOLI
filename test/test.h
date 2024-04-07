@@ -1,6 +1,7 @@
 #pragma once
 #include <bits/stdc++.h>
 #include "aex/aex_map.h"
+#include "aex/con/aex_con.h"
 
 #include "benchmark/generate_dataset.h"
 
@@ -19,12 +20,12 @@ template<typename key_type,
         typename traits=aex::aex_default_traits<key_type, value_type>>
 void construct_data_node_array(key_type* key, size_t num_keys, node_ptr* child_buf){
     mock_aex_tree<key_type, value_type> tree;
-    typedef typename mock_aex_tree<key_type, value_type, traits>::static_data_node_ptr static_data_node_ptr;
+    typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::size_type size_type;
 
     for (size_type i = 0; i < num_keys; ++i){
-        child_buf[i] = static_cast<node_ptr>(tree.node_allocator.allocate_static_data_node());
-        static_cast<static_data_node_ptr>(child_buf[i])->key[0] = key[i];
+        child_buf[i] = static_cast<node_ptr>(tree.node_allocator.allocate_data_node());
+        static_cast<data_node_ptr>(child_buf[i])->key[0] = key[i];
         child_buf[i]->size = 1;
     }
 }

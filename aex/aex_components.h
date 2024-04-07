@@ -1,12 +1,105 @@
 #pragma once
 #include <type_traits>
+#include <atomic>
 
 #include "aex/aex_utils.h"
 
 namespace aex{
 
-template<typename _Tp,
-        typename traits>
+template<typename traits, bool _ = traits::AllowConcurrency>
+struct aex_spinlock{
+    aex_spinlock(){}
+    ~aex_spinlock(){}
+    inline void lock(){}
+    inline void unlock(){}
+    inline bool is_lock(){return false;}
+};
+
+template<typename traits>
+struct aex_spinlock<traits, true>{
+    typedef aex_spinlock<traits, true> self;
+    aex_spinlock() : writeLock(false) {}
+    aex_spinlock(const self &x){}
+    aex_spinlock(const self &&x){}
+    ~aex_spinlock(){}
+    self& operator = (const self &x){return *this;}
+    self& operator = (const self &&x){return *this;}
+    inline void lock() {
+        bool expected = false;
+        while (!writeLock.compare_exchange_weak(expected, true, std::memory_order_acquire)) {
+            expected = false;
+        }
+    }
+    inline void unlock() {
+        writeLock.store(false, std::memory_order_release);
+    }
+    inline bool is_lock(){return false;}
+
+    std::atomic<bool> writeLock;
+};
+
+template<typename traits, bool _ = traits::AllowConcurrency>
+struct aex_rw_spinlock{
+    aex_rw_spinlock(){}
+    inline void lock(){}
+    inline void unlock(){}
+    inline void lock_shared(){}
+    inline void unlock_shared(){}
+    inline void try_lock_shared(){}
+    inline bool is_lock(){return false;}
+    inline bool is_lock_shared(){return false;}
+    int get_cnt(){return 0;}
+};
+
+template<typename traits>
+struct aex_rw_spinlock<traits, true>{
+    typedef aex_rw_spinlock<traits, true> self;
+    aex_rw_spinlock() : writeLock(false), readCount(0) {}
+    aex_rw_spinlock(const self &x){}
+    aex_rw_spinlock(const self &&x){}
+    ~aex_rw_spinlock(){}
+    self& operator = (const self &x){return *this;}
+    self& operator = (const self &&x){return *this;}
+    void lock_shared() {
+        while (writeLock.load(std::memory_order_acquire));
+        readCount.fetch_add(1, std::memory_order_acquire);
+    }
+
+    void unlock_shared() {
+        readCount.fetch_sub(1, std::memory_order_release);
+    }
+
+    void lock() {
+        bool expected = false;
+        while (!writeLock.compare_exchange_weak(expected, true, std::memory_order_acquire)) {
+            expected = false;
+        }
+        while (readCount.load(std::memory_order_acquire) > 0);
+    }
+
+    void unlock() {
+        writeLock.store(false, std::memory_order_release);
+    }
+
+    bool try_lock_shared(){
+        if (writeLock.load(std::memory_order_acquire)){
+            return false;
+        }
+        readCount.fetch_add(1, std::memory_order_acquire);
+        return true;
+    }
+
+    int get_cnt(){
+        return readCount.load(std::memory_order_acquire);
+    }
+
+    inline bool is_lock(){return writeLock == true;}
+    inline bool is_lock_shared(){return (readCount > 0);}
+    std::atomic<bool> writeLock;
+    std::atomic<int> readCount;
+};
+
+template<typename traits, bool AllowBalance = traits::AllowBalance, bool AllowConcurrency = traits::AllowConcurrency>
 struct aex_node_balance_stats{
     aex_node_balance_stats(){}
     aex_node_balance_stats(unsigned long long _recent_update_timestamp, double _train_times, double _write_times){}
@@ -19,7 +112,7 @@ struct aex_node_balance_stats{
 };
 
 template<typename traits>
-struct aex_node_balance_stats<std::true_type, traits>{
+struct aex_node_balance_stats<traits, true, false>{
     unsigned long long recent_update_timestamp;
     double train_times, write_times;
     static constexpr double lambda = traits::FORGET_RATE;
@@ -53,9 +146,70 @@ struct aex_node_balance_stats<std::true_type, traits>{
 
 };
 
-template<typename _Tp, typename traits>
+template<typename traits>
+struct aex_node_balance_stats<traits, true, true>{
+    typedef aex_node_balance_stats<traits, true, true> self;
+    unsigned long long recent_update_timestamp;
+    double train_times, write_times;
+    static constexpr double lambda = traits::FORGET_RATE;
+    aex_node_balance_stats():recent_update_timestamp(0), train_times(0), write_times(0){}
+    aex_node_balance_stats(unsigned long long _recent_update_timestamp,
+                            double _train_times, double _write_times
+                            ):recent_update_timestamp(_recent_update_timestamp), 
+                            train_times(_train_times), 
+                            write_times(_write_times){} 
+    //self& operator = (self &x){
+    //    recent_update_timestamp = x.recent_update_timestamp;
+    //    train_times = x.train_times;
+    //    write_times = x.write_times;
+    //    return *this;
+    //}
+    //self& operator = (self &&x){
+    //    recent_update_timestamp = x.recent_update_timestamp;
+    //    train_times = x.train_times;
+    //    write_times = x.write_times;
+    //    return *this;
+    //}
+    inline void update_frequency(unsigned long long timestamp){
+        lk.lock();
+        double forget_rate = rapid_pow(lambda, timestamp - recent_update_timestamp);
+        write_times = write_times * forget_rate;
+        train_times = train_times * forget_rate;
+        recent_update_timestamp = timestamp;
+        lk.unlock();
+    }
+
+    inline void update_write_frequency(unsigned long long timestamp){
+        lk.lock();
+        double forget_rate = rapid_pow(lambda, timestamp - recent_update_timestamp);
+        write_times = write_times * forget_rate;
+        train_times = train_times * forget_rate;
+        recent_update_timestamp = timestamp;
+        write_times += 1; 
+        lk.unlock();
+    }
+
+    inline void update_train_frequency(unsigned long long timestamp){
+        lk.lock();
+        double forget_rate = rapid_pow(lambda, timestamp - recent_update_timestamp);
+        write_times = write_times * forget_rate;
+        train_times = train_times * forget_rate;
+        recent_update_timestamp = timestamp;
+        train_times += 1; 
+        lk.unlock();
+    }
+
+    inline double get_write_times(){return write_times;}
+    inline double get_train_times(){return train_times;}
+    inline double get_recent_update_timestamp(){return recent_update_timestamp;}
+
+    aex_spinlock<traits> lk;
+};
+
+template<typename traits, bool AllowBalance = traits::AllowBalance, bool AllowConcurrency = traits::AllowConcurrency>
 struct aex_tree_balance_stats{
     aex_tree_balance_stats(){}
+    ~aex_tree_balance_stats(){}
     void update_timestamp(){}
     inline unsigned long long get_timestamp(){return 1;}
     inline double get_lambda_timestamp(){return 1;}
@@ -63,11 +217,12 @@ struct aex_tree_balance_stats{
 };
 
 template<typename traits>
-struct aex_tree_balance_stats<std::true_type, traits>{
+struct aex_tree_balance_stats<traits, true, false>{
     unsigned long long timestamp;
     double lambda_timestamp;
     static constexpr double lambda = traits::FORGET_RATE;
     aex_tree_balance_stats():timestamp(0), lambda_timestamp(0){}
+    ~aex_tree_balance_stats(){}
     inline void update_timestamp(){
         this->timestamp++;
         lambda_timestamp = lambda_timestamp * this->lambda + 1;
@@ -79,175 +234,125 @@ struct aex_tree_balance_stats<std::true_type, traits>{
     }
 };
 
-template<typename _Tp>
-struct aex_node_mutex{
-    inline void lock(){}
-    inline void unlock(){}
-    inline void lock_shared(){}
-    inline void unlock_shared(){}
-    inline bool try_lock_shared(){}
-    //inline void inc_cnt(){}
-    //inline void dec_cnt(){}
-    //inline int get_cnt(){return 0;}
+template<typename traits>
+struct aex_tree_balance_stats<traits, true, true>{
+    typedef aex_tree_balance_stats<traits, true, true> self;
+    volatile long long timestamp;
+    volatile double lambda_timestamp;
+    static constexpr double lambda = traits::FORGET_RATE;
+    aex_tree_balance_stats():timestamp(0), lambda_timestamp(0){}
+    ~aex_tree_balance_stats(){}
+    //self& operator = (const self &x){
+    //    timestamp = x.timestamp; 
+    //    lambda_timestamp = x.lambda_timestamp;
+    //    return *this;
+    //}
+    //self& operator = (self &&x){
+    //    timestamp = x.timestamp;
+    //    lambda_timestamp = x.lambda_timestamp;
+    //    return *this;
+    //}
+    inline void update_timestamp(){
+        lk.lock();
+        this->timestamp++;
+        lambda_timestamp = lambda_timestamp * this->lambda + 1;
+        lk.unlock();
+    }
+    inline unsigned long long get_timestamp(){return timestamp;}
+    inline double get_lambda_timestamp(){return lambda_timestamp;}
+    inline void print_stats(){
+        AEX_IMPORTANT("[balance stats]: timestamp=" << timestamp << "lambda timestamp=" << lambda_timestamp);
+    }
+    aex_spinlock<traits> lk;
 };
 
-
-template<>
-struct aex_node_mutex<std::true_type>{
-    inline void lock(){mutex.lock();}
-    inline void unlock(){
-        mutex.unlock();
-    }
-    inline void lock_shared(){mutex.lock_shared();}
-    inline void unlock_shared(){mutex.unlock_shared();}
-    inline bool try_lock_shared(){return mutex.try_lock_shared();}
-    inline void wait_to_unlock(){
-        std::lock_guard<std::mutex> lk(cv_mutex);
-        cv_mutex.wait(lk);
-    }
-    //inline void inc_cnt(){++cnt;}
-    //inline void dec_cnt(){--cnt;}
-    //inline int get_cnt(){return cnt.load();}
-    std::shared_mutex mutex;
-    std::condition_variable cv;
-    std::mutex cv_mutex;
+template<typename key_type,
+        typename value_type,
+        typename traits,
+        bool _ = traits::AllowDynamicDataNode>
+struct data_node_components{
+    typedef aex_static_data_node<key_type, value_type, traits> data_node;
 };
 
-template<typename _Tp>
-struct aex_node_spinlock{
-    inline void lock(){}
-    inline void unlock(){}
-    inline void lock_shared(){}
-    inline void unlock_shared(){}
-    inline void try_lock_shared(){}
-    //inline bool lock_shared_to_unique(){}
-    //inline void inc_cnt(){}
-    //inline void dec_cnt(){}
-    int get_cnt(){return 0;}
+template<typename key_type,
+        typename value_type,
+        typename traits>
+struct data_node_components<key_type, value_type, traits, true>{
+    typedef aex_data_node<key_type, value_type, traits> data_node;
 };
 
-
-template<>
-struct aex_node_spinlock<std::true_type>{
-    aex_node_spinlock() : writeLock(false), readCount(0) {}
-    void lock_shared() {
-        while (writeLock.load(std::memory_order_acquire));
-        readCount.fetch_add(1, std::memory_order_acquire);
-    }
-
-    void unlock_shared() {
-        readCount.fetch_sub(1, std::memory_order_release);
-    }
-
-    void lock() {
-        bool expected = false;
-        while (!writeLock.compare_exchange_weak(expected, true, std::memory_order_acquire)) {
-            expected = false;
-        }
-        while (readCount.load(std::memory_order_acquire) > 0);
-    }
-
-    void unlock() {
-        writeLock.store(false, std::memory_order_release);
-    }
-
-    bool try_lock_shared(){
-        if (writeLock.load(std::memory_order_acquire)){
-            return false;
-        }
-        readCount.fetch_add(1, std::memory_order_acquire);
-        return true;
-    }
-
-    int get_cnt(){
-        return readCount.load(std::memory_order_acquire);
-    }
-    std::atomic<bool> writeLock;
-    std::atomic<int> readCount;
-};
-
-
-template<typename _Key, 
-        typename _Val,
-        #ifdef AEX_TLI
-        typename SearchClass
-        #endif
-        typename _Tp>
+template<typename traits, bool _ = traits::AllowConcurrency>
 struct aex_concurrency_components{
-    #ifdef AEX_TLI
-    typedef aex_node_base<_Key, _Val, SearchClass, traits> base_node;
+    typedef typename traits::key_type key_type;
 
-    typedef aex_inner_node<_Key, _Val, SearchClass, traits> inner_node;
+    typedef typename traits::value_type value_type;
 
-    typedef aex_static_data_node<_Key, _Val, SearchClass, traits> static_data_node;
-#else
+    typedef aex_node_base<key_type, value_type, traits> base_node;
+
+    typedef aex_dynamic_node_base<key_type, value_type, traits> base_dynamic_node;
+
+    typedef aex_inner_node<key_type, value_type, traits> inner_node;
+
+    //typedef aex_static_data_node<key_type, value_type, traits> data_node;
+
+    typedef typename data_node_components<key_type, value_type, traits>::data_node data_node;
+
+    typedef aex_rw_spinlock<traits> NodeMutex;
     
-    typedef aex_node_base<_Key, _Val, traits> base_node;
+    typedef aex_rw_spinlock<traits> RWLock;
 
-    typedef aex_inner_node<_Key, _Val, traits> inner_node;
+    typedef aex_spinlock<traits> Lock;
 
-    typedef aex_static_data_node<_Key, _Val, traits> static_data_node;
-#endif
-    typedef aex_node_spinlock<_Tp> aex_node_mutex;
-
-    typedef aex_node_allocator<> NodeAllocator;
+    typedef aex_node_allocator<key_type, value_type, traits> NodeAllocator;
 
 };
 
-template<typename _Key, 
-        typename _Val,
-        #ifdef AEX_TLI
-        typename SearchClass
-        #endif
-        >
-struct aex_concurrency_components<std::true_type>{
-    #ifdef AEX_TLI
-    typedef aex_node_base<_Key, _Val, SearchClass, traits> base_node;
+template<typename traits>
+struct aex_concurrency_components<traits, true>{
+    typedef typename traits::key_type key_type;
 
-    typedef aex_inner_node_con<_Key, _Val, SearchClass, traits> inner_node;
+    typedef typename traits::value_type value_type;
 
-    typedef aex_static_data_node_con<_Key, _Val, SearchClass, traits> static_data_node;
-#else
+    typedef aex_node_base<key_type, value_type, traits> base_node;
+
+    typedef aex_dynamic_node_base<key_type, value_type, traits> base_dynamic_node;
+
+    typedef aex_inner_node_con<key_type, value_type, traits> inner_node;
+
+    typedef aex_data_node_con<key_type, value_type, traits> data_node;
+
+    typedef aex_rw_spinlock<traits> NodeMutex;
+
+    typedef aex_rw_spinlock<traits> RWLock;
+
+    typedef aex_spinlock<traits> Lock;
+
+    typedef aex_node_allocator_con<key_type, value_type, traits> NodeAllocator;
+};
+
+template<typename traits>
+struct aex_default_components{
+    typedef typename traits::key_type key_type;
+    typedef typename traits::value_type value_type;
     
-    typedef aex_node_base<_Key, _Val, traits> base_node;
+    typedef aex_concurrency_components<traits> concurrency_components;
+    typedef aex_node_balance_stats<traits> node_balance_stats;
+    typedef aex_tree_balance_stats<traits> tree_balance_stats;
 
-    typedef aex_inner_node_con<_Key, _Val, traits> inner_node;
-
-    typedef aex_static_data_node_con<_Key, _Val, traits> static_data_node;
-#endif
-    typedef aex_node_mutex<std::true_type> aex_node_mutex;
-
-    typedef aex_node_allocator_con node_allocator;
-};
-
-template<typename _Tp>
-struct aex_balance_components{
-    typedef aex_node_balance_stats<_Tp> node_balance_stats;
-    typedef aex_tree_balance_stats<_Tp> tree_balance_stats;
-};
-
-template<
-#ifdef AEX_TLI
-typename SearchClass,
-#endif
-typename traits>
-struct aex_components{
-    typedef aex_balance_components<typename traits::AllowBalance> balance_componets;
-    typedef aex_concurrency_components<typename traits::key_type, 
-                                    typename traits::value_type, 
-                                    #ifdef AEX_TLI
-                                    typename SearchClass,
-                                    #endif
-                                    typename traits::AllowMultiThread> concurrency_components;
-
-    typedef typename balance_componets<traits::AllowBalance>::node_balance_stats node_balance_stats;
-    typedef typename balance_componets<traits::AllowBalance>::tree_balance_stats tree_balance_stats;
-
-    typedef typename concurrency_components::aex_node_mutex aex_node_mutex;
+    typedef typename concurrency_components::NodeMutex NodeMutex;
+    typedef typename concurrency_components::RWLock RWLock;
+    typedef typename concurrency_components::Lock Lock;
     typedef typename concurrency_components::base_node base_node;
+    typedef typename concurrency_components::base_dynamic_node base_dynamic_node;
     typedef typename concurrency_components::inner_node inner_node;
     typedef typename concurrency_components::data_node data_node;
-    typedef typename concurrency_components::node_allocator node_allocator;
+    typedef typename concurrency_components::NodeAllocator NodeAllocator;
+
+    typedef piecewise_linear_model_4<key_type, traits> baseInnerNodeModel;
+    typedef piecewise_linear_model_avx<key_type, baseInnerNodeModel, traits> InnerNodeModel;
+    typedef linear_model<key_type, traits> DataNodeModel;
+
+    typedef aex_bitmap_impl<traits> bitmap_impl;
 };
 
 }

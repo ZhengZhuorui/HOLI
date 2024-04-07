@@ -161,7 +161,8 @@ template<typename key_type,
 void benchmark_mix(FILE* file, long long num_keys, long long num_ops, double read_ratio, std::string &index_name, std::string &query_dis){
     vector<key_type> bin_data;
     vector<pair<key_type, value_type> > data;
-    read_bineary_file<key_type>(file, bin_data, num_keys);
+    size_t _ = read_bineary_file<key_type>(file, bin_data, std::is_same_v<key_type, unsigned long long>);
+    assert((long long)_ == num_keys);
     pack_KV_dataset(bin_data, data);
     std::random_shuffle(data.begin(), data.end());
     long long read_nums = num_ops * read_ratio; 
