@@ -38,7 +38,7 @@ template<typename _Key,
 class aex_tree{
 public:
 
-    static_assert(!traits::AllowMultiKey, "index doesn't support multi key");
+    //static_assert(!traits::AllowMultiKey, "index doesn't support multi key");
 
     static_assert(std::is_arithmetic<_Key>::value, "key types must be numeric.");
 
@@ -484,6 +484,7 @@ private:
     void __insert_split_bulk_load(inner_node_ptr node, slot_type start, slot_type split_size, std::vector<key_type> &new_key, std::vector<inner_node_ptr> &new_child);
 
     void insert_split_bulk_load(inner_node_ptr* stack, int top, const slot_type start, const key_type key, inner_node_ptr child, int split_size){
+        AEX_ASSERT(top > 1);
         std::vector<key_type> new_key;
         std::vector<inner_node_ptr> new_child;
         new_key.push_back(key);

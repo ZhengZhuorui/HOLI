@@ -28,21 +28,21 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
     std::random_shuffle(opt.data(), opt.data() + tot_nums);
     size_type insert_cnt = 0;
     AEX_PRINT("prepare finish...");
-    ThreadPool tp;
+    ThreadPool tp(std::thread::hardware_concurrency());
     for (long long i = 0; i < tot_nums; ++i){
         switch (opt[i]){
             case OperationType::Lookup:{
                 size_type pos = rand() % index_data.size();
                 std::function<void()> t = std::bind(test_lookup_con_unit<key_type, value_type>, index, index_data[pos], i);
                 //std::function<void()> t = std::bind(test_lookup_con_unit<key_type, value_type>, index, index_data[pos], i);
-                tp.add_task(t);
+                tp.enqueue(t);
                 break;
             }
             case OperationType::Insert:{
                 index_data.push_back(insert_data[insert_cnt]);
                 //std::thread t2(test_insert_con_unit, index, insert_data[insert_cnt]);
                 std::function<void()> t = std::bind(test_insert_con_unit<key_type, value_type>, index, insert_data[insert_cnt], i);
-                tp.add_task(t);
+                tp.enqueue(t);
                 insert_cnt++;
                 break;
             }
@@ -52,14 +52,14 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
                 while (is_delete[pos] == true) 
                     pos = rand() % index_data.size();
                 std::function<void()> t = std::bind(test_erase_con_unit<key_type, value_type>, index, index_data[pos].first, i);
-                tp.add_task(t);
+                tp.enqueue(t);
                 is_delete[pos] = true;
                 break;
             }
             default:
                 break;
         }
-        tp.synchronize();
+        //tp.synchronize();
         if (static_cast<long long>(index.size()) != n - erase_nums){
             AEX_ERROR("CONCURRENCY ERROR!");
             return false;

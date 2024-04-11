@@ -205,7 +205,7 @@ inline void aex_tree<_Key, _Val, traits>::__insert_split_bulk_load(inner_node_pt
 
 // Split an node when the node insert item and (the size is larger than full ratio or no empty slot to insert)
 template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::insert_split_pipeline(inner_node_ptr* stack, int top, const key_type* key, const node_ptr* child, const slot_type n){    
+inline void aex_tree<_Key, _Val, traits>::insert_split_pipeline(inner_node_ptr* stack, int top, const key_type* key, const node_ptr* child, const slot_type n){
     //AEX_PRINT("pipeline");
     AEX_ASSERT(top > 1);
     #ifdef AEX_EXPERIMENT

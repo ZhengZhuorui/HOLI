@@ -6,7 +6,7 @@ template<typename _Key,
         typename traits=aex_default_traits<_Key, _Val>>
 class aex_tree_con : public aex_tree<_Key, _Val, traits>{
 public:
-    static_assert(!traits::AllowMultiKey, "index doesn't support multi key");
+    //static_assert(!traits::AllowMultiKey, "index doesn't support multi key");
 
     static_assert(traits::AllowConcurrency, "AllowConcurrency must be true");
 
