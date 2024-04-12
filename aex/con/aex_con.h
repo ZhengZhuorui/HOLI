@@ -1,4 +1,6 @@
 #pragma once
+#include "aex/con/aex_con_utils.h"
+
 
 namespace aex{
 template<typename _Key, 
@@ -177,6 +179,15 @@ private:
 
 
     // ========== 1. find ==========
+    // Find(x): 
+    // S(T)
+    // N <- root
+    // U(T)
+    // while N is not leaf do
+    //   C <- find(N, x)
+    //   U(N)
+    //   S(C)
+    //   N <- C
 
     // Find the data node with the key. The data node will locked shared.
     data_node_ptr find_leaf_con(const key_type &key);
@@ -184,7 +195,11 @@ private:
     // Find stack to the data node with the key. The data node will locked.
     data_node_ptr find_leaf_with_stack_con(const key_type &key, inner_node_ptr *stack, int &top);
 
+    inner_node_ptr find_node_until_level(const key_type &key, )
+
     // ========== 2. insert ==========
+    // 
+
     void insert_split_bulk_load_con(inner_node_ptr* stack, int top, const slot_type start, const key_type* key, node_ptr* child, const slot_type n){
         std::vector<key_type> new_key;
         std::vector<inner_node_ptr> new_child;
@@ -220,11 +235,28 @@ private:
     //void add_root(){
     //    this->tree_mutex.lock();
     //}
+
+    // ========== 4. concurrency ==========
+    inline void SL(node_ptr node){node->node_mutex.lock_shared();}
+
+    inline void SU(node_ptr node){node->node_mutex.unlock_shared();}
+
+    inline void XL(node_ptr node){node->node_mutex.lock();}
+
+    inline void XU(node_ptr node){node->node_mutex.unlock();}
+
+    inline bool TSL(node_ptr node){return node->node_mutex.try_lock_shared();}
+
+    inline bool TXL(node_ptr node){return node->node_mutex.try_lock();}
+
+    inline void SL(){}
+    
 private:
     std::shared_mutex tree_mutex;
 };
 
 }
+
 
 #include "aex/con/aex_find_con.hpp"
 //#include "aex/con/aex_SMO_con.hpp"

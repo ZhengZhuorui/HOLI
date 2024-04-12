@@ -11,6 +11,49 @@ namespace aex{
     - mutex array (if multithread)
 */
 
+//template<typename _Key,
+//        typename _Val,
+//        typename traits>
+//struct meta_msg{
+//    typedef aex_default_components<traits> components;
+//    typedef _Key key_type;
+//    typedef _Val value_type;
+//    typedef typename components::InnerNodeModel Model;
+//    typedef typename traits::size_type size_type;
+//    typedef typename traits::slot_type slot_type;
+//    slot_type size, slot_size;
+//    Model model;
+//};
+//
+//template<typename _Key,
+//        typename _Val,
+//        typename traits>
+//struct segment_msg{
+//    typedef aex_default_components<traits> components;
+//    typedef _Key key_type;
+//    typedef _Val value_type;
+//    typedef typename components::InnerNodeModel Model;
+//    typedef typename traits::size_type size_type;
+//    typedef typename traits::slot_type slot_type;
+//    slot_type start, size;
+//    key_type* key_ptr;
+//    node_ptr* child_ptr;
+//    segment_msg(slot_type _start, slot_type _size, key_type* _key_ptr, node_ptr* _child_ptr){
+//        start = _start;
+//        size = _size;
+//        key_ptr = new key_type[_end - _start];
+//        child_ptr = new node_ptr[_end - _start];
+//        for (slot_type i = 0; i < end; ++i){
+//            key_ptr[i] = _key_ptr[i];
+//            child_ptr[i] = _child_ptr[i];
+//        }
+//    }
+//    ~segment_msg(){
+//        delete key_ptr;
+//        delete child_ptr;
+//    }
+//};
+
 template<typename _Key,
         typename _Val,
         typename traits>
@@ -170,30 +213,60 @@ struct aex_inner_node_con : public aex_inner_node<_Key, _Val, traits>{
 
     using base_inner_node::find;
 
-    inline bool find(const key_type& x, slot_type &ret) {
+    inline node_ptr find(const key_type& x) {
+        node_ptr ret;
+        slot_type pos;
         if (IS_ML_NODE(this)){
             slot_type pred_pos = this->predict(x);
             slot_type upper_pos = std::min(pred_pos + traits::ERROR_BOUND, this->slot_size - 1);
             bool _ = this->try_lock_array_shared(pred_pos, upper_pos);
             if (_)
-                return false;
+                return nullptr;
             #ifdef AEX_TLI
             return SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->slot_size, x, this->key_ptr + pred_pos) - this->key_ptr;
             #else
-            ret = this->slot_size - 1;
+            pos = this->slot_size - 1;
             for (slot_type i = pred_pos; i < this->slot_size; ++i)
             if (x <= this->key_ptr[i]){
-                ret = i;
+                pos = i;
                 break;
             }
-            this->unlock_array_shared(pred_pos, upper_pos);
             #endif
+            ret = node->child_ptr[pos];
+            this->unlock_array_shared(pred_pos, upper_pos);
+            return ret;
         }
         else{
-            ret = this->base_inner_node::find(x);
+            pos = this->base_inner_node::find(x);
+            return this->child_ptr[pos];
         }
-        return true;
+        //return true;
     }
+
+    //inline node_ptr find(const key_type &x){
+    //    if (IS_ML_NODE(this)){
+    //        slot_type pred_pos = this->predict(x);
+    //        slot_type upper_pos = std::min(pred_pos + traits::ERROR_BOUND, this->slot_size - 1);
+    //        bool _ = this->lock_array_shared(pred_pos, upper_pos);
+    //        if (_)
+    //            return false;
+    //        #ifdef AEX_TLI
+    //        return SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->slot_size, x, this->key_ptr + pred_pos) - this->key_ptr;
+    //        #else
+    //        ret = this->slot_size - 1;
+    //        for (slot_type i = pred_pos; i < this->slot_size; ++i)
+    //        if (x <= this->key_ptr[i]){
+    //            ret = i;
+    //            break;
+    //        }
+    //        this->unlock_array_shared(pred_pos, upper_pos);
+    //        #endif
+    //    }
+    //    else{
+    //        ret = this->base_inner_node::find(x);
+    //    }
+    //    return true;
+    //}
 
     bool insert(const key_type &key, const node_ptr child){
         bool ret;

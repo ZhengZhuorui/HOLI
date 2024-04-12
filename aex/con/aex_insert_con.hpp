@@ -10,9 +10,9 @@ bool aex_tree_con<_Key, _Val, traits>::insert(const key_type &key, const value_t
     int top;
     data_node_ptr* node = this->find_leaf_lock_con(key, stack, top);
     std::pair<iterator, bool> ret;
-
+    
     if (root == nullptr){
-        std::lock_guard<std::shared_mutex>(this->mtx);
+        std::lock_guard<std::shared_mutex>(this->tree_mutex);
         root = head_leaf = tail_leaf = node_allocator.allocate_data_node();
         static_cast<data_node_ptr>(root)->insert(key, value, 0);
         root->next = empty_leaf;
@@ -24,8 +24,6 @@ bool aex_tree_con<_Key, _Val, traits>::insert(const key_type &key, const value_t
         return std::pair<iterator, bool>(iterator(head_leaf, 0), true);
     }
     
-    data_node_ptr node = find_leaf_lock_con(key);
-    
     slot_type pos = node->find_lower_pos(key);
 
     /* find the insert position */
@@ -36,28 +34,28 @@ bool aex_tree_con<_Key, _Val, traits>::insert(const key_type &key, const value_t
     /* if data node is full, split the node */
     if (isfull(node)){
         data_node_ptr new_node = node_allocator.allocate_data_node();
-        new_node->node_mutex->lock();
+        XL(new_node);
         ++this->m_stats.level_node[0];
-        if (node->prev != nullptr){
-            node->prev->node_mutex.lock();
-        }
+
         split(new_node, node);
         if (pos < new_node->size)
             new_node->insert(key, value, pos);
         else
             node->insert(key, value, pos - new_node->size);
         key_type new_key = new_node->key[new_node->size - 1];
-        //node_ptr _ = static_cast<node_ptr>(new_node);
-        insert_recursive_con(stack, top, &new_key, &new_node, 1)
-        new_node->node_mutex->unlock();
-        node->unlock();
+        insert_recursive_con(stack, top, &new_key, &new_node, 1);
+        XU(new_node);
+        XU(node);
     }
     /* else insert the position of the data node*/ 
     else{
         node->insert(key, value, pos);
-        node->unlock();
+        XU(node);
     }
-    ++m_stats.size;
+    {
+        std::lock_guard<std::mutex> lock(this->tree_mutex);
+        ++m_stats.size;
+    }
     return true;
 }
 
@@ -136,8 +134,6 @@ bool aex_tree_con<_Key, _Val, traits>::insert_split_helper_con(inner_node_ptr no
     ++opt_stats.inner_node_split_cnt;
     #endif 
     inner_node_ptr node = stack[top - 1], parent = (top > 1) ? (stack[top - 2]) : nullptr;
-    if (node->)
-    node->node_mutex.lock();
     if (parent != nullptr)
         parent->node_mutex.lock();
     if (node == root){
@@ -167,28 +163,42 @@ bool aex_tree_con<_Key, _Val, traits>::insert_split_helper_con(inner_node_ptr no
 
 template<typename _Key, typename _Val, typename traits>
 bool aex_tree_con<_Key, _Val, traits>::insert_recursive_con(inner_node_ptr* stack, int top, const key_type* key_buf, node_ptr* child_buf, const slot_type n){
-    if (node == nullptr){
-        add_root_con(key_buf, child_buf, n);
-        return true;
-    }
-    node->balance_stats.update_write_frequency(this->balance_stats.get_timestamp());
-    if (isfull(node, n - 1)) {
-        if (check_split(node) == true){
-            insert_split_helper_con(stack, top, key_buf, child_buf, n);
-            return true;
+    while (true){
+        if (top == 0){
+            std::lock_guard<std::shared_mutex> lock(this->tree_mutex);
+            if (this->m_stats.height == child_buf[0]->level)
+                add_root(key_buf, child_buf, n);
+            else{
+                inner_node_ptr parent = find_node_lock_con(key_buf[0], stack, top);
+                continue;
+            }
         }
-        if (expand(node) == false){
-            insert_split_helper_con(stack, top, key_buf, child_buf, n);
-            return true;
+
+        inner_node_ptr node = stack[top - 1];
+        if (TXL(node)){
+            parent = find_node_lock_con(key_buf[0], stack, top);
+            continue;
         }
-    }
-    for (slot_type i = 0; i < n; ++i){
-        if (!node->insert(key_buf[i], child_buf[i])){
-            insert_split_helper_con(stack, top, key_buf + i, child_buf + i, n - i);
-            return true;
+        
+        node->balance_stats.update_write_frequency(this->balance_stats.get_timestamp());
+        if (isfull(node, n - 1)) {
+            if (check_split(node) == true){
+                insert_split_helper_con(stack, top, key_buf, child_buf, n);
+                return true;
+            }
+            if (expand(node) == false){
+                insert_split_helper_con(stack, top, key_buf, child_buf, n);
+                return true;
+            }
         }
+        for (slot_type i = 0; i < n; ++i){
+            if (!node->insert(key_buf[i], child_buf[i])){
+                insert_split_helper_con(stack, top, key_buf + i, child_buf + i, n - i);
+                return true;
+            }
+        }
+        return false;
     }
-    return false;
 }
 
 }
