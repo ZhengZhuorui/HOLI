@@ -239,6 +239,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_pipeline(inner_node_ptr* 
         block_point = std::min(size, block_point + block_nums);
         while (start < block_point){
             std::tie(ans_size, ans_slot_size, ml_flag) = split_with_exponential_probe(node->key_ptr + start, block_point - start, node->level);
+            AEX_PRINT("ans_size=" << ans_size << ", left size=" << n - start << ", ans_slot_size=" << ans_slot_size << ", timestamp=" << this->balance_stats.get_timestamp());
             inner_node_ptr new_node = node_allocator.allocate_inner_node(ans_slot_size, ml_flag);
             new_node->level = node->level;
             ++this->m_stats.level_node[new_node->level];
