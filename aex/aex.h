@@ -485,6 +485,7 @@ private:
 
     void insert_split_bulk_load(inner_node_ptr* stack, int top, const slot_type start, const key_type key, inner_node_ptr child, int split_size){
         AEX_ASSERT(top > 1);
+        AEX_PRINT("bulk_load");
         std::vector<key_type> new_key;
         std::vector<inner_node_ptr> new_child;
         new_key.push_back(key);
@@ -502,6 +503,7 @@ private:
 
     void insert_split_by_buffer(inner_node_ptr* stack, int top, const key_type* key, node_ptr* child, const slot_type n){
         AEX_ASSERT(top > 1);
+        AEX_PRINT("by_buffer");
         std::vector<key_type> new_key;
         std::vector<inner_node_ptr> new_child;
         __insert_split_by_buffer(stack[top - 1], key, child, n, new_key, new_child);
@@ -514,6 +516,7 @@ private:
 
     void insert_split_dense_inner_node(inner_node_ptr* stack, int top, const key_type* new_key, node_ptr* new_child, const slot_type n){
         AEX_ASSERT(top > 1);
+        AEX_PRINT("split_dense_inner_node");
         key_type split_key;
         node_ptr split_node;
         std::tie(split_key, split_node) = __insert_split_dense_inner_node(stack[top - 1], new_key, new_child, n);

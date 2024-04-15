@@ -232,7 +232,7 @@ struct aex_inner_node_con : public aex_inner_node<_Key, _Val, traits>{
                 break;
             }
             #endif
-            ret = node->child_ptr[pos];
+            ret = this->child_ptr[pos];
             this->unlock_array_shared(pred_pos, upper_pos);
             return ret;
         }
@@ -356,6 +356,8 @@ public:
         *static_cast<base_data_node_ptr>(this) = std::move(static_cast<base_data_node>(x));
         return *this;
     }
+
+    
 
 };
 

@@ -401,6 +401,7 @@ bool aex_tree<_Key, _Val, traits>::check_collision(const key_type* const key, co
 // if node expand or narrow successed, the old node will free and return true. Otherwise return false.
 template<typename _Key, typename _Val, typename traits>
 inline bool aex_tree<_Key, _Val, traits>::rescale(inner_node_ptr node, const slot_type new_slot_size){
+    AEX_PRINT("rescale");
     #ifdef AEX_EXPERIMENT
     ++opt_stats.inner_node_rescale_cnt;
     #endif

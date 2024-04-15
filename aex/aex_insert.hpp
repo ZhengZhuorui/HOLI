@@ -183,7 +183,6 @@ inline void aex_tree<_Key, _Val, traits>::__insert_split_bulk_load(inner_node_pt
     #ifdef AEX_EXPERIMENT
     ++opt_stats.inner_node_split_bulk_load_cnt;
     #endif
-
     slot_type size = node->size;
     slot_type block_nums = 1.0 * node->size / split_size + (node->size % split_size != 0);
     slot_type block_point = 0;
@@ -206,7 +205,7 @@ inline void aex_tree<_Key, _Val, traits>::__insert_split_bulk_load(inner_node_pt
 // Split an node when the node insert item and (the size is larger than full ratio or no empty slot to insert)
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_split_pipeline(inner_node_ptr* stack, int top, const key_type* key, const node_ptr* child, const slot_type n){
-    //AEX_PRINT("pipeline");
+    AEX_PRINT("pipeline");
     AEX_ASSERT(top > 1);
     #ifdef AEX_EXPERIMENT
     ++opt_stats.inner_node_split_pipeline_cnt;
@@ -231,7 +230,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_pipeline(inner_node_ptr* 
     
     //bool split_flag = check_split(node);
     slot_type split_size = check_split_size(node);
-    slot_type block_nums = 1.0 * node->size / split_size + (node->size % split_size != 0);
+    slot_type block_nums = node->size / split_size + (node->size % split_size != 0);
     unsigned long long recent_update_timestamp = this->balance_stats.get_timestamp();
     node->balance_stats.update_frequency(recent_update_timestamp);
     double train_times = node->balance_stats.get_train_times(), write_times = node->balance_stats.get_write_times();
@@ -470,7 +469,7 @@ inline void aex_tree<_Key, _Val, traits>::__insert_split_by_buffer(inner_node_pt
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_split_helper(inner_node_ptr* stack, int top, const key_type* new_key, node_ptr* new_child, const slot_type n){
-    //AEX_PRINT("insert_split_helper");
+    AEX_PRINT("insert_split_helper");
     #ifdef AEX_EXPERIMENT
     ++opt_stats.inner_node_split_cnt;
     #endif 
@@ -515,7 +514,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_recursive(inner_node_ptr* stack
     inner_node_ptr node = stack[top - 1];
     node->balance_stats.update_write_frequency(this->balance_stats.get_timestamp());
     if (isfull(node, n - 1)) {
-        if (check_split(node) == true){
+        if (check_split_size(node) > 1){
             insert_split_helper(stack, top, key_buf, child_buf, n);
             return;
         }

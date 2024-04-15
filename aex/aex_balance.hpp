@@ -215,7 +215,7 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
     ++opt_stats.inner_node_balance_check_split_cnt;
     #endif
     if constexpr (traits::AllowBalance == false)
-        return false;
+        return 1;
     double lambda_timestamp = this->balance_stats.get_lambda_timestamp();
     double train_pro = 1.0 * node->balance_stats.get_train_times() / lambda_timestamp;
     double write_pro = 1.0 * node->balance_stats.get_write_times() / lambda_timestamp;

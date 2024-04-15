@@ -453,7 +453,7 @@
 # test index insert accuracy
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000 --batch=1 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
-./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000000 --batch=50000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000000 --batch=15000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000000 --batch=2000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=20000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data

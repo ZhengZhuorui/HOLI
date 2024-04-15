@@ -7,7 +7,9 @@
 #ifndef AEX_EXPERIMENT
 #define AEX_EXPERIMENT
 #endif
+//using namespace aex;
 #include "aex/aex_map.h"
+using namespace aex;
 #include "benchmark/generate_dataset.h"
 #include "test/test.h"
 #include "benchmark/utils.h"
@@ -232,19 +234,19 @@ bool test(map<string, string> &flags){
             return test_index_total_perf(data.data(), num_keys, read_nums, write_nums, erase_nums);
         }
     }
-    else if (unit == "con_index"){
-        auto func = flags["function"];
-        if (func == "tot"){
-            std::vector<std::pair<T, T> > data;
-            pack_KV_dataset(bin_data, data);
-            long long read_nums = stoll(flags["read_nums"]);
-            long long write_nums = stoll(flags["write_nums"]);
-            long long erase_nums = stoll(flags["erase_nums"]);
-            AEX_ASSERT(write_nums <= num_keys);
-            AEX_ASSERT(erase_nums <= num_keys - write_nums);
-            return test_index_total_con_perf(data.data(), num_keys, read_nums, write_nums, erase_nums);
-        }
-    }
+    //else if (unit == "con_index"){
+    //    auto func = flags["function"];
+    //    if (func == "tot"){
+    //        std::vector<std::pair<T, T> > data;
+    //        pack_KV_dataset(bin_data, data);
+    //        long long read_nums = stoll(flags["read_nums"]);
+    //        long long write_nums = stoll(flags["write_nums"]);
+    //        long long erase_nums = stoll(flags["erase_nums"]);
+    //        AEX_ASSERT(write_nums <= num_keys);
+    //        AEX_ASSERT(erase_nums <= num_keys - write_nums);
+    //        return test_index_total_con_perf(data.data(), num_keys, read_nums, write_nums, erase_nums);
+    //    }
+    //}
     return false;
 }
 

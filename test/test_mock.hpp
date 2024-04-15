@@ -1,7 +1,5 @@
 #pragma once
 
-using namespace aex;
-
 
 template<typename _Key,
         typename _Val, 
@@ -80,15 +78,18 @@ public:
             inner_node_ptr in = static_cast<inner_node_ptr>(node);
             ++msg.level_node_nums[in->level];
             node_ptr* node_child = in->child_ptr;
+            int sz = 0;
             if (IS_ML_NODE(node)){
                 bitmap bm = in->bitmap_ptr;
                 //msg.tot_seg_nums += in->model.args.seg_nums;
                 for (slot_type i = 0; i <= in->slot_size; ++i){
                     if (bitmap_impl::at(bm, i)){
+                        ++sz;
                         dfs_detail(node_child[i]);
                     }
                 }
                 dfs_detail(node_child[in->slot_size - 1]);
+                AEX_ASSERT(sz + 1 == node->size);
             }
             else{
                 for (slot_type i = 0; i < in->size; ++i){

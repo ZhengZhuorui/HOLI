@@ -1,5 +1,5 @@
 #pragma once
-#include "aex/con/aex_con_utils.h"
+#include "aex/con/aex_utils_con.h"
 
 
 namespace aex{
@@ -104,9 +104,7 @@ public:
         this->base_tree::deconstruct(this->root);
     }
 
-    // TODO:
     bool insert(const key_type &key, const value_type &value){
-        std::lock_guard<std::shared_mutex> lock();
         auto ret = this->base_tree::insert(key, value);
         return ret.second;
     }
@@ -147,8 +145,9 @@ public:
     }
 
     bool erase(const key_type &x){
-        std::lock_guard<std::shared_mutex> lock(this->tree_mutex);
-        bool ret = this->base_tree::erase(x);
+        //std::lock_guard<std::shared_mutex> lock(this->tree_mutex);
+        //bool ret = this->base_tree::erase(x);
+        bool ret = this->erase(x);
         return ret;
     }
 
@@ -193,9 +192,9 @@ private:
     data_node_ptr find_leaf_con(const key_type &key);
 
     // Find stack to the data node with the key. The data node will locked.
-    data_node_ptr find_leaf_with_stack_con(const key_type &key, inner_node_ptr *stack, int &top);
+    data_node_ptr find_leaf_lock_con(const key_type &key, inner_node_ptr *stack, int &top);
 
-    inner_node_ptr find_node_until_level(const key_type &key, )
+    node_ptr find_node_lock_con(const key_type &key, const int level, inner_node_ptr *stack, int &top);
 
     // ========== 2. insert ==========
     // 
@@ -248,6 +247,15 @@ private:
     inline bool TSL(node_ptr node){return node->node_mutex.try_lock_shared();}
 
     inline bool TXL(node_ptr node){return node->node_mutex.try_lock();}
+    inline void TXL(const key_type &key, node_ptr node, inner_node_ptr* stack, int &top){
+        //return node->node_mutex.try_lock();
+        while(true){
+            if (TXL(node)) return;
+            else{
+                node = this->find_node_lock_con(key, node->level, stack, top);
+            }
+        }
+    }
 
     inline void SL(){}
     

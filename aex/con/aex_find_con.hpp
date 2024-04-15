@@ -46,7 +46,7 @@ inline typename aex_tree_con<_Key, _Val, traits>::data_node_ptr aex_tree_con<_Ke
 //}
 
 template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree_con<_Key, _Val, traits>::node_ptr aex_tree_con<_Key, _Val, traits>::find_node_lock_con(const key_type &key, const slot_type level, inner_node_ptr* stack, int &top){
+inline typename aex_tree_con<_Key, _Val, traits>::node_ptr aex_tree_con<_Key, _Val, traits>::find_node_lock_con(const key_type &key, const int level, inner_node_ptr* stack, int &top){
     node_ptr node, child_node;
     slot_type pos;
     while (true){

@@ -20,6 +20,7 @@ struct test_traits{
 
     typedef unsigned char version_type;
 
+    //typedef aex::aex_default_balance_args MODEL_ARGS;
     typedef aex::aex_default_balance_args MODEL_ARGS;
 
     typedef _AllowConcurrency AllowConcurrency;

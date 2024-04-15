@@ -60,7 +60,7 @@ bool test_index(std::pair<K, V>* data, size_t n){
 
 template<typename key_type,
         typename value_type,
-        typename traits=aex_default_traits<key_type, value_type>>
+        typename traits=aex::aex_default_traits<key_type, value_type>>
 bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long n){
     AEX_HINT("[test index bulk load]");
 
@@ -148,7 +148,7 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
 
 template<typename key_type,
         typename value_type,
-        typename traits=aex_default_traits<key_type, value_type>>
+        typename traits=aex::aex_default_traits<key_type, value_type>>
 bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
     AEX_HINT("[test index lookup]");
     //typedef typename aex::aex_map<key_type, value_type, traits> Index;
@@ -206,7 +206,7 @@ bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, 
 
 template<typename key_type,
         typename value_type,
-        typename traits=aex_default_traits<key_type, value_type>>
+        typename traits=aex::aex_default_traits<key_type, value_type>>
 bool test_index_delta_lookup_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
     AEX_HINT("[test index lookup]");
     //typedef typename aex::aex_map<key_type, value_type, traits> Index;
@@ -262,7 +262,7 @@ bool test_index_delta_lookup_perf(std::pair<key_type, value_type>* data, long lo
 
 template<typename key_type,
         typename value_type,
-        typename traits=aex_default_traits<key_type, value_type>>
+        typename traits=aex::aex_default_traits<key_type, value_type>>
 bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
     AEX_HINT("[test index insert perf]");
     typedef mock_aex_tree<key_type, value_type, traits> tree;
@@ -295,7 +295,6 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     }
     AEX_SUCCESS("insert finish..");
 
-    
     {
         if (static_cast<long long>(index.size()) != n){
             AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);
