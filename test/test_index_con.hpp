@@ -2,7 +2,7 @@
 
 template<typename key_type,
         typename value_type,
-        typename traits=aex_default_traits<key_type, value_type, void, true>>
+        typename traits=aex_default_traits<key_type, value_type, false, void, true>>
 bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long n, long long read_nums, long long write_nums, long long erase_nums){
     
     AEX_HINT("[test index concurrency with all interface]");

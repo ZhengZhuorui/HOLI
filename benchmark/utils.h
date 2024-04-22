@@ -39,11 +39,13 @@ template<typename T>
 size_t read_bineary_file(FILE* file, vector<T> &data, size_t n, bool is_head=true){
     std::cout << "read data...\n";
     data.resize(n);
-    size_t _;
+    [[maybe_unused]] size_t _, __;
     if (is_head)
-        fread(&_, sizeof(size_t), 1, file);
+        __ = fread(&_, sizeof(size_t), 1, file);
     size_t data_size = fread(data.data(), sizeof(T), n, file);
-    std::cout << "read data end\n";
+    for (int i = 0; i < std::min(100, (int)n); ++i)
+        std::cout << data[i] << ", ";
+    std::cout << "\nread data end\n";
     return data_size;
 }
 
@@ -54,7 +56,9 @@ size_t read_bineary_file(FILE* file, T* &data, size_t n, bool is_head=true){
     if (is_head)
         fread(&_, sizeof(size_t), 1, file);
     size_t data_size = fread(data, sizeof(T), n, file);
-    std::cout << "read data end\n";
+    for (int i = 0; i < std::min(100, (int)n); ++i)
+        std::cout << data[i] << ", ";
+    std::cout << "\nread data end\n";
     return data_size;
 }
 

@@ -2,7 +2,7 @@
 
 template<typename key_type,
         typename value_type,
-        typename traits=aex_default_traits<key_type, value_type, void, true>>
+        typename traits=aex_default_traits<key_type, value_type, false, void, true>>
 void test_lookup_con_unit(mock_aex_tree_con<key_type, value_type, traits> &index, std::pair<key_type, value_type> &kv, long long id){
     value_type res;
     bool flag = index.find(kv.first, res);
@@ -22,7 +22,7 @@ void test_lookup_con_unit(mock_aex_tree_con<key_type, value_type, traits> &index
 
 template<typename key_type,
         typename value_type,
-        typename traits=aex_default_traits<key_type, value_type, void, true>>
+        typename traits=aex_default_traits<key_type, value_type, false, void, true>>
 void test_insert_con_unit(mock_aex_tree_con<key_type, value_type, traits> &index, std::pair<key_type, value_type> &kv, long long id){
     bool _ = index.insert(kv.first, kv.second);
     if (_ == false){
@@ -43,7 +43,7 @@ void test_insert_con_unit(mock_aex_tree_con<key_type, value_type, traits> &index
 
 template<typename key_type,
         typename value_type,
-        typename traits=aex_default_traits<key_type, value_type, void, true>>
+        typename traits=aex_default_traits<key_type, value_type, false, void, true>>
 void test_erase_con_unit(mock_aex_tree_con<key_type, value_type, traits> &index, key_type &x, long long id){
     bool _ = index.erase(x);
     if (_ == false){

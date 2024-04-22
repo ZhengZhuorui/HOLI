@@ -120,7 +120,8 @@ enum node_property{
     ML_NODE=0x1,
     STATIC_NODE=0x2,
     LEAF=0x4,
-    CONCURRENCE=0x8,
+    CAN_MERGED=0x8,
+    CONCURRENCE=0x16,
 };
 
 template<typename _NodePtr>

@@ -23,7 +23,7 @@ template<typename traits, bool AllowBalance, bool AllowConcurrency> struct aex_t
 
 template<typename _Tp, bool _> struct aex_node_spinlock;
 
-template<typename _Key, typename _Val, typename SearchClass, bool AllowConcurrency> struct aex_default_traits;
+template<typename _Key, typename _Val, bool AllowMultiKey, typename SearchClass, bool AllowConcurrency> struct aex_default_traits;
 
 template<typename _Tp, typename traits> class linear_model;
 template<typename _Tp, typename traits> class gap_array_linear_model;

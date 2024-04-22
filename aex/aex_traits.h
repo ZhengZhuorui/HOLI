@@ -37,14 +37,17 @@ struct aex_default_balance_args{
 
     static constexpr double DATA_NODE_TRAIN_FACTOR = 1.0; // train a data node needs DATA_NODE_TRAIN_FACTOR * n cost
     static constexpr double INNER_NODE_TRAIN_FACTOR = 8.0; // train a inner node needs INNER_NODE_TRAIN_FACTOR * n cost
+
 };
 
 #define AEX_MAX(a, b) (((a) < (b)) ? (b) : (a))
 
 template<typename _Key, 
         typename _Val,
+        bool _AllowMultiKey=false,
         typename _SearchClass=void,
         bool _AllowConcurrency=false>
+        //int max_node_size=256>
 struct aex_default_traits{
 
     typedef _Key key_type;
@@ -65,7 +68,7 @@ struct aex_default_traits{
 
     typedef aex_default_balance_args MODEL_ARGS;
 
-    static constexpr bool AllowMultiKey = true;
+    static constexpr bool AllowMultiKey = _AllowMultiKey;
 
     static constexpr bool AllowConcurrency = _AllowConcurrency;
 
@@ -105,6 +108,7 @@ struct aex_default_traits{
     //static constexpr slot_type MIN_ML_INNER_NODE_SLOT_SIZE = 64;
 
     static constexpr slot_type MIN_ML_INNER_NODE_SIZE = 64;
+    //static constexpr slot_type MIN_ML_INNER_NODE_SIZE = MIN_INNER_NODE_SLOT_SIZE;
 
     static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 25;
 

@@ -1,5 +1,6 @@
 #include <bits/stdc++.h>
 
+bool file_is_head;
 #include "benchmark/benchmark.h"
 #include "benchmark/utils.h"
 #include "benchmark/generate_dataset.h"
@@ -98,7 +99,13 @@ int main(int argc, char** argv){
     //double write_ratio = 0.5;
     //if (flags.find("write_ratio") != flags.end())
     //    write_ratio = stod(flags["write_ratio"]);
-
+    std::string file_name = flags["input_file"];
+    file_is_head = (file_name.find("fb_200M_uint64") != std::string::npos) | 
+                   (file_name.find("osm_cellids_200M_uint64") != std::string::npos) | 
+                   (file_name.find("wiki_ts_200M_uint64") != std::string::npos) | 
+                   (file_name.find("normal_200M_uint64") != std::string::npos) | 
+                   (file_name.find("lognormal_200M_uint64") != std::string::npos) | 
+                   (file_name.find("books_800M_uint64") != std::string::npos);
     if (key_type == "uint64") benchmark<unsigned long long, unsigned long long>(flags);
     //else if (key_type == "uint") benchmark<unsigned long long, unsigned long long>(flags);
     else if (key_type == "float64") benchmark<double, double>(flags);

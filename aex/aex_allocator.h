@@ -81,7 +81,6 @@ public:
         */
         #ifdef AEX_EXPERIMENT
             ++alloc_cnt;
-            //AEX_FORMAT("alloc_cnt=%lld", alloc_cnt);
         #endif
         return static_cast<void*>(malloc(size));
     }
@@ -155,13 +154,14 @@ public:
         */
         #ifdef AEX_EXPERIMENT
         ++inner_node_nums;
+        ++alloc_cnt;
         #endif
 
         slot_type slot_size = real_slot_size;
-
+        //AEX_PRINT("slot_size=" << slot_size);
         AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
 
-        slot_size += traits::ERROR_BOUND;
+        slot_size += (real_slot_size >= traits::MIN_ML_INNER_NODE_SIZE) ? traits::ERROR_BOUND : 0;
 
         size_type memory_used = INNER_NODE_MEMORY_USED(slot_size);
         this->_memory_used += memory_used;
@@ -189,9 +189,6 @@ public:
     //}
 
     inline data_node_ptr allocate_static_data_node(){
-        #ifdef AEX_EXPERIMENT
-        ++data_node_nums;
-        #endif
         this->_memory_used += STATIC_DATA_NODE_MEMORY_USED();
         //if (data_node_buffer.size() == 0)
         //    allocate_data_node_buffer();
@@ -230,6 +227,10 @@ public:
     }
 
     inline data_node_ptr allocate_data_node(){
+        #ifdef AEX_EXPERIMENT
+        ++alloc_cnt;
+        ++data_node_nums;
+        #endif
         return allocate_static_data_node();
     }
 

@@ -90,7 +90,7 @@ bool aex_tree_con<_Key, _Val, traits>::insert(const key_type &key, const value_t
 //    slot_type block_nums = 1.0 * node->size / split_size + (node->size % split_size != 0);
 //    unsigned long long recent_update_timestamp = this->balance_stats.get_timestamp();
 //    node->balance_stats.update_frequency(recent_update_timestamp);
-//    double train_times = node->balance_stats.get_train_times(), write_times = node->balance_stats.get_write_times();
+//    double train_times = node->balance_stats.get_SMO_times(), write_times = node->balance_stats.get_write_times();
 //    
 //    for (slot_type i = 0; i < split_size; ++i){
 //        block_point = std::min(size, block_point + block_nums);

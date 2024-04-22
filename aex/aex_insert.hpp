@@ -28,7 +28,7 @@ inline std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree
     slot_type pos = node->find_lower_pos(key);
 
     /* find the insert position */
-    if (traits::AllowMultiKey && pos < node->size && node->key[pos] == key){
+    if (!traits::AllowMultiKey && pos < node->size && node->key[pos] == key){
         return std::pair<iterator, bool>(iterator(node, pos), false);
     }
 
@@ -191,7 +191,14 @@ inline void aex_tree<_Key, _Val, traits>::__insert_split_bulk_load(inner_node_pt
 
     while (start < size){
         block_point = std::min(size, block_point + block_nums);
+        slot_type his_size = new_child.size();
         split(node->key_ptr + start, node->child_ptr + start, block_point - start, node->level, new_key, new_child);
+
+        if constexpr (traits::AllowInsertBalance)
+        if (split_size > 0 && new_child.size() - his_size == 1)
+            for (slot_type i = his_size; i < new_child.size(); ++i)
+                SET_FLAG(new_child[i], CAN_MERGED);
+
         if (block_point != size)
             new_key.push_back(node->key_ptr[block_point - 1]);
         start = block_point;
@@ -205,7 +212,7 @@ inline void aex_tree<_Key, _Val, traits>::__insert_split_bulk_load(inner_node_pt
 // Split an node when the node insert item and (the size is larger than full ratio or no empty slot to insert)
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_split_pipeline(inner_node_ptr* stack, int top, const key_type* key, const node_ptr* child, const slot_type n){
-    AEX_PRINT("pipeline");
+    //AEX_PRINT("pipeline");
     AEX_ASSERT(top > 1);
     #ifdef AEX_EXPERIMENT
     ++opt_stats.inner_node_split_pipeline_cnt;
@@ -217,6 +224,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_pipeline(inner_node_ptr* 
     bool ml_flag;
     AEX_ASSERT(IS_ML_NODE(node) == true);
     AEX_ASSERT(node->size + n <= node->slot_size);
+    AEX_ASSERT(child[0]->level == node->child_ptr[0]->level);
     copy_to_buffer(node, node->key_ptr, node->child_ptr);
     if (n > 0){
         slot_type pos = std::lower_bound(node->key_ptr, node->key_ptr + node->size - 1, key[0]) - node->key_ptr;
@@ -229,20 +237,21 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_pipeline(inner_node_ptr* 
     size = node->size;
     
     //bool split_flag = check_split(node);
-    slot_type split_size = check_split_size(node);
+    int split_size = check_split_size(node);
     slot_type block_nums = node->size / split_size + (node->size % split_size != 0);
     unsigned long long recent_update_timestamp = this->balance_stats.get_timestamp();
     node->balance_stats.update_frequency(recent_update_timestamp);
-    double train_times = node->balance_stats.get_train_times(), write_times = node->balance_stats.get_write_times();
+    double train_times = node->balance_stats.get_SMO_times(), write_times = node->balance_stats.get_write_times();
     
-    for (slot_type i = 0; i < split_size; ++i){
+    for (int i = 0; i < split_size; ++i){
         block_point = std::min(size, block_point + block_nums);
         while (start < block_point){
             std::tie(ans_size, ans_slot_size, ml_flag) = split_with_exponential_probe(node->key_ptr + start, block_point - start, node->level);
-            AEX_PRINT("ans_size=" << ans_size << ", left size=" << n - start << ", ans_slot_size=" << ans_slot_size << ", timestamp=" << this->balance_stats.get_timestamp());
             inner_node_ptr new_node = node_allocator.allocate_inner_node(ans_slot_size, ml_flag);
             new_node->level = node->level;
             ++this->m_stats.level_node[new_node->level];
+            if (split_size > 1)
+                SET_FLAG(new_node, CAN_MERGED);
             if (ml_flag)
                 new_node->model.train(node->key_ptr + start, ans_size - 1, ans_slot_size);
             new_node->construct(node->key_ptr + start, node->child_ptr + start, ans_size);
@@ -260,7 +269,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_pipeline(inner_node_ptr* 
             else{
                 append_flag &= (!isfull(parent));
                 if (append_flag)
-                    append_flag &= parent->insert(node->key_ptr[start + ans_size - 1], node);
+                    append_flag &= parent->insert(node->key_ptr[start + ans_size - 1], new_node);
                 if (!append_flag){
                     insert_split_bulk_load(stack, top, start + ans_size, node->key_ptr[start + ans_size - 1], new_node, split_size);
                     return;
@@ -305,7 +314,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_split(data_node_ptr node, const
             new_child.push_back(new_child_2[i]);
         }
 
-        node->balance_stats.update_train_frequency(this->balance_stats.get_timestamp());
+        node->balance_stats.update_SMO_frequency(this->balance_stats.get_timestamp());
         update_node_list_frequency(node, new_child.data(), new_child.size());
         link_node_list_and_replace_last_node(node, new_child);
         new_key.pop_back();
@@ -437,7 +446,7 @@ inline void aex_tree<_Key, _Val, traits>::__insert_split_by_buffer(inner_node_pt
     #ifdef AEX_EXPERIMENT
     ++this->opt_stats.inner_node_split_by_buffer_cnt;
     #endif
-    //AEX_PRINT("insert_node_by_buffer");
+    //AEX_PRINT("insert_node_by_buffer, size=" << node->size << ", n=" << n << ", slot_size=" << node->slot_size);
 
     std::vector<key_type> key_buf(node->size + n);
     std::vector<node_ptr> child_buf(node->size + n);
@@ -447,12 +456,10 @@ inline void aex_tree<_Key, _Val, traits>::__insert_split_by_buffer(inner_node_pt
     std::move_backward(key_buf.data() + pos, key_buf.data() + node->size - 1, key_buf.data() + node->size - 1 + n);
     std::move_backward(child_buf.data() + pos, child_buf.data() + node->size, child_buf.data() + node->size + n);
     std::copy(key, key + n, key_buf.data() + pos);
-    std::copy(child, child + n, child_buf.data() + pos);
-    slot_type m = node->size + n;
-    
-    slot_type size = node->size;
+    std::copy(child, child + n, child_buf.data() + pos);    
+    slot_type size = node->size + n;
     slot_type split_size = check_split_size(node);
-    slot_type block_nums = 1.0 * m / split_size + (m % split_size != 0);
+    slot_type block_nums = size / split_size + (size % split_size != 0);
     slot_type block_point = 0, start = 0;
 
     for (slot_type i = 0; i < split_size; ++i){
@@ -462,7 +469,7 @@ inline void aex_tree<_Key, _Val, traits>::__insert_split_by_buffer(inner_node_pt
             new_key.push_back(node->key_ptr[block_point - 1]);
         start = block_point;
     }
-    
+    AEX_ASSERT(new_key.size() + 1 == new_child.size());
     update_node_list_frequency(node, reinterpret_cast<node_ptr*>(new_child.data()), new_child.size());
     link_node_list_and_replace_last_node(node, reinterpret_cast<node_ptr*>(new_child.data()), new_child.size());
     new_child.pop_back();
@@ -470,7 +477,7 @@ inline void aex_tree<_Key, _Val, traits>::__insert_split_by_buffer(inner_node_pt
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_split_helper(inner_node_ptr* stack, int top, const key_type* new_key, node_ptr* new_child, const slot_type n){
-    AEX_PRINT("insert_split_helper");
+    //AEX_PRINT("insert_split_helper");
     #ifdef AEX_EXPERIMENT
     ++opt_stats.inner_node_split_cnt;
     #endif 
@@ -485,7 +492,8 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_helper(inner_node_ptr* st
     
     // node != root e.q. top > 1
     if (!IS_ML_NODE(node)){
-        if (node->slot_size * traits::EXPAND_RATIO < traits::MIN_ML_INNER_NODE_SIZE && n < node->slot_size / 2){
+        //AEX_PRINT("size=" << node->size);
+        if (node->size + n < traits::MIN_ML_INNER_NODE_SIZE && n < node->slot_size / 2){
             //AEX_HINT("[helper]: insert_split_dense_inner_node 1");
             insert_split_dense_inner_node(stack, top, new_key, new_child, n);
         }
@@ -496,7 +504,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_helper(inner_node_ptr* st
     }
     else{
         if (node->size + n < node->slot_size){
-            //AEX_HINT("[helper]: insert_split_by_buffer 1");
+            //AEX_HINT("[helper]: insert_split_pipeline 1");
             insert_split_pipeline(stack, top, new_key, new_child, n);
         }
         else{
@@ -515,6 +523,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_recursive(inner_node_ptr* stack
     inner_node_ptr node = stack[top - 1];
     node->balance_stats.update_write_frequency(this->balance_stats.get_timestamp());
     if (isfull(node, n - 1)) {
+        //AEX_PRINT("node->size=" << node->size << ", IS_ML_NODE" << IS_ML_NODE(node) << ", node->slot_size=" << node->slot_size << ", n=" << n);
         if (check_split_size(node) > 1){
             insert_split_helper(stack, top, key_buf, child_buf, n);
             return;
@@ -524,8 +533,14 @@ inline void aex_tree<_Key, _Val, traits>::insert_recursive(inner_node_ptr* stack
             return;
         }
     }
-    for (slot_type i = 0; i < n; ++i){
+    
+    for (slot_type i = n - 1; i >= 0; --i){
         if (!node->insert(key_buf[i], child_buf[i])){
+            if constexpr (traits::AllowInsertBalance)
+                if (n == 1)
+                    if (insert_merges(node, key_buf[0], child_buf[0]))
+                        return;
+
             insert_split_helper(stack, top, key_buf + i, child_buf + i, n - i);
             return;
         }

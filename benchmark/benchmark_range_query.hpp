@@ -181,7 +181,7 @@ template<typename key_type, typename value_type>
 void benchmark_range_query(FILE* file, long long num_keys, long long num_ops, double length_ratio, std::string index_name){ //file, num_keys, num_ops, length_ratio
     vector<key_type> bin_data;
     vector<pair<key_type, value_type> > data;
-    size_t _ = read_bineary_file<key_type>(file, bin_data, std::is_same_v<key_type, unsigned long long>);
+    size_t _ = read_bineary_file<key_type>(file, bin_data, num_keys, file_is_head);
     assert((long long)_ == num_keys);
     std::sort(bin_data.data(), bin_data.data() + num_keys);
     num_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();

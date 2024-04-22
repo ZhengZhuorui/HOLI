@@ -7,7 +7,7 @@ namespace aex
 
 template<typename _Key, 
         typename _Val, 
-        typename traits=aex_default_traits<_Key, _Val, std::false_type>,
+        typename traits=aex_default_traits<_Key, _Val>,
         typename components=aex_default_components<traits>>
 class aex_map{
 public:

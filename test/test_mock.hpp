@@ -20,6 +20,8 @@ public:
 
     typedef aex::aex_tree<_Key, _Val, traits> parent;
 
+    typedef aex_default_components<traits> components;
+
     // iterator:
     typedef typename aex::aex_iterator<_Key, _Val, traits> iterator;
 
@@ -52,6 +54,10 @@ public:
 
     typedef typename traits::bitmap bitmap;
 
+    mock_aex_tree(){
+        AEX_PRINT("AllowInsertBalance: " << traits::AllowInsertBalance << ", AllowRWBalance: " << traits::AllowRWBalance << ", AllowMultiKey: " << traits::AllowMultiKey << ", ERROR_BOUND=" << traits::ERROR_BOUND);
+    }
+
     void print_detail(){
         msg = detail_msg();
         msg.level_node_nums.resize(traits::MAX_DEPTH);
@@ -60,7 +66,7 @@ public:
                 ", ml inner node number=" << msg.ml_inner_node << ", ml data node number=" << msg.ml_data_node <<
                 ", ml inner node ratio=" << 1.0 * msg.ml_inner_node / msg.inner_node);
         AEX_HINT("data size=" << msg.data_size);
-        AEX_HINT("avg seg nums=" << 1.0 * msg.tot_seg_nums / msg.ml_inner_node);
+        AEX_HINT("avg seg nums=" << 1.0 * msg.tot_seg_nums / (msg.ml_inner_node + 1));
     }
     
     void dfs_detail(node_ptr node){
@@ -212,7 +218,7 @@ public:
 
 template<typename _Key,
         typename _Val, 
-        typename traits=aex::aex_default_traits<_Key, _Val, void, true> >
+        typename traits=aex::aex_default_traits<_Key, _Val, false, void, true> >
 class mock_aex_tree_con : public aex::aex_tree_con<_Key, _Val, traits>{
 public:
 

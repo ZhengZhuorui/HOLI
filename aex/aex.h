@@ -236,7 +236,9 @@ public:
     }
 
     inline void find(const key_type &x, value_type &y){
-        auto iter = this->find(x);
+        iterator iter = this->find(x);
+        if (iter == end() || iter.key() != x) 
+            return;
         y = iter.data();
     }
 
@@ -434,33 +436,26 @@ private:
 
     inline data_node_ptr find_leaf_with_stack(const key_type &key, inner_node_ptr* stack, int &top){
         node_ptr node = root;
+        AEX_ASSERT(this->m_stats.height == root->level + 1);
         top = 0;
-        for (unsigned level = node->level; level > 0; --level){
+        //for (unsigned level = root->level; level > 0; --level){
+        //for (unsigned level = this->m_stats.height; level > 0; --level){
+        for (unsigned int level = 0; level < this->m_stats.height - 1; ++level){
             stack[top++] = static_cast<inner_node_ptr>(node);
-            slot_type pos = static_cast<inner_node_ptr>(node)->find(key);
-            node = static_cast<inner_node_ptr>(node)->child_ptr[pos];
+            slot_type pos = static_cast<inner_node_ptr>(node)->find_upper_pos(key);
+            node = static_cast<inner_node_ptr>(node)->child_ptr[pos - 1];
         }        
         //stack[top++] = node;
         return static_cast<data_node_ptr>(node);
     }
 
     // ========== 2. balance tree ==========
-
-    // update node/tree freuency counter.
-    // One subtree represents a segment, frequency = node->balance_stats.write_times / tree->balance_stats.write_times
-    bool check_insert_merge(node_ptr* node_buffer, slot_type size);
-    void merge_nodes(key_type* key_buffer, inner_node_ptr* node_buffer, slot_type buffer_size);
-    void merge_nodes(key_type* key_buffer, data_node_ptr* node_buffer, slot_type buffer_size);
-
-    inline void merge_nodes(key_type* key_buffer, node_ptr* node_buffer, slot_type size){
-        if (IS_LEAF_NODE(node_buffer[0]))
-            merge_nodes(static_cast<data_node_ptr*>(node_buffer), size);
-        else 
-            merge_nodes(static_cast<inner_node_ptr*>(node_buffer), size);
-    }
+    bool insert_merge(inner_node_ptr parent, key_type &new_key, node_ptr new_node);
 
     bool check_split(data_node_ptr node, bool is_forced=false);
+
     bool check_split(inner_node_ptr node);
+
     slot_type check_split_size(inner_node_ptr node);
 
     void update_node_list_frequency(dynamic_node_ptr node, node_ptr* node_list, slot_type n);
@@ -484,8 +479,8 @@ private:
     void __insert_split_bulk_load(inner_node_ptr node, slot_type start, slot_type split_size, std::vector<key_type> &new_key, std::vector<inner_node_ptr> &new_child);
 
     void insert_split_bulk_load(inner_node_ptr* stack, int top, const slot_type start, const key_type key, inner_node_ptr child, int split_size){
-        AEX_ASSERT(top > 1);
-        AEX_PRINT("bulk_load");
+        AEX_ASSERT(top > 0);
+        //AEX_PRINT("bulk_load");
         std::vector<key_type> new_key;
         std::vector<inner_node_ptr> new_child;
         new_key.push_back(key);
@@ -502,8 +497,8 @@ private:
     void __insert_split_by_buffer(inner_node_ptr node, const key_type* key, node_ptr* child, const slot_type n, std::vector<key_type> &new_key, std::vector<inner_node_ptr> &new_child);
 
     void insert_split_by_buffer(inner_node_ptr* stack, int top, const key_type* key, node_ptr* child, const slot_type n){
-        AEX_ASSERT(top > 1);
-        AEX_PRINT("by_buffer");
+        AEX_ASSERT(top > 0);
+        //AEX_PRINT("by_buffer");
         std::vector<key_type> new_key;
         std::vector<inner_node_ptr> new_child;
         __insert_split_by_buffer(stack[top - 1], key, child, n, new_key, new_child);
@@ -515,8 +510,8 @@ private:
     std::pair<key_type, node_ptr> __insert_split_dense_inner_node(inner_node_ptr node, const key_type* new_key, node_ptr* new_child, const slot_type n);
 
     void insert_split_dense_inner_node(inner_node_ptr* stack, int top, const key_type* new_key, node_ptr* new_child, const slot_type n){
-        AEX_ASSERT(top > 1);
-        AEX_PRINT("split_dense_inner_node");
+        AEX_ASSERT(top > 0);
+        //AEX_PRINT("split_dense_inner_node");
         key_type split_key;
         node_ptr split_node;
         std::tie(split_key, split_node) = __insert_split_dense_inner_node(stack[top - 1], new_key, new_child, n);
@@ -603,33 +598,43 @@ private:
     bool rescale(node_ptr node, const slot_type new_slot_size);
 
     bool expand(inner_node_ptr node){
+        bool ret;
         if (!IS_ML_NODE(node)){
             if (node->size >= traits::MIN_ML_INNER_NODE_SIZE){
                 slot_type new_slot_size = min_slot_size(node->size, this->inner_node_few_ratio[node->level], traits::MIN_INNER_NODE_SLOT_SIZE);
                 if (new_slot_size * this->inner_node_few_ratio[node->level] > node->size) new_slot_size >>= 1;
-                return rescale(node, new_slot_size);
+                ret = rescale(node, new_slot_size);
             }
             else
-                return rescale(node, node->real_slot_size() << 1);
+                ret = rescale(node, node->real_slot_size() << 1);
         }
         else{
-            return rescale(node, node->real_slot_size() << 1);
+            ret = rescale(node, node->real_slot_size() << 1);
         }
+        if constexpr (traits::AllowInsertBalance)
+            if (ret == true)
+                SET_FLAG(node, CAN_MERGED);
+        return ret;
     }
 
     bool narrow(inner_node_ptr node){
+        bool ret;
         if (!IS_ML_NODE(node)){
-            return rescale(node, node->real_slot_size() >> 1);
+            ret = rescale(node, node->real_slot_size() >> 1);
         }
         else{
             if (node->size < traits::MIN_ML_INNER_NODE_SIZE){
                 slot_type new_slot_size = min_slot_size(node->size, traits::MIN_INNER_NODE_SLOT_SIZE);
-                return rescale(node, new_slot_size);
+                ret = rescale(node, new_slot_size);
             }
             else{
-                return rescale(node, node->real_slot_size() >> 1);
+                ret = rescale(node, node->real_slot_size() >> 1);
             }
         }
+        if constexpr (traits::AllowInsertBalance)
+            if (ret)
+                SET_FLAG(node, CAN_MERGED);
+        return ret;
     }
 
     // link node_buf parent, prev and next pointer, the prev point of first node is node->prev, next too.

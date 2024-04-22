@@ -42,12 +42,19 @@ bool test(map<string, string> &flags){
     long long num_keys = stoll(flags["num_keys"]);
 
     vector<T> bin_data;
-    size_t _ = read_bineary_file<T>(file, bin_data, num_keys, std::is_same_v<T, unsigned long long>);
+    bool is_head = (file_name.find("fb_200M_uint64") != std::string::npos) | 
+                   (file_name.find("osm_cellids_200M_uint64") != std::string::npos) | 
+                   (file_name.find("wiki_ts_200M_uint64") != std::string::npos) | 
+                   (file_name.find("normal_200M_uint64") != std::string::npos) | 
+                   (file_name.find("lognormal_200M_uint64") != std::string::npos) | 
+                   (file_name.find("books_800M_uint64") != std::string::npos);
+    AEX_PRINT("is_head=" << is_head);
+    size_t _ = read_bineary_file<T>(file, bin_data, num_keys, is_head);
     assert((long long)_ == num_keys);
     
     std::cout << "Data Example: " << bin_data[0] << ", " << bin_data[num_keys / 2] << ", " << bin_data[num_keys - 1] << std::endl;
 
-    num_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
+    //num_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
     if (unit == "function"){
         auto func = flags["function"];
         if (func == "exp_lower_bound")
@@ -176,22 +183,32 @@ bool test(map<string, string> &flags){
     }
     else if (unit == "index"){
         auto func = flags["function"];
+        bool multikey_flag = (flags.find("multikey") != flags.end());
         if (func == "bulk_load"){
             std::vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
-            return test_index_bulk_load_perf<T, T>(data.data(), num_keys);
+            if (multikey_flag)
+                return test_index_bulk_load_perf<T, T, aex_default_traits<T, T, true>>(data.data(), num_keys);
+            else
+                return test_index_bulk_load_perf<T, T>(data.data(), num_keys);
         }
         if (func == "insert"){
             long long batch = stoll(flags["batch"]);
             std::vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
-            return test_index_insert_perf<T, T>(data.data(), num_keys, batch);
+            if (multikey_flag)
+                return test_index_insert_perf<T, T, aex_default_traits<T, T, true>>(data.data(), num_keys, batch);
+            else
+                return test_index_insert_perf<T, T>(data.data(), num_keys, batch);
         }
         if (func == "lookup"){
             long long batch = stoll(flags["batch"]);
             std::vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
-            return test_index_lookup_perf(data.data(), num_keys, batch);
+            if (multikey_flag)
+                return test_index_lookup_perf<T, T, aex_default_traits<T, T, true>>(data.data(), num_keys, batch);
+            else
+                return test_index_lookup_perf(data.data(), num_keys, batch);
         }
         if (func == "delta_lookup"){
             long long batch = stoll(flags["batch"]);
@@ -231,7 +248,10 @@ bool test(map<string, string> &flags){
             long long erase_nums = stoll(flags["erase_nums"]);
             AEX_ASSERT(write_nums <= num_keys);
             AEX_ASSERT(erase_nums <= num_keys - write_nums);
-            return test_index_total_perf(data.data(), num_keys, read_nums, write_nums, erase_nums);
+            if (multikey_flag)
+                return test_index_total_perf<T, T, aex_default_traits<T, T, true>>(data.data(), num_keys, read_nums, write_nums, erase_nums);
+            else
+                return test_index_total_perf(data.data(), num_keys, read_nums, write_nums, erase_nums);
         }
     }
     //else if (unit == "con_index"){

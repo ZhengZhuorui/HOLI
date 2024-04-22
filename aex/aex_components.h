@@ -102,31 +102,31 @@ struct aex_rw_spinlock<traits, true>{
 template<typename traits, bool AllowBalance = traits::AllowBalance, bool AllowConcurrency = traits::AllowConcurrency>
 struct aex_node_balance_stats{
     aex_node_balance_stats(){}
-    aex_node_balance_stats(unsigned long long _recent_update_timestamp, double _train_times, double _write_times){}
+    aex_node_balance_stats(unsigned long long _recent_update_timestamp, double _SMO_times, double _write_times){}
     inline void update_frequency(unsigned long long timestamp){}
     inline void update_write_frequency(unsigned long long timestamp){}
-    inline void update_train_frequency(unsigned long long timestamp){}
+    inline void update_SMO_frequency(unsigned long long timestamp){}
     inline double get_write_times(){return 0;}
-    inline double get_train_times(){return 0;}
+    inline double get_SMO_times(){return 0;}
     inline double get_recent_update_timestamp(){return 0;}
 };
 
 template<typename traits>
 struct aex_node_balance_stats<traits, true, false>{
     unsigned long long recent_update_timestamp;
-    double train_times, write_times;
+    double SMO_times, write_times;
     static constexpr double lambda = traits::FORGET_RATE;
-    aex_node_balance_stats():recent_update_timestamp(0), train_times(0), write_times(0){}
+    aex_node_balance_stats():recent_update_timestamp(0), SMO_times(0), write_times(0){}
     aex_node_balance_stats(unsigned long long _recent_update_timestamp,
-                            double _train_times, double _write_times
+                            double _SMO_times, double _write_times
                             ):recent_update_timestamp(_recent_update_timestamp), 
-                            train_times(_train_times), 
+                            SMO_times(_SMO_times), 
                             write_times(_write_times){} 
     inline void update_frequency(unsigned long long timestamp){
         double forget_rate = rapid_pow(lambda, timestamp - recent_update_timestamp);
         //double forget_rate = lambda_pow(lambda, timestamp - recent_update_timestamp)
         write_times = write_times * forget_rate;
-        train_times = train_times * forget_rate;
+        SMO_times = SMO_times * forget_rate;
         recent_update_timestamp = timestamp;
     }
 
@@ -135,13 +135,13 @@ struct aex_node_balance_stats<traits, true, false>{
         write_times += 1; 
     }
 
-    inline void update_train_frequency(unsigned long long timestamp){
+    inline void update_SMO_frequency(unsigned long long timestamp){
         update_frequency(timestamp);
-        train_times += 1; 
+        SMO_times += 1; 
     }
 
     inline double get_write_times(){return write_times;}
-    inline double get_train_times(){return train_times;}
+    inline double get_SMO_times(){return SMO_times;}
     inline double get_recent_update_timestamp(){return recent_update_timestamp;}
 
 };
@@ -150,13 +150,13 @@ template<typename traits>
 struct aex_node_balance_stats<traits, true, true>{
     typedef aex_node_balance_stats<traits, true, true> self;
     unsigned long long recent_update_timestamp;
-    double train_times, write_times;
+    double SMO_times, write_times;
     static constexpr double lambda = traits::FORGET_RATE;
-    aex_node_balance_stats():recent_update_timestamp(0), train_times(0), write_times(0){}
+    aex_node_balance_stats():recent_update_timestamp(0), SMO_times(0), write_times(0){}
     aex_node_balance_stats(unsigned long long _recent_update_timestamp,
-                            double _train_times, double _write_times
+                            double _SMO_times, double _write_times
                             ):recent_update_timestamp(_recent_update_timestamp), 
-                            train_times(_train_times), 
+                            SMO_times(_SMO_times), 
                             write_times(_write_times){} 
     //self& operator = (self &x){
     //    recent_update_timestamp = x.recent_update_timestamp;
@@ -174,7 +174,7 @@ struct aex_node_balance_stats<traits, true, true>{
         lk.lock();
         double forget_rate = rapid_pow(lambda, timestamp - recent_update_timestamp);
         write_times = write_times * forget_rate;
-        train_times = train_times * forget_rate;
+        SMO_times = SMO_times * forget_rate;
         recent_update_timestamp = timestamp;
         lk.unlock();
     }
@@ -183,24 +183,24 @@ struct aex_node_balance_stats<traits, true, true>{
         lk.lock();
         double forget_rate = rapid_pow(lambda, timestamp - recent_update_timestamp);
         write_times = write_times * forget_rate;
-        train_times = train_times * forget_rate;
+        SMO_times = SMO_times * forget_rate;
         recent_update_timestamp = timestamp;
         write_times += 1; 
         lk.unlock();
     }
 
-    inline void update_train_frequency(unsigned long long timestamp){
+    inline void update_SMO_frequency(unsigned long long timestamp){
         lk.lock();
         double forget_rate = rapid_pow(lambda, timestamp - recent_update_timestamp);
         write_times = write_times * forget_rate;
-        train_times = train_times * forget_rate;
+        SMO_times = SMO_times * forget_rate;
         recent_update_timestamp = timestamp;
-        train_times += 1; 
+        SMO_times += 1; 
         lk.unlock();
     }
 
     inline double get_write_times(){return write_times;}
-    inline double get_train_times(){return train_times;}
+    inline double get_SMO_times(){return SMO_times;}
     inline double get_recent_update_timestamp(){return recent_update_timestamp;}
 
     aex_spinlock<traits> lk;

@@ -269,7 +269,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     mock_aex_tree<key_type, value_type, traits> index, index_bak;
     [[maybe_unused]] typedef typename traits::size_type size_type;
     typedef typename tree::node_ptr node_ptr;
-    std::vector<std::pair<key_type, value_type> > insert_data(batch), node_data(n - batch); 
+    std::vector<std::pair<key_type, value_type> > insert_data(batch), node_data(n - batch + 1); 
     std::random_shuffle(data, data + n);
     std::copy(data, data + n - batch, node_data.data());
     std::copy(data + n - batch, data + n, insert_data.data());
@@ -314,7 +314,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
         size_type i = 0;
         for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
             if (data[i].first != iter.key()){
-                AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << data[i].first);
+                AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << data[i].first << ", gap=" << iter.key() - data[i].first);
                 return false;
             }
             if (data[i].second != iter.data()){
