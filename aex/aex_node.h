@@ -269,6 +269,7 @@ public:
         if (!IS_ML_NODE(this)){
             std::copy(key, key + n - 1, this->key_ptr);
             std::copy(child, child + n, this->child_ptr);
+            std::fill(this->key_ptr + n - 1, this->key_ptr + this->slot_size, std::numeric_limits<key_type>::max());
         }
         else{
             this->clear_bitmap();
@@ -505,31 +506,6 @@ public:
             return traits::SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x, this->key_ptr + pred_pos) - this->key_ptr;
             #else
             slot_type pos = std::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x) - this->key_ptr;
-            return pos;
-            #endif
-        }
-    }
-
-    inline slot_type find_upper_pos(const key_type& x) const{
-        if (IS_ML_NODE(this)){
-            slot_type pred_pos = this->predict(x);
-            #ifdef AEX_TLI
-            return traits::SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->slot_size, x, this->key_ptr + pred_pos) - this->key_ptr;
-            #else
-            for (slot_type i = pred_pos; i < this->slot_size; ++i)
-            if (x < key_ptr[i]){
-                return i;
-            }
-
-            //slot_type res = std::lower_bound
-            return this->slot_size - 1;
-            #endif
-        }
-        else{
-            #ifdef AEX_TLI
-            return traits::SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x, this->key_ptr + pred_pos) - this->key_ptr;
-            #else
-            slot_type pos = std::upper_bound(this->key_ptr, this->key_ptr + this->size - 1, x) - this->key_ptr;
             return pos;
             #endif
         }

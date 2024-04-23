@@ -113,8 +113,20 @@ void aex_tree<_Key, _Val, traits>::split(const key_type* const key, node_ptr* ch
     for (; start < n; start += ans_size){ 
         std::tie(ans_size, ans_slot_size, flag) = split_with_exponential_probe(key + start, n - start, level);
         //AEX_PRINT("ans_size=" << ans_size << ", left size=" << n - start << ", ans_slot_size=" << ans_slot_size << ", timestamp=" << this->balance_stats.get_timestamp());
-        //if (level == 2)
-            //AEX_PRINT("ans_size=" << ans_size << ", ans_slot_size=" << ans_slot_size << ", flag=" << flag);
+        if (start + ans_size < n && n - start - ans_size < traits::MIN_INNER_NODE_SLOT_SIZE / 2){
+            if (flag && (ans_size / 2 > traits::MIN_ML_INNER_NODE_SIZE)){
+                ans_size <<= 1;
+                ans_slot_size <<= 1;
+            }
+            else{
+                flag = false;
+                ans_size = (n - start)/ 2;
+                ans_slot_size = min_slot_size(ans_size, traits::MIN_INNER_NODE_SLOT_SIZE);
+                //AEX_PRINT("ans_size=" << ans_size << ", left=" << n - start);
+                AEX_ASSERT(ans_size >= traits::MIN_INNER_NODE_SLOT_SIZE / 2);
+            }
+        }
+        
         inner_node_ptr new_node = node_allocator.allocate_inner_node(ans_slot_size, flag);
         ++this->m_stats.level_node[level];
         new_node->level = level;
@@ -614,11 +626,13 @@ inline _Key aex_tree<_Key, _Val, traits>::split_dense_inner_node(inner_node_ptr 
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::add_root(const key_type* key_buf, node_ptr* child_buf, slot_type n){
-    AEX_PRINT("add root, root=" << root << ", root->size=" << root->size << ", height=" << this->m_stats.height << ", n=" << n << "tree->size=" << this->size());
+    //AEX_PRINT("add root, root=" << root << ", root->size=" << root->size << ", height=" << this->m_stats.height << ", n=" << n << "tree->size=" << this->size());
+    //for (unsigned int i = 0; i < this->m_stats.height; ++i)
+    //    AEX_PRINT("level_node[" << i << "]=" << this->m_stats.level_node[i]);
     size_type slot_size = min_slot_size(n + 1, traits::MIN_INNER_NODE_SLOT_SIZE);
     inner_node_ptr now_inner_node = node_allocator.allocate_inner_node(slot_size, false);
-    ++this->m_stats.level_node[this->m_stats.height];
     now_inner_node->level = this->m_stats.height;
+    ++this->m_stats.level_node[this->m_stats.height];
     ++this->m_stats.height;
     now_inner_node->balance_stats.update_frequency(this->balance_stats.get_timestamp());
     now_inner_node->prev = now_inner_node->next = nullptr;
@@ -627,6 +641,7 @@ inline void aex_tree<_Key, _Val, traits>::add_root(const key_type* key_buf, node
         now_inner_node->key_ptr[now_inner_node->size - 1] = key_buf[n - 1];
         now_inner_node->child_ptr[now_inner_node->size] = root;
         ++now_inner_node->size;
+        //std::fill(now_inner_node->key_ptr + now_inner_node->size, now_inner_node->key_ptr + now_inner_node->slot_size, std::numeric_limits<key_type>::max());
     }
     this->root = now_inner_node;
 }

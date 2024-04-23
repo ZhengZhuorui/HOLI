@@ -282,7 +282,11 @@ public:
     /* erase one key*/
     size_t erase(const key_type &x){
         if (root == nullptr) return 0;
-        size_type cnt = erase_one(x);
+        size_type cnt = 0;
+        while (true){
+            if (erase_one(x)) ++cnt;
+            else break;
+        }
         return cnt;
     }
 
@@ -442,8 +446,8 @@ private:
         //for (unsigned level = this->m_stats.height; level > 0; --level){
         for (unsigned int level = 0; level < this->m_stats.height - 1; ++level){
             stack[top++] = static_cast<inner_node_ptr>(node);
-            slot_type pos = static_cast<inner_node_ptr>(node)->find_upper_pos(key);
-            node = static_cast<inner_node_ptr>(node)->child_ptr[pos - 1];
+            slot_type pos = static_cast<inner_node_ptr>(node)->find(key);
+            node = static_cast<inner_node_ptr>(node)->child_ptr[pos];
         }        
         //stack[top++] = node;
         return static_cast<data_node_ptr>(node);
