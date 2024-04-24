@@ -7,11 +7,11 @@ namespace aex{
 // TODO: 
 /* erase a node from button to up */
 template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::erase_recursive(inner_node_ptr* stack, int top){
-    if (top == 0) 
+inline void aex_tree<_Key, _Val, traits>::erase_recursive(inner_node_ptr* stack){
+    if (*stack == nullptr) 
         return;
         
-    inner_node_ptr node = stack[top - 1];
+    inner_node_ptr node = *stack;
     if (node == root && node->size == 1){
         node_ptr tmp = root;
         root = static_cast<inner_node_ptr>(root)->child_ptr[0];
@@ -20,7 +20,7 @@ inline void aex_tree<_Key, _Val, traits>::erase_recursive(inner_node_ptr* stack,
         node_allocator.free_node(tmp);
         return;
     }
-    // Node isn't root. the node has parent, i.e. top >= 2
+    // Node isn't root. the node has parent
 
     // now node item is few. rescale it
     while (isfew(node)){
@@ -33,11 +33,11 @@ inline void aex_tree<_Key, _Val, traits>::erase_recursive(inner_node_ptr* stack,
     if (!isfew(node))
         return;
 
-    inner_node_ptr parent = stack[top - 2];
+    inner_node_ptr parent = *(stack - 1);
     // if rescale failed, the model can't fix the data or the item is fewer than min size
     // if items is large than min ml node size, train it again
     if (node->slot_size >= traits::MIN_INNER_NODE_SLOT_SIZE){
-        insert_split_pipeline(stack, top, nullptr, nullptr, 0);
+        insert_split_pipeline(stack, nullptr, nullptr, 0);
     }
     // otherwise node->slot_size < MIN_INNER_NODE_SLOT_SIZE, means node->size < MIN_INNER_NODE_SIZE / 2
     else{
@@ -65,7 +65,7 @@ inline void aex_tree<_Key, _Val, traits>::erase_recursive(inner_node_ptr* stack,
             
         if (parent != nullptr)
             if (isfew(parent))
-                erase_recursive(stack, top - 1);
+                erase_recursive(stack - 1);
     }
 }
 
@@ -135,9 +135,8 @@ template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::erase_iterator(const_iterator &iter){
     
     this->balance_stats.update_timestamp();
-    inner_node_ptr stack[traits::MAX_DEPTH];
-    int top;
-    data_node_ptr node = find_leaf_with_stack(iter.key, stack, top);
+    inner_node_ptr* stack;
+    data_node_ptr node = find_leaf_with_stack(iter.key, stack);
     if constexpr (traits::AllowDynamicDataNode){
         ((dynamic_node_ptr)node)->balance_stats.update_write_frequency(this->balance_stats.get_timestamp());
     }
@@ -214,7 +213,7 @@ inline void aex_tree<_Key, _Val, traits>::erase_iterator(const_iterator &iter){
         
         if (merge_flag && parent != nullptr){
             if (isfew(parent))
-                erase_recursive(stack, top);
+                erase_recursive(stack - 1);
         }
     }
 }
@@ -265,9 +264,8 @@ inline void aex_tree<_Key, _Val, traits>::erase_tree_recursive(node_ptr node){
 template<typename _Key, typename _Val, typename traits>
 inline bool aex_tree<_Key, _Val, traits>::erase_one(const key_type &x){
     //const_iterator find_iter = find_iterator(x);
-    inner_node_ptr stack[traits::MAX_DEPTH];
-    int top;
-    data_node_ptr node = find_leaf_with_stack(x, stack, top);
+    inner_node_ptr *stack;
+    data_node_ptr node = find_leaf_with_stack(x, stack);
     slot_type pos = node->find_lower_pos(x);
     if (pos >= node->size)
         return false;
@@ -297,12 +295,12 @@ inline bool aex_tree<_Key, _Val, traits>::erase_one(const key_type &x){
             }
             return true;
         }
-        inner_node_ptr parent = stack[top - 1];
+        inner_node_ptr parent = *stack;
         if (node->size == 0){
             erase_link(node);
             erase_child_node(parent, node);
             if (isfew(parent))
-                erase_recursive(stack, top - 1);
+                erase_recursive(stack);
             return true;
         }
 
@@ -332,7 +330,7 @@ inline bool aex_tree<_Key, _Val, traits>::erase_one(const key_type &x){
         
         if (merge_flag && parent != nullptr){
             if (isfew(parent))
-                erase_recursive(stack, top);
+                erase_recursive(stack);
         }
     }
     return true;

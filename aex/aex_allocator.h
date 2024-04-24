@@ -306,6 +306,24 @@ public:
         }
     }
 
+    inline std::vector<key_type>& allocate_dynamic_key_buf(unsigned int n){
+        //#ifdef AEX_DEBUG
+        //AEX_ASSERT(dynamic_key_buf_used == 0);
+        //++dynamic_key_buf_used;
+        //#endif
+        dynamic_key_buf[n].clear();
+        return dynamic_key_buf[n];
+    }
+
+    inline std::vector<node_ptr>& allocate_dynamic_nodeptr_buf(unsigned int n){
+        //#ifdef AEX_DEBUG
+        //AEX_ASSERT(dynamic_key_buf_used == 0);
+        //++dynamic_key_buf_used;
+        //#endif
+        dynamic_nodeptr_buf[n].clear();
+        return dynamic_nodeptr_buf[n];
+    }
+
     inline void deallocate(key_type* p){
         #ifdef AEX_DEBUG
         ++free_cnt;
@@ -322,6 +340,26 @@ public:
             free(p);
     }
 
+    //inline void deallocate(std::vector<key_type> &p){
+    //    #ifdef AEX_DEBUG
+    //    AEX_ASSERT(dynamic_key_buf_used < 4);
+    //    #endif
+    //}
+//
+    //inline void deallocate(std::vector<node_ptr> &p){
+    //    #ifdef AEX_DEBUG
+    //    AEX_ASSERT(dynamic_nodeptr_buf_used < 4);
+    //    --dynamic_nodeptr_buf_used;
+    //    #endif
+    //}
+
+    inline void deallocate(node_ptr* p){
+        #ifdef AEX_DEBUG
+        ++free_cnt;
+        #endif
+        if (p != nullptr)
+            free(p);
+    }
 
     inline void deallocate(void* p){
         #ifdef AEX_DEBUG
@@ -391,6 +429,14 @@ public:
 public:
     // status
     size_type _memory_used;
+
+#ifndef AEX_DEBUG
+private:
+#endif
+    std::vector<key_type> dynamic_key_buf[2];
+    std::vector<node_ptr> dynamic_child_buf[2];
+    //size_type dynamic_key_buf_used, dynamic_child_buf_used;
+
 
 };
 

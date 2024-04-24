@@ -72,6 +72,7 @@ inline void aex_tree<_Key, _Val, traits>::init(){
         empty_leaf->size = 0;
     }
 
+    std::fill(this->tree_stack, this->tree_stack + traits::MAX_DEPTH, nullptr);
     //this->m_stats.max_key = std::numeric_limits<key_type>::lowest();
     //this->m_stats.min_key = std::numeric_limits<key_type>::max();
     this->inner_node_few_ratio[0] = traits::DATA_NODE_FEW_RATIO;

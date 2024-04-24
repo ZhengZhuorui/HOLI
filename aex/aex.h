@@ -169,6 +169,8 @@ private:
 
     size_type max_inner_node_slot_size[traits::MAX_DEPTH];
 
+    inner_node_ptr tree_stack[traits::MAX_DEPTH];
+
     typename std::false_type fp;
 
     //constexpr static double lambda = 1 - 1.0 / traits::LAMBDA_;
@@ -438,18 +440,18 @@ private:
         return static_cast<data_node_ptr>(node);
     }
 
-    inline data_node_ptr find_leaf_with_stack(const key_type &key, inner_node_ptr* stack, int &top){
+    inline data_node_ptr find_leaf_with_stack(const key_type &key, inner_node_ptr* &stack){
         node_ptr node = root;
         AEX_ASSERT(this->m_stats.height == root->level + 1);
-        top = 0;
+        int top = 0;
         //for (unsigned level = root->level; level > 0; --level){
         //for (unsigned level = this->m_stats.height; level > 0; --level){
         for (unsigned int level = 0; level < this->m_stats.height - 1; ++level){
-            stack[top++] = static_cast<inner_node_ptr>(node);
+            this->tree_stack[++top] = static_cast<inner_node_ptr>(node);
             slot_type pos = static_cast<inner_node_ptr>(node)->find(key);
             node = static_cast<inner_node_ptr>(node)->child_ptr[pos];
         }        
-        //stack[top++] = node;
+        stack = this->tree_stack + top;
         return static_cast<data_node_ptr>(node);
     }
 
@@ -482,52 +484,56 @@ private:
     //void __insert_split_bulk_load(inner_node_ptr node, const slot_type start, const key_type key, inner_node_ptr child, bool half_flag, std::vector<key_type> &new_key, std::vector<inner_node_ptr> &new_child);
     void __insert_split_bulk_load(inner_node_ptr node, slot_type start, slot_type split_size, std::vector<key_type> &new_key, std::vector<inner_node_ptr> &new_child);
 
-    void insert_split_bulk_load(inner_node_ptr* stack, int top, const slot_type start, const key_type key, inner_node_ptr child, int split_size){
-        AEX_ASSERT(top > 0);
+    void insert_split_bulk_load(inner_node_ptr* stack, const slot_type start, const key_type key, inner_node_ptr child, int split_size){
+        AEX_ASSERT(*stack != nullptr);
         //AEX_PRINT("bulk_load");
-        std::vector<key_type> new_key;
-        std::vector<inner_node_ptr> new_child;
+        //std::vector<key_type> new_key;
+        //std::vector<inner_node_ptr> new_child;
+        std::vector<key_type>& new_key = node_allocator.allocate_dynamic_key_buf(*stack->level & 1);
+        std::vector<inner_node_ptr>& new_child = node_allocator.allocate_dynamic_nodeptr_buf(*stack->level & 1);
         new_key.push_back(key);
         new_child.push_back(child);
-        __insert_split_bulk_load(stack[top - 1], start, split_size, new_key, new_child);
+        __insert_split_bulk_load(*stack, start, split_size, new_key, new_child);
         if (new_child.size() > 0)
-            insert_recursive(stack, top - 1, new_key.data(), reinterpret_cast<node_ptr*>(new_child.data()), new_child.size());
+            insert_recursive(stack - 1, new_key.data(), reinterpret_cast<node_ptr*>(new_child.data()), new_child.size());
     }
     
     // insert child to node and split it, then insert them to node->parent pipeline
-    void insert_split_pipeline(inner_node_ptr* stack, int top, const key_type* key, const node_ptr* child, const slot_type n);
+    void insert_split_pipeline(inner_node_ptr* stack, const key_type* key, const node_ptr* child, const slot_type n);
 
     // insert key and node with buffer.
     void __insert_split_by_buffer(inner_node_ptr node, const key_type* key, node_ptr* child, const slot_type n, std::vector<key_type> &new_key, std::vector<inner_node_ptr> &new_child);
 
-    void insert_split_by_buffer(inner_node_ptr* stack, int top, const key_type* key, node_ptr* child, const slot_type n){
-        AEX_ASSERT(top > 0);
+    void insert_split_by_buffer(inner_node_ptr* stack, const key_type* key, node_ptr* child, const slot_type n){
+        AEX_ASSERT(*stack != nullptr);
         //AEX_PRINT("by_buffer");
-        std::vector<key_type> new_key;
-        std::vector<inner_node_ptr> new_child;
-        __insert_split_by_buffer(stack[top - 1], key, child, n, new_key, new_child);
+        //std::vector<key_type> new_key;
+        //std::vector<inner_node_ptr> new_child;
+        std::vector<key_type>& new_key = node_allocator.allocate_dynamic_key_buf(*stack->level & 1);
+        std::vector<inner_node_ptr>& new_child = node_allocator.allocate_dynamic_nodeptr_buf(*stack->level & 1);
+        __insert_split_by_buffer(*stack, key, child, n, new_key, new_child);
         if (new_child.size() > 0)
-            insert_recursive(stack, top - 1, new_key.data(), reinterpret_cast<node_ptr*>(new_child.data()), new_child.size());
+            insert_recursive(stack - 1, new_key.data(), reinterpret_cast<node_ptr*>(new_child.data()), new_child.size());
     }
 
     // insert a new key and new child to a dense node (not ml node), then split it.
     std::pair<key_type, node_ptr> __insert_split_dense_inner_node(inner_node_ptr node, const key_type* new_key, node_ptr* new_child, const slot_type n);
 
-    void insert_split_dense_inner_node(inner_node_ptr* stack, int top, const key_type* new_key, node_ptr* new_child, const slot_type n){
-        AEX_ASSERT(top > 0);
+    void insert_split_dense_inner_node(inner_node_ptr* stack, const key_type* new_key, node_ptr* new_child, const slot_type n){
+        AEX_ASSERT(*stack != nullptr);
         //AEX_PRINT("split_dense_inner_node");
         key_type split_key;
         node_ptr split_node;
-        std::tie(split_key, split_node) = __insert_split_dense_inner_node(stack[top - 1], new_key, new_child, n);
-        insert_recursive(stack, top - 1, &split_key, &split_node, 1);
+        std::tie(split_key, split_node) = __insert_split_dense_inner_node(*stack, new_key, new_child, n);
+        insert_recursive(stack - 1, &split_key, &split_node, 1);
     }
 
     
     // insert some nodes to an inner node from bottom to up.
-    void insert_recursive(inner_node_ptr* stack, int top, const key_type* key_buf, node_ptr* child_buf, const slot_type n);
+    void insert_recursive(inner_node_ptr* stack, const key_type* key_buf, node_ptr* child_buf, const slot_type n);
 
     // a helper function insert some child to a inner node.
-    void insert_split_helper(inner_node_ptr* stack, int top, const key_type* key, node_ptr* new_child, const slot_type n);
+    void insert_split_helper(inner_node_ptr* stack, const key_type* key, node_ptr* new_child, const slot_type n);
     
     // insert some data to a dynamic data node.
     void insert_split(data_node_ptr node, const key_type key, const value_type data);
@@ -538,7 +544,7 @@ private:
     void erase_tree_recursive(node_ptr node);
 
     // erase an node from bottom to up
-    void erase_recursive(inner_node_ptr* stack, int top);
+    void erase_recursive(inner_node_ptr* stack);
 
     // erase one iterator
     void erase_iterator(const_iterator &iter);

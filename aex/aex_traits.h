@@ -93,7 +93,7 @@ struct aex_default_traits{
 
     static_assert((AllowRWBalance | (!AllowDynamicDataNode)) == true);
     
-    static constexpr int ERROR_BOUND = 8;
+    static constexpr int ERROR_BOUND = 8; 
 
     static constexpr int DATA_NODE_ERROR_BOUND = 4;
 
