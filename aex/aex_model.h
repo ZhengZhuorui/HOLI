@@ -653,7 +653,7 @@ public:
     }
 
     bool train(const key_type* const key, const slot_type n, const slot_type slot_size){
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         //std::chrono::system_clock::time_point t1, t2;
         //t1 = std::chrono::high_resolution_clock::now();
         //static double train_time = 0;
@@ -738,7 +738,7 @@ public:
                 this->args.slope[i] -= this->args.slope[i + 1];
             
             args.seg_nums = max_segment_num;
-            #ifdef AEX_EXPERIMENT
+            #ifdef AEX_DEBUG
             //t2 = std::chrono::high_resolution_clock::now();
             //train_time += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
             //AEX_PRINT("train_time=" << train_time);
@@ -808,7 +808,7 @@ public:
     }
 
     bool train(const key_type* const key, const slot_type n, const slot_type slot_size){
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         //std::chrono::system_clock::time_point t1, t2;
         //t1 = std::chrono::high_resolution_clock::now();
         //static double train_time = 0;

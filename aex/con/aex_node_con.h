@@ -76,7 +76,7 @@ struct aex_inner_node_con : public aex_inner_node<_Key, _Val, traits>{
     typedef typename components::data_node data_node;
 
     typedef typename components::InnerNodeModel Model;
-    typedef typename components::NodeAllocator NodeAllocator;
+    typedef typename components::Allocator Allocator;
     typedef typename components::Lock Lock;
     typedef typename components::RWLock RWLock;
 
@@ -93,7 +93,7 @@ struct aex_inner_node_con : public aex_inner_node<_Key, _Val, traits>{
     //using base_node::node_mutex;
 
     aex_inner_node_con(slot_type _slot_size) : base_inner_node(_slot_size){
-        node_mutex_array_ptr = (RWLock*)(malloc(NodeAllocator::MUTEX_MEMORY_USED(_slot_size)));
+        node_mutex_array_ptr = (RWLock*)(malloc(Allocator::MUTEX_MEMORY_USED(_slot_size)));
     }
 
     ~aex_inner_node_con(){
@@ -112,8 +112,8 @@ struct aex_inner_node_con : public aex_inner_node<_Key, _Val, traits>{
         AEX_ASSERT(this->slot_size == other_node.slot_size);
         std::copy(other_node.key_ptr, other_node.key_ptr + other_node.slot_size, this->key_ptr);
         std::copy(other_node.child_ptr, other_node.child_ptr + other_node.slot_size, this->child_ptr);
-        memcpy(this->bitmap_ptr, other_node.bitmap_ptr, NodeAllocator::BITMAP_MEMORY_USED(other_node.slot_size));
-        node_mutex_array_ptr = node_mutex_array_ptr = (RWLock*)(malloc(NodeAllocator::MUTEX_MEMORY_USED(this->slot_size)));;
+        memcpy(this->bitmap_ptr, other_node.bitmap_ptr, Allocator::BITMAP_MEMORY_USED(other_node.slot_size));
+        node_mutex_array_ptr = node_mutex_array_ptr = (RWLock*)(malloc(Allocator::MUTEX_MEMORY_USED(this->slot_size)));;
     }
 
     aex_inner_node_con(base_inner_node &&other_node):base_inner_node(other_node){
@@ -130,7 +130,7 @@ struct aex_inner_node_con : public aex_inner_node<_Key, _Val, traits>{
         other_node->key_ptr = nullptr;
         other_node->child_ptr = nullptr;
         other_node->bitmap_ptr = nullptr;
-        node_mutex_array_ptr = (RWLock*)(malloc(NodeAllocator::MUTEX_ARRAY_MEMORY_USED(other_node.slot_size)));;
+        node_mutex_array_ptr = (RWLock*)(malloc(Allocator::MUTEX_ARRAY_MEMORY_USED(other_node.slot_size)));;
     }
 
     inner_node& operator = (base_inner_node &other_node){

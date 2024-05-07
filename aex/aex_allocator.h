@@ -18,13 +18,13 @@ struct memory_config{
 template<typename _Key, 
         typename _Val,
         typename traits>
-class aex_node_allocator{
+class aex_allocator{
 public:
     typedef _Key key_type;
 
     typedef _Val value_type;
 
-    typedef aex_node_allocator<_Key, _Val, traits> self;
+    typedef aex_allocator<_Key, _Val, traits> self;
 
     typedef aex_tree<_Key, _Val, traits> base_tree;
 
@@ -55,18 +55,25 @@ public:
 
     //const int node_buffer_size = 20;
 
-    #ifdef AEX_EXPERIMENT
-    aex_node_allocator():inner_node_nums(0), data_node_nums(0), free_cnt(0), alloc_cnt(0), max_node_id(0), _memory_used(0){
+    #ifdef AEX_DEBUG
+    aex_allocator():inner_node_nums(0), 
+                    data_node_nums(0), 
+                    free_cnt(0), 
+                    alloc_cnt(0), 
+                    max_node_id(0), 
+                    _memory_used(0), 
+                    static_key_buf_used(0), 
+                    static_nodeptr_buf_used(0){
         //allocate_data_node_buffer();
     }
     #else
-    aex_node_allocator():_memory_used(0){}
+    aex_allocator():_memory_used(0){}
     #endif
 
-    ~aex_node_allocator(){
+    ~aex_allocator(){
     }
 
-    #ifdef AEX_EXPERIMENT
+    #ifdef AEX_DEBUG
     void clear(){
         inner_node_nums = data_node_nums = free_cnt = alloc_cnt = 0;
         _memory_used = max_node_id = 0;
@@ -75,33 +82,42 @@ public:
     void clear(){}
     #endif
 
-   inline void* _allocate(size_type size){
+    inline void* _allocate(size_type size){
         /* 
         *   TODO: memory pool
         */
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
             ++alloc_cnt;
         #endif
         return static_cast<void*>(malloc(size));
     }
 
-   inline key_type* allocate_key_buffer(size_type size){
-        #ifdef AEX_EXPERIMENT
-            ++alloc_cnt;
+    inline key_type* allocate_key_buffer(size_type size){
+        #ifdef AEX_DEBUG
+        //    ++alloc_cnt;
+        AEX_ASSERT(this->static_key_buf_used == 0);
+        ++static_key_buf_used;
+        //AEX_PRINT("static_key_buf_used=" << this->static_key_buf_used);
         #endif
-        return static_cast<key_type*>(malloc(size * sizeof(key_type)));
+        static_key_buf.reserve(size);
+        //return static_cast<key_type*>(malloc(size * sizeof(key_type)));
+        return static_key_buf.data();
     }
 
 
     inline node_ptr* allocate_nodeptr_buffer(size_type size){
-        #ifdef AEX_EXPERIMENT
-            ++alloc_cnt;
+        #ifdef AEX_DEBUG
+        //    ++alloc_cnt;
+            AEX_ASSERT(this->static_nodeptr_buf_used == 0);
+            ++static_nodeptr_buf_used;
         #endif
-        return static_cast<node_ptr*>(malloc(size * sizeof(node_ptr)));
+        static_nodeptr_buf.reserve(size);
+        //return static_cast<node_ptr*>(malloc(size * sizeof(node_ptr)));
+        return static_nodeptr_buf.data();
     }
 
     inline value_type* allocate_data_buffer(size_type size){
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
             ++alloc_cnt;
         #endif
         return static_cast<value_type*>(malloc(size * sizeof(value_type)));
@@ -152,7 +168,7 @@ public:
         /*
         *   TODO: memory pool
         */
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         ++inner_node_nums;
         ++alloc_cnt;
         #endif
@@ -161,14 +177,14 @@ public:
         //AEX_PRINT("slot_size=" << slot_size);
         AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
 
-        slot_size += (real_slot_size >= traits::MIN_ML_INNER_NODE_SIZE) ? traits::ERROR_BOUND : 0;
+        slot_size += (real_slot_size >= traits::MIN_ML_INNER_NODE_SIZE) * traits::ERROR_BOUND;
 
         size_type memory_used = INNER_NODE_MEMORY_USED(slot_size);
         this->_memory_used += memory_used;
         inner_node_ptr node = new inner_node(slot_size);
         //node->real_slot_size = real_slot_size;
 
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         node_id[static_cast<node_ptr>(node)] = max_node_id;
         id_node.push_back(node);
         ++max_node_id;
@@ -198,7 +214,7 @@ public:
         SET_FLAG(node, node_property::LEAF);
         SET_FLAG(node, node_property::STATIC_NODE);
 
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         node_id[static_cast<node_ptr>(node)] = max_node_id;
         id_node.push_back(node);
         ++max_node_id;
@@ -214,7 +230,7 @@ public:
         SET_FLAG(node, node_property::LEAF);
         AEX_ASSERT(IS_LEAF_NODE(node));
         
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         node_id[static_cast<node_ptr>(node)] = max_node_id;
         id_node.push_back(node);
         ++max_node_id;
@@ -227,7 +243,7 @@ public:
     }
 
     inline data_node_ptr allocate_data_node(){
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         ++alloc_cnt;
         ++data_node_nums;
         #endif
@@ -239,7 +255,7 @@ public:
     }
 
     inline void reallocate(inner_node_ptr node, slot_type new_slot_size){
-        new_slot_size += traits::ERROR_BOUND;
+        new_slot_size += (new_slot_size >= traits::MIN_ML_INNER_NODE_SIZE) * traits::ERROR_BOUND;
 
         this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) \
                               - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) \
@@ -252,7 +268,7 @@ public:
     }
 
     inline void reallocate_and_copy(inner_node_ptr node, slot_type new_slot_size){
-        new_slot_size += traits::ERROR_BOUND;
+        new_slot_size += (new_slot_size >= traits::MIN_ML_INNER_NODE_SIZE) * traits::ERROR_BOUND;
 
         this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) \
                               - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) \
@@ -272,7 +288,7 @@ public:
     }
 
     inline void reallocate_and_save(inner_node_ptr node, slot_type new_slot_size){
-        new_slot_size += traits::ERROR_BOUND;
+        new_slot_size += (new_slot_size > traits::MIN_ML_INNER_NODE_SIZE) * traits::ERROR_BOUND;
 
         this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) \
                               - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) \
@@ -326,18 +342,23 @@ public:
 
     inline void deallocate(key_type* p){
         #ifdef AEX_DEBUG
-        ++free_cnt;
+        //++free_cnt;
+        --static_key_buf_used;
+        static_key_buf.clear();
+        //AEX_PRINT("static_key_buf_used=" << this->static_key_buf_used);
         #endif
-        if (p != nullptr)
-            free(p);
+        //if (p != nullptr)
+        //    free(p);
     }
 
     inline void deallocate(node_ptr* p){
         #ifdef AEX_DEBUG
-        ++free_cnt;
+        //++free_cnt;
+        --static_nodeptr_buf_used;
+        static_nodeptr_buf.clear();
         #endif
-        if (p != nullptr)
-            free(p);
+        //if (p != nullptr)
+        //    free(p);
     }
 
     //inline void deallocate(std::vector<key_type> &p){
@@ -353,22 +374,6 @@ public:
     //    #endif
     //}
 
-    inline void deallocate(node_ptr* p){
-        #ifdef AEX_DEBUG
-        ++free_cnt;
-        #endif
-        if (p != nullptr)
-            free(p);
-    }
-
-    inline void deallocate(void* p){
-        #ifdef AEX_DEBUG
-        ++free_cnt;
-        #endif
-        if (p != nullptr)
-            free(p);
-    }
-
     inline void free_node(inner_node_ptr p){
         /* 
         *   TODO: memory pool
@@ -378,7 +383,7 @@ public:
             _memory_used -= INNER_NODE_MEMORY_USED(p->slot_size);
         else
             _memory_used -= sizeof(inner_node);
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         --inner_node_nums;
         #endif
         delete p;
@@ -393,7 +398,7 @@ public:
             _memory_used -= DYNAMIC_DATA_NODE_MEMORY_USED(p->slot_size);
         else
             _memory_used -= STATIC_DATA_NODE_MEMORY_USED();
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         --data_node_nums;
         #endif
         delete p;
@@ -408,9 +413,9 @@ public:
         }
     }
 
-    #ifdef AEX_EXPERIMENT
+    #ifdef AEX_DEBUG
     inline void print_stats(){
-        AEX_IMPORTANT("[Allocator]: memory used=" << _memory_used << " bytes, inner_node_nums=" << inner_node_nums << ", data_node_nums=" << data_node_nums <<
+        AEX_IMPORTANT("[Allocator]: memory used=" << _memory_used << " bytes, =" << _memory_used / 1024 / 1024 << "MB, inner_node_nums=" << inner_node_nums << ", data_node_nums=" << data_node_nums <<
                     ", allocator count=" << alloc_cnt << ", free count=" << free_cnt);
     }
     #else
@@ -418,7 +423,7 @@ public:
     #endif
 
 
-#ifdef AEX_EXPERIMENT
+#ifdef AEX_DEBUG
 public:
     size_type inner_node_nums, data_node_nums, free_cnt, alloc_cnt;
     std::map<node_ptr, size_type> node_id;
@@ -433,11 +438,13 @@ public:
 #ifndef AEX_DEBUG
 private:
 #endif
-    std::vector<key_type> dynamic_key_buf[2];
-    std::vector<node_ptr> dynamic_child_buf[2];
+    std::vector<key_type> dynamic_key_buf[2], static_key_buf;
+    std::vector<node_ptr> dynamic_nodeptr_buf[2], static_nodeptr_buf;
     //size_type dynamic_key_buf_used, dynamic_child_buf_used;
-
-
+#ifdef AEX_DEBUG
+    size_type static_key_buf_used, static_nodeptr_buf_used;
+#endif
 };
+
 
 } // namespace name

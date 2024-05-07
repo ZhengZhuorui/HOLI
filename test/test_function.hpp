@@ -148,11 +148,21 @@ bool test_search_with_error_bound_perf(_Tp* data, size_t n){
 
     const int iter = 10;
     const int M = 1000000;
+    const int ERROR_BOUND = 16;
     std::vector<size_t> query(M);
     std::vector<long long> predict(M);
     for (int i = 0; i < M ; ++i){
         query[i] = rand() % n;
-        predict[i] = std::max(0LL, std::min(static_cast<long long>(n - 1), static_cast<long long>(query[i] + (rand() % 17) - 8)));
+        int offset = rand() % ERROR_BOUND;
+        //int offset_r = rand() % (1 << ERROR_BOUND), offset=0;
+        //for (int j = 0; j < ERROR_BOUND; ++j)
+        //if ((offset_r >> j) & 1){
+        //    offset = j;
+        //    break;
+        //}
+        if (i < 100)
+            std::cout << offset << ", ";
+        predict[i] = std::max(0LL, std::min(static_cast<long long>(n - 1), static_cast<long long>(query[i] - (offset))));
     }
 
     system_clock::time_point t1, t2;
@@ -187,7 +197,7 @@ bool test_search_with_error_bound_perf(_Tp* data, size_t n){
     for (int T = 0; T < iter; ++T){
         for (size_t i = 0; i < M; ++i){
             _Tp x = data[query[i]];
-            long long real = std::lower_bound(data + std::max(0LL, predict[i] - 8), data + std::min(static_cast<long long>(n), predict[i] + 8 + 1), x) - data;
+            long long real = std::lower_bound(data + std::max(0LL, predict[i]), data + std::min(static_cast<long long>(n), predict[i] + ERROR_BOUND + 1), x) - data;
             sum += real;
         }
     }
@@ -200,13 +210,26 @@ bool test_search_with_error_bound_perf(_Tp* data, size_t n){
     for (int T = 0; T < iter; ++T){
         for (size_t i = 0; i < M; ++i){
             _Tp x = data[query[i]];
-            long long lb = std::max(0LL, predict[i] - 8), ub = std::min(static_cast<long long>(n), predict[i] + 8 + 1);
-            long long real = ub;
-            for (long long j = lb; j < ub; ++j)
-                if (data[j] >= x){
-                    real = j;
-                    break;
-                }
+            //long long lb = std::max(0LL, predict[i] - 8), ub = std::min(static_cast<long long>(n), predict[i] + ERROR_BOUND + 1);
+            //long long real = ub;
+            //for (long long j = lb; j < ub; ++j)
+            //    if (data[j] >= x){
+            //        real = j;
+            //        break;
+            //    }
+            long long real = aex::linear_search(data + predict[i], data + n, x) - data;
+            sum += real;
+        }
+    }
+    t2 = std::chrono::high_resolution_clock::now();
+    delta = duration_cast<microseconds>(t2 - t1).count();
+    AEX_IMPORTANT("linear search, code=" << sum << ", search used time=" << delta << " us");
+    sum = 0;
+    t1 = std::chrono::high_resolution_clock::now();
+    for (int T = 0; T < iter; ++T){
+        for (size_t i = 0; i < M; ++i){
+            _Tp x = data[query[i]];
+            long long real = aex::lower_bound_with_error_bound<_Tp, 8>(data + predict[i], data + n, x) - data;
             sum += real;
         }
     }

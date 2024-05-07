@@ -13,7 +13,7 @@ bool aex_tree_con<_Key, _Val, traits>::insert(const key_type &key, const value_t
     
     if (root == nullptr){
         std::lock_guard<std::shared_mutex>(this->tree_mutex);
-        root = head_leaf = tail_leaf = node_allocator.allocate_data_node();
+        root = head_leaf = tail_leaf = allocator.allocate_data_node();
         static_cast<data_node_ptr>(root)->insert(key, value, 0);
         root->next = empty_leaf;
         empty_leaf->prev = root;
@@ -33,7 +33,7 @@ bool aex_tree_con<_Key, _Val, traits>::insert(const key_type &key, const value_t
 
     /* if data node is full, split the node */
     if (isfull(node)){
-        data_node_ptr new_node = node_allocator.allocate_data_node();
+        data_node_ptr new_node = allocator.allocate_data_node();
         XL(new_node);
         ++this->m_stats.level_node[0];
 
@@ -64,7 +64,7 @@ bool aex_tree_con<_Key, _Val, traits>::insert(const key_type &key, const value_t
 //void aex_tree<_Key, _Val, traits>::insert_split_pipeline_con(inner_node_ptr node, const key_type* key, const node_ptr* child, const slot_type n){    
 //        //AEX_PRINT("pipeline");
 //    AEX_ASSERT(top > 1);
-//    #ifdef AEX_EXPERIMENT
+//    #ifdef AEX_DEBUG
 //    ++opt_stats.inner_node_split_pipeline_cnt;
 //    #endif
 //    
@@ -96,7 +96,7 @@ bool aex_tree_con<_Key, _Val, traits>::insert(const key_type &key, const value_t
 //        block_point = std::min(size, block_point + block_nums);
 //        while (start < block_point){
 //            std::tie(ans_size, ans_slot_size, ml_flag) = split_with_exponential_probe(node->key_ptr + start, block_point - start, node->level);
-//            inner_node_ptr new_node = node_allocator.allocate_inner_node(ans_slot_size, ml_flag);
+//            inner_node_ptr new_node = allocator.allocate_inner_node(ans_slot_size, ml_flag);
 //            new_node->level = node->level;
 //            ++this->m_stats.level_node[new_node->level];
 //            if (ml_flag)
@@ -109,7 +109,7 @@ bool aex_tree_con<_Key, _Val, traits>::insert(const key_type &key, const value_t
 //                node_ptr prev = node->prev, next = node->next;
 //                *node = std::move(*new_node);
 //                --this->m_stats.level_node[new_node->level];
-//                node_allocator.free_node(new_node);
+//                allocator.free_node(new_node);
 //                node->prev = prev;
 //                node->next = next;
 //            }
@@ -130,7 +130,7 @@ bool aex_tree_con<_Key, _Val, traits>::insert(const key_type &key, const value_t
 
 template<typename _Key, typename _Val, typename traits>
 bool aex_tree_con<_Key, _Val, traits>::insert_split_helper_con(inner_node_ptr node, const key_type* new_key, node_ptr* new_child, const slot_type n){
-    #ifdef AEX_EXPERIMENT
+    #ifdef AEX_DEBUG
     ++opt_stats.inner_node_split_cnt;
     #endif 
     inner_node_ptr node = stack[top - 1], parent = (top > 1) ? (stack[top - 2]) : nullptr;

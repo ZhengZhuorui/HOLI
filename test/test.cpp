@@ -4,8 +4,8 @@
 #define AEX_DEBUG
 #endif
 
-#ifndef AEX_EXPERIMENT
-#define AEX_EXPERIMENT
+#ifndef AEX_DEBUG
+#define AEX_DEBUG
 #endif
 //using namespace aex;
 #include "aex/aex_map.h"
@@ -54,7 +54,9 @@ bool test(map<string, string> &flags){
     
     std::cout << "Data Example: " << bin_data[0] << ", " << bin_data[num_keys / 2] << ", " << bin_data[num_keys - 1] << std::endl;
 
-    //num_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
+    long long unique_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
+    bool multikey_flag = (num_keys != unique_keys);
+    std::cout << "Is unique? " << (num_keys == unique_keys ? "Yes" : "No") << std::endl;
     if (unit == "function"){
         auto func = flags["function"];
         if (func == "exp_lower_bound")
@@ -183,7 +185,7 @@ bool test(map<string, string> &flags){
     }
     else if (unit == "index"){
         auto func = flags["function"];
-        bool multikey_flag = (flags.find("multikey") != flags.end());
+        //bool multikey_flag = (flags.find("multikey") != flags.end());
         if (func == "bulk_load"){
             std::vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
@@ -248,8 +250,9 @@ bool test(map<string, string> &flags){
             long long erase_nums = stoll(flags["erase_nums"]);
             AEX_ASSERT(write_nums <= num_keys);
             AEX_ASSERT(erase_nums <= num_keys - write_nums);
-            if (multikey_flag)
+            if (multikey_flag){
                 return test_index_total_perf<T, T, aex_default_traits<T, T, true>>(data.data(), num_keys, read_nums, write_nums, erase_nums);
+            }
             else
                 return test_index_total_perf(data.data(), num_keys, read_nums, write_nums, erase_nums);
         }

@@ -29,7 +29,7 @@ inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr),
     this->link_tree_ptr();
     this->m_stats = _index.m_stats;
     this->balance_stats = _index.balance_stats;
-    this->node_allocator = _index.node_allocator;
+    this->allocator = _index.allocator;
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -66,7 +66,7 @@ inline void aex_tree<_Key, _Val, traits>::init(){
         this->deconstruct(this->root);
     }
     if (empty_leaf == nullptr){
-        empty_leaf = node_allocator.allocate_data_node();
+        empty_leaf = allocator.allocate_data_node();
         empty_leaf->prev = nullptr;
         empty_leaf->next = empty_leaf;
         empty_leaf->size = 0;
@@ -92,7 +92,7 @@ inline void aex_tree<_Key, _Val, traits>::init(){
     }
 
     this->root = this->head_leaf = this->tail_leaf = nullptr;
-    this->node_allocator.clear();
+    this->allocator.clear();
     this->m_stats = aex_stats();
     this->balance_stats = tree_balance_stats();
 }
@@ -104,17 +104,17 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
         return nullptr;
     node_ptr new_node;
     if (IS_LEAF_NODE(node)){
-        //new_node = node_allocator.allocate_data_node(node->slot_size, IS_ML_NODE(node));
+        //new_node = allocator.allocate_data_node(node->slot_size, IS_ML_NODE(node));
         if constexpr (traits::AllowDynamicDataNode)
-            new_node = node_allocator.allocate_data_node(node->slot_size, IS_ML_NODE(node));
+            new_node = allocator.allocate_data_node(node->slot_size, IS_ML_NODE(node));
         else
-            new_node = node_allocator.allocate_data_node();
+            new_node = allocator.allocate_data_node();
         ++this->m_stats.level_node[0];
         data_node_ptr _node = static_cast<data_node_ptr>(node), _new_node = static_cast<data_node_ptr>(new_node);
         *_new_node = *_node;
     }
     else{
-        new_node = node_allocator.allocate_inner_node(static_cast<inner_node_ptr>(node)->real_slot_size(), IS_ML_NODE(node));
+        new_node = allocator.allocate_inner_node(static_cast<inner_node_ptr>(node)->real_slot_size(), IS_ML_NODE(node));
         inner_node_ptr _node = static_cast<inner_node_ptr>(node), _new_node = static_cast<inner_node_ptr>(new_node);
         ++this->m_stats.level_node[_node->level];
         *_new_node = *_node;        

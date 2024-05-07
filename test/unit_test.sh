@@ -50,6 +50,7 @@
 # STL lower bound used time=1301185 us
 # (Y)
 ./unit_test --unit=function --key_type=uint64 --num_keys=1000000 --function=search_with_error_bound_perf --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_int.bin
+./unit_test --unit=function --key_type=float64 --num_keys=1000000 --function=search_with_error_bound_perf --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_int.bin
 # result(us):
 # self exp lower bound used time=180819 us
 # ALEX exp lower bound used time=233474 us
@@ -457,9 +458,11 @@
 # test index insert accuracy
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000 --batch=1 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=uint64 --function=insert --multikey --num_keys=10000 --batch=10000 --input_file=/home/zzr/data/learned_index/generate_data/multikey_1M_int.bin
-./unit_test --unit=index --key_type=uint64 --function=insert --multikey --num_keys=1000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/generate_data/multikey_1M_int.bin
+./unit_test --unit=index --key_type=uint64 --function=insert --multikey --num_keys=100000 --batch=100000 --input_file=/home/zzr/data/learned_index/generate_data/multikey_1M_int.bin
+./unit_test --unit=index --key_type=uint64 --function=insert --multikey --num_keys=1000000 --batch=100 --input_file=/home/zzr/data/learned_index/generate_data/multikey_1M_int.bin
 
-./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000000 --batch=120000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+
+./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000000 --batch=200000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000000   --batch=2000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=20000000  --batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
@@ -472,7 +475,7 @@
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000000 --batch=2000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
-./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=2000000 --batch=2000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 # Result:
 # piecewise_linear + static data node + no balance:
 
@@ -493,6 +496,15 @@
 # test index all interface
 # all write:
 ./unit_test --unit=index --key_type=float64 --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=2000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=2000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=2000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/books_800M_uint64
+
+./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=200000 --read_nums=200000 --write_nums=200000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/books_800M_uint64
+
+./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=2000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=2000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/wiki_ts_200M_uint64
+
+
 ./unit_test --unit=index --key_type=float64 --function=tot --num_keys=200000000 --read_nums=2000000 --write_nums=200000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
 ./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=200000000 --read_nums=0 --write_nums=200000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/fb_200M_uint64

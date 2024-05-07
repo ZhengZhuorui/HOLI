@@ -5,15 +5,15 @@ namespace aex{
 template<typename _Key, 
         typename _Val,
         typename traits>
-class aex_node_allocator_con : public aex_node_allocator<_Key, _Val, traits>{
+class aex_allocator_con : public aex_allocator<_Key, _Val, traits>{
 public:
     typedef _Key key_type;
 
     typedef _Val value_type;
 
-    typedef aex_node_allocator<_Key, _Val, traits> base_allocator;
+    typedef aex_allocator<_Key, _Val, traits> base_allocator;
 
-    typedef aex_node_allocator_con<_Key, _Val, traits> self;
+    typedef aex_allocator_con<_Key, _Val, traits> self;
 
     typedef aex_tree_con<_Key, _Val, traits> base_tree;
 
@@ -55,7 +55,7 @@ public:
 
     inline inner_node_ptr allocate_inner_node(slot_type real_slot_size, bool ml_node_flag){
         this->foreach_node_free();
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         ++this->inner_node_nums;
         #endif
 
@@ -70,7 +70,7 @@ public:
         inner_node_ptr node = new inner_node(slot_size);
         //node->real_slot_size = real_slot_size;
 
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         this->node_id[static_cast<node_ptr>(node)] = this->max_node_id;
         this->id_node.push_back(node);
         ++this->max_node_id;
@@ -85,14 +85,14 @@ public:
 
     inline data_node_ptr allocate_data_node(){
         this->foreach_node_free();
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         ++this->data_node_nums;
         #endif
         this->_memory_used += base_allocator::STATIC_DATA_NODE_MEMORY_USED();
         data_node_ptr node = new data_node();
         SET_FLAG(node, node_property::LEAF);
         SET_FLAG(node, node_property::STATIC_NODE);
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         this->node_id[static_cast<node_ptr>(node)] = this->max_node_id;
         this->id_node.push_back(node);
         ++this->max_node_id;
@@ -104,7 +104,7 @@ public:
     inline void free_node(inner_node_ptr p){
         AEX_ASSERT(p != nullptr);
         this->_memory_used -= base_allocator::INNER_NODE_MEMORY_USED(p->slot_size) + MUTEX_MEMORY_USED(p->slot_size);
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         --this->data_node_nums;
         #endif
         inner_node_que.push_back(p);
@@ -113,7 +113,7 @@ public:
     inline void free_node(data_node_ptr p){
         AEX_ASSERT(p != nullptr);
         this->_memory_used -= base_allocator::STATIC_DATA_NODE_MEMORY_USED();
-        #ifdef AEX_EXPERIMENT
+        #ifdef AEX_DEBUG
         --this->data_node_nums;
         #endif
         data_node_que.push_back(p);
@@ -145,7 +145,7 @@ public:
         this->foreach_node_free();
         }
     }
-#ifdef AEX_EXPERIMENT
+#ifdef AEX_DEBUG
     //using base_allocator::inner_node_nums, base_allocator::data_node_nums, base_allocator::free_cnt, base_allocator::alloc_cnt;
     //using base_allocator::node_id;
     //using base_allocator::id_node;

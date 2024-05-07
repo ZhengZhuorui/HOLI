@@ -165,7 +165,7 @@ public:
 
     typedef typename components::data_node data_node;
 
-    typedef typename components::NodeAllocator NodeAllocator;
+    typedef typename components::Allocator Allocator;
 
     typedef base_node* node_ptr;
 
@@ -185,9 +185,9 @@ public:
     typedef inner_node* inner_node_ptr;
 
     explicit aex_inner_node(slot_type _slot_size):base_dynamic_node(_slot_size){
-        this->key_ptr = static_cast<key_type*>(malloc(NodeAllocator::KEY_MEMORY_USED(this->slot_size)));
-        this->child_ptr = static_cast<node_ptr*>(malloc(NodeAllocator::PTR_MEMORY_USED(this->slot_size)));
-        this->bitmap_ptr = static_cast<bitmap>(malloc(NodeAllocator::BITMAP_MEMORY_USED(this->slot_size)));
+        this->key_ptr = static_cast<key_type*>(malloc(Allocator::KEY_MEMORY_USED(this->slot_size)));
+        this->child_ptr = static_cast<node_ptr*>(malloc(Allocator::PTR_MEMORY_USED(this->slot_size)));
+        this->bitmap_ptr = static_cast<bitmap>(malloc(Allocator::BITMAP_MEMORY_USED(this->slot_size)));
     }
 
     ~aex_inner_node(){
@@ -203,7 +203,7 @@ public:
         AEX_ASSERT(this->slot_size == other_node.slot_size);
         std::copy(other_node.key_ptr, other_node.key_ptr + other_node.slot_size, this->key_ptr);
         std::copy(other_node.child_ptr, other_node.child_ptr + other_node.slot_size, this->child_ptr);
-        memcpy(this->bitmap_ptr, other_node.bitmap_ptr, NodeAllocator::BITMAP_MEMORY_USED(other_node.slot_size));
+        memcpy(this->bitmap_ptr, other_node.bitmap_ptr, Allocator::BITMAP_MEMORY_USED(other_node.slot_size));
     }
 
     aex_inner_node(inner_node &&other_node):base_dynamic_node(other_node), model(other_node.model){
@@ -227,7 +227,7 @@ public:
         model = other_node.model;
         std::copy(other_node.key_ptr, other_node.key_ptr + other_node.slot_size, this->key_ptr);
         std::copy(other_node.child_ptr, other_node.child_ptr + other_node.slot_size, this->child_ptr);
-        memcpy(this->bitmap_ptr, other_node.bitmap_ptr, NodeAllocator::BITMAP_MEMORY_USED(other_node.slot_size));
+        memcpy(this->bitmap_ptr, other_node.bitmap_ptr, Allocator::BITMAP_MEMORY_USED(other_node.slot_size));
         return *this;
     }
 
@@ -249,11 +249,12 @@ public:
         return *this;
     }
 
-    inline slot_type real_slot_size() const {return (this->slot_size >= traits::MIN_ML_INNER_NODE_SIZE) ? this->slot_size - traits::ERROR_BOUND : this->slot_size;}
+    //inline slot_type real_slot_size() const {return (this->slot_size >= traits::MIN_ML_INNER_NODE_SIZE) ? this->slot_size - traits::ERROR_BOUND : this->slot_size;}
+    inline slot_type real_slot_size() const {return this->slot_size - traits::ERROR_BOUND * (this->slot_size >= traits::MIN_ML_INNER_NODE_SIZE);}
 
     // clear bitmap
     inline void clear_bitmap(){
-        memset(this->bitmap_ptr, 0, NodeAllocator::BITMAP_MEMORY_USED(this->slot_size));
+        memset(this->bitmap_ptr, 0, Allocator::BITMAP_MEMORY_USED(this->slot_size));
     }
 
     inline void clear(){
@@ -330,10 +331,7 @@ public:
         else{
             slot_type pred_pos = this->predict(key);
             slot_type inserted_pos = pred_pos, upper_bound = std::min(this->slot_size - 1, pred_pos + traits::ERROR_BOUND);
-            for (; inserted_pos < upper_bound; ++inserted_pos)
-            if (key < this->key_ptr[inserted_pos]){
-                break;
-            }
+            for (; inserted_pos < upper_bound && key >= this->key_ptr[inserted_pos]; ++inserted_pos)
             // the distance between insert position of inserted item and the predict position should be less than ERROR_BOUND
             if (inserted_pos >= this->slot_size - 1 || inserted_pos - pred_pos >= traits::ERROR_BOUND){
                 return false;
@@ -369,7 +367,6 @@ public:
 
     // erase a  node
     inline void erase(node_ptr node){
-        
         AEX_ASSERT(node != this->child_ptr[this->slot_size - 1]);
         slot_type pos = this->at(node);
         if (IS_ML_NODE(this)){
@@ -490,15 +487,15 @@ public:
         if (IS_ML_NODE(this)){
             slot_type pred_pos = this->predict(x);
             #ifdef AEX_TLI
-            return traits::SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->slot_size, x, this->key_ptr + pred_pos) - this->key_ptr;
+            return traits::SearchClass::lower_bound(this->key_ptr, std::min(this->slot_size, this->key_ptr + traits::ERROR_BOUND + 1), x, this->key_ptr + pred_pos) - this->key_ptr;
             #else
             for (slot_type i = pred_pos; i < this->slot_size; ++i)
             if (x <= key_ptr[i]){
                 return i;
             }
-
+            return linear_search_lower_bound(this->key_ptr + pred_pos, this->key_ptr + this->slot_size, x) - this->key_ptr;
             //slot_type res = std::lower_bound
-            return this->slot_size - 1;
+            //return this->slot_size - 1;
             #endif
         }
         else{
@@ -534,7 +531,7 @@ public:
 
     typedef typename base_tree::components components;
 
-    typedef typename components::NodeAllocator NodeAllocator;
+    typedef typename components::Allocator Allocator;
 
     typedef typename components::base_node base_node;
 
@@ -571,8 +568,8 @@ public:
     aex_data_node(){}
 
     explicit aex_data_node(slot_type _slot_size):base_dynamic_node(_slot_size){
-        this->key = static_cast<key_type*>(malloc(NodeAllocator::KEY_MEMORY_USED(_slot_size)));
-        this->data = static_cast<value_type*>(malloc(NodeAllocator::KEY_MEMORY_USED(_slot_size)));
+        this->key = static_cast<key_type*>(malloc(Allocator::KEY_MEMORY_USED(_slot_size)));
+        this->data = static_cast<value_type*>(malloc(Allocator::KEY_MEMORY_USED(_slot_size)));
         std::fill(this->key, this->key + _slot_size, std::numeric_limits<key_type>::max());
     }
 
@@ -800,7 +797,8 @@ public:
 
     // insert a item
     inline slot_type insert(const key_type &x, const value_type &data){
-        slot_type pos = this->find_upper_pos(x);
+        slot_type pos = this->find_lower_pos(x);
+        //slot_type pos = this->find_upper_pos(x) - 1;
         insert(x, data, pos);
         return pos;
     }
@@ -829,6 +827,7 @@ public:
         return traits::SearchClass::lower_bound(this->key, this->key + this->size, x) - this->key;
         #else
         return std::lower_bound(this->key, this->key + this->size, x) - this->key;
+        //return linear_search_lower_bound(this->key, this->key + this->size, x) - this->key;
         #endif
     }
 
@@ -837,6 +836,7 @@ public:
         return traits::SearchClass::upper_bound(this->key, this->key + this->size, x) - this->key;
         #else
         return std::upper_bound(this->key, this->key + this->size, x) - this->key;
+        //return linear_search_lower_bound(this->key, this->key + this->size, x) - this->key;
         #endif
     }
 

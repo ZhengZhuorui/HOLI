@@ -144,7 +144,7 @@ struct aex_default_traits{
 
     static constexpr size_t BINSEARCH_THRESHOLD = 256;
 
-    static constexpr double FORGET_RATE = 1 - 0.00001;
+    static constexpr double FORGET_RATE = 1 - 0.0000000001;
 };
 
 

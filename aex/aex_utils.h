@@ -131,6 +131,8 @@ inline bool IS_LEAF_NODE(_NodePtr node){return (node)->level == 0;}
 template<typename _NodePtr>
 inline bool IS_STATIC_NODE(_NodePtr node){return ((node)->prop & node_property::STATIC_NODE) != 0;}
 template<typename _NodePtr>
+inline bool CAN_MERGED_NODE(_NodePtr node){return ((node->prop) & node_property::CAN_MERGED) != 0;}
+template<typename _NodePtr>
 inline void SET_FLAG(_NodePtr node, unsigned int flag){(node)->prop |= flag; }
 template<typename _NodePtr>
 inline void UNSET_FLAG(_NodePtr node, unsigned int flag){(node)->prop &= ~flag; }
@@ -255,6 +257,41 @@ inline RandomIter exponential_search_upper_bound(RandomIter first, RandomIter la
     }
     return predict;
 }
+
+template<typename RandomIter, typename _Val>
+inline RandomIter exponential_search_lower_bound(RandomIter predict, RandomIter last,  _Val& key){
+    AEX_ASSERT(predict < last);
+    size_t offset = 8;
+    //for (; predict + offset < last && *(predict + offset) < key; offset <<= 1);
+    for (offset >>= 1; offset; offset >>= 1)
+        if (predict + offset < last && *(predict + offset) < key)
+            predict += offset;
+    ++predict;
+    return predict;
+}
+
+template<typename RandomIter, typename _Val>
+inline RandomIter linear_search_lower_bound(RandomIter first, RandomIter last,  _Val& key){
+    for (; first < last && key > *first; ++first);
+    return first;
+}
+
+template<typename RandomIter, typename _Val>
+inline RandomIter linear_search_upper_bound(RandomIter first, RandomIter last,  _Val& key){
+    for (; first < last && key >= *first; ++first);
+    return first;
+}
+//template<typename RandomIter, typename _Val>
+//inline RandomIter exponential_search_upper_bound(RandomIter predict, RandomIter last, _Val& key){
+//    size_t offset = 1;
+//    AEX_ASSERT(predict < last);
+//    for (; predict + offset < last && *(predict + offset) <= key; offset <<= 1);
+//    for (offset >>= 1; offset; offset >>= 1)
+//        if (predict + offset < last && *(predict + offset) <= key) predict += offset;
+//    ++predict;
+//
+//    return predict;
+//}
 
 inline double cross_product(double x0, double y0, double x1, double y1, double x2, double y2){
     return (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);

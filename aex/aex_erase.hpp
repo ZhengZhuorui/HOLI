@@ -17,7 +17,7 @@ inline void aex_tree<_Key, _Val, traits>::erase_recursive(inner_node_ptr* stack)
         root = static_cast<inner_node_ptr>(root)->child_ptr[0];
         --m_stats.level_node[this->m_stats.height - 1];
         --m_stats.height;
-        node_allocator.free_node(tmp);
+        allocator.free_node(tmp);
         return;
     }
     // Node isn't root. the node has parent
@@ -230,7 +230,7 @@ inline void aex_tree<_Key, _Val, traits>::erase_child_node(inner_node_ptr __rest
         --this->m_stats.level_node[0];
     else
         --this->m_stats.level_node[static_cast<inner_node_ptr>(node)->level];
-    node_allocator.free_node(node);
+    allocator.free_node(node);
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -238,7 +238,7 @@ inline void aex_tree<_Key, _Val, traits>::erase_tree_recursive(node_ptr node){
     if (node == nullptr) return;
     if (IS_LEAF_NODE(node)){
         --this->m_stats.level_node[0];
-        node_allocator.free_node(static_cast<data_node_ptr>(node));
+        this->allocator.free_node(static_cast<data_node_ptr>(node));
         return;
     }
     else{
@@ -257,7 +257,7 @@ inline void aex_tree<_Key, _Val, traits>::erase_tree_recursive(node_ptr node){
                 this->erase_tree_recursive(child[i]);
         }
         --this->m_stats.level_node[_node->level];
-        node_allocator.free_node(_node);
+        allocator.free_node(_node);
     }
 }
 

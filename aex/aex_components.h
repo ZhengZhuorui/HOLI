@@ -303,7 +303,7 @@ struct aex_concurrency_components{
 
     typedef aex_spinlock<traits> Lock;
 
-    typedef aex_node_allocator<key_type, value_type, traits> NodeAllocator;
+    typedef aex_allocator<key_type, value_type, traits> Allocator;
 
 };
 
@@ -327,7 +327,7 @@ struct aex_concurrency_components<traits, true>{
 
     typedef aex_spinlock<traits> Lock;
 
-    typedef aex_node_allocator_con<key_type, value_type, traits> NodeAllocator;
+    typedef aex_allocator_con<key_type, value_type, traits> Allocator;
 };
 
 template<typename traits>
@@ -346,7 +346,7 @@ struct aex_default_components{
     typedef typename concurrency_components::base_dynamic_node base_dynamic_node;
     typedef typename concurrency_components::inner_node inner_node;
     typedef typename concurrency_components::data_node data_node;
-    typedef typename concurrency_components::NodeAllocator NodeAllocator;
+    typedef typename concurrency_components::Allocator Allocator;
 
     typedef piecewise_linear_model_4<key_type, traits> baseInnerNodeModel;
     typedef piecewise_linear_model_avx<key_type, baseInnerNodeModel, traits> InnerNodeModel;

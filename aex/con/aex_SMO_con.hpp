@@ -3,7 +3,7 @@ namespace aex{
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree_con<_Key, _Val, traits>::split(data_node_ptr new_node, data_node_ptr old_node){
     AEX_ASSERT(traits::AllowDynamicDataNode == false);
-    #ifdef AEX_EXPERIMENT
+    #ifdef AEX_DEBUG
     ++opt_stats.data_node_split_cnt;
     #endif
     new_node->next = old_node;

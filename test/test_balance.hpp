@@ -32,8 +32,8 @@ bool test_inner_node_insert_balance_perf(vector<key_type> &data, size_t n, size_
             std::swap(node_data[0], insert_data[i]);
     std::sort(node_data.begin(), node_data.end());
 
-    node_ptr* child_ptr = tree.node_allocator.allocate_nodeptr_buffer(n);
-    node_ptr* insert_node_ptr = tree.node_allocator.allocate_nodeptr_buffer(batch);
+    node_ptr* child_ptr = new node_ptr[n];
+    node_ptr* insert_node_ptr = new node_ptr[n];
     construct_data_node_array<key_type, value_type, node_ptr>(node_data.data(), node_data.size(), child_ptr);
     construct_data_node_array<key_type, value_type, node_ptr>(insert_data.data(), insert_data.size(), insert_node_ptr);
 
@@ -51,7 +51,7 @@ bool test_inner_node_insert_balance_perf(vector<key_type> &data, size_t n, size_
         return false;
     }
     
-    inner_node_ptr node = tree.node_allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), IS_ML_NODE(child_buf[0]));
+    inner_node_ptr node = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), IS_ML_NODE(child_buf[0]));
     *node = *static_cast<inner_node_ptr>(child_buf[0]);
 
     size_type insert_failed = 0;

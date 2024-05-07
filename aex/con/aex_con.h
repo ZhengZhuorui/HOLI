@@ -57,7 +57,7 @@ public:
     typedef typename traits::bitmap bitmap;
 
     // allocator:
-    typedef typename components::NodeAllocator NodeAllocator;
+    typedef typename components::Allocator Allocator;
 
     // balance
     typedef typename components::node_balance_stats node_balance_stats;
@@ -170,7 +170,7 @@ public:
         this->base_tree::print_stats();
     }
 
-#ifndef AEX_EXPERIMENT
+#ifndef AEX_DEBUG
 protected:
 
 private:    

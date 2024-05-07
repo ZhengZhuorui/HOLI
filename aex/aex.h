@@ -1,5 +1,5 @@
-#pragma once
 #include <cmath>
+#pragma once
 #include <cstddef>
 #include <cstring>
 #include <cassert>
@@ -93,7 +93,7 @@ public:
     typedef typename traits::bitmap bitmap;
 
     // allocator:
-    typedef typename components::NodeAllocator NodeAllocator;
+    typedef typename components::Allocator Allocator;
 
     // balance
     typedef typename components::node_balance_stats node_balance_stats;
@@ -117,7 +117,7 @@ public:
         }
     };
 
-    #ifdef AEX_EXPERIMENT
+    #ifdef AEX_DEBUG
     struct operation_stats{
         operation_stats():inner_node_split_cnt(0), inner_node_merge_cnt(0), inner_node_rescale_cnt(0),
                         inner_node_split_pipeline_cnt(0), inner_node_split_bulk_load_cnt(0), inner_node_split_by_buffer_cnt(0), inner_node_split_dense_node_cnt(0),
@@ -128,17 +128,17 @@ public:
         size_type inner_node_split_pipeline_cnt, inner_node_split_bulk_load_cnt, inner_node_split_by_buffer_cnt, inner_node_split_dense_node_cnt; 
         size_type data_node_split_cnt, data_node_merge_cnt, data_node_rescale_cnt;
         size_type inner_node_train_cnt, inner_node_train_tot_size;
-        size_type inner_node_balance_split_cnt, inner_node_balance_check_split_cnt;
+        size_type inner_node_balance_split_cnt, inner_node_balance_check_split_cnt, inner_node_insert_balance_cnt;
         void print_stats(){
             
             AEX_PRINT("[Operation status] inner node: split times=" << inner_node_split_cnt << ", merge times=" << inner_node_merge_cnt <<
-                    ", rescale times=" << inner_node_rescale_cnt << ", inner_node_split_cnt=" << inner_node_split_cnt);
+                    ", rescale times=" << inner_node_rescale_cnt);
             AEX_PRINT("inner node: split pipeline times=" << inner_node_split_pipeline_cnt << ", bulk_load cnt=" << inner_node_split_bulk_load_cnt << ", by_buffer cnt=" << inner_node_split_by_buffer_cnt << ", split dense node cnt=" << inner_node_split_dense_node_cnt);
             AEX_PRINT("inner node: train cnt=" << inner_node_train_cnt << ", train size=" << inner_node_train_tot_size);
             AEX_PRINT(" data node: split times=" << data_node_split_cnt << ", merge times=" << data_node_merge_cnt <<
                     ", rescale times=" << data_node_rescale_cnt);   
             AEX_PRINT("[balance status] inner node balance split cnt=" << inner_node_balance_split_cnt << ", inner node balance check split cnt=" << inner_node_balance_check_split_cnt << 
-                    ", balance split ratio=" << 1.0 * inner_node_balance_split_cnt / (inner_node_balance_check_split_cnt + 1));
+                    ", balance split ratio=" << 1.0 * inner_node_balance_split_cnt / (inner_node_balance_check_split_cnt + 1) << ", inner_node_insert_balance_cnt=" << inner_node_insert_balance_cnt);
         }
     }opt_stats;
     #endif
@@ -161,7 +161,7 @@ private:
 
     tree_balance_stats balance_stats;
 
-    NodeAllocator node_allocator;
+    Allocator allocator;
 
     data_node_ptr empty_leaf;
 
@@ -169,7 +169,7 @@ private:
 
     size_type max_inner_node_slot_size[traits::MAX_DEPTH];
 
-    inner_node_ptr tree_stack[traits::MAX_DEPTH];
+    inner_node_ptr tree_stack[traits::MAX_DEPTH + 1];
 
     typename std::false_type fp;
 
@@ -194,7 +194,7 @@ public:
         this->link_tree_ptr();
         this->m_stats = _index.m_stats;
         this->balance_stats = _index.balance_stats;
-        //this->node_allocator = _index.node_allocator;
+        //this->allocator = _index.allocator;
         return *this;
     }
 
@@ -211,8 +211,8 @@ public:
         _index.m_stats = aex_stats();
         this->balance_stats = _index.balance_stats;
         _index.m_stats = balance_stats();
-        this->node_allocator = _index.node_allocator;
-        _index.node_allocator = node_allocator();
+        this->allocator = _index.allocator;
+        _index.allocator = allocator();
         return *this;
     }
 
@@ -351,8 +351,8 @@ public:
     void print_stats(){
         AEX_IMPORTANT("data size=" << m_stats.size << ", tree height=" << m_stats.height << ", data node size=" << m_stats.data_node() \
                     << ", inner node size=" << m_stats.inner_node());
-        #ifdef AEX_EXPERIMENT
-        node_allocator.print_stats();
+        #ifdef AEX_DEBUG
+        allocator.print_stats();
         opt_stats.print_stats();
         balance_stats.print_stats();
         #endif
@@ -383,7 +383,7 @@ public:
     }
 
     inline size_type memory_used()const{
-        return node_allocator._memory_used;
+        return allocator._memory_used;
     }
 
 #ifndef AEX_DEBUG
@@ -431,11 +431,13 @@ private:
     inline data_node_ptr find_leaf(const key_type &key){
         node_ptr node = root;
         for (unsigned level = node->level; level > 0; --level){
+            AEX_ASSERT(node == root || this->isfull(static_cast<inner_node_ptr>(node), -1) == false);
+            AEX_ASSERT(node == root || this->isfew(static_cast<inner_node_ptr>(node), 1) == false);
             slot_type pos = static_cast<inner_node_ptr>(node)->find(key);
-            //AEX_ASSERT(static_cast<inner_node_ptr>(node)->child_ptr[pos]->parent == node);
             node = static_cast<inner_node_ptr>(node)->child_ptr[pos];
             AEX_ASSERT((node->prev == nullptr || node->prev->next == node));
             AEX_ASSERT((node->next == nullptr || node->next->prev == node));
+            
         }        
         return static_cast<data_node_ptr>(node);
     }
@@ -456,11 +458,11 @@ private:
     }
 
     // ========== 2. balance tree ==========
-    bool insert_merge(inner_node_ptr parent, key_type &new_key, node_ptr new_node);
+    bool insert_merge(inner_node_ptr parent, const key_type &new_key, node_ptr new_node);
 
     bool check_split(data_node_ptr node, bool is_forced=false);
 
-    bool check_split(inner_node_ptr node);
+    int check_split(inner_node_ptr node);
 
     slot_type check_split_size(inner_node_ptr node);
 
@@ -486,14 +488,16 @@ private:
 
     void insert_split_bulk_load(inner_node_ptr* stack, const slot_type start, const key_type key, inner_node_ptr child, int split_size){
         AEX_ASSERT(*stack != nullptr);
-        //AEX_PRINT("bulk_load");
-        //std::vector<key_type> new_key;
-        //std::vector<inner_node_ptr> new_child;
-        std::vector<key_type>& new_key = node_allocator.allocate_dynamic_key_buf(*stack->level & 1);
-        std::vector<inner_node_ptr>& new_child = node_allocator.allocate_dynamic_nodeptr_buf(*stack->level & 1);
+        inner_node_ptr &node = *stack;
+        //std::vector<key_type>& new_key = allocator.allocate_dynamic_key_buf(node->level & 1);
+        //std::vector<inner_node_ptr>& new_child = reinterpret_cast<std::vector<inner_node_ptr>&>(allocator.allocate_dynamic_nodeptr_buf(node->level & 1));
+        std::vector<key_type> new_key;
+        std::vector<inner_node_ptr> new_child;
         new_key.push_back(key);
         new_child.push_back(child);
-        __insert_split_bulk_load(*stack, start, split_size, new_key, new_child);
+        __insert_split_bulk_load(node, start, split_size, new_key, new_child);
+        std::reverse(new_key.begin(), new_key.end());
+        std::reverse(new_child.begin(), new_child.end());
         if (new_child.size() > 0)
             insert_recursive(stack - 1, new_key.data(), reinterpret_cast<node_ptr*>(new_child.data()), new_child.size());
     }
@@ -507,11 +511,14 @@ private:
     void insert_split_by_buffer(inner_node_ptr* stack, const key_type* key, node_ptr* child, const slot_type n){
         AEX_ASSERT(*stack != nullptr);
         //AEX_PRINT("by_buffer");
-        //std::vector<key_type> new_key;
-        //std::vector<inner_node_ptr> new_child;
-        std::vector<key_type>& new_key = node_allocator.allocate_dynamic_key_buf(*stack->level & 1);
-        std::vector<inner_node_ptr>& new_child = node_allocator.allocate_dynamic_nodeptr_buf(*stack->level & 1);
-        __insert_split_by_buffer(*stack, key, child, n, new_key, new_child);
+        std::vector<key_type> new_key;
+        std::vector<inner_node_ptr> new_child;
+        inner_node_ptr &node = *stack;
+        //std::vector<key_type>& new_key = allocator.allocate_dynamic_key_buf(node->level & 1);
+        //std::vector<inner_node_ptr>& new_child = reinterpret_cast<std::vector<inner_node_ptr>&>(allocator.allocate_dynamic_nodeptr_buf(node->level & 1));
+        __insert_split_by_buffer(node, key, child, n, new_key, new_child);
+        std::reverse(new_key.begin(), new_key.end());
+        std::reverse(new_child.begin(), new_child.end());
         if (new_child.size() > 0)
             insert_recursive(stack - 1, new_key.data(), reinterpret_cast<node_ptr*>(new_child.data()), new_child.size());
     }
@@ -724,7 +731,7 @@ friend inner_node;
 
 friend data_node;
 
-friend NodeAllocator;
+friend Allocator;
 
 #ifndef AEX_DEBUG
 private:

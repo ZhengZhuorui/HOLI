@@ -88,7 +88,7 @@ inline void aex_tree<_Key, _Val, traits>::erase_recursive_con(cosnt key_type &ke
         root = static_cast<inner_node_ptr>(root)->child_ptr[0];
         --m_stats.level_node[this->m_stats.height - 1];
         --m_stats.height;
-        node_allocator.free_node(tmp);
+        allocator.free_node(tmp);
         return;
     }
     // Node isn't root. the node has parent, i.e. top >= 2
