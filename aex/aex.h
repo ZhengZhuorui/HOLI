@@ -486,7 +486,7 @@ private:
     //void __insert_split_bulk_load(inner_node_ptr node, const slot_type start, const key_type key, inner_node_ptr child, bool half_flag, std::vector<key_type> &new_key, std::vector<inner_node_ptr> &new_child);
     void __insert_split_bulk_load(inner_node_ptr node, slot_type start, slot_type split_size, std::vector<key_type> &new_key, std::vector<inner_node_ptr> &new_child);
 
-    void insert_split_bulk_load(inner_node_ptr* stack, const slot_type start, const key_type key, inner_node_ptr child, int split_size){
+    void insert_split_bulk_load(inner_node_ptr* stack, const slot_type end, const key_type key, inner_node_ptr child, int split_size){
         AEX_ASSERT(*stack != nullptr);
         inner_node_ptr &node = *stack;
         //std::vector<key_type>& new_key = allocator.allocate_dynamic_key_buf(node->level & 1);
