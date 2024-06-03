@@ -144,9 +144,9 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
     std::cout << std::scientific;
     std::cout << std::setprecision(3);   
     AEX_SUCCESS("insert use " << delta << "ms, OPS=" << OPS);
-    tree.allocator.deallocate(child_ptr);
+    //tree.allocator.deallocate(child_ptr);
     AEX_PRINT("?");
-    tree.allocator.deallocate(insert_node_ptr);
+    //tree.allocator.deallocate(insert_node_ptr);
     AEX_PRINT("??");
     return true;
 }
@@ -292,7 +292,7 @@ bool test_inner_node_erase_perf(vector<key_type> &data, size_t n, size_t batch, 
     std::cout << std::scientific;
     std::cout << std::setprecision(3);   
     AEX_SUCCESS("erase use " << delta << "ms, OPS=" << OPS);
-    tree.allocator.deallocate(child_ptr);
+    //tree.allocator.deallocate(child_ptr);
     return true;
 }
 

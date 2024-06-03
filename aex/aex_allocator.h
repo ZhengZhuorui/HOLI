@@ -340,7 +340,7 @@ public:
         return dynamic_nodeptr_buf[n];
     }
 
-    inline void deallocate(key_type* p){
+    inline void deallocate_key_buffer(key_type* p){
         #ifdef AEX_DEBUG
         //++free_cnt;
         --static_key_buf_used;
@@ -351,7 +351,7 @@ public:
         //    free(p);
     }
 
-    inline void deallocate(node_ptr* p){
+    inline void deallocate_nodeptr_buffer(node_ptr* p){
         #ifdef AEX_DEBUG
         //++free_cnt;
         --static_nodeptr_buf_used;

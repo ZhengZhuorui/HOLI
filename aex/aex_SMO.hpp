@@ -88,26 +88,25 @@ std::tuple<typename traits::slot_type, typename traits::slot_type, bool> aex_tre
                 return std::tuple(n, ans_slot_size, true);
         }
     }
-    
-    //AEX_PRINT("ans_size=" << ans_size << "ans_slot_size=" << ans_slot_size);
 
     if (ans_size == 0){
-        if (n - traits::MIN_INNER_NODE_SLOT_SIZE / 2 >= traits::MIN_ML_INNER_NODE_SIZE) ans_size = traits::MIN_ML_INNER_NODE_SIZE;
+        if (n >= traits::MIN_INNER_NODE_SLOT_SIZE / 2 + traits::MIN_ML_INNER_NODE_SIZE) ans_size = traits::MIN_ML_INNER_NODE_SIZE;
         else if (n <= traits::MIN_ML_INNER_NODE_SIZE) ans_size = n;
-        else ans_size = n - traits::MIN_INNER_NODE_SLOT_SIZE;
+        else ans_size = n - traits::MIN_INNER_NODE_SLOT_SIZE / 2;
         ans_slot_size = min_slot_size(ans_size, traits::MIN_INNER_NODE_SLOT_SIZE);
     }
-    else if (n - ans_size < traits::MIN_INNER_NODE_SLOT_SIZE / 2){
+    else if (n - ans_size != 0 && n < static_cast<size_type>(ans_size + traits::MIN_INNER_NODE_SLOT_SIZE / 2)){
         if (ans_size / 2 < traits::MIN_ML_INNER_NODE_SIZE){
             flag = false;
             ans_size = n - traits::MIN_INNER_NODE_SLOT_SIZE / 2;
             ans_slot_size = min_slot_size(ans_size, traits::MIN_INNER_NODE_SLOT_SIZE);
         }
         else{
-            ans_size <<= 1;
-            ans_slot_size <<= 1;
+            ans_size >>= 1;
+            ans_slot_size >>= 1;
         }
     }
+
     return std::tuple(ans_size, ans_slot_size, flag);
 }
 
@@ -145,22 +144,22 @@ std::tuple<typename traits::slot_type, typename traits::slot_type, bool> aex_tre
     }
     
     if (ans_size == 0){
-        if (n - traits::MIN_INNER_NODE_SLOT_SIZE / 2 >= traits::MIN_ML_INNER_NODE_SIZE) ans_size = traits::MIN_ML_INNER_NODE_SIZE;
+        if (n >= traits::MIN_INNER_NODE_SLOT_SIZE / 2 + traits::MIN_ML_INNER_NODE_SIZE) ans_size = traits::MIN_ML_INNER_NODE_SIZE;
         else if (n <= traits::MIN_ML_INNER_NODE_SIZE) ans_size = n;
-        else ans_size = n - traits::MIN_INNER_NODE_SLOT_SIZE;
+        else ans_size = n - traits::MIN_INNER_NODE_SLOT_SIZE / 2;
         ans_slot_size = min_slot_size(ans_size, traits::MIN_INNER_NODE_SLOT_SIZE);
     }
-    else if (n - ans_size < traits::MIN_INNER_NODE_SLOT_SIZE / 2){
+    else if (n - ans_size != 0 && n < static_cast<size_type>(ans_size + traits::MIN_INNER_NODE_SLOT_SIZE / 2)){
         if (ans_size / 2 < traits::MIN_ML_INNER_NODE_SIZE){
             flag = false;
             ans_size = n - traits::MIN_INNER_NODE_SLOT_SIZE / 2;
             ans_slot_size = min_slot_size(ans_size, traits::MIN_INNER_NODE_SLOT_SIZE);
         }
         else{
-            ans_size <<= 1;
-            ans_slot_size <<= 1;
+            ans_size >>= 1;
+            ans_slot_size >>= 1;
         }
-    } 
+    }
     return std::tuple(ans_size, ans_slot_size, flag);
 }
 
@@ -174,19 +173,6 @@ void aex_tree<_Key, _Val, traits>::split(const key_type* const key, node_ptr* ch
     for (; start < n; start += ans_size){ 
         std::tie(ans_size, ans_slot_size, flag) = split_with_exponential_probe(key + start, n - start, level);
         //AEX_PRINT("ans_size=" << ans_size << ", left size=" << n - start << ", ans_slot_size=" << ans_slot_size << ", timestamp=" << this->balance_stats.get_timestamp());
-        if (start + ans_size < n && n - start - ans_size < traits::MIN_INNER_NODE_SLOT_SIZE / 2){
-            if (flag && (ans_size / 2 > traits::MIN_ML_INNER_NODE_SIZE)){
-                ans_size <<= 1;
-                ans_slot_size <<= 1;
-            }
-            else{
-                flag = false;
-                ans_size = (n - start)/ 2;
-                ans_slot_size = min_slot_size(ans_size, traits::MIN_INNER_NODE_SLOT_SIZE);
-                //AEX_PRINT("ans_size=" << ans_size << ", left=" << n - start);
-                AEX_ASSERT(ans_size >= traits::MIN_INNER_NODE_SLOT_SIZE / 2);
-            }
-        }
         
         inner_node_ptr new_node = allocator.allocate_inner_node(ans_slot_size, flag);
         ++this->m_stats.level_node[level];
@@ -200,6 +186,7 @@ void aex_tree<_Key, _Val, traits>::split(const key_type* const key, node_ptr* ch
             new_key.push_back(key[start + ans_size - 1]);
         new_child.push_back(new_node);
     }
+    //AEX_PRINT("start=" << start << ", n=" << n);
     AEX_ASSERT(start == n);
     //AEX_ASSERT(new_key.size() + 1 == new_child.size());
     if (new_child.size() == 1)
@@ -522,8 +509,8 @@ bool aex_tree<_Key, _Val, traits>::rescale_implement(inner_node_ptr node, const 
     node->construct(key_buf, child_buf, size);
 
     rescale_implement_end:
-    allocator.deallocate(key_buf);
-    allocator.deallocate(child_buf);
+    allocator.deallocate_key_buffer(key_buf);
+    allocator.deallocate_nodeptr_buffer(child_buf);
     return ret;
 }
 

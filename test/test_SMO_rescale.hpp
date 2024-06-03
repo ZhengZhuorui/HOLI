@@ -68,6 +68,6 @@ bool test_SMO_node_rescale_perf(key_type* key, size_t num_keys, double ratio, in
     AEX_SUCCESS("split time=" << delta << "ms, OPS=" << OPS);
     for (size_type i = 0; i < num_keys; ++i)
         tree.allocator.free_node(nodeptr_buffer[i]);
-    tree.allocator.deallocate(nodeptr_buffer);
+    //tree.allocator.deallocate(nodeptr_buffer);
     return true;
 }
