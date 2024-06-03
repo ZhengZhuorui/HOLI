@@ -598,6 +598,7 @@ private:
     // split a ordered key array with data array to inner node array. Use linear probe(use greedy).
     // return: <size, slot_size, ML_flag>
     std::tuple<slot_type, slot_type, bool> split_with_exponential_probe(const key_type* const key, const size_type n, const unsigned int level);
+    std::tuple<slot_type, slot_type, bool> split_with_exponential_probe_reverse(const key_type* const key, const size_type n, const unsigned int level);
     //std::tuple<slot_type, slot_type, bool> split_with_linear_probe(const key_type* const key, const size_type n, const unsigned int level);
 
     key_type split_dense_inner_node(inner_node_ptr new_node, inner_node_ptr old_node);
