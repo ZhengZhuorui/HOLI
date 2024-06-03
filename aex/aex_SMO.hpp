@@ -90,10 +90,24 @@ std::tuple<typename traits::slot_type, typename traits::slot_type, bool> aex_tre
     }
     
     //AEX_PRINT("ans_size=" << ans_size << "ans_slot_size=" << ans_slot_size);
-    if (ans_slot_size == 0) {
-        ans_slot_size = (n > traits::MIN_ML_INNER_NODE_SIZE) ? (traits::MIN_ML_INNER_NODE_SIZE) : min_slot_size(n, traits::MIN_INNER_NODE_SLOT_SIZE);
-        ans_size = std::min(n, static_cast<size_type>(ans_slot_size));
-    }        
+
+    if (ans_size == 0){
+        if (n - traits::MIN_INNER_NODE_SLOT_SIZE / 2 >= traits::MIN_ML_INNER_NODE_SIZE) ans_size = traits::MIN_ML_INNER_NODE_SIZE;
+        else if (n <= traits::MIN_ML_INNER_NODE_SIZE) ans_size = n;
+        else ans_size = n - traits::MIN_INNER_NODE_SLOT_SIZE;
+        ans_slot_size = min_slot_size(ans_size, traits::MIN_INNER_NODE_SLOT_SIZE);
+    }
+    else if (n - ans_size < traits::MIN_INNER_NODE_SLOT_SIZE / 2){
+        if (ans_size / 2 < traits::MIN_ML_INNER_NODE_SIZE){
+            flag = false;
+            ans_size = n - traits::MIN_INNER_NODE_SLOT_SIZE / 2;
+            ans_slot_size = min_slot_size(ans_size, traits::MIN_INNER_NODE_SLOT_SIZE);
+        }
+        else{
+            ans_size <<= 1;
+            ans_slot_size <<= 1;
+        }
+    }
     return std::tuple(ans_size, ans_slot_size, flag);
 }
 
@@ -130,10 +144,23 @@ std::tuple<typename traits::slot_type, typename traits::slot_type, bool> aex_tre
         }
     }
     
-    if (ans_slot_size == 0) {
-        ans_slot_size = (n > traits::MIN_ML_INNER_NODE_SIZE) ? (traits::MIN_ML_INNER_NODE_SIZE) : min_slot_size(n, traits::MIN_INNER_NODE_SLOT_SIZE);
-        ans_size = std::min(n, static_cast<size_type>(ans_slot_size));
-    }        
+    if (ans_size == 0){
+        if (n - traits::MIN_INNER_NODE_SLOT_SIZE / 2 >= traits::MIN_ML_INNER_NODE_SIZE) ans_size = traits::MIN_ML_INNER_NODE_SIZE;
+        else if (n <= traits::MIN_ML_INNER_NODE_SIZE) ans_size = n;
+        else ans_size = n - traits::MIN_INNER_NODE_SLOT_SIZE;
+        ans_slot_size = min_slot_size(ans_size, traits::MIN_INNER_NODE_SLOT_SIZE);
+    }
+    else if (n - ans_size < traits::MIN_INNER_NODE_SLOT_SIZE / 2){
+        if (ans_size / 2 < traits::MIN_ML_INNER_NODE_SIZE){
+            flag = false;
+            ans_size = n - traits::MIN_INNER_NODE_SLOT_SIZE / 2;
+            ans_slot_size = min_slot_size(ans_size, traits::MIN_INNER_NODE_SLOT_SIZE);
+        }
+        else{
+            ans_size <<= 1;
+            ans_slot_size <<= 1;
+        }
+    } 
     return std::tuple(ans_size, ans_slot_size, flag);
 }
 

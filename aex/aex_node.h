@@ -331,7 +331,7 @@ public:
         else{
             slot_type pred_pos = this->predict(key);
             slot_type inserted_pos = pred_pos, upper_bound = std::min(this->slot_size - 1, pred_pos + traits::ERROR_BOUND);
-            for (; inserted_pos < upper_bound && key >= this->key_ptr[inserted_pos]; ++inserted_pos)
+            for (; inserted_pos < upper_bound && key > this->key_ptr[inserted_pos]; ++inserted_pos)
             // the distance between insert position of inserted item and the predict position should be less than ERROR_BOUND
             if (inserted_pos >= this->slot_size - 1 || inserted_pos - pred_pos >= traits::ERROR_BOUND){
                 return false;

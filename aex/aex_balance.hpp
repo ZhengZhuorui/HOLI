@@ -3,14 +3,14 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::update_node_list_frequency(dynamic_node_ptr node, node_ptr* node_list, slot_type n){
-    unsigned long long recent_udpate_timestamp = node->balance_stats.get_recent_update_timestamp();
-    double SMO_times = node->balance_stats.get_SMO_times();
-    double write_times = node->balance_stats.get_write_times();
+inline void aex_tree<_Key, _Val, traits>::update_node_list_frequency(node_balance_stats &stats, const slot_type size, node_ptr* node_list, slot_type n){
+    unsigned long long recent_udpate_timestamp = stats.get_recent_update_timestamp();
+    double SMO_times = stats.get_SMO_times();
+    double write_times = stats.get_write_times();
     for (slot_type i = 0; i < n; ++i){
         ((dynamic_node_ptr)node_list[i])->balance_stats = node_balance_stats(recent_udpate_timestamp,
-                                                        SMO_times * (1.0 * node_list[i]->size / node->size), 
-                                                        write_times * (1.0 * node_list[i]->size / node->size));
+                                                        SMO_times * (1.0 * node_list[i]->size / size), 
+                                                        write_times * (1.0 * node_list[i]->size / size));
     }
 }
 

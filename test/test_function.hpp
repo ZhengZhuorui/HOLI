@@ -217,7 +217,7 @@ bool test_search_with_error_bound_perf(_Tp* data, size_t n){
             //        real = j;
             //        break;
             //    }
-            long long real = aex::linear_search(data + predict[i], data + n, x) - data;
+            long long real = aex::linear_search_lower_bound(data + predict[i], data + n, x) - data;
             sum += real;
         }
     }
