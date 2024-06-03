@@ -179,7 +179,7 @@ inline bool aex_tree<_Key, _Val, traits>::insert_node(const inner_node_ptr node,
 //}
 
 template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::__insert_split_bulk_load(inner_node_ptr node, const slot_type tail, slot_type split_size, std::vector<key_type> &new_key, std::vector<inner_node_ptr> &new_child){
+inline void aex_tree<_Key, _Val, traits>::__insert_split_bulk_load(inner_node_ptr node, slot_type tail, slot_type split_size, std::vector<key_type> &new_key, std::vector<inner_node_ptr> &new_child){
     #ifdef AEX_DEBUG
     ++opt_stats.inner_node_split_bulk_load_cnt;
     #endif

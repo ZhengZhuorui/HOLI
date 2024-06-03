@@ -484,7 +484,7 @@ private:
     // a part of function "insert_split_pipeline". If node can't insert to parent pipeline, then split and insert to parent together.
     // start means the number of function "insert_split_pipeline" split. key and child is the splited key and child. half_flag means 
     //void __insert_split_bulk_load(inner_node_ptr node, const slot_type start, const key_type key, inner_node_ptr child, bool half_flag, std::vector<key_type> &new_key, std::vector<inner_node_ptr> &new_child);
-    void __insert_split_bulk_load(inner_node_ptr node, slot_type start, slot_type split_size, std::vector<key_type> &new_key, std::vector<inner_node_ptr> &new_child);
+    void __insert_split_bulk_load(inner_node_ptr node, slot_type tail, slot_type split_size, std::vector<key_type> &new_key, std::vector<inner_node_ptr> &new_child);
 
     void insert_split_bulk_load(inner_node_ptr* stack, const slot_type end, const key_type key, inner_node_ptr child, int split_size){
         AEX_ASSERT(*stack != nullptr);
@@ -598,7 +598,6 @@ private:
     // split a ordered key array with data array to inner node array. Use linear probe(use greedy).
     // return: <size, slot_size, ML_flag>
     std::tuple<slot_type, slot_type, bool> split_with_exponential_probe(const key_type* const key, const size_type n, const unsigned int level);
-    std::tuple<slot_type, slot_type, bool> split_with_exponential_probe_reverse(const key_type* const key, const size_type n, const unsigned int level);
     //std::tuple<slot_type, slot_type, bool> split_with_linear_probe(const key_type* const key, const size_type n, const unsigned int level);
 
     key_type split_dense_inner_node(inner_node_ptr new_node, inner_node_ptr old_node);
