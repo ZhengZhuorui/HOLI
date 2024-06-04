@@ -48,13 +48,13 @@ public:
     aex_node_base(aex_node_base &other_node):prev(other_node.prev), next(other_node.next), size(other_node.size), level(other_node.level), prop(other_node.prop){}
     aex_node_base(aex_node_base &&other_node):prev(other_node.prev), next(other_node.next), size(other_node.size), level(other_node.level), prop(other_node.prop){}
 
-    aex_node_base& operator = (aex_node_base &other_node){
+    aex_node_base& operator = (aex_node_base &other_node) noexcept{
         this->prev = other_node.prev;this->next = other_node.next;this->size = other_node.size;this->level = other_node.level;
         this->prop = other_node.prop;
         return *this;
     }
 
-    aex_node_base& operator = (aex_node_base &&other_node){
+    aex_node_base& operator = (aex_node_base &&other_node) noexcept{
         this->prev = other_node.prev;this->next = other_node.next;this->size = other_node.size;this->level = other_node.level;
         this->prop = other_node.prop;
         return *this;
@@ -112,14 +112,14 @@ public:
 
     aex_dynamic_node_base(aex_dynamic_node_base &&other_node):base_node(other_node), slot_size(other_node.slot_size), balance_stats(other_node.balance_stats){}
 
-    aex_dynamic_node_base& operator = (aex_dynamic_node_base &other_node){
+    aex_dynamic_node_base& operator = (aex_dynamic_node_base &other_node) noexcept{
         *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
         this->slot_size = other_node.slot_size;//this->real_slot_size = other_node.real_slot_size;
         this->prop = other_node.prop;this->balance_stats = other_node.balance_stats;
         return *this;
     }
 
-    aex_dynamic_node_base& operator = (aex_dynamic_node_base &&other_node){
+    aex_dynamic_node_base& operator = (aex_dynamic_node_base &&other_node) noexcept{
         *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
         this->slot_size = other_node.slot_size;//this->real_slot_size = other_node.real_slot_size;
         this->prop = other_node.prop;this->balance_stats = other_node.balance_stats;
@@ -221,7 +221,7 @@ public:
         other_node->bitmap_ptr = nullptr;
     }
 
-    aex_inner_node& operator = (aex_inner_node &other_node){
+    aex_inner_node& operator = (aex_inner_node &other_node) noexcept{
         AEX_ASSERT(this->slot_size == other_node.slot_size);
         *static_cast<dynamic_node_ptr>(this) = static_cast<base_dynamic_node>(other_node);
         model = other_node.model;
@@ -231,7 +231,7 @@ public:
         return *this;
     }
 
-    aex_inner_node& operator = (aex_inner_node &&other_node){
+    aex_inner_node& operator = (aex_inner_node &&other_node) noexcept{
         *static_cast<dynamic_node_ptr>(this) = static_cast<base_dynamic_node>(other_node);
         model = other_node.model;
         if (this->key_ptr != nullptr)
@@ -597,7 +597,7 @@ public:
         other_node.data = nullptr;
     }
 
-    aex_data_node& operator = (aex_data_node &other_node){
+    aex_data_node& operator = (aex_data_node &other_node) noexcept{
         AEX_ASSERT(this->slot_size == other_node.slot_size);
         *static_cast<base_dynamic_node_ptr>(this) = static_cast<base_dynamic_node>(other_node);
         model = other_node.model;
@@ -606,7 +606,7 @@ public:
         return *this;
     }
 
-    aex_data_node& operator = (aex_data_node &&other_node){
+    aex_data_node& operator = (aex_data_node &&other_node) noexcept{
         *static_cast<node_ptr>(this) = static_cast<base_dynamic_node>(other_node);
         model = other_node.model;
         if (this->key != nullptr)
@@ -756,14 +756,14 @@ public:
         std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
     }
 
-    aex_static_data_node& operator = (aex_static_data_node &other_node){
+    aex_static_data_node& operator = (aex_static_data_node &other_node) noexcept{
         *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
         std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
         std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
         return *this;
     }
 
-    aex_static_data_node& operator = (aex_static_data_node &&other_node){
+    aex_static_data_node& operator = (aex_static_data_node &&other_node) noexcept{
         *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
         std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
         std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);

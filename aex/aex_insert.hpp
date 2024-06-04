@@ -485,14 +485,14 @@ inline void aex_tree<_Key, _Val, traits>::__insert_split_by_buffer(inner_node_pt
     slot_type split_size = check_split(node);
     slot_type block_nums = size / split_size + (size % split_size != 0);
     slot_type block_point = 0, start = 0;
-
     for (slot_type i = 0; i < split_size; ++i){
         start = i * block_nums;
         block_point = (i == split_size - 1) ? size : (i + 1) * block_nums;
         split(key_buf + start, child_buf + start, block_point - start, node->level, new_key, new_child);
         if (block_point != size)
-            new_key.push_back(node->key_ptr[block_point - 1]);
+            new_key.push_back(key_buf[block_point - 1]);
     }
+    //AEX_PRINT("size=" << size << ", new_child.size=" << new_child.size());
     AEX_ASSERT(new_key.size() + 1 == new_child.size());
     update_node_list_frequency(node->balance_stats, size, reinterpret_cast<node_ptr*>(new_child.data()), new_child.size());
     link_node_list_and_replace_last_node(node, reinterpret_cast<node_ptr*>(new_child.data()), new_child.size());
@@ -513,11 +513,11 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_helper(inner_node_ptr* st
     if (node == root){ 
         // equal: node == root
         if (!IS_ML_NODE(node) && n < node->slot_size / 2){
-            AEX_HINT("[helper]: insert_split_dense_inner_node 0");
+            //AEX_HINT("[helper]: insert_split_dense_inner_node 0");
             insert_split_dense_inner_node(stack, new_key, new_child, n);
         }
         else{
-            AEX_HINT("[helper]: insert_split_by_buffer 1");
+            //AEX_HINT("[helper]: insert_split_by_buffer 1");
             insert_split_by_buffer(stack, new_key, new_child, n);
         }
         return;
@@ -527,22 +527,22 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_helper(inner_node_ptr* st
     if (!IS_ML_NODE(node)){
         //AEX_PRINT("size=" << node->size);
         if (n < node->slot_size / 2){
-            AEX_HINT("[helper]: insert_split_dense_inner_node 1");
+            //AEX_HINT("[helper]: insert_split_dense_inner_node 1");
             insert_split_dense_inner_node(stack, new_key, new_child, n);
         }
         else{
-            AEX_HINT("[helper]: insert_split_by_buffer 2");
+            //AEX_HINT("[helper]: insert_split_by_buffer 2");
             insert_split_by_buffer(stack, new_key, new_child, n);
         }
         
     }
     else{
         if (node->size + n < node->slot_size){
-            AEX_HINT("[helper]: insert_split_pipeline 1");
+            //AEX_HINT("[helper]: insert_split_pipeline 1");
             insert_split_pipeline(stack, new_key, new_child, n);
         }
         else{
-            AEX_HINT("[helper]: insert_split_by_buffer 3");
+            //AEX_HINT("[helper]: insert_split_by_buffer 3");
             insert_split_by_buffer(stack, new_key, new_child, n);
         }
     }
@@ -575,7 +575,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_recursive(inner_node_ptr* stack
                     if (this->insert_merge(node, key_buf[0], child_buf[0]))
                         return;
 
-            insert_split_helper(stack, key_buf, child_buf, i);
+            insert_split_helper(stack, key_buf, child_buf, i + 1);
             return;
         }
     }
