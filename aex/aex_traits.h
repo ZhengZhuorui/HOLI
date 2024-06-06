@@ -74,15 +74,15 @@ struct aex_default_traits{
 
     // Allow balance inner node and data node when read and write frequency update?
     //typedef std::true_type AllowRWBalance;
-    static constexpr bool AllowRWBalance = false;
+    static constexpr bool AllowRWBalance = true;
 
     // Allow balance inner node when insert an item?
     //typedef std::false_type AllowInsertBalance;
-    static constexpr bool AllowInsertBalance = false;
+    static constexpr bool AllowInsertBalance = true;
 
     // Allow tree balance tree struct in lookup, insert and erase.
     //typedef std::true_type AllowBalance;
-    static constexpr bool AllowBalance = false;
+    static constexpr bool AllowBalance = true;
 
     static_assert((AllowRWBalance | AllowInsertBalance) == AllowBalance);
 

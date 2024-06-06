@@ -301,44 +301,44 @@ public:
         erase_iterator(iter);
     }
 
-    inline iterator begin() {
+    inline iterator begin() noexcept{
         return iterator(head_leaf, 0);
     }
 
-    inline const_iterator begin() const {
+    inline const_iterator begin() const noexcept{
         return const_iterator(head_leaf, 0);
     }
 
-    inline iterator end(){
+    inline iterator end() noexcept{
         //return iterator(tail_leaf, tail_leaf->size);
         return iterator(empty_leaf, 0);
     }
 
-    inline const_iterator end() const {
+    inline const_iterator end() const noexcept{
         return const_iterator(empty_leaf, 0);
     }
 
-    inline reverse_iterator rbegin() {
+    inline reverse_iterator rbegin() noexcept{
         return reverse_iterator(end());
     }
 
-    inline const_reverse_iterator rbegin() const {
+    inline const_reverse_iterator rbegin() const noexcept{
         return const_reverse_iterator(end());
     }
 
-    inline reverse_iterator rend(){
+    inline reverse_iterator rend() noexcept{
         return reverse_iterator(begin());
     }
 
-    inline const_reverse_iterator rend() const{
+    inline const_reverse_iterator rend() const noexcept{
         return reverse_iterator(begin());
     }
 
-    inline size_type size() const{
+    inline size_type size() const noexcept{
         return static_cast<size_t>(m_stats.size);
     }
 
-    inline bool empty() const {
+    inline bool empty() const noexcept{
         return m_stats.size == 0;
     }
 
@@ -382,7 +382,7 @@ public:
         }
     }
 
-    inline size_type memory_used()const{
+    inline size_type memory_used() const{
         return allocator._memory_used;
     }
 
@@ -431,14 +431,15 @@ private:
     inline data_node_ptr find_leaf(const key_type &key){
         node_ptr node = root;
         for (unsigned level = node->level; level > 0; --level){
-            AEX_ASSERT(node == root || this->isfull(static_cast<inner_node_ptr>(node), -1) == false);
-            AEX_ASSERT(node == root || this->isfew(static_cast<inner_node_ptr>(node), 1) == false);
+            //AEX_ASSERT(node == root || this->isfull(static_cast<inner_node_ptr>(node), -1) == false);
+            //AEX_ASSERT(node == root || this->isfew(static_cast<inner_node_ptr>(node), 1) == false);
+            AEX_ASSERT(IS_DELETE_NODE(node) == false);
             slot_type pos = static_cast<inner_node_ptr>(node)->find(key);
             node = static_cast<inner_node_ptr>(node)->child_ptr[pos];
             AEX_ASSERT((node->prev == nullptr || node->prev->next == node));
             AEX_ASSERT((node->next == nullptr || node->next->prev == node));
-            
         }        
+        AEX_ASSERT(IS_DELETE_NODE(node) == false);
         return static_cast<data_node_ptr>(node);
     }
 
@@ -558,9 +559,6 @@ private:
 
     // erase one item(iterator) from data_node
     void erase_data(iterator &iter);
-
-    void erase_merge(inner_node_ptr __restrict__ parent, inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node);
-    bool erase_merge(inner_node_ptr __restrict__ parent, data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node);
     //bool erase_merge(inner_node_ptr __restrict__ parent, static_data_node_ptr __restrict__ left_node, static_data_node_ptr __restrict__ right_node);
 
     inline void erase_link(node_ptr node){
@@ -590,6 +588,9 @@ private:
     void split_with_linear_probe(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<data_node_ptr> &new_child);
     // a part of split_with_linear_probe.
     slot_type linear_probe(const key_type* const key, const size_type n, DataNodeModel &m);
+
+    void merge(inner_node_ptr __restrict__ parent, inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node);
+    bool merge(inner_node_ptr __restrict__ parent, data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node);
 
     // split a ordered key array with data array to inner node array. Use linear probe(use greedy).
     // return: <size, slot_size, ML_flag>

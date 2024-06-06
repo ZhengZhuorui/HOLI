@@ -364,10 +364,10 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
     index.bulk_load(data, n);
     index.print_stats();
     index.print_detail();
-    AEX_PRINT("bulk load finish...");
+    AEX_SUCCESS("bulk load finish...");
     for (long long i = 0; i < batch; ++i)
         index.erase(erase_key[i]);
-    AEX_PRINT("erase finish...");
+    AEX_SUCCESS("erase finish...");
 
     {
         if (static_cast<long long>(index.size()) != n - batch){
@@ -376,7 +376,7 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
         }
         index.print_stats();
         size_type leaf_num = 0, data_size = 0;
-        for (node_ptr inode = index.head_leaf; inode != index.empty_leaf; inode = inode->next){
+        for (node_ptr inode = index.head_leaf; inode != nullptr && inode != index.empty_leaf; inode = inode->next){
             ++leaf_num;
             data_size += inode->size;
         }
@@ -384,9 +384,7 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
             AEX_ERROR("leaf num error! leaf_num=" << leaf_num << "index.leaf_num=" << index.m_stats.data_node());
             return false;
         }
-        
         size_type i = 0;
-        //AEX_PRINT("slot_size=" << index.begin()._M_node->slot_size);
         for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
             if (left_data[i].first != iter.key()){
                 AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << left_data[i].first);
@@ -397,7 +395,6 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
                 return false;
             }
         }
-
         for (auto &x : left_data){
             auto y = index.find(x.first);
             if (y == index.end()){
@@ -410,6 +407,7 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
             }
         }
     }
+    AEX_SUCCESS("Erasion test success! Next test erasion performance...");
 
     index.clear();
     const int ITER = 1;

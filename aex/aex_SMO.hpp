@@ -645,8 +645,8 @@ inline void aex_tree<_Key, _Val, traits>::split(data_node_ptr new_node, data_nod
     new_node->prev = old_node->prev;
     if (old_node->prev != nullptr) old_node->prev->next = new_node;
     old_node->prev = new_node;
-    if (head_leaf == old_node) head_leaf = new_node;
-    //new_node->parent = old_node->parent;
+    if (this->head_leaf == old_node) 
+        this->head_leaf = new_node;
     
     size_type mid = traits::MIN_DATA_NODE_SLOT_SIZE >> 1;
     std::move(old_node->key, old_node->key + mid, new_node->key);
@@ -686,6 +686,79 @@ inline _Key aex_tree<_Key, _Val, traits>::split_dense_inner_node(inner_node_ptr 
     new_node->size = mid;
     std::fill(old_node->key_ptr + old_node->size - 1, old_node->key_ptr + old_node->slot_size, std::numeric_limits<key_type>::max());
     return ret;
+}
+
+
+template<typename _Key, typename _Val, typename traits>
+inline void aex_tree<_Key, _Val, traits>::merge(inner_node_ptr __restrict__ parent, inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node){
+    #ifdef AEX_DEBUG
+    ++this->opt_stats.inner_node_merge_cnt;
+    #endif
+    AEX_WARNING("erase merge inner node");
+    AEX_ASSERT(left_node->size + right_node->size <= right_node->slot_size);
+    AEX_ASSERT(IS_ML_NODE(left_node) == false);
+    AEX_ASSERT(IS_ML_NODE(right_node) == false);
+    AEX_ASSERT(parent != nullptr);
+    key_type split_key =  parent->key_ptr[parent->at(left_node)];
+    
+    std::move_backward(right_node->key_ptr, right_node->key_ptr + right_node->size - 1, right_node->key_ptr + left_node->size + right_node->size - 1);
+    std::move_backward(right_node->child_ptr, right_node->child_ptr + right_node->size, right_node->child_ptr + left_node->size + right_node->size);
+    std::move(left_node->key_ptr, left_node->key_ptr + left_node->size - 1, right_node->key_ptr);
+    std::move(left_node->child_ptr, left_node->child_ptr + left_node->size, right_node->child_ptr);
+    right_node->key_ptr[left_node->size - 1] = split_key;
+    right_node += left_node->size;
+    erase_link(left_node);
+    erase_child_node(parent, left_node);
+}
+
+template<typename _Key, typename _Val, typename traits>
+inline bool aex_tree<_Key, _Val, traits>::merge(inner_node_ptr __restrict__ parent, data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node){
+    if constexpr (!traits::AllowDynamicDataNode){
+        AEX_ASSERT(left_node != right_node);
+        if (left_node->size + right_node->size <= traits::MIN_DATA_NODE_SLOT_SIZE){
+            #ifdef AEX_DEBUG
+            ++this->opt_stats.data_node_merge_cnt;
+            #endif
+            //AEX_PRINT("left_node=" << left_node << ", right_node=" << right_node << ", empty_leaf=" << empty_leaf);
+            //AEX_WARNING("!! erase merge data node, " << left_node->size << ", " << right_node->size);
+            std::move_backward(right_node->key, right_node->key + right_node->size, right_node->key + right_node->size + left_node->size);
+            std::move_backward(right_node->data, right_node->data + right_node->size, right_node->data + right_node->size + left_node->size);
+            std::move(left_node->key, left_node->key + left_node->size, right_node->key);
+            std::move(left_node->data, left_node->data + left_node->size, right_node->data);
+            right_node->size += left_node->size;
+            if (this->head_leaf == left_node)
+                this->head_leaf = right_node;
+            erase_link(left_node);
+            erase_child_node(parent, left_node);
+            return true;
+        }
+        else return false;
+    }
+    else{
+        std::vector<key_type> key_buf(left_node->size + right_node->size), new_key;
+        std::vector<value_type> data_buf(left_node->size + right_node->size);
+        std::vector<node_ptr> new_child;
+        std::copy(left_node->key, left_node->key + left_node->size, key_buf.data());
+        std::copy(left_node->data, left_node->data + left_node->size, data_buf.data());
+        std::copy(right_node->key, right_node->key + right_node->size, key_buf.data() + left_node->size);
+        std::copy(right_node->data, right_node->data + right_node->size, data_buf.data() + left_node->size);
+        //split_with_linear_probe(key_buf.data(), data_buf.data(), right_node->level, new_key, new_child);
+        split_with_exponential_probe(key_buf.data(), data_buf.data(), right_node->level, new_key, new_child);
+        right_node->balance_stats.update_SMO_frequency(this->balance_stats.get_timestamp());
+        update_node_list_frequency(right_node, new_child.data(), new_child.size());
+        link_node_list_and_replace_last_node(right_node, new_child.data(), new_child.size());
+        new_key.pop_back();
+        new_child.pop_back();
+        erase_link(left_node);
+        erase_child_node(parent, left_node);
+        if (new_key.size() > 0){
+            insert_recursive(parent, new_key.size(), new_child.data(), new_child.size());
+            return false;
+        }
+        else{
+            return true;
+        }
+    }
 }
 
 template<typename _Key, typename _Val, typename traits>

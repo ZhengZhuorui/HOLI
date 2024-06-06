@@ -120,8 +120,9 @@ enum node_property{
     ML_NODE=0x1,
     STATIC_NODE=0x2,
     LEAF=0x4,
-    CAN_MERGED=0x8,
-    CONCURRENCE=0x16,
+    IS_DELETE=0x8,
+    CAN_MERGED=0x10,
+    CONCURRENCE=0x20,
 };
 
 template<typename _NodePtr>
@@ -130,6 +131,8 @@ template<typename _NodePtr>
 inline bool IS_LEAF_NODE(_NodePtr node){return (node)->level == 0;}
 template<typename _NodePtr>
 inline bool IS_STATIC_NODE(_NodePtr node){return ((node)->prop & node_property::STATIC_NODE) != 0;}
+template<typename _NodePtr>
+inline bool IS_DELETE_NODE(_NodePtr node){return ((node)->prop & node_property::IS_DELETE) != 0;}
 template<typename _NodePtr>
 inline bool CAN_MERGED_NODE(_NodePtr node){return ((node->prop) & node_property::CAN_MERGED) != 0;}
 template<typename _NodePtr>

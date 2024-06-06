@@ -164,6 +164,8 @@ public:
     //    return align_8bytes(sizeof(version_type) * slot_size / traits::ERROR_BOUND);
     //}
 
+    inline bool is_large_node(slot_type real_slot_size){return real_slot_size >= traits::MIN_ML_INNER_NODE_SIZE;}
+
     inline inner_node_ptr allocate_inner_node(slot_type real_slot_size, bool ml_node_flag){
         /*
         *   TODO: memory pool
@@ -177,7 +179,7 @@ public:
         //AEX_PRINT("slot_size=" << slot_size);
         AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
 
-        slot_size += (real_slot_size >= traits::MIN_ML_INNER_NODE_SIZE) * traits::ERROR_BOUND;
+        slot_size += is_large_node(real_slot_size) * traits::ERROR_BOUND;
 
         size_type memory_used = INNER_NODE_MEMORY_USED(slot_size);
         this->_memory_used += memory_used;
@@ -254,8 +256,10 @@ public:
         return allocate_dynamic_data_node(slot_size, ml_node_flag);
     }
 
+    
+
     inline void reallocate(inner_node_ptr node, slot_type new_slot_size){
-        new_slot_size += (new_slot_size >= traits::MIN_ML_INNER_NODE_SIZE) * traits::ERROR_BOUND;
+        new_slot_size += is_large_node(new_slot_size) * traits::ERROR_BOUND;
 
         this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) \
                               - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) \
@@ -268,7 +272,7 @@ public:
     }
 
     inline void reallocate_and_copy(inner_node_ptr node, slot_type new_slot_size){
-        new_slot_size += (new_slot_size >= traits::MIN_ML_INNER_NODE_SIZE) * traits::ERROR_BOUND;
+        new_slot_size += is_large_node(new_slot_size) * traits::ERROR_BOUND;
 
         this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) \
                               - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) \
@@ -288,7 +292,7 @@ public:
     }
 
     inline void reallocate_and_save(inner_node_ptr node, slot_type new_slot_size){
-        new_slot_size += (new_slot_size > traits::MIN_ML_INNER_NODE_SIZE) * traits::ERROR_BOUND;
+        new_slot_size += is_large_node(new_slot_size) * traits::ERROR_BOUND;
 
         this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) \
                               - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) \

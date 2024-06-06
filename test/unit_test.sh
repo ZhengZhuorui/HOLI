@@ -484,10 +484,13 @@
 # test index erase accuracy
 ./unit_test --unit=index --key_type=float64 --function=erase --num_keys=2000000 --batch=1 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=erase --num_keys=2000000 --batch=200000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+
+./unit_test --unit=index --key_type=float64 --function=erase --num_keys=128 --batch=96 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=erase --num_keys=2000000 --batch=2000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=erase --num_keys=2000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=erase --num_keys=20000000 --batch=2000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=erase --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float64 --function=erase --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
 # test index range query accuracy
 ./unit_test --unit=index --key_type=float64 --function=range_query --num_keys=2000000 --batch=1 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data

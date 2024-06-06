@@ -29,9 +29,9 @@ public:
 
     typedef data_node* data_node_ptr;
 
-    inline aex_iterator() : _M_node(nullptr), offset(0){}
+    inline aex_iterator() noexcept: _M_node(nullptr), offset(0){}
     
-    inline aex_iterator(data_node* ptr, slot_type _offset):_M_node(ptr), offset(_offset){}
+    inline aex_iterator(data_node* ptr, slot_type _offset) noexcept:_M_node(ptr), offset(_offset){}
     
     //inline aex_iterator(const aex_reverse_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}        
     
