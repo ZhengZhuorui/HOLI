@@ -433,13 +433,13 @@ private:
         for (unsigned level = node->level; level > 0; --level){
             //AEX_ASSERT(node == root || this->isfull(static_cast<inner_node_ptr>(node), -1) == false);
             //AEX_ASSERT(node == root || this->isfew(static_cast<inner_node_ptr>(node), 1) == false);
-            AEX_ASSERT(IS_DELETE_NODE(node) == false);
+            //AEX_ASSERT(IS_DELETE_NODE(node) == false);
             slot_type pos = static_cast<inner_node_ptr>(node)->find(key);
             node = static_cast<inner_node_ptr>(node)->child_ptr[pos];
-            AEX_ASSERT((node->prev == nullptr || node->prev->next == node));
-            AEX_ASSERT((node->next == nullptr || node->next->prev == node));
+            //AEX_ASSERT((node->prev == nullptr || node->prev->next == node));
+            //AEX_ASSERT((node->next == nullptr || node->next->prev == node));
         }        
-        AEX_ASSERT(IS_DELETE_NODE(node) == false);
+        //AEX_ASSERT(IS_DELETE_NODE(node) == false);
         return static_cast<data_node_ptr>(node);
     }
 

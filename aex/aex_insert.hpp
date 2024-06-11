@@ -183,7 +183,7 @@ inline void aex_tree<_Key, _Val, traits>::__insert_split_bulk_load(const key_typ
     #ifdef AEX_DEBUG
     ++opt_stats.inner_node_split_bulk_load_cnt;
     #endif
-    AEX_HINT("insert_split_bulk_load, tail=" << tail << ", size=" << size << ", split_size=" << split_size);
+    //AEX_HINT("insert_split_bulk_load, tail=" << tail << ", size=" << size << ", split_size=" << split_size);
     slot_type level = last_node->level, his_size = 0;
     slot_type block_nums = size / split_size + (size % split_size != 0);
     //AEX_PRINT(new_key.size() << ", " << new_child.size());

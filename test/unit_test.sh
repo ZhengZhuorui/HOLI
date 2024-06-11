@@ -529,7 +529,7 @@
 # test index balance accuracy
 ./unit_test --unit=index --insert_balance=1 --key_type=float64 --function=lookup --num_keys=2000000 --batch=65536 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --insert_balance=1 --key_type=float64 --function=lookup --num_keys=20000000 --batch=65536 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
-./unit_test --unit=index --insert_balance=1 --key_type=float64 --function=lookup --num_keys=200000000 --batch=65536 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+./unit_test --unit=index --insert_balance=1 --key_type=float64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
 # test index concurrancy
 ./unit_test --unit=index_con --key_type=float64 --function=rw --num_keys=2000000 --batch=200000 --read_ratio=0.5 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data

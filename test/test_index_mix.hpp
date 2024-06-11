@@ -141,6 +141,10 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
     std::random_shuffle(opt.data(), opt.data() + tot_nums);
     size_type insert_cnt = 0;
     AEX_PRINT("prepare finish...");
+    {
+        index.print_stats();
+        index.print_detail();
+    }
     for (long long i = 0; i < tot_nums; ++i){
         switch (opt[i]){
             case OperationType::Lookup:{
@@ -198,6 +202,11 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
             default:
                 break;
         }
+    }
+
+    {
+        index.print_stats();
+        index.print_detail();
     }
 
     return true;

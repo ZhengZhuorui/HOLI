@@ -131,8 +131,8 @@ inline bool aex_tree<_Key, _Val, traits>::insert_merge(inner_node_ptr parent, co
         merge_node = allocator.allocate_inner_node(slot_size, false);
         merge_node->construct(key_buf, child_buf, tot_size);
     }
-    allocator.deallocate(key_buf);
-    allocator.deallocate(child_buf);
+    allocator.deallocate_key_buffer(key_buf);
+    allocator.deallocate_nodeptr_buffer(child_buf);
     if (ret){
         merge_node->level = node_merge_buf[0]->level;
         merge_node->balance_stats = node_balance_stats(this->balance_stats.get_timestamp(), SMO_times, 0);
