@@ -301,44 +301,44 @@ public:
         erase_iterator(iter);
     }
 
-    inline iterator begin() noexcept{
+    inline iterator begin() {
         return iterator(head_leaf, 0);
     }
 
-    inline const_iterator begin() const noexcept{
+    inline const_iterator begin() const {
         return const_iterator(head_leaf, 0);
     }
 
-    inline iterator end() noexcept{
+    inline iterator end() {
         //return iterator(tail_leaf, tail_leaf->size);
         return iterator(empty_leaf, 0);
     }
 
-    inline const_iterator end() const noexcept{
+    inline const_iterator end() const {
         return const_iterator(empty_leaf, 0);
     }
 
-    inline reverse_iterator rbegin() noexcept{
+    inline reverse_iterator rbegin() {
         return reverse_iterator(end());
     }
 
-    inline const_reverse_iterator rbegin() const noexcept{
+    inline const_reverse_iterator rbegin() const {
         return const_reverse_iterator(end());
     }
 
-    inline reverse_iterator rend() noexcept{
+    inline reverse_iterator rend() {
         return reverse_iterator(begin());
     }
 
-    inline const_reverse_iterator rend() const noexcept{
+    inline const_reverse_iterator rend() const {
         return reverse_iterator(begin());
     }
 
-    inline size_type size() const noexcept{
+    inline size_type size() const {
         return static_cast<size_t>(m_stats.size);
     }
 
-    inline bool empty() const noexcept{
+    inline bool empty() const {
         return m_stats.size == 0;
     }
 

@@ -172,7 +172,7 @@ void aex_tree<_Key, _Val, traits>::split(const key_type* const key, node_ptr* ch
     bool flag;
     for (; start < n; start += ans_size){ 
         std::tie(ans_size, ans_slot_size, flag) = split_with_exponential_probe(key + start, n - start, level);
-        //AEX_PRINT("ans_size=" << ans_size << ", left size=" << n - start << ", ans_slot_size=" << ans_slot_size << ", timestamp=" << this->balance_stats.get_timestamp());
+        AEX_PRINT("ans_size=" << ans_size << ", left size=" << n - start << ", ans_slot_size=" << ans_slot_size << ", timestamp=" << this->balance_stats.get_timestamp());
         
         inner_node_ptr new_node = allocator.allocate_inner_node(ans_slot_size, flag);
         ++this->m_stats.level_node[level];

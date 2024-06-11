@@ -102,7 +102,8 @@ void alex_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type
     for (size_t T = 0; T < times; ++T){
         for (auto &x : query){
             auto iter = index.find(x);
-            sum += iter.payload();
+            //if (it != index.cend())
+                sum += iter.payload();
         }
     }
     auto t2 = std::chrono::high_resolution_clock::now();
@@ -236,7 +237,7 @@ void benchmark_lookup(FILE* file, long long num_keys, long long num_ops, std::st
         generate_query_zipf<key_type, value_type>(data, query, answer, num_ops);
 
     std::sort(data.begin(), data.end(), [](auto const &a, auto const &b){return a.first < b.first;});
-
+    std::cout << "query_num=" << query.size() << ", num_ops=" << num_ops;
     if (index_name == "aex"){
         aex_query_bench(data, query, answer);
     }
