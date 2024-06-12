@@ -97,8 +97,8 @@ struct aex_default_traits{
 
     static constexpr int DATA_NODE_ERROR_BOUND = 4;
 
-    //static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type) + sizeof(void*)));
-    static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = 32;
+    static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type) + sizeof(void*)));
+    //static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = 32;
     //static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = 8;
 
     static constexpr slot_type MIN_DATA_NODE_SLOT_SIZE = AEX_MAX(8, 128 / (sizeof(key_type)));
