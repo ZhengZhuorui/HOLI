@@ -46,8 +46,11 @@ template<typename _Key,
         typename _Val,
         bool _AllowMultiKey=false,
         typename _SearchClass=void,
-        bool _AllowConcurrency=false>
-        //int max_node_size=256>
+        bool _AllowConcurrency=false,
+        bool _AllowBalance=false,
+        bool _AllowDynamicDataNode=false,
+        int _ERROR_BOUND=8,
+        int _MAX_MODEL_ARGS=8>
 struct aex_default_traits{
 
     typedef _Key key_type;
@@ -74,15 +77,15 @@ struct aex_default_traits{
 
     // Allow balance inner node and data node when read and write frequency update?
     //typedef std::true_type AllowRWBalance;
-    static constexpr bool AllowRWBalance = false;
+    static constexpr bool AllowRWBalance = _AllowBalance;
 
     // Allow balance inner node when insert an item?
     //typedef std::false_type AllowInsertBalance;
-    static constexpr bool AllowInsertBalance = false;
+    static constexpr bool AllowInsertBalance = _AllowBalance;
 
     // Allow tree balance tree struct in lookup, insert and erase.
     //typedef std::true_type AllowBalance;
-    static constexpr bool AllowBalance = false;
+    static constexpr bool AllowBalance = _AllowBalance;
 
     static_assert((AllowRWBalance | AllowInsertBalance) == AllowBalance);
 
@@ -93,7 +96,7 @@ struct aex_default_traits{
 
     static_assert((AllowRWBalance | (!AllowDynamicDataNode)) == true);
     
-    static constexpr int ERROR_BOUND = 8; 
+    static constexpr int ERROR_BOUND = _ERROR_BOUND; 
 
     static constexpr int DATA_NODE_ERROR_BOUND = 4;
 
@@ -139,7 +142,9 @@ struct aex_default_traits{
 
     static constexpr bool debug = true;
 
-    static constexpr int MAX_SEGMENT_NUM = 8;
+    static constexpr int MAX_MODEL_ARGS = _MAX_MODEL_ARGS;
+
+    static constexpr int MAX_SEGMENT_NUM = _MAX_MODEL_ARGS;
 
     static constexpr unsigned long long INNER_NODE_MAX_DIFFERENT_VALUE = 0x10000000000000ULL;
 

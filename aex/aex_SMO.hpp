@@ -280,7 +280,8 @@ void aex_tree<_Key, _Val, traits>::split_to_static_data_node(const key_type* con
         size_type size = std::min(static_cast<size_type>(traits::MIN_DATA_NODE_SLOT_SIZE), n - i);
         new_node->construct(key + i, data + i, size);
         if (i + size != n)
-            new_key.push_back(MID_KEY(key[i + size - 1], key[i + size]));
+            //new_key.push_back(MID_KEY(key[i + size - 1], key[i + size]));
+            new_key.push_back(key[i + size - 1]);
         new_child.push_back(new_node);
     }
     //new_key.pop_back();
@@ -442,12 +443,12 @@ bool aex_tree<_Key, _Val, traits>::check_collision(const key_type* const key, co
         if (start - pos >= traits::ERROR_BOUND || start >= slot_size + traits::ERROR_BOUND - 1){
             AEX_WARNING("size=" << size << ", i=" << i << ", start=" << start << ", slot_size=" << slot_size << ", pos=" << pos << ", key=" << key[i] << ", prev_key=" << key[i-1] << ", max error=" << m.max_error(key, size, slot_size));
             AEX_WARNING("seg_nums=" << m.args.seg_nums);
-            for (unsigned int j = 0; j < m.args.seg_nums; ++j)
-                AEX_WARNING("slope=" << m.args.slope[j] << ", end=" << m.args.end[j]);
-            for (int j = 0; j < size; ++j){
-                [[maybe_unused]]slot_type pos = std::max(0, static_cast<slot_type>(m.predict(key[j]) * slot_size));
-                AEX_PRINT("key=" << key[j] << ", pred_pos=" << m.predict(key[j]) << ", pos=" << pos);
-            }
+            //for (unsigned int j = 0; j < m.args.seg_nums; ++j)
+            //    AEX_WARNING("slope=" << m.args.slope[j] << ", end=" << m.args.end[j]);
+            //for (int j = 0; j < size; ++j){
+            //    [[maybe_unused]]slot_type pos = std::max(0, static_cast<slot_type>(m.predict(key[j]) * slot_size));
+            //    AEX_PRINT("key=" << key[j] << ", pred_pos=" << m.predict(key[j]) << ", pos=" << pos);
+            //}
             //for (unsigned int j = 0; j < m.args.seg_nums; ++j)
             //    AEX_PRINT("slope=" << m.args.slope[j] << ", end=" << m.args.end[j]);
             return false;

@@ -5,7 +5,7 @@ namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
 inline std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree<_Key, _Val, traits>::insert(const key_type &key, const value_type &value){
-    //AEX_PRINT("insert: key=" << key);
+
     this->balance_stats.update_timestamp();
     //inner_node_ptr stack[traits::MAX_DEPTH];
     inner_node_ptr *stack;
@@ -47,7 +47,8 @@ inline std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree
                 iter = iterator(node, pos - new_node->size);
                 node->insert(key, value, pos - new_node->size);
             }
-            key_type new_key = MID_KEY(new_node->key[new_node->size - 1], node->key[0]);
+            //key_type new_key = MID_KEY(new_node->key[new_node->size - 1], node->key[0]);
+            key_type new_key = new_node->key[new_node->size - 1];
             node_ptr _ = static_cast<node_ptr>(new_node);
             insert_recursive(stack, &new_key, &_, 1);
             ret = std::pair<iterator, bool>(iter, true);
@@ -287,8 +288,9 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_pipeline(inner_node_ptr* 
             }
             else{
                 append_flag &= (!isfull(parent));
-                if (append_flag)
+                if (append_flag){
                     append_flag &= parent->insert(key_buffer[tail - 1], new_node);
+                }
                 if (!append_flag){
                     insert_split_bulk_load(stack, key_buffer, child_buffer, size, tail - ans_size, key_buffer[tail - 1], new_node, split_size, stats);
                     return;
@@ -556,7 +558,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_recursive(inner_node_ptr* stack
         return;
     }
     node->balance_stats.update_write_frequency(this->balance_stats.get_timestamp());
-    if (isfull(node, n - 1)) {
+    while (isfull(node, n - 1)) {
         //AEX_PRINT("node->size=" << node->size << ", IS_ML_NODE" << IS_ML_NODE(node) << ", node->slot_size=" << node->slot_size << ", n=" << n);
         if (check_split(node) > 1){
             insert_split_helper(stack, key_buf, child_buf, n);

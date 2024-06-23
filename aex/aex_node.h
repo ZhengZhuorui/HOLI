@@ -487,9 +487,8 @@ public:
     inline slot_type find(const key_type& x) const{
         if (IS_ML_NODE(this)){
             slot_type pred_pos = this->predict(x);
-            #ifdef AEX_TLI
-            return traits::SearchClass::lower_bound(this->key_ptr, std::min(this->slot_size, this->key_ptr + traits::ERROR_BOUND + 1), x, this->key_ptr + pred_pos) - this->key_ptr;
-            #else
+            if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
+                return traits::SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->slot_size, x, this->key_ptr + pred_pos) - this->key_ptr;
             for (slot_type i = pred_pos; i < this->slot_size; ++i)
             if (x <= key_ptr[i]){
                 return i;
@@ -497,15 +496,12 @@ public:
             return linear_search_lower_bound(this->key_ptr + pred_pos, this->key_ptr + this->slot_size, x) - this->key_ptr;
             //slot_type res = std::lower_bound
             //return this->slot_size - 1;
-            #endif
         }
         else{
-            #ifdef AEX_TLI
-            return traits::SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x, this->key_ptr + pred_pos) - this->key_ptr;
-            #else
+            if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
+                return traits::SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x, this->key_ptr) - this->key_ptr;
             slot_type pos = std::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x) - this->key_ptr;
             return pos;
-            #endif
         }
     }
 
@@ -824,21 +820,15 @@ public:
 
     // if no item greater than or equal x, return slot_size
     inline slot_type find_lower_pos(const key_type &x){
-        #ifdef AEX_TLI
-        return traits::SearchClass::lower_bound(this->key, this->key + this->size, x) - this->key;
-        #else
+        if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
+            return traits::SearchClass::lower_bound(this->key, this->key + this->size, x, this->key) - this->key;
         return std::lower_bound(this->key, this->key + this->size, x) - this->key;
-        //return linear_search_lower_bound(this->key, this->key + this->size, x) - this->key;
-        #endif
     }
 
     inline slot_type find_upper_pos(const key_type &x){
-        #ifdef AEX_TLI
-        return traits::SearchClass::upper_bound(this->key, this->key + this->size, x) - this->key;
-        #else
+        if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
+            return traits::SearchClass::upper_bound(this->key, this->key + this->size, x, this->key) - this->key;
         return std::upper_bound(this->key, this->key + this->size, x) - this->key;
-        //return linear_search_lower_bound(this->key, this->key + this->size, x) - this->key;
-        #endif
     }
 
 };

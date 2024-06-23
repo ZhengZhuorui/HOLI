@@ -292,10 +292,24 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
             AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
             return false;
         }
+        iter = index.find(insert_data[i].first);
+        if (iter.key() != insert_data[i].first || iter.data() != insert_data[i].second){
+            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
+            return false;
+        }
     }
     AEX_SUCCESS("insert finish..");
 
-    {
+    {   
+        for (long long i = 0; i < n; ++i){
+            typename tree::iterator iter;
+            iter = index.find(data[i].first);
+            if (iter.key() != data[i].first || iter.data() != data[i].second){
+                AEX_ERROR("return iterator is not equal item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
+                return false;
+            }
+        }
+
         if (static_cast<long long>(index.size()) != n){
             AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);
             return false;
@@ -315,6 +329,8 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
         for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
             if (data[i].first != iter.key()){
                 AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << data[i].first << ", gap=" << iter.key() - data[i].first);
+                auto _ = std::lower_bound(data, data + n, std::make_pair(iter.key(), iter.data())) - data;
+                AEX_ERROR("iter_key position=" << _ << ", now position=" << i);
                 return false;
             }
             if (data[i].second != iter.data()){

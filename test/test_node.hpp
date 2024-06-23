@@ -337,10 +337,7 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
         return false;
     }
     
-    if (IS_ML_NODE(child_buf[0]) == false){
-        AEX_PRINT("node is not ml node");
-        //return false;
-    }
+    AEX_IMPORTANT("IS_ML_NODE?:" << (aex::IS_ML_NODE(child_buf[0]) ? 'Y' : 'N'));
     
     inner_node_ptr node = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), IS_ML_NODE(child_buf[0]));
     *node = *static_cast<inner_node_ptr>(child_buf[0]);
@@ -354,7 +351,7 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
         }
     }
 
-    const int ITER = 1000;
+    const int ITER = 10000;
     system_clock::time_point t1, t2;
     t1 = std::chrono::high_resolution_clock::now();
     value_type sum;

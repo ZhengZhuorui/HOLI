@@ -271,11 +271,6 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
         #ifdef AEX_DEBUG
         ++opt_stats.inner_node_balance_split_cnt;
         #endif
-        
-        //AEX_IMPORTANT("timestamp=" << this->balance_stats.get_timestamp() << ", lambda_timestamp=" << lambda_timestamp);
-        //AEX_IMPORTANT("node=" << node << ", train_times=" << node->balance_stats.get_SMO_times() << ", write_times=" << node->balance_stats.get_write_times());
-        //AEX_IMPORTANT("read_cost=" << read_cost << ", SMO_cost=" << SMO_cost << ", delta_cost=" << delta_cost);
-        //AEX_IMPORTANT("split_nums=" << split_nums);
         return split_nums;
     }
     return 1;

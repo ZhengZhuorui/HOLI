@@ -305,6 +305,16 @@ inline _Tp MID_KEY(_Tp x, _Tp y){
     return (x + y) / 2;
 }
 
+template<>
+inline unsigned long long MID_KEY(unsigned long long x, unsigned long long y){
+    return (x >> 1) + (y >> 1) + (x&y&1);
+}
+
+template<>
+inline long long MID_KEY(long long x, long long y){
+    return (x / 2) + (y / 2) + (x&y&1);
+}
+
 template<typename _Tp>
 inline std::pair<_Tp, size_t> argmax(_Tp* x, size_t n){
     _Tp v = x[0];

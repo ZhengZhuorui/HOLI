@@ -42,12 +42,13 @@ bool test(map<string, string> &flags){
     long long num_keys = stoll(flags["num_keys"]);
 
     vector<T> bin_data;
-    bool is_head = (file_name.find("fb_200M_uint64") != std::string::npos) | 
-                   (file_name.find("osm_cellids_200M_uint64") != std::string::npos) | 
-                   (file_name.find("wiki_ts_200M_uint64") != std::string::npos) | 
-                   (file_name.find("normal_200M_uint64") != std::string::npos) | 
-                   (file_name.find("lognormal_200M_uint64") != std::string::npos) | 
-                   (file_name.find("books_800M_uint64") != std::string::npos);
+    //bool is_head = (file_name.find("fb_200M_uint64") != std::string::npos) | 
+    //               (file_name.find("osm_cellids_200M_uint64") != std::string::npos) | 
+    //               (file_name.find("wiki_ts_200M_uint64") != std::string::npos) | 
+    //               (file_name.find("normal_200M_uint64") != std::string::npos) | 
+    //               (file_name.find("lognormal_200M_uint64") != std::string::npos) | 
+    //               (file_name.find("books_800M_uint64") != std::string::npos);
+    bool is_head = !(file_name.find(".bin.data") != std::string::npos);
     AEX_PRINT("is_head=" << is_head);
     size_t _ = read_bineary_file<T>(file, bin_data, num_keys, is_head);
     assert((long long)_ == num_keys);
@@ -56,8 +57,17 @@ bool test(map<string, string> &flags){
 
     long long unique_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
     bool multikey_flag = (num_keys != unique_keys);
-    std::cout << "Is unique? " << (num_keys == unique_keys ? "Yes" : "No") << std::endl;
-    if (unit == "function"){
+    std::cout << "Is unique? " << (num_keys == unique_keys ? "Yes" : "No") << ", unique_keys=" << unique_keys << std::endl;
+    if (unit == "sort"){
+        std::string output_file = flags["output_file"];
+        AEX_HINT("sort file: " << file_name << " to file:" << output_file);
+        FILE* file = fopen(output_file.c_str(), "wb");
+        std::sort(bin_data.data(), bin_data.data() + num_keys);
+        write_bineary_file(file, bin_data, num_keys);
+        AEX_SUCCESS("file is sorted");
+        return true;
+    }
+    else if (unit == "function"){
         auto func = flags["function"];
         if (func == "exp_lower_bound")
             return test_exponential_search_lower_bound(bin_data.data(), num_keys);

@@ -40,8 +40,10 @@ size_t read_bineary_file(FILE* file, vector<T> &data, size_t n, bool is_head=tru
     std::cout << "read data...\n";
     data.resize(n);
     [[maybe_unused]] size_t _, __;
-    if (is_head)
+    if (is_head){
         __ = fread(&_, sizeof(size_t), 1, file);
+        std::cout << "Dataset size=" << _ << std::endl;
+    }
     size_t data_size = fread(data.data(), sizeof(T), n, file);
     for (int i = 0; i < std::min(100, (int)n); ++i)
         std::cout << data[i] << ", ";
@@ -53,8 +55,10 @@ template<typename T>
 size_t read_bineary_file(FILE* file, T* &data, size_t n, bool is_head=true){
     std::cout << "read data...\n" ;
     size_t _;
-    if (is_head)
+    if (is_head){
         fread(&_, sizeof(size_t), 1, file);
+        std::cout << "Dataset size=" << _ << std::endl;
+    }
     size_t data_size = fread(data, sizeof(T), n, file);
     for (int i = 0; i < std::min(100, (int)n); ++i)
         std::cout << data[i] << ", ";
@@ -69,6 +73,21 @@ void write_bineary_file(FILE* file, vector<T> &data){
     std::cout << "example: " << std::endl;
     for (size_t i = 0; i < std::min(n, (size_t)100); ++i)
         std::cout << data[i] << ", ";
+    fwrite(data.data(), sizeof(T), n, file);
+    std::cout << "write data end\n";
+}
+
+template<typename T>
+void write_bineary_file(FILE* file, vector<T> &data, size_t n, bool is_head=true){
+    std::cout << "write data...\n";
+
+    std::cout << "example: " << std::endl;
+    for (size_t i = 0; i < std::min(n, (size_t)100); ++i)
+        std::cout << data[i] << ", ";
+    if (is_head){
+        std::cout << "num_keys=" << n << std::endl;
+        fwrite(&n, sizeof(size_t), 1, file);
+    }
     fwrite(data.data(), sizeof(T), n, file);
     std::cout << "write data end\n";
 }
