@@ -121,8 +121,10 @@ enum node_property{
     STATIC_NODE=0x2,
     LEAF=0x4,
     IS_DELETE=0x8,
-    CAN_MERGED=0x10,
-    CONCURRENCE=0x20,
+    CAN_LEFT_MERGED=0x10,
+    CAN_RIGHT_MERGED=0x20,
+    CAN_MERGED=0x40,
+    CONCURRENCE=0x80,
 };
 
 template<typename _NodePtr>
@@ -134,7 +136,9 @@ inline bool IS_STATIC_NODE(_NodePtr node){return ((node)->prop & node_property::
 template<typename _NodePtr>
 inline bool IS_DELETE_NODE(_NodePtr node){return ((node)->prop & node_property::IS_DELETE) != 0;}
 template<typename _NodePtr>
-inline bool CAN_MERGED_NODE(_NodePtr node){return ((node->prop) & node_property::CAN_MERGED) != 0;}
+inline bool CAN_LEFT_MERGED_NODE(_NodePtr node){return ((node->prop) & node_property::CAN_LEFT_MERGED) != 0;}
+template<typename _NodePtr>
+inline bool CAN_RIGHT_MERGED_NODE(_NodePtr node){return ((node->prop) & node_property::CAN_RIGHT_MERGED) != 0;}
 template<typename _NodePtr>
 inline void SET_FLAG(_NodePtr node, unsigned int flag){(node)->prop |= flag; }
 template<typename _NodePtr>
@@ -353,6 +357,14 @@ inline _Tp min(_Tp* x, size_t n){
     for (size_t i = 1; i < n; ++i)
         ret = std::min(ret, x[i]);
     return ret;
+}
+
+template<typename _Tp>
+inline bool is_sorted(_Tp *x, size_t n){
+    for (size_t i = 1; i < n; ++i)
+    if (x[i] < x[i - 1])    
+        return false;
+    return true;
 }
 
 }

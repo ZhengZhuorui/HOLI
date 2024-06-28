@@ -24,7 +24,7 @@ bool test_SMO_node_rescale_perf(key_type* key, size_t num_keys, double ratio, in
         AEX_ERROR("can't split to one inner node, node[0]->slot_size=" << inner_node_buf[0]->slot_size << ", node[0]->size=" << inner_node_buf[0]->size << ", split to " << inner_node_buf.size() << " nodes.");
     }
     
-    inner_node_ptr node = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(inner_node_buf[0])->real_slot_size(), IS_ML_NODE(inner_node_buf[0]));
+    inner_node_ptr node = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(inner_node_buf[0])->real_slot_size(), level, IS_ML_NODE(inner_node_buf[0]));
     *node = *static_cast<inner_node_ptr>(inner_node_buf[0]);
     if (tree.rescale(node, static_cast<slot_type>(node->real_slot_size() * ratio)) == false){
         AEX_ERROR("rescale false!");
@@ -54,7 +54,7 @@ bool test_SMO_node_rescale_perf(key_type* key, size_t num_keys, double ratio, in
     const int ITER = 10;
     std::vector<inner_node_ptr> test_node_array(ITER);
     for (int i = 0; i < ITER; ++i){
-        test_node_array[i] = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(inner_node_buf[0])->real_slot_size(), IS_ML_NODE(inner_node_buf[0]));
+        test_node_array[i] = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(inner_node_buf[0])->real_slot_size(), level, IS_ML_NODE(inner_node_buf[0]));
         *test_node_array[i] = *static_cast<inner_node_ptr>(inner_node_buf[0]);
     }
     double delta = 0;

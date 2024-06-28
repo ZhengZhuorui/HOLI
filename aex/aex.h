@@ -123,18 +123,23 @@ public:
                         inner_node_split_pipeline_cnt(0), inner_node_split_bulk_load_cnt(0), inner_node_split_by_buffer_cnt(0), inner_node_split_dense_node_cnt(0),
                         data_node_split_cnt(0), data_node_merge_cnt(0), data_node_rescale_cnt(0),
                         inner_node_train_cnt(0), inner_node_train_tot_size(0),
-                        inner_node_balance_split_cnt(0), inner_node_balance_check_split_cnt(0){}
+                        inner_node_balance_split_cnt(0), inner_node_balance_check_split_cnt(0),
+                        inner_node_split_left_buffer_cnt(0), inner_node_split_right_buffer_cnt(0),
+                        inner_node_lsm_merge_try_cnt(0), inner_node_lsm_merge_cnt(0){}
         size_type inner_node_split_cnt, inner_node_merge_cnt, inner_node_rescale_cnt;
         size_type inner_node_split_pipeline_cnt, inner_node_split_bulk_load_cnt, inner_node_split_by_buffer_cnt, inner_node_split_dense_node_cnt; 
         size_type data_node_split_cnt, data_node_merge_cnt, data_node_rescale_cnt;
         size_type inner_node_train_cnt, inner_node_train_tot_size;
         size_type inner_node_balance_split_cnt, inner_node_balance_check_split_cnt, inner_node_insert_balance_cnt;
+        size_type inner_node_split_left_buffer_cnt, inner_node_split_right_buffer_cnt;
+        size_type inner_node_lsm_merge_try_cnt, inner_node_lsm_merge_cnt;
         void print_stats(){
-            
             AEX_PRINT("[Operation status] inner node: split times=" << inner_node_split_cnt << ", merge times=" << inner_node_merge_cnt <<
                     ", rescale times=" << inner_node_rescale_cnt);
-            AEX_PRINT("inner node: split pipeline times=" << inner_node_split_pipeline_cnt << ", bulk_load cnt=" << inner_node_split_bulk_load_cnt << ", by_buffer cnt=" << inner_node_split_by_buffer_cnt << ", split dense node cnt=" << inner_node_split_dense_node_cnt);
+            AEX_PRINT("inner node: split pipeline times=" << inner_node_split_pipeline_cnt << ", bulk_load cnt=" << inner_node_split_bulk_load_cnt << ", by_buffer cnt=" << inner_node_split_by_buffer_cnt << ", split dense node cnt=" << inner_node_split_dense_node_cnt
+                    << " left_buffer cnt=" << inner_node_split_left_buffer_cnt << ", right_buffer cnt=" << inner_node_split_right_buffer_cnt);
             AEX_PRINT("inner node: train cnt=" << inner_node_train_cnt << ", train size=" << inner_node_train_tot_size);
+            AEX_PRINT("inner_node_lsm_merge_try_cnt = " << inner_node_lsm_merge_try_cnt << ", inner_node_lsm_merge_cnt = " << inner_node_lsm_merge_cnt << ", ratio=" << 1.0 * inner_node_lsm_merge_cnt / inner_node_lsm_merge_try_cnt);
             AEX_PRINT(" data node: split times=" << data_node_split_cnt << ", merge times=" << data_node_merge_cnt <<
                     ", rescale times=" << data_node_rescale_cnt);   
             AEX_PRINT("[balance status] inner node balance split cnt=" << inner_node_balance_split_cnt << ", inner node balance check split cnt=" << inner_node_balance_check_split_cnt << 
@@ -295,7 +300,6 @@ public:
     bool erase_one(const key_type &x);
 
     inline void erase(const_iterator &iter){
-        AEX_ERROR("???");
         if (root == nullptr || iter == end()) 
             return end();
         erase_iterator(iter);
@@ -383,7 +387,36 @@ public:
     }
 
     inline size_type memory_used() const{
-        return allocator._memory_used;
+        if (this->root == nullptr)
+            return 0;
+        size_t memory_used = 0;
+        std::queue<node_ptr> que;
+        que.push(this->root);
+        while (!que.empty()){
+            node_ptr now = que.front();
+            que.pop();
+            if (!IS_LEAF_NODE(now)){
+                inner_node_ptr in_now = static_cast<inner_node_ptr>(now);
+                //memory_used += Allocator::INNER_NODE_MEMORY_USED(now->slot_size);
+                memory_used += sizeof(inner_node) + 
+                                (in_now->key_ptr != nullptr) * Allocator::KEY_MEMORY_USED(in_now->slot_size) + 
+                                (in_now->child_ptr != nullptr) * Allocator::PTR_MEMORY_USED(in_now->slot_size) + 
+                                (in_now->bitmap_ptr != nullptr) * Allocator::BITMAP_MEMORY_USED(in_now->slot_size);
+                if (IS_ML_NODE(in_now)){
+                    for (slot_type i = 0; i < in_now->slot_size; ++i)
+                    if (bitmap_impl::at(in_now->bitmap_ptr, i))
+                        que.push(in_now->child_ptr[i]);
+                }
+                else{
+                    for (slot_type i = 0; i < in_now->size; ++i)
+                        que.push(in_now->child_ptr[i]);
+                }
+            }
+            else{
+                memory_used += Allocator::STATIC_DATA_NODE_MEMORY_USED();
+            }
+        }
+        return memory_used;
     }
 
 #ifndef AEX_DEBUG
@@ -500,6 +533,69 @@ private:
         if (new_child.size() > 0)
             insert_recursive(stack - 1, new_key.data(), reinterpret_cast<node_ptr*>(new_child.data()), new_child.size());
     }
+
+    void insert_split_left_buffer_by_buffer(inner_node_ptr* stack, key_type* key, node_ptr* child, size_type n){
+        inner_node_ptr &node = *stack;
+        std::vector<key_type>& new_key = allocator.allocate_dynamic_key_buf(node->level & 1);
+        std::vector<inner_node_ptr>& new_child = reinterpret_cast<std::vector<inner_node_ptr>&>(allocator.allocate_dynamic_nodeptr_buf(node->level & 1));
+        split(key, child, n, node->level, new_key, new_child);
+        size_type m = new_child.size();
+        for (size_type i = 0; i < m; ++i){
+            new_child[i]->next = new_child[i + 1];
+            new_child[i + 1]->prev = new_child[i];
+        }
+        
+        new_child[0]->prev = node->prev;
+        new_child[m - 1]->next = node;
+        if (node->prev != nullptr)
+            node->prev->next = new_child[0];
+        node->prev = new_child[m - 1];
+
+        allocator.deallocate_key_buffer(key);
+        allocator.deallocate_nodeptr_buffer(child);
+        update_node_list_frequency(node->balance_stats, node->size, reinterpret_cast<node_ptr*>(new_child.data()), m);
+        insert_recursive(stack - 1, new_key.data(), reinterpret_cast<node_ptr*>(new_child.data()), new_child.size());
+        return;
+    }
+
+    void insert_split_right_buffer_by_buffer(inner_node_ptr* stack, key_type* key, node_ptr* child, size_type n, const key_type split_key){
+        AEX_PRINT("[insert_split_right_buffer_by_buffer]");
+        inner_node_ptr &node = *stack;
+        std::vector<key_type>& new_key = allocator.allocate_dynamic_key_buf(node->level & 1);
+        std::vector<inner_node_ptr>& new_child = reinterpret_cast<std::vector<inner_node_ptr>&>(allocator.allocate_dynamic_nodeptr_buf(node->level & 1));
+        split(key, child, n, node->level, new_key, new_child);
+        size_type m = new_child.size();
+        node_ptr prev_node = node->prev, next_node = node->next;
+        
+        update_node_list_frequency(node->balance_stats, node->size, reinterpret_cast<node_ptr*>(new_child.data()), m);
+        inner_node_ptr tmp = new_child[m - 1];
+        std::swap(*node, *new_child[m - 1]);
+        std::move_backward(new_child.data(), new_child.data() + m - 1, new_child.data() + m);
+        new_child[0] = tmp;
+        new_key.insert(new_key.begin(), split_key);
+
+        for (size_type i = 0; i < m; ++i){
+            new_child[i]->next = new_child[i + 1];
+            new_child[i + 1]->prev = new_child[i];
+        }
+        if (prev_node != nullptr)
+            prev_node->next = new_child[0];
+        if (next_node != nullptr)
+            next_node->prev = new_child[m - 1];
+        new_child[0]->prev = prev_node;
+        new_child[m - 1]->next = node;
+        node->prev = new_child[m - 1];
+        node->next = next_node;
+
+        allocator.deallocate_key_buffer(key);
+        allocator.deallocate_nodeptr_buffer(child);
+        insert_recursive(stack - 1, new_key.data(), reinterpret_cast<node_ptr*>(new_child.data()), new_child.size());
+        return;
+    }
+
+    void insert_split_left_buffer(inner_node_ptr* stack, const key_type* key, const node_ptr* child, const slot_type n);
+
+    void insert_split_right_buffer(inner_node_ptr* stack, const key_type* key, const node_ptr* child, const slot_type n);
     
     // insert child to node and split it, then insert them to node->parent pipeline
     void insert_split_pipeline(inner_node_ptr* stack, const key_type* key, const node_ptr* child, const slot_type n);
@@ -537,7 +633,7 @@ private:
     void insert_recursive(inner_node_ptr* stack, const key_type* key_buf, node_ptr* child_buf, const slot_type n);
 
     // a helper function insert some child to a inner node.
-    void insert_split_helper(inner_node_ptr* stack, const key_type* key, node_ptr* new_child, const slot_type n);
+    void insert_split_helper(inner_node_ptr* stack, const key_type* key, node_ptr* new_child, const slot_type n, const NODE_INSERT_CODE error_code=NODE_INSERT_CODE::NONE);
     
     // insert some data to a dynamic data node.
     void insert_split(data_node_ptr node, const key_type key, const value_type data);
@@ -550,12 +646,15 @@ private:
     // erase an node from bottom to up
     void erase_recursive(inner_node_ptr* stack);
 
+    void _erase(inner_node_ptr* stack, data_node_ptr node);
+
     // erase one iterator
     void erase_iterator(const_iterator &iter);
 
     // erase one child node from parent. return false if parent or child not exists
     // free the node
     void erase_child_node(inner_node_ptr __restrict__ parent, node_ptr __restrict__ node);
+    void erase_child_node(inner_node_ptr __restrict__ parent, node_ptr __restrict__ node, slot_type left_node_pos);
 
     // erase one item(iterator) from data_node
     void erase_data(iterator &iter);
@@ -579,6 +678,11 @@ private:
     void split(const key_type* const key, node_ptr* child, const size_type n, const unsigned int level, std::vector<key_type> &new_key, std::vector<inner_node_ptr> &new_child);
     void split(const key_type* const key, const size_type n, const unsigned int level);
 
+    //void split_left_buffer(inner_node_ptr node, const key_type* const key, node_ptr* child, unsigned int n){
+    //    
+    //}
+    //void split_right_buffer(inner_node_ptr node, const key_type* const key, node_ptr* child, unsigned int n);
+
     // split a ordered key array with data array to node array.
     void split_to_static_data_node(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<data_node_ptr> &new_child);
     void split_to_static_data_node_with_gap(const key_type* const key, const value_type* const data, const size_type n, std::vector<key_type> &new_key, std::vector<data_node_ptr> &new_child);
@@ -589,7 +693,8 @@ private:
     // a part of split_with_linear_probe.
     slot_type linear_probe(const key_type* const key, const size_type n, DataNodeModel &m);
 
-    void merge(inner_node_ptr __restrict__ parent, inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node);
+    void merge(inner_node_ptr __restrict__ parent, inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node, std::false_type erase);
+    bool merge(inner_node_ptr __restrict__ parent, inner_node_ptr __restrict__ left_node, inner_node_ptr __restrict__ right_node, std::true_type insert);
     bool merge(inner_node_ptr __restrict__ parent, data_node_ptr __restrict__ left_node, data_node_ptr __restrict__ right_node);
 
     // split a ordered key array with data array to inner node array. Use linear probe(use greedy).
@@ -597,6 +702,38 @@ private:
     std::tuple<slot_type, slot_type, bool> split_with_exponential_probe(const key_type* const key, const size_type n, const unsigned int level);
     std::tuple<slot_type, slot_type, bool> split_with_exponential_probe_reverse(const key_type* const key, const size_type n, const unsigned int level);
     //std::tuple<slot_type, slot_type, bool> split_with_linear_probe(const key_type* const key, const size_type n, const unsigned int level);
+
+    inline void loop_merge_left(inner_node_ptr __restrict__ &parent, inner_node_ptr __restrict__ &node){
+        if constexpr (!traits::AllowMergeNode)
+            return;
+        std::true_type tp;
+        while (node->prev != nullptr && static_cast<inner_node_ptr>(parent->child_ptr[0]) != node){
+            if (!CAN_RIGHT_MERGED_NODE(node->prev) && !CAN_LEFT_MERGED_NODE(node))
+                return;
+            if (static_cast<inner_node_ptr>(node->prev)->slot_size != node->slot_size)
+                return;
+            //AEX_HINT("loop_merge_left");
+            if (merge(parent, static_cast<inner_node_ptr>(node->prev), node, tp) == false)
+                return;
+        }
+    }
+
+    inline void loop_merge_right(inner_node_ptr __restrict__ &parent, inner_node_ptr __restrict__ &node){
+        if constexpr (!traits::AllowMergeNode)
+            return;
+        std::true_type tp;
+        while (node->next != nullptr && static_cast<inner_node_ptr>(parent->child_ptr[parent->last()]) != node){
+            inner_node_ptr next_node = static_cast<inner_node_ptr>(node->next);
+            if (!CAN_RIGHT_MERGED_NODE(node) && !CAN_LEFT_MERGED_NODE(next_node))
+                return;
+            if (next_node->slot_size != node->slot_size)
+                return;
+            //AEX_HINT("loop_merge_right");
+            if (merge(parent, node, next_node, tp) == false)
+                return;
+            node = next_node;
+        }
+    }
 
     key_type split_dense_inner_node(inner_node_ptr new_node, inner_node_ptr old_node);
     void split(data_node_ptr new_node, data_node_ptr old_node);

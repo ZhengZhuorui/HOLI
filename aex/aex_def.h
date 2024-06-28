@@ -30,6 +30,7 @@ template<typename _Key,
         bool AllowConcurrency,
         bool _AllowBalance,
         bool _AllowDynamicDataNode,
+        bool _AllowMergeNode,
         int _ERROR_BOUND,
         int _MAX_MODEL_ARGS> struct aex_default_traits;
 

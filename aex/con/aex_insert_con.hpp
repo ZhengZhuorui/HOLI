@@ -193,7 +193,7 @@ bool aex_tree_con<_Key, _Val, traits>::insert_recursive_con(inner_node_ptr* stac
         }
     }
     for (slot_type i = 0; i < n; ++i){
-        if (!node->insert(key_buf[i], child_buf[i])){
+        if (node->insert(key_buf[i], child_buf[i]) != aex::NODE_INSERT_CODE::SUCCESS){
             insert_split_helper_con(stack, top, key_buf + i, child_buf + i, n - i);
             return true;
         }

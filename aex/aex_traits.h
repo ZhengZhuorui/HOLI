@@ -49,6 +49,7 @@ template<typename _Key,
         bool _AllowConcurrency=false,
         bool _AllowBalance=false,
         bool _AllowDynamicDataNode=false,
+        bool _AllowMergeNode=false,
         int _ERROR_BOUND=8,
         int _MAX_MODEL_ARGS=8>
 struct aex_default_traits{
@@ -95,12 +96,19 @@ struct aex_default_traits{
     static constexpr bool AllowDynamicDataNode = false;
 
     static_assert((AllowRWBalance | (!AllowDynamicDataNode)) == true);
+
+    static constexpr bool AllowMergeNode = true;
     
     static constexpr int ERROR_BOUND = _ERROR_BOUND; 
 
     static constexpr int DATA_NODE_ERROR_BOUND = 4;
 
     static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type) + sizeof(void*)));
+
+    static constexpr slot_type LEFT_BUFFER_SIZE = ERROR_BOUND;
+    static constexpr slot_type RIGHT_BUFFER_SIZE = ERROR_BOUND;
+    static constexpr slot_type EXTERN_BUFFER_SIZE = LEFT_BUFFER_SIZE + RIGHT_BUFFER_SIZE;
+
     //static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = 32;
     //static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = 8;
 

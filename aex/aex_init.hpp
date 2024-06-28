@@ -114,7 +114,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
         *_new_node = *_node;
     }
     else{
-        new_node = allocator.allocate_inner_node(static_cast<inner_node_ptr>(node)->real_slot_size(), IS_ML_NODE(node));
+        new_node = allocator.allocate_inner_node(static_cast<inner_node_ptr>(node)->real_slot_size(), node->level, IS_ML_NODE(node));
         inner_node_ptr _node = static_cast<inner_node_ptr>(node), _new_node = static_cast<inner_node_ptr>(new_node);
         ++this->m_stats.level_node[_node->level];
         *_new_node = *_node;        

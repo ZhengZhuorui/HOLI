@@ -4,13 +4,15 @@ namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::update_node_list_frequency(node_balance_stats &stats, const slot_type size, node_ptr* node_list, slot_type n){
-    unsigned long long recent_udpate_timestamp = stats.get_recent_update_timestamp();
-    double SMO_times = stats.get_SMO_times();
-    double write_times = stats.get_write_times();
-    for (slot_type i = 0; i < n; ++i){
-        ((dynamic_node_ptr)node_list[i])->balance_stats = node_balance_stats(recent_udpate_timestamp,
-                                                        SMO_times * (1.0 * node_list[i]->size / size), 
-                                                        write_times * (1.0 * node_list[i]->size / size));
+    if constexpr (traits::AllowBalance){
+        unsigned long long recent_udpate_timestamp = stats.get_recent_update_timestamp();
+        double SMO_times = stats.get_SMO_times();
+        double write_times = stats.get_write_times();
+        for (slot_type i = 0; i < n; ++i){
+            ((dynamic_node_ptr)node_list[i])->balance_stats = node_balance_stats(recent_udpate_timestamp,
+                                                            SMO_times * (1.0 * node_list[i]->size / size), 
+                                                            write_times * (1.0 * node_list[i]->size / size));
+        }
     }
 }
 
@@ -123,18 +125,17 @@ inline bool aex_tree<_Key, _Val, traits>::insert_merge(inner_node_ptr parent, co
             std::for_each(node_merge_buf, node_merge_buf + node_merge_size, [](node_ptr node){UNSET_FLAG(node, CAN_MERGED);});
             ret = false;
         }
-        merge_node = allocator.allocate_inner_node(slot_size, true);
+        merge_node = allocator.allocate_inner_node(slot_size, node_merge_buf[0]->level, true);
         merge_node->construct(key_buf, child_buf, tot_size, m);
     }
     else{
         slot_type slot_size = min_slot_size(tot_size, traits::MIN_INNER_NODE_SLOT_SIZE);
-        merge_node = allocator.allocate_inner_node(slot_size, false);
+        merge_node = allocator.allocate_inner_node(slot_size, node_merge_buf[0]->level, false);
         merge_node->construct(key_buf, child_buf, tot_size);
     }
     allocator.deallocate_key_buffer(key_buf);
     allocator.deallocate_nodeptr_buffer(child_buf);
     if (ret){
-        merge_node->level = node_merge_buf[0]->level;
         merge_node->balance_stats = node_balance_stats(this->balance_stats.get_timestamp(), SMO_times, 0);
         SET_FLAG(merge_node, CAN_MERGED);
         this->m_stats.level_node[merge_node->level] += 1 - node_merge_size;

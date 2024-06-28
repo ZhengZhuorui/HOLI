@@ -166,7 +166,7 @@ public:
 
     inline bool is_large_node(slot_type real_slot_size){return real_slot_size >= traits::MIN_ML_INNER_NODE_SIZE;}
 
-    inline inner_node_ptr allocate_inner_node(slot_type real_slot_size, bool ml_node_flag){
+    inline inner_node_ptr allocate_inner_node(slot_type real_slot_size, int level, bool ml_node_flag){
         /*
         *   TODO: memory pool
         */
@@ -179,12 +179,13 @@ public:
         //AEX_PRINT("slot_size=" << slot_size);
         AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
 
-        slot_size += is_large_node(real_slot_size) * traits::ERROR_BOUND;
+        slot_size += is_large_node(real_slot_size) * traits::EXTERN_BUFFER_SIZE;
 
-        size_type memory_used = INNER_NODE_MEMORY_USED(slot_size);
-        this->_memory_used += memory_used;
-        inner_node_ptr node = new inner_node(slot_size);
+        //size_type memory_used = INNER_NODE_MEMORY_USED(slot_size);
+        //this->_memory_used += memory_used;
+        inner_node_ptr node = new inner_node(slot_size, level);
         //node->real_slot_size = real_slot_size;
+        
 
         #ifdef AEX_DEBUG
         node_id[static_cast<node_ptr>(node)] = max_node_id;
@@ -196,6 +197,7 @@ public:
             SET_FLAG(node, node_property::ML_NODE);
             node->clear_bitmap();
         }
+        SET_FLAG(node, node_property::CAN_LEFT_MERGED | node_property::CAN_RIGHT_MERGED);
 
         return node;
     }
@@ -207,7 +209,7 @@ public:
     //}
 
     inline data_node_ptr allocate_static_data_node(){
-        this->_memory_used += STATIC_DATA_NODE_MEMORY_USED();
+        //this->_memory_used += STATIC_DATA_NODE_MEMORY_USED();
         //if (data_node_buffer.size() == 0)
         //    allocate_data_node_buffer();
         //data_node_ptr node = data_node_buffer[data_node_buffer.size() - 1];
@@ -227,7 +229,7 @@ public:
     
     inline data_node_ptr allocate_dynamic_data_node(slot_type slot_size, bool ml_node_flag){
         AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
-        this->_memory_used += DYNAMIC_DATA_NODE_MEMORY_USED(slot_size);
+        //this->_memory_used += DYNAMIC_DATA_NODE_MEMORY_USED(slot_size);
         data_node_ptr node = new data_node(slot_size);
         SET_FLAG(node, node_property::LEAF);
         AEX_ASSERT(IS_LEAF_NODE(node));
@@ -259,11 +261,11 @@ public:
     
 
     inline void reallocate(inner_node_ptr node, slot_type new_slot_size){
-        new_slot_size += is_large_node(new_slot_size) * traits::ERROR_BOUND;
+        new_slot_size += is_large_node(new_slot_size) * traits::EXTERN_BUFFER_SIZE;
 
-        this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) \
-                              - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) \
-                              - BITMAP_MEMORY_USED(node->slot_size) + BITMAP_MEMORY_USED(new_slot_size);
+        //this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) 
+        //                      - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) 
+        //                      - BITMAP_MEMORY_USED(node->slot_size) + BITMAP_MEMORY_USED(new_slot_size);
         AEX_ASSERT(node->key_ptr != nullptr);
         node->key_ptr = static_cast<key_type*>(realloc(node->key_ptr, KEY_MEMORY_USED(new_slot_size)));
         node->child_ptr = static_cast<node_ptr*>(realloc(node->child_ptr, PTR_MEMORY_USED(new_slot_size)));
@@ -272,11 +274,11 @@ public:
     }
 
     inline void reallocate_and_copy(inner_node_ptr node, slot_type new_slot_size){
-        new_slot_size += is_large_node(new_slot_size) * traits::ERROR_BOUND;
+        new_slot_size += is_large_node(new_slot_size) * traits::EXTERN_BUFFER_SIZE;
 
-        this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) \
-                              - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) \
-                              - BITMAP_MEMORY_USED(node->slot_size) + BITMAP_MEMORY_USED(new_slot_size);
+        //this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) 
+        //                      - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) 
+        //                      - BITMAP_MEMORY_USED(node->slot_size) + BITMAP_MEMORY_USED(new_slot_size);
         key_type *new_key_ptr = static_cast<key_type*>(malloc(KEY_MEMORY_USED(new_slot_size)));
         node_ptr *new_child_ptr = static_cast<node_ptr*>(malloc(PTR_MEMORY_USED(new_slot_size)));
         bitmap new_bitmap_ptr = static_cast<bitmap>(malloc(BITMAP_MEMORY_USED(new_slot_size)));
@@ -292,11 +294,11 @@ public:
     }
 
     inline void reallocate_and_save(inner_node_ptr node, slot_type new_slot_size){
-        new_slot_size += is_large_node(new_slot_size) * traits::ERROR_BOUND;
+        new_slot_size += is_large_node(new_slot_size) * traits::EXTERN_BUFFER_SIZE;
 
-        this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) \
-                              - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) \
-                              - BITMAP_MEMORY_USED(node->slot_size) + BITMAP_MEMORY_USED(new_slot_size);
+        //this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) 
+        //                      - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) 
+        //                      - BITMAP_MEMORY_USED(node->slot_size) + BITMAP_MEMORY_USED(new_slot_size);
         key_type *new_key_ptr = static_cast<key_type*>(malloc(KEY_MEMORY_USED(new_slot_size)));
         node_ptr *new_child_ptr = static_cast<node_ptr*>(malloc(PTR_MEMORY_USED(new_slot_size)));
         bitmap new_bitmap_ptr = static_cast<bitmap>(malloc(BITMAP_MEMORY_USED(new_slot_size)));
@@ -310,8 +312,8 @@ public:
 
     inline void reallocate(data_node_ptr node, slot_type new_slot_size){
         if constexpr(traits::AllowDynamicDataNode){
-            this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) -
-                                            DATA_MEMORY_USED(node->slot_size) + DATA_MEMORY_USED(new_slot_size);
+            //this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) -
+            //                                DATA_MEMORY_USED(node->slot_size) + DATA_MEMORY_USED(new_slot_size);
             key_type *new_key = static_cast<key_type*>(malloc(KEY_MEMORY_USED(new_slot_size)));
             value_type *new_data = static_cast<value_type*>(malloc(DATA_MEMORY_USED(new_slot_size)));
             node->slot_size = new_slot_size;
@@ -383,10 +385,10 @@ public:
         *   TODO: memory pool
         */
         AEX_ASSERT(p != nullptr);
-        if (p->key_ptr != nullptr)
-            _memory_used -= INNER_NODE_MEMORY_USED(p->slot_size);
-        else
-            _memory_used -= sizeof(inner_node);
+        //if (p->key_ptr != nullptr)
+        //    _memory_used -= INNER_NODE_MEMORY_USED(p->slot_size);
+        //else
+        //    _memory_used -= sizeof(inner_node);
         #ifdef AEX_DEBUG
         --inner_node_nums;
         #endif
@@ -398,10 +400,10 @@ public:
         *   TODO: memory pool
         */
         AEX_ASSERT(p != nullptr);
-        if constexpr(traits::AllowDynamicDataNode)
-            _memory_used -= DYNAMIC_DATA_NODE_MEMORY_USED(p->slot_size);
-        else
-            _memory_used -= STATIC_DATA_NODE_MEMORY_USED();
+        //if constexpr(traits::AllowDynamicDataNode)
+        //    _memory_used -= DYNAMIC_DATA_NODE_MEMORY_USED(p->slot_size);
+        //else
+        //    _memory_used -= STATIC_DATA_NODE_MEMORY_USED();
         #ifdef AEX_DEBUG
         --data_node_nums;
         #endif
@@ -419,7 +421,7 @@ public:
 
     #ifdef AEX_DEBUG
     inline void print_stats(){
-        AEX_IMPORTANT("[Allocator]: memory used=" << _memory_used << " bytes, =" << _memory_used / 1024 / 1024 << "MB, inner_node_nums=" << inner_node_nums << ", data_node_nums=" << data_node_nums <<
+        AEX_IMPORTANT("[Allocator]: inner_node_nums=" << inner_node_nums << ", data_node_nums=" << data_node_nums <<
                     ", allocator count=" << alloc_cnt << ", free count=" << free_cnt);
     }
     #else

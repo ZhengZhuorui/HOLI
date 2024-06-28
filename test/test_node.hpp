@@ -48,7 +48,7 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
     if (IS_ML_NODE(child_buf[0]) == false)
         AEX_WARNING("node is not ml node");
     
-    inner_node_ptr node = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), IS_ML_NODE(child_buf[0]));
+    inner_node_ptr node = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), child_buf[0]->level, IS_ML_NODE(child_buf[0]));
     *node = *static_cast<inner_node_ptr>(child_buf[0]);
     AEX_PRINT("construct finish. node slot size=" << node->slot_size << ", size=" << node->size);
 
@@ -62,7 +62,7 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
             insert_failed += batch - i;
             break;
         }
-        if (!node->insert(insert_data[i], insert_node_ptr[i])){
+        if (node->insert(insert_data[i], insert_node_ptr[i]) != aex::NODE_INSERT_CODE::SUCCESS){
             ++insert_failed;
             AEX_PRINT("insert failed!");
         }
@@ -129,7 +129,7 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
     double delta = 0;
     vector<inner_node_ptr> node_array(ITER);
     for (int i = 0; i < ITER; ++i){
-        node_array[i] = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), IS_ML_NODE(child_buf[0]));
+        node_array[i] = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), child_buf[0]->level, IS_ML_NODE(child_buf[0]));
         *node_array[i] = *static_cast<inner_node_ptr>(child_buf[0]);
     }
     t1 = std::chrono::high_resolution_clock::now();
@@ -190,7 +190,7 @@ bool test_inner_node_erase_perf(vector<key_type> &data, size_t n, size_t batch, 
         AEX_ERROR("node is not ml node");
     }
     
-    inner_node_ptr node = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), IS_ML_NODE(child_buf[0]));
+    inner_node_ptr node = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), child_buf[0]->level, IS_ML_NODE(child_buf[0]));
     *node = *static_cast<inner_node_ptr>(child_buf[0]);
     AEX_PRINT("size=" << node->size << ", slot size=" << node->slot_size);
     for (int i = 0; i < node->size; ++i)
@@ -277,7 +277,7 @@ bool test_inner_node_erase_perf(vector<key_type> &data, size_t n, size_t batch, 
     //size_type sum;
     std::vector<inner_node_ptr> node_array(ITER);
     for (int i = 0; i < ITER; ++i){
-        node_array[i] = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), IS_ML_NODE(child_buf[0]));
+        node_array[i] = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), child_buf[0]->level, IS_ML_NODE(child_buf[0]));
         *node_array[i] = *static_cast<inner_node_ptr>(child_buf[0]);
     }
     t1 = std::chrono::high_resolution_clock::now();
@@ -339,7 +339,7 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
     
     AEX_IMPORTANT("IS_ML_NODE?:" << (aex::IS_ML_NODE(child_buf[0]) ? 'Y' : 'N'));
     
-    inner_node_ptr node = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), IS_ML_NODE(child_buf[0]));
+    inner_node_ptr node = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), child_buf[0]->level, IS_ML_NODE(child_buf[0]));
     *node = *static_cast<inner_node_ptr>(child_buf[0]);
     AEX_PRINT("node->slot size=" << node->slot_size << ", size=" << node->size);
     for (size_t i = 0; i < batch; ++i){

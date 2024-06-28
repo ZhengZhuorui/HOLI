@@ -48,7 +48,7 @@ bool test(map<string, string> &flags){
     //               (file_name.find("normal_200M_uint64") != std::string::npos) | 
     //               (file_name.find("lognormal_200M_uint64") != std::string::npos) | 
     //               (file_name.find("books_800M_uint64") != std::string::npos);
-    bool is_head = !(file_name.find(".bin.data") != std::string::npos);
+    bool is_head = !((file_name.find(".bin.data") != std::string::npos) || (file_name.find("generate_data") != std::string::npos));
     AEX_PRINT("is_head=" << is_head);
     size_t _ = read_bineary_file<T>(file, bin_data, num_keys, is_head);
     assert((long long)_ == num_keys);

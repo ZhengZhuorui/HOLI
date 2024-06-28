@@ -119,7 +119,7 @@ DATA_PATH="/data/zzr/learned_index/data"
 ./benchmark --key_type=float64 --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=10000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
 # facebook
-./benchmark --key_type=uint64 --index=alex --function=lookup --query_dis=uniform --num_keys=20000 --num_ops=20000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=lookup --query_dis=uniform --num_keys=20000000 --num_ops=20000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64

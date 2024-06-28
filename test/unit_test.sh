@@ -476,7 +476,7 @@
 ./unit_test --unit=index --key_type=uint64 --function=insert --multikey --num_keys=1000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/generate_data/multikey_1M_int.bin
 
 
-./unit_test --unit=index --key_type=float64 --function=insert --num_keys=20000 --batch=20000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000000 --batch=2000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=2000000   --batch=2000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=20000000  --batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data

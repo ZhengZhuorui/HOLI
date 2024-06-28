@@ -281,6 +281,9 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     index.print_detail();
     index_bak = index;
     for (long long i = 0; i < batch; ++i){
+        
+        //if (i % 1000000 == 0)
+        //    std::cout << "i=" << i << std::endl;
         typename tree::iterator iter;
         bool inserted;
         std::tie(iter, inserted) = index.insert(insert_data[i]);
@@ -322,7 +325,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
             data_size += inode->size;
         }
         if (leaf_num != index.m_stats.data_node()){
-            AEX_ERROR("leaf num error! leaf_num=" << leaf_num << "index.leaf_num=" << index.m_stats.data_node());
+            AEX_ERROR("leaf num error! leaf_num=" << leaf_num << ", index.leaf_num=" << index.m_stats.data_node());
             return false;
         }
         size_type i = 0;
