@@ -209,19 +209,80 @@ template<typename key_type,
         typename traits=aex::aex_default_traits<key_type, value_type>>
 bool test_index_delta_lookup_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
     AEX_HINT("[test index lookup]");
-    //typedef typename aex::aex_map<key_type, value_type, traits> Index;
+    typedef mock_aex_tree<key_type, value_type, traits> tree;
     mock_aex_tree<key_type, value_type, traits> index;
     [[maybe_unused]] typedef typename traits::size_type size_type;
+    typedef typename tree::node_ptr node_ptr;
     vector<key_type> query;
     vector<value_type> answer;
     generate_query(data, n, query, answer, batch);
-    for (long long i = 0; i < n; ++i)
-    index.insert(data[i]);
+    for (long long i = 0; i < n; ++i){
+        //if (i % 1000000 == 0)
+        //    std::cout << "i=" << i << std::endl;
+        typename tree::iterator iter;
+        bool inserted;
+        std::tie(iter, inserted) = index.insert(data[i]);
+        if (inserted == false){
+            AEX_ERROR("insert failed!");
+            return false;
+        }
+        if (iter.key() != data[i].first || iter.data() != data[i].second){
+            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< data[i].first << "iter key=" << iter.key());
+            return false;
+        }
+        iter = index.find(data[i].first);
+        if (iter.key() != data[i].first || iter.data() != data[i].second){
+            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< data[i].first << "iter key=" << iter.key());
+            return false;
+        }
+    }
+    AEX_SUCCESS("insert finish..");
+
+    {   
+        for (long long i = 0; i < n; ++i){
+            typename tree::iterator iter;
+            iter = index.find(data[i].first);
+            if (iter.key() != data[i].first || iter.data() != data[i].second){
+                AEX_ERROR("return iterator is not equal item! i=" << i << "key="<< data[i].first << "iter key=" << iter.key());
+                return false;
+            }
+        }
+
+        if (static_cast<long long>(index.size()) != n){
+            AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);
+            return false;
+        }
+        index.print_stats();
+        index.print_detail();
+        size_type leaf_num = 0, data_size = 0;
+        for (node_ptr inode = index.head_leaf; inode != index.empty_leaf; inode = inode->next){
+            ++leaf_num;
+            data_size += inode->size;
+        }
+        if (leaf_num != index.m_stats.data_node()){
+            AEX_ERROR("leaf num error! leaf_num=" << leaf_num << ", index.leaf_num=" << index.m_stats.data_node());
+            return false;
+        }
+        size_type i = 0;
+        for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
+            if (data[i].first != iter.key()){
+                AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << data[i].first << ", gap=" << iter.key() - data[i].first);
+                auto _ = std::lower_bound(data, data + n, std::make_pair(iter.key(), iter.data())) - data;
+                AEX_ERROR("iter_key position=" << _ << ", now position=" << i);
+                return false;
+            }
+            if (data[i].second != iter.data()){
+                AEX_ERROR("data error, data[" << i << "]=" << iter.data() <<", real data=" << data[i].second);
+                return false;
+            }
+        }
+    }
+
     if (static_cast<long long>(index.size()) != n){
         AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);
         return false;
     }
-    
+
     for (int i = 0; i < batch; ++i){
         auto iter = index.find(query[i]);
         if (iter == index.end()){
@@ -281,7 +342,6 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     index.print_detail();
     index_bak = index;
     for (long long i = 0; i < batch; ++i){
-        
         //if (i % 1000000 == 0)
         //    std::cout << "i=" << i << std::endl;
         typename tree::iterator iter;

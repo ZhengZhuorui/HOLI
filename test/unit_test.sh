@@ -453,9 +453,11 @@
 ./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=2000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=lookup --multikey --num_keys=200000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/generate_data/multikey_200M_int.bin
 
-./unit_test --unit=index --key_type=float64 --function=delta_lookup --num_keys=2000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
-./unit_test --unit=index --key_type=float64 --function=delta_lookup --num_keys=20000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float64 --function=delta_lookup --num_keys=2000000 --batch=2000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float64 --function=delta_lookup --num_keys=20000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=delta_lookup --num_keys=200000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+
+./unit_test --unit=index --key_type=uint64 --function=delta_lookup --num_keys=200000000 --batch=10000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 # Result:
 # Dataset: longtitudes
 # piecewise_linear + static data node + no balance:
@@ -483,6 +485,7 @@
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=200000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
+./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/books_200M_uint64

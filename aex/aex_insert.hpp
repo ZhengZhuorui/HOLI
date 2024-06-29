@@ -540,6 +540,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_left_buffer(inner_node_pt
     }
     else{
         inner_node_ptr new_node = allocator.allocate_inner_node(min_slot_size(size, traits::MIN_INNER_NODE_SLOT_SIZE), node->level, false);
+        ++this->m_stats.level_node[node->level];
         new_node->construct(key_buf, child_buf, size);
         link_to_next_node(new_node, node);
         allocator.deallocate_key_buffer(key_buf);
@@ -551,22 +552,31 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_left_buffer(inner_node_pt
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_split_right_buffer(inner_node_ptr* stack, const key_type* key, const node_ptr* child, const slot_type n){
-    AEX_PRINT("[insert_split_right_buffer] begin");
+    //AEX_PRINT("[insert_split_right_buffer] begin");
     #ifdef AEX_DEBUG
     ++this->opt_stats.inner_node_split_right_buffer_cnt;
     #endif
     AEX_ASSERT(n > 0);
     inner_node_ptr &node = *stack;
-    slot_type size = traits::RIGHT_BUFFER_SIZE - 1 + n, offset = traits::LEFT_BUFFER_SIZE + node->slot_size;
+    slot_type size = traits::RIGHT_BUFFER_SIZE - 1 + n, offset = traits::LEFT_BUFFER_SIZE + node->real_slot_size();
 
     key_type* key_buf = allocator.allocate_key_buffer(size);
     node_ptr* child_buf = allocator.allocate_nodeptr_buffer(size);
     key_type split_key = node->key_ptr[offset];
     slot_type insert_slot = aex::linear_search_lower_bound(node->key_ptr + offset + 1, node->key_ptr + node->slot_size, key[0]) - node->key_ptr - offset - 1;
 
-    for (slot_type i = offset + 1; i < node->slot_size; ++i)
+    //AEX_PRINT("2");
+    for (slot_type i = offset; i < node->slot_size; ++i)
         bitmap_impl::set_zero(node->bitmap_ptr, i);
     node->size -= traits::RIGHT_BUFFER_SIZE - 1;
+    //{
+    //    slot_type sz = 0;
+    //    for (slot_type i = 0; i < node->slot_size; ++i)
+    //    if (bitmap_impl::at(node->bitmap_ptr, i)) ++sz;
+    //    if (node->size != sz + 1)
+    //        AEX_PRINT("node->size=" << node->size << ", sz=" << sz);
+    //    AEX_ASSERT(sz + 1 == node->size);
+    //}
     std::copy(node->key_ptr + offset + 1, node->key_ptr + offset + 1 + insert_slot, key_buf);
     std::copy(node->child_ptr + offset + 1, node->child_ptr + offset + 1 + insert_slot, child_buf);
     std::copy(key, key + n, key_buf + insert_slot);
@@ -575,7 +585,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_right_buffer(inner_node_p
     std::copy(node->child_ptr + offset + 1 + insert_slot, node->child_ptr + node->slot_size, child_buf + insert_slot + n);
     
     //slot_type prev_pos = node->prev_item(offset - 1);
-    std::fill(node->key_ptr + offset + 1, node->key_ptr + node->slot_size, std::numeric_limits<key_type>::max());
+    std::fill(node->key_ptr + offset, node->key_ptr + node->slot_size, std::numeric_limits<key_type>::max());
     std::fill(node->child_ptr + offset + 1, node->child_ptr + node->slot_size, node->child_ptr[offset]);
 
     if (size > traits::MIN_ML_INNER_NODE_SIZE){
@@ -583,6 +593,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_right_buffer(inner_node_p
     }
     else{
         inner_node_ptr new_node = allocator.allocate_inner_node(min_slot_size(size, traits::MIN_INNER_NODE_SLOT_SIZE), node->level, false);
+        ++this->m_stats.level_node[node->level];
         new_node->construct(key_buf, child_buf, size);
         node_ptr prev_node = node->prev, next_node = node->next;
         std::swap(*new_node, *node);
@@ -599,7 +610,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_right_buffer(inner_node_p
         allocator.deallocate_nodeptr_buffer(child_buf);
         insert_recursive(stack - 1, &split_key, reinterpret_cast<node_ptr*>(&new_node), 1);
     }
-    AEX_PRINT("[insert_split_right_buffer] end");
+    //AEX_PRINT("[insert_split_right_buffer] end");
 }
 
 template<typename _Key, typename _Val, typename traits>

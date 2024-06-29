@@ -105,12 +105,16 @@ public:
         unsigned int height;
         key_type max_key, min_key;
         aex_stats():size(0), height(0){
-            memset(level_node, 0, sizeof(level_node));
+            memset(level_node, 0, sizeof(size_type) * traits::MAX_DEPTH);
             max_key = std::numeric_limits<key_type>::lowest();
             min_key = std::numeric_limits<key_type>::max();
         }
         inline size_type inner_node(){
-            return (height > 1) ? std::reduce(level_node + 1, level_node + height) : 0;
+            size_t inner_node_size = 0;
+            for (int i = 1; i < traits::MAX_DEPTH; ++i)
+                inner_node_size += level_node[i];
+            return inner_node_size;
+            //return (height > 1) ? std::reduce(level_node + 1, level_node + height) : 0;
         }
         inline size_type data_node(){
             return level_node[0];
@@ -123,7 +127,7 @@ public:
                         inner_node_split_pipeline_cnt(0), inner_node_split_bulk_load_cnt(0), inner_node_split_by_buffer_cnt(0), inner_node_split_dense_node_cnt(0),
                         data_node_split_cnt(0), data_node_merge_cnt(0), data_node_rescale_cnt(0),
                         inner_node_train_cnt(0), inner_node_train_tot_size(0),
-                        inner_node_balance_split_cnt(0), inner_node_balance_check_split_cnt(0),
+                        inner_node_balance_split_cnt(0), inner_node_balance_check_split_cnt(0), inner_node_insert_balance_cnt(0),
                         inner_node_split_left_buffer_cnt(0), inner_node_split_right_buffer_cnt(0),
                         inner_node_lsm_merge_try_cnt(0), inner_node_lsm_merge_cnt(0){}
         size_type inner_node_split_cnt, inner_node_merge_cnt, inner_node_rescale_cnt;

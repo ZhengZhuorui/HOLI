@@ -6,6 +6,7 @@ enum NODE_INSERT_CODE{
     SUCCESS,
     LEFT_BUFFER_OVERFLOW,
     RIGHT_BUFFER_OVERFLOW,
+    //HOTSPOT_CONFLICT,
     INNER_NODE_CONFLICT,
     NONE
 };
@@ -383,7 +384,7 @@ public:
 
     inline NODE_INSERT_CODE insert_fail(const key_type &key, node_ptr child, slot_type pred_pos){
         slot_type i, start;
-
+        AEX_ASSERT(IS_ML_NODE(this) == true);
         if (pred_pos == 0){
             for (i = start = 0; i < traits::LEFT_BUFFER_SIZE; ++i)
             if (bitmap_impl::at(this->bitmap_ptr, i)) ++start;
@@ -438,6 +439,12 @@ public:
                 bitmap_impl::set_zero(this->bitmap_ptr, i);
             }
             ++this->size;
+            //{
+            //    slot_type sz = 0;
+            //    for (slot_type i = 0; i < this->slot_size; ++i)
+            //    if (bitmap_impl::at(this->bitmap_ptr, i)) ++sz;
+            //    AEX_ASSERT(sz + 1 == this->size);
+            //}
             return NODE_INSERT_CODE::SUCCESS;           
         }
         else
@@ -554,7 +561,7 @@ public:
     // position range [0, slot_size)
     inline slot_type predict(const key_type& key) const {
         //AEX_ASSERT(model.predict(key) < 1.0 + 1e-6);
-        //return std::max((slot_type)0, std::min(static_cast<slot_type>(model.predict(key) * this->real_slot_size), this->slot_size - 1));
+        //return std::max((slot_type)0, static_cast<slot_type>(model.predict(key) * this->real_slot_size()));
         double pred_pos = model.predict(key);
         return (pred_pos >= 0) * static_cast<slot_type>(pred_pos * this->real_slot_size() + traits::LEFT_BUFFER_SIZE);
     }
@@ -593,6 +600,8 @@ public:
     node_ptr* child_ptr;
     
     bitmap bitmap_ptr;
+
+    //key_type conflict_key;
 };
 
 template<typename _Key,

@@ -837,7 +837,7 @@ merge_finished:
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::add_root(const key_type* key_buf, node_ptr* child_buf, slot_type n){
-    AEX_PRINT("add root, root=" << root << ", root->size=" << root->size << ", height=" << this->m_stats.height << ", n=" << n << "tree->size=" << this->size());
+    AEX_PRINT("add root, root=" << root << ", root->size=" << root->size << ", child_buf[0]->size=" << child_buf[0]->size << ", height=" << this->m_stats.height << ", n=" << n << "tree->size=" << this->size());
     //for (unsigned int i = 0; i < this->m_stats.height; ++i)
     //    AEX_PRINT("level_node[" << i << "]=" << this->m_stats.level_node[i]);
     size_type slot_size = min_slot_size(n + 1, traits::MIN_INNER_NODE_SLOT_SIZE);
@@ -853,6 +853,7 @@ inline void aex_tree<_Key, _Val, traits>::add_root(const key_type* key_buf, node
         ++now_inner_node->size;
     }
     this->root = now_inner_node;
+    
 }
 
 }
