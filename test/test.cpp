@@ -228,6 +228,15 @@ bool test(map<string, string> &flags){
             pack_KV_dataset(bin_data, data);
             return test_index_delta_lookup_perf(data.data(), num_keys, batch);
         }
+        if (func == "insert_hotspot"){
+            long long batch = stoll(flags["batch"]);
+            std::vector<std::pair<T, T> > data;
+            pack_KV_dataset(bin_data, data);
+            if (multikey_flag)
+                return test_index_insert_hotspot_perf<T, T, aex_default_traits<T, T, true>>(data.data(), num_keys, batch);
+            else
+                return test_index_insert_hotspot_perf<T, T>(data.data(), num_keys, batch);
+        }
         if (func == "range_query"){
             long long batch = stoll(flags["batch"]);
             std::vector<std::pair<T, T> > data;

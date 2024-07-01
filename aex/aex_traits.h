@@ -47,7 +47,7 @@ template<typename _Key,
         bool _AllowMultiKey=false,
         typename _SearchClass=void,
         bool _AllowConcurrency=false,
-        bool _AllowBalance=false,
+        int _AllowBalance=2,
         bool _AllowDynamicDataNode=false,
         bool _AllowMergeNode=false,
         int _ERROR_BOUND=8,
@@ -78,15 +78,15 @@ struct aex_default_traits{
 
     // Allow balance inner node and data node when read and write frequency update?
     //typedef std::true_type AllowRWBalance;
-    static constexpr bool AllowRWBalance = _AllowBalance;
+    static constexpr bool AllowRWBalance = ((_AllowBalance & 1) == 1);
 
     // Allow balance inner node when insert an item?
     //typedef std::false_type AllowInsertBalance;
-    static constexpr bool AllowInsertBalance = _AllowBalance;
+    static constexpr bool AllowInsertBalance = ((_AllowBalance & 1) == 1);
 
     // Allow tree balance tree struct in lookup, insert and erase.
     //typedef std::true_type AllowBalance;
-    static constexpr bool AllowBalance = _AllowBalance;
+    static constexpr bool AllowBalance = ((_AllowBalance & 1) == 1);
 
     static_assert((AllowRWBalance | AllowInsertBalance) == AllowBalance);
 
@@ -96,6 +96,8 @@ struct aex_default_traits{
     static constexpr bool AllowDynamicDataNode = false;
 
     static_assert((AllowRWBalance | (!AllowDynamicDataNode)) == true);
+
+    static constexpr bool AllowSplitBalance = ((_AllowBalance & 2) == 2);
 
     static constexpr bool AllowMergeNode = true;
     
@@ -159,6 +161,8 @@ struct aex_default_traits{
     static constexpr size_t BINSEARCH_THRESHOLD = 256;
 
     static constexpr double FORGET_RATE = 1 - 0.0000000001;
+
+    static constexpr double RETRAIN_RATIO = 0.5;
 };
 
 

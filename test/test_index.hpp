@@ -425,6 +425,108 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
 
 template<typename key_type,
         typename value_type,
+        typename traits=aex::aex_default_traits<key_type, value_type>>
+bool test_index_insert_hotspot_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
+    AEX_HINT("[test index insert hotspot perf]");
+    typedef mock_aex_tree<key_type, value_type, traits> tree;
+    mock_aex_tree<key_type, value_type, traits> index, index_bak;
+    [[maybe_unused]] typedef typename traits::size_type size_type;
+    typedef typename tree::node_ptr node_ptr;
+    std::vector<std::pair<key_type, value_type> > insert_data(batch), node_data(n - batch + 1); 
+    long long pos = rand() % (n - batch);
+    std::copy(data, data + pos, node_data.data());
+    std::copy(data + pos, data + pos + batch, insert_data.data());
+    std::copy(data + pos + batch, data + n, node_data.data());
+    random_shuffle(insert_data.data(), insert_data.data() + batch);
+    index.bulk_load(node_data.data(), n - batch);
+    AEX_PRINT("bulk load finish...");
+    index.print_stats();
+    index.print_detail();
+    index_bak = index;
+    for (long long i = 0; i < batch; ++i){
+        //if (i % 1000000 == 0)
+        //    std::cout << "i=" << i << std::endl;
+        typename tree::iterator iter;
+        bool inserted;
+        std::tie(iter, inserted) = index.insert(insert_data[i]);
+        if (inserted == false){
+            AEX_ERROR("insert failed!");
+            return false;
+        }
+        if (iter.key() != insert_data[i].first || iter.data() != insert_data[i].second){
+            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
+            return false;
+        }
+        iter = index.find(insert_data[i].first);
+        if (iter.key() != insert_data[i].first || iter.data() != insert_data[i].second){
+            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
+            return false;
+        }
+    }
+    AEX_SUCCESS("insert finish..");
+
+    {   
+        for (long long i = 0; i < n; ++i){
+            typename tree::iterator iter;
+            iter = index.find(data[i].first);
+            if (iter.key() != data[i].first || iter.data() != data[i].second){
+                AEX_ERROR("return iterator is not equal item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
+                return false;
+            }
+        }
+
+        if (static_cast<long long>(index.size()) != n){
+            AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);
+            return false;
+        }
+        index.print_stats();
+        index.print_detail();
+        size_type leaf_num = 0, data_size = 0;
+        for (node_ptr inode = index.head_leaf; inode != index.empty_leaf; inode = inode->next){
+            ++leaf_num;
+            data_size += inode->size;
+        }
+        if (leaf_num != index.m_stats.data_node()){
+            AEX_ERROR("leaf num error! leaf_num=" << leaf_num << ", index.leaf_num=" << index.m_stats.data_node());
+            return false;
+        }
+        size_type i = 0;
+        for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
+            if (data[i].first != iter.key()){
+                AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << data[i].first << ", gap=" << iter.key() - data[i].first);
+                auto _ = std::lower_bound(data, data + n, std::make_pair(iter.key(), iter.data())) - data;
+                AEX_ERROR("iter_key position=" << _ << ", now position=" << i);
+                return false;
+            }
+            if (data[i].second != iter.data()){
+                AEX_ERROR("data error, data[" << i << "]=" << iter.data() <<", real data=" << data[i].second);
+                return false;
+            }
+        }
+    }
+
+    AEX_SUCCESS("Test success. Next test insert performance...");
+    const int ITER = 1;
+    std::chrono::high_resolution_clock::time_point t1, t2;
+    double delta = 0;
+    for (int T = 0; T < ITER; ++T){
+        index = index_bak;
+        //aex_tree<key_type, value_type, traits>::debug_level |= 1;
+        t1 = std::chrono::high_resolution_clock::now();
+        for (long long i = 0; i < batch; ++i)
+            index.insert(insert_data[i]);
+        t2 = std::chrono::high_resolution_clock::now();
+        delta += duration_cast<microseconds>(t2 - t1).count();
+    }
+    double OPS = 1.0 * 1e6 * ITER * batch / delta;
+    std::cout << std::scientific;
+    std::cout << std::setprecision(3);  
+    AEX_SUCCESS("insert use time " << delta << "ms, OPS=" << OPS);
+    return true;
+}
+
+template<typename key_type,
+        typename value_type,
         typename traits=aex_default_traits<key_type, value_type>>
 bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
     AEX_HINT("[test index erase]");

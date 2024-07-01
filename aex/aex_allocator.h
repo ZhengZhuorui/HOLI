@@ -165,6 +165,10 @@ public:
     //}
 
     inline bool is_large_node(slot_type real_slot_size){return real_slot_size >= traits::MIN_ML_INNER_NODE_SIZE;}
+    inline slot_type set_retrain_cnt(slot_type slot_size){
+        //AEX_PRINT("slot_size=" << slot_size << ", cnt=" << traits::RETRAIN_RATIO * log(slot_size) / log(2) * slot_size);
+        return static_cast<slot_type>(traits::RETRAIN_RATIO * log(slot_size) / log(2) * slot_size);
+    }
 
     inline inner_node_ptr allocate_inner_node(slot_type real_slot_size, int level, bool ml_node_flag){
         /*
@@ -198,7 +202,8 @@ public:
             node->clear_bitmap();
         }
         SET_FLAG(node, node_property::CAN_LEFT_MERGED | node_property::CAN_RIGHT_MERGED);
-
+        //node->retrain_cnt = set_retrain_cnt(real_slot_size);
+        node->split_stats.set(set_retrain_cnt(slot_size));
         return node;
     }
 
@@ -271,6 +276,7 @@ public:
         node->child_ptr = static_cast<node_ptr*>(realloc(node->child_ptr, PTR_MEMORY_USED(new_slot_size)));
         node->bitmap_ptr = static_cast<bitmap>(realloc(node->bitmap_ptr, BITMAP_MEMORY_USED(new_slot_size)));
         node->slot_size = new_slot_size;
+        node->split_stats.set(set_retrain_cnt(new_slot_size));
     }
 
     inline void reallocate_and_copy(inner_node_ptr node, slot_type new_slot_size){
@@ -291,6 +297,7 @@ public:
         node->child_ptr = new_child_ptr;
         node->bitmap_ptr = new_bitmap_ptr;
         node->slot_size = new_slot_size;
+        node->split_stats.set(set_retrain_cnt(new_slot_size));
     }
 
     inline void reallocate_and_save(inner_node_ptr node, slot_type new_slot_size){
@@ -308,6 +315,7 @@ public:
         node->child_ptr = new_child_ptr;
         node->bitmap_ptr = new_bitmap_ptr;
         node->slot_size = new_slot_size;
+        node->split_stats.set(set_retrain_cnt(new_slot_size));
     }
 
     inline void reallocate(data_node_ptr node, slot_type new_slot_size){

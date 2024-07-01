@@ -99,6 +99,24 @@ struct aex_rw_spinlock<traits, true>{
     std::atomic<int> readCount;
 };
 
+template<typename traits, bool AllowSplitBalance = traits::AllowSplitBalance>
+struct aex_node_split_stats{
+    aex_node_split_stats(){}
+    inline void update(long long _cnt){}
+    inline void set(long long _cnt){}
+    inline long long get(){return 1;}
+};
+
+template<typename traits>
+struct aex_node_split_stats<traits, true>{
+    aex_node_split_stats(){}
+    inline void update(long long _cnt){cnt += _cnt;}
+    inline void set(long long _cnt){cnt =  _cnt;}
+    inline long long get(){return cnt;}
+    long long cnt;
+};
+
+
 template<typename traits, bool AllowBalance = traits::AllowBalance, bool AllowConcurrency = traits::AllowConcurrency>
 struct aex_node_balance_stats{
     aex_node_balance_stats(){}
@@ -338,6 +356,7 @@ struct aex_default_components{
     typedef aex_concurrency_components<traits> concurrency_components;
     typedef aex_node_balance_stats<traits> node_balance_stats;
     typedef aex_tree_balance_stats<traits> tree_balance_stats;
+    typedef aex_node_split_stats<traits> node_split_stats;
 
     typedef typename concurrency_components::NodeMutex NodeMutex;
     typedef typename concurrency_components::RWLock RWLock;

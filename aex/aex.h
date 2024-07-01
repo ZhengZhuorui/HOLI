@@ -129,7 +129,8 @@ public:
                         inner_node_train_cnt(0), inner_node_train_tot_size(0),
                         inner_node_balance_split_cnt(0), inner_node_balance_check_split_cnt(0), inner_node_insert_balance_cnt(0),
                         inner_node_split_left_buffer_cnt(0), inner_node_split_right_buffer_cnt(0),
-                        inner_node_lsm_merge_try_cnt(0), inner_node_lsm_merge_cnt(0){}
+                        inner_node_lsm_merge_try_cnt(0), inner_node_lsm_merge_cnt(0),
+                        inner_node_split_hotspot_cnt(0){}
         size_type inner_node_split_cnt, inner_node_merge_cnt, inner_node_rescale_cnt;
         size_type inner_node_split_pipeline_cnt, inner_node_split_bulk_load_cnt, inner_node_split_by_buffer_cnt, inner_node_split_dense_node_cnt; 
         size_type data_node_split_cnt, data_node_merge_cnt, data_node_rescale_cnt;
@@ -137,6 +138,7 @@ public:
         size_type inner_node_balance_split_cnt, inner_node_balance_check_split_cnt, inner_node_insert_balance_cnt;
         size_type inner_node_split_left_buffer_cnt, inner_node_split_right_buffer_cnt;
         size_type inner_node_lsm_merge_try_cnt, inner_node_lsm_merge_cnt;
+        size_type inner_node_split_hotspot_cnt;
         void print_stats(){
             AEX_PRINT("[Operation status] inner node: split times=" << inner_node_split_cnt << ", merge times=" << inner_node_merge_cnt <<
                     ", rescale times=" << inner_node_rescale_cnt);
@@ -144,6 +146,7 @@ public:
                     << " left_buffer cnt=" << inner_node_split_left_buffer_cnt << ", right_buffer cnt=" << inner_node_split_right_buffer_cnt);
             AEX_PRINT("inner node: train cnt=" << inner_node_train_cnt << ", train size=" << inner_node_train_tot_size);
             AEX_PRINT("inner_node_lsm_merge_try_cnt = " << inner_node_lsm_merge_try_cnt << ", inner_node_lsm_merge_cnt = " << inner_node_lsm_merge_cnt << ", ratio=" << 1.0 * inner_node_lsm_merge_cnt / inner_node_lsm_merge_try_cnt);
+            AEX_PRINT("inner_node_split_hotspot_cnt = " << inner_node_split_hotspot_cnt);
             AEX_PRINT(" data node: split times=" << data_node_split_cnt << ", merge times=" << data_node_merge_cnt <<
                     ", rescale times=" << data_node_rescale_cnt);   
             AEX_PRINT("[balance status] inner node balance split cnt=" << inner_node_balance_split_cnt << ", inner node balance check split cnt=" << inner_node_balance_check_split_cnt << 
@@ -632,6 +635,41 @@ private:
         insert_recursive(stack - 1, &split_key, &split_node, 1);
     }
 
+    //void insert_split_hotspot(inner_node_ptr* stack, const key_type* key, node_ptr* child, const slot_type n){
+    //    inner_node_ptr &node = *stack;
+    //    slot_type tot_size = node->size + n;
+    //    key_type* key_buf = allocator.allocate_key_buffer(tot_size);
+    //    node_ptr* child_buf = allocator.allocate_nodeptr_buffer(tot_size);
+    //    std::vector<key_type>& new_key = allocator.allocate_dynamic_key_buf(node->level & 1);
+    //    std::vector<inner_node_ptr>& new_child = reinterpret_cast<std::vector<inner_node_ptr>&>(allocator.allocate_dynamic_nodeptr_buf(node->level & 1));
+    //    copy_to_buffer(node, key_buf, child_buf);
+    //    slot_type pos = std::lower_bound(key_buf, key_buf + node->size - 1, key[0]) - key_buf;
+    //    slot_type L = pos, R = pos;
+    //    if (pos <= traits::MIN_INNER_NODE_SLOT_SIZE / 2) 
+    //        L = R = traits::MIN_INNER_NODE_SLOT_SIZE / 2;
+    //    if (pos >= node->size - traits::MIN_INNER_NODE_SLOT_SIZE / 2)
+    //        L = R = node->size - traits::MIN_INNER_NODE_SLOT_SIZE / 2;
+    //    while (L > traits::MIN_INNER_NODE_SLOT_SIZE && (node->predict(key[0]) - node->predict(key_buf[L])) < traits::ERROR_BOUND)
+    //        --L;
+    //    while (R < node->size - traits::MIN_INNER_NODE_SLOT_SIZE / 2 && (node->predict(key_buf[R]) - node->predict(key[n - 1])) < traits::ERROR_BOUND)
+    //        ++R;
+    //    R += n;
+    //    if (R - L < traits::ERROR_BOUND){
+    //        AEX_WARNING("split hotspot warning!");
+    //        L = std::min(traits::MIN_INNER_NODE_SLOT_SIZE / 2, R - traits::ERROR_BOUND);
+    //        R = std::max(tot_size - traits::MIN_INNER_NODE_SLOT_SIZE / 2, L + traits::ERROR_BOUND);
+    //    }
+    //    //AEX_ASSERT(R - L < traits::ERROR_BOUND);
+    //    std::move_backward(key_buf + pos, key_buf + node->size - 1, key_buf + node->size - 1 + n);
+    //    std::move_backward(child_buf + pos, child_buf + node->size, child_buf + node->size + n);
+    //    split(key_buf, child_buf, L, node->level, new_key, new_child);
+    //    new_key.push_back(key_buf[L]);
+    //    split(key_buf + L, child_buf + L, R - L, node->level, new_key, new_child);
+    //    new_key.push_back(key_buf[L]);
+    //    allocator.deallocate_key_buffer(key_buf);
+    //    allocator.deallocate_nodeptr_buffer(key_buf);
+    //    insert_recursive(stack - 1, &split_key, &split_node, 1);
+    //}
     
     // insert some nodes to an inner node from bottom to up.
     void insert_recursive(inner_node_ptr* stack, const key_type* key_buf, node_ptr* child_buf, const slot_type n);

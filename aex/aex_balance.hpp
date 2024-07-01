@@ -214,8 +214,19 @@ inline int aex_tree<_Key, _Val, traits>::check_split(inner_node_ptr node){
     #ifdef AEX_DEBUG
     ++opt_stats.inner_node_balance_check_split_cnt;
     #endif
-    if constexpr (traits::AllowBalance == false)
-        return 1;
+    if constexpr (traits::AllowBalance == false){
+        //AEX_PRINT("node->split_stats=" << node->split_stats.get());
+        if (node->split_stats.get() < 0){
+            #ifdef AEX_DEBUG
+            ++opt_stats.inner_node_balance_split_cnt;
+            #endif
+            return 2;
+        }
+        else{
+            return 1;
+        }
+        
+    }
     double lambda_timestamp = this->balance_stats.get_lambda_timestamp();
     double train_pro = 1.0 * node->balance_stats.get_SMO_times() / lambda_timestamp;
     double write_pro = 1.0 * node->balance_stats.get_write_times() / lambda_timestamp;
@@ -248,8 +259,12 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
     #ifdef AEX_DEBUG
     ++opt_stats.inner_node_balance_check_split_cnt;
     #endif
-    if constexpr (traits::AllowRWBalance == false)
-        return 1;
+    if constexpr (traits::AllowRWBalance == false){
+        if (node->split_stats.get() < 0)
+            return 2;
+        else
+            return 1;
+    }
     //if (!IS_ML_NODE(node))
     //    return 1;
     double lambda_timestamp = this->balance_stats.get_lambda_timestamp();

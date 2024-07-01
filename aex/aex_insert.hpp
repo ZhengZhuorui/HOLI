@@ -655,6 +655,9 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_helper(inner_node_ptr* st
         else if (error_code == NODE_INSERT_CODE::RIGHT_BUFFER_OVERFLOW){
             insert_split_right_buffer(stack, new_key, new_child, n);
         }
+        //else if (node->split_stats.get() < 0 && n > 0){
+        //    insert_split_hotspot(stack, new_key, new_child, n);
+        //}
         else if (node->size + n < node->slot_size){
             //AEX_HINT("[helper]: insert_split_pipeline 1");
             insert_split_pipeline(stack, new_key, new_child, n);

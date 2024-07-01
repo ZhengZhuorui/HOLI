@@ -6,7 +6,7 @@ enum NODE_INSERT_CODE{
     SUCCESS,
     LEFT_BUFFER_OVERFLOW,
     RIGHT_BUFFER_OVERFLOW,
-    //HOTSPOT_CONFLICT,
+    HOTSPOT_CONFLICT,
     INNER_NODE_CONFLICT,
     NONE
 };
@@ -33,6 +33,7 @@ public:
     typedef typename components::inner_node inner_node;
     typedef typename components::data_node data_node;
     typedef typename components::node_balance_stats node_balance_stats;
+    typedef typename components::node_split_stats node_split_stats;
     typedef typename components::NodeMutex NodeMutex;
 
     typedef inner_node* inner_node_ptr;
@@ -191,11 +192,13 @@ public:
     //typedef piecewise_linear_model_avx<key_type, traits> Model;
     typedef typename components::InnerNodeModel Model;
 
+    typedef typename components::node_split_stats node_split_stats;
+
     typedef data_node* data_node_ptr;
     
     typedef inner_node* inner_node_ptr;
 
-    explicit aex_inner_node(slot_type _slot_size, int _level) :base_dynamic_node(_slot_size, _level){
+    explicit aex_inner_node(slot_type _slot_size, int _level) :base_dynamic_node(_slot_size, _level), split_stats(){
         this->key_ptr = static_cast<key_type*>(malloc(Allocator::KEY_MEMORY_USED(this->slot_size)));
         this->child_ptr = static_cast<node_ptr*>(malloc(Allocator::PTR_MEMORY_USED(this->slot_size)));
         this->bitmap_ptr = static_cast<bitmap>(malloc(Allocator::BITMAP_MEMORY_USED(this->slot_size)));
@@ -370,6 +373,7 @@ public:
                     std::fill(this->key_ptr + prev_pos + 1, this->key_ptr + inserted_pos + 1, key);
                     std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + inserted_pos + 1, child);
                     ++this->size; 
+                    this->split_stats.update(this->size / this->slot_size);
                     return NODE_INSERT_CODE::SUCCESS;
                 }
             }
@@ -447,8 +451,10 @@ public:
             //}
             return NODE_INSERT_CODE::SUCCESS;           
         }
-        else
+        else {
+            this->split_stats.update(-this->slot_size);
             return NODE_INSERT_CODE::INNER_NODE_CONFLICT;
+        }
     }
 
     inline void erase(slot_type pos){
@@ -601,7 +607,7 @@ public:
     
     bitmap bitmap_ptr;
 
-    //key_type conflict_key;
+    node_split_stats split_stats;
 };
 
 template<typename _Key,
