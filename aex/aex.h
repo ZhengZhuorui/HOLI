@@ -177,7 +177,7 @@ private:
 
     data_node_ptr empty_leaf;
 
-    double inner_node_few_ratio[traits::MAX_DEPTH], inner_node_full_ratio[traits::MAX_DEPTH];
+    static double inner_node_few_ratio[traits::MAX_DEPTH], inner_node_full_ratio[traits::MAX_DEPTH];
 
     size_type max_inner_node_slot_size[traits::MAX_DEPTH];
 
@@ -241,7 +241,7 @@ public:
     
     std::pair<iterator, bool> insert(const key_type &key, const value_type &value);
 
-    inline iterator find(const key_type &x) {
+    inline const_iterator find(const key_type &x) const{
         this->balance_stats.update_timestamp();
         iterator it = find_iterator(x);
         if (it == end() || it.key() != x) 
@@ -249,14 +249,22 @@ public:
         return it;
     }
 
-    inline void find(const key_type &x, value_type &y){
+    inline iterator find(const key_type &x){
+        this->balance_stats.update_timestamp();
+        iterator it = find_iterator(x);
+        if (it == end() || it.key() != x) 
+            return end();
+        return it;
+    }
+
+    inline void find(const key_type &x, value_type &y)const{
         iterator iter = this->find(x);
         if (iter == end() || iter.key() != x) 
             return;
         y = iter.data();
     }
 
-    void range_query(const key_type &lower_key, const key_type &upper_key, std::vector<std::pair<key_type, value_type>>& answer){
+    void range_query(const key_type &lower_key, const key_type &upper_key, std::vector<std::pair<key_type, value_type>>& answer)const{
         this->balance_stats.update_timestamp();
         iterator iter = this->find_iterator(lower_key);
         while(iter.key() <= upper_key){
@@ -265,7 +273,7 @@ public:
         }
     }
 
-    size_type count(const key_type &x){
+    size_type count(const key_type &x) const {
         this->balance_stats.update_timestamp();
         iterator it = find(x);
         if (it.key() != x) 
@@ -280,12 +288,12 @@ public:
         return true;
     }
 
-    iterator lower_bound(const key_type &x){
+    const_iterator lower_bound(const key_type &x){
         this->balance_stats.update_timestamp();
         return find_iterator(x);
     }
 
-    iterator upper_bound(const key_type &x){
+    const_iterator upper_bound(const key_type &x){
         this->balance_stats.update_timestamp();
         iterator iter = find_iterator(x);
         while (iter.key() <= x) 
@@ -446,29 +454,38 @@ private:
     // ========== 1. find ==========
 
     // if no item greater than or equal to x, return end()
-    inline iterator find_iterator(const key_type &x){
+    inline const_iterator find_iterator(const key_type &x) const{
         data_node_ptr node = find_leaf(x);
-        //bool flag = true;
-        //slot_type pos = node->find_lower_pos(x, flag);
         slot_type pos = node->find_lower_pos(x);
         if (pos == node->size)
             return end(); 
-        //if (!flag){
-        //    node = find_leaf(x);
-        //    pos = node->find_lower_pos(x);
-        //}
+        return const_iterator(node, pos);
+    }
+
+    inline iterator find_iterator(const key_type &x){
+        data_node_ptr node = find_leaf(x);
+        slot_type pos = node->find_lower_pos(x);
+        if (pos == node->size)
+            return end(); 
         return iterator(node, pos);
     }
 
     // if no item greater than x, return NULL
-    inline iterator find_upper(const data_node_ptr node, const key_type &x){
+    inline const_iterator find_upper(const data_node_ptr node, const key_type &x) const{
+        slot_type pos = node->find_upper_pos(x);
+        if (pos == node->size)
+            return end();
+        return const_iterator(node, pos);
+    }
+
+    inline iterator find_upper(const data_node_ptr node, const key_type &x) {
         slot_type pos = node->find_upper_pos(x);
         if (pos == node->size)
             return end();
         return iterator(node, pos);
     }
 
-    inline data_node_ptr find_leaf(const key_type &key){
+    inline data_node_ptr find_leaf(const key_type &key) const{
         node_ptr node = root;
         for (unsigned level = node->level; level > 0; --level){
             //AEX_ASSERT(node == root || this->isfull(static_cast<inner_node_ptr>(node), -1) == false);
@@ -795,8 +812,8 @@ private:
         bool ret;
         if (!IS_ML_NODE(node)){
             if (node->size >= traits::MIN_ML_INNER_NODE_SIZE){
-                slot_type new_slot_size = min_slot_size(node->size, this->inner_node_few_ratio[node->level], traits::MIN_INNER_NODE_SLOT_SIZE);
-                if (new_slot_size * this->inner_node_few_ratio[node->level] > node->size) new_slot_size >>= 1;
+                slot_type new_slot_size = min_slot_size(node->size, self::inner_node_few_ratio[node->level], traits::MIN_INNER_NODE_SLOT_SIZE);
+                if (new_slot_size * self::inner_node_few_ratio[node->level] > node->size) new_slot_size >>= 1;
                 ret = rescale(node, new_slot_size);
             }
             else
@@ -868,20 +885,20 @@ private:
     }
 
     inline bool isfull(const inner_node_ptr node) const {
-        return node->size >= node->real_slot_size() * ((IS_ML_NODE(node) ? this->inner_node_full_ratio[node->level] : traits::DATA_NODE_FULL_RATIO));
+        return node->size >= node->real_slot_size() * ((IS_ML_NODE(node) ? self::inner_node_full_ratio[node->level] : traits::DATA_NODE_FULL_RATIO));
     }
 
     inline bool isfull(const inner_node_ptr node, const slot_type offset) const {
-        return node->size + offset >= node->real_slot_size() * ((IS_ML_NODE(node) ? this->inner_node_full_ratio[node->level] : traits::DATA_NODE_FULL_RATIO));
+        return node->size + offset >= node->real_slot_size() * ((IS_ML_NODE(node) ? self::inner_node_full_ratio[node->level] : traits::DATA_NODE_FULL_RATIO));
     }
     
     inline bool isfew(const inner_node_ptr node) const {
-        return node->size < node->real_slot_size() * ((IS_ML_NODE(node) ? this->inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * traits::DENSITY_NARROW_RATIO;
-        //return node->size < node->real_slot_size * ((IS_ML_NODE(node) ? this->inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * traits::DENSITY_NARROW_RATIO;
+        return node->size < node->real_slot_size() * ((IS_ML_NODE(node) ? self::inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * traits::DENSITY_NARROW_RATIO;
+        //return node->size < node->real_slot_size * ((IS_ML_NODE(node) ? self::inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * traits::DENSITY_NARROW_RATIO;
     }
 
     inline bool isfew(const inner_node_ptr node, const slot_type offset) const {
-        return node->size + offset < node->real_slot_size() * ((IS_ML_NODE(node) ? this->inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * traits::DENSITY_NARROW_RATIO;
+        return node->size + offset < node->real_slot_size() * ((IS_ML_NODE(node) ? self::inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * traits::DENSITY_NARROW_RATIO;
     }
 
     inline bool isfew(const node_ptr node) const{
@@ -923,6 +940,16 @@ template<typename _Key,
         typename traits>
 int aex_tree<_Key, _Val, traits>::debug_level = 0;
 #endif
+
+template<typename _Key,
+        typename _Val,
+        typename traits>
+double aex_tree<_Key, _Val, traits>::inner_node_full_ratio[traits::MAX_DEPTH];
+
+template<typename _Key,
+        typename _Val,
+        typename traits>
+double aex_tree<_Key, _Val, traits>::inner_node_few_ratio[traits::MAX_DEPTH];
 
 };
 

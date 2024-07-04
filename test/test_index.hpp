@@ -356,6 +356,10 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
             return false;
         }
         iter = index.find(insert_data[i].first);
+        if (iter == index.end()){
+            AEX_ERROR("i=" << i << "no find inserted iterator!");
+            return false;
+        }
         if (iter.key() != insert_data[i].first || iter.data() != insert_data[i].second){
             AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
             return false;
@@ -432,11 +436,12 @@ bool test_index_insert_hotspot_perf(std::pair<key_type, value_type>* data, long 
     mock_aex_tree<key_type, value_type, traits> index, index_bak;
     [[maybe_unused]] typedef typename traits::size_type size_type;
     typedef typename tree::node_ptr node_ptr;
+    std::sort(data, data + n);
     std::vector<std::pair<key_type, value_type> > insert_data(batch), node_data(n - batch + 1); 
     long long pos = rand() % (n - batch);
     std::copy(data, data + pos, node_data.data());
     std::copy(data + pos, data + pos + batch, insert_data.data());
-    std::copy(data + pos + batch, data + n, node_data.data());
+    std::copy(data + pos + batch, data + n, node_data.data() + pos);
     random_shuffle(insert_data.data(), insert_data.data() + batch);
     index.bulk_load(node_data.data(), n - batch);
     AEX_PRINT("bulk load finish...");

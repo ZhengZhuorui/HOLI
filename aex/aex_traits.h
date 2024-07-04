@@ -47,7 +47,7 @@ template<typename _Key,
         bool _AllowMultiKey=false,
         typename _SearchClass=void,
         bool _AllowConcurrency=false,
-        int _AllowBalance=2,
+        int _AllowBalance=0,
         bool _AllowDynamicDataNode=false,
         bool _AllowMergeNode=false,
         int _ERROR_BOUND=8,
@@ -134,7 +134,7 @@ struct aex_default_traits{
         
     static constexpr float DATA_NODE_FULL_RATIO = 1;
 
-    static constexpr float DENSITY_NARROW_RATIO = 0.5;
+    static constexpr float DENSITY_NARROW_RATIO = 1.0 / (traits::MIN_INNER_NODE_SLOT_SIZE / 2);
 
     static constexpr float EXPAND_RATIO = 2;
 

@@ -357,23 +357,40 @@ public:
 
             // the distance between insert position of shift item and the predict position should be less than ERROR_BOUND
             slot_type max_slot = std::min(inserted_pos + traits::ERROR_BOUND, this->slot_size - 1);
+            static int xxxxx = 0;
+            ++xxxxx;
+            if (xxxxx == 10)
+                exit(0);
             for (slot_type i = inserted_pos; i < max_slot; ++i){
+                AEX_PRINT("i=" << i << ", slot_size=" << this->slot_size << ", inserted_pos=" << inserted_pos << ", key=" << key << ", ori_key=" << this->key_ptr[inserted_pos] << ", ori_key_pos=" << this->predict(this->key_ptr[inserted_pos]));
                 if (bitmap_impl::at(this->bitmap_ptr, i)){
                     slot_type shift_pos = this->predict(this->key_ptr[i]);
                     if (i + 1 - shift_pos >= traits::ERROR_BOUND)
                         return this->insert_fail(key, child, pred_pos);
                 }
                 else{
-                    if (pred_pos == 0 && i >= traits::LEFT_BUFFER_SIZE)
-                        return this->insert_fail(key, child, pred_pos);
+                //if (!bitmap_impl::at(this->bitmap_ptr, i)){
+                    //if (pred_pos == 0 && i >= traits::LEFT_BUFFER_SIZE)
+                    //    return this->insert_fail(key, child, pred_pos);
+                    AEX_PRINT("i=" << i << ", slot_size=" << this->slot_size << ", inserted_pos=" << inserted_pos << ", key=" << key << ", ori_key=" << this->key_ptr[inserted_pos] << ", ori_key_pos=" << this->predict(this->key_ptr[inserted_pos]));
                     std::move_backward(this->key_ptr + inserted_pos, this->key_ptr + i, this->key_ptr + i + 1);
                     std::move_backward(this->child_ptr + inserted_pos, this->child_ptr + i, this->child_ptr + i + 1);
+                    slot_type j = inserted_pos;
+                    do{
+                        this->key_ptr[j] = key;
+                        this->child_ptr[j] = child;
+                        --j;
+                    }while(j >= 0 && !bitmap_impl::at(this->bitmap_ptr, j));
+                    //for (slot_type j = inserted_pos - 1; j >= 0 && bitmap_impl::at(this->bitmap_ptr, j) == 0; --j){
+                    //    this->key_ptr[j] = key;
+                    //    this->child_ptr[j] = child;
+                    //}
                     bitmap_impl::set_one(this->bitmap_ptr, i);
-                    slot_type prev_pos = this->prev_item(inserted_pos);
-                    std::fill(this->key_ptr + prev_pos + 1, this->key_ptr + inserted_pos + 1, key);
-                    std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + inserted_pos + 1, child);
+                    //slot_type prev_pos = this->prev_item(inserted_pos);
+                    //std::fill(this->key_ptr + prev_pos + 1, this->key_ptr + inserted_pos + 1, key);
+                    //std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + inserted_pos + 1, child);
                     ++this->size; 
-                    this->split_stats.update(this->size / this->slot_size);
+                    this->split_stats.update(1);
                     return NODE_INSERT_CODE::SUCCESS;
                 }
             }
@@ -452,7 +469,7 @@ public:
             return NODE_INSERT_CODE::SUCCESS;           
         }
         else {
-            this->split_stats.update(-this->slot_size);
+            this->split_stats.update(-this->real_slot_size() * base_tree::inner_node_full_ratio[this->level]);
             return NODE_INSERT_CODE::INNER_NODE_CONFLICT;
         }
     }

@@ -135,7 +135,7 @@ public:
 
     // used memory size of bitmap, align 8 bytes
     inline static size_type BITMAP_MEMORY_USED(size_type slot_size){
-        return align_8bytes(((slot_size >> 6) + ((slot_size & 63) > 0)) * sizeof(typename traits::bitmap_base));
+        return align_8bytes(((slot_size >> 6) + 2) * sizeof(typename traits::bitmap_base));
     }
 
     // used memory size of data array, align 8 bytes
@@ -165,9 +165,9 @@ public:
     //}
 
     inline bool is_large_node(slot_type real_slot_size){return real_slot_size >= traits::MIN_ML_INNER_NODE_SIZE;}
-    inline slot_type set_retrain_cnt(slot_type slot_size){
+    inline slot_type set_retrain_cnt(slot_type slot_size, int level){
         //AEX_PRINT("slot_size=" << slot_size << ", cnt=" << traits::RETRAIN_RATIO * log(slot_size) / log(2) * slot_size);
-        return static_cast<slot_type>(traits::RETRAIN_RATIO * log(slot_size) / log(2) * slot_size);
+        return static_cast<slot_type>(traits::RETRAIN_RATIO * log(slot_size) / log(2) * slot_size * base_tree::inner_node_full_ratio[level]);
     }
 
     inline inner_node_ptr allocate_inner_node(slot_type real_slot_size, int level, bool ml_node_flag){
@@ -203,7 +203,7 @@ public:
         }
         SET_FLAG(node, node_property::CAN_LEFT_MERGED | node_property::CAN_RIGHT_MERGED);
         //node->retrain_cnt = set_retrain_cnt(real_slot_size);
-        node->split_stats.set(set_retrain_cnt(slot_size));
+        node->split_stats.set(set_retrain_cnt(real_slot_size, level));
         return node;
     }
 
@@ -218,6 +218,12 @@ public:
         //if (data_node_buffer.size() == 0)
         //    allocate_data_node_buffer();
         //data_node_ptr node = data_node_buffer[data_node_buffer.size() - 1];
+        //data_node_buffer.pop_back();
+        //if (data_node_buffer.size() == 0){
+        //    for (int i = 0; i < 100; ++i)
+        //        data_node_buffer.push_back(new data_node());
+        //}
+        //data_node_ptr node = data_node_buffer.back();
         //data_node_buffer.pop_back();
         data_node_ptr node = new data_node();
         SET_FLAG(node, node_property::LEAF);
@@ -266,6 +272,7 @@ public:
     
 
     inline void reallocate(inner_node_ptr node, slot_type new_slot_size){
+        node->split_stats.set(set_retrain_cnt(new_slot_size, node->level));
         new_slot_size += is_large_node(new_slot_size) * traits::EXTERN_BUFFER_SIZE;
 
         //this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) 
@@ -276,10 +283,10 @@ public:
         node->child_ptr = static_cast<node_ptr*>(realloc(node->child_ptr, PTR_MEMORY_USED(new_slot_size)));
         node->bitmap_ptr = static_cast<bitmap>(realloc(node->bitmap_ptr, BITMAP_MEMORY_USED(new_slot_size)));
         node->slot_size = new_slot_size;
-        node->split_stats.set(set_retrain_cnt(new_slot_size));
     }
 
     inline void reallocate_and_copy(inner_node_ptr node, slot_type new_slot_size){
+        node->split_stats.set(set_retrain_cnt(new_slot_size, node->level));
         new_slot_size += is_large_node(new_slot_size) * traits::EXTERN_BUFFER_SIZE;
 
         //this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) 
@@ -297,10 +304,10 @@ public:
         node->child_ptr = new_child_ptr;
         node->bitmap_ptr = new_bitmap_ptr;
         node->slot_size = new_slot_size;
-        node->split_stats.set(set_retrain_cnt(new_slot_size));
     }
 
     inline void reallocate_and_save(inner_node_ptr node, slot_type new_slot_size){
+        node->split_stats.set(set_retrain_cnt(new_slot_size, node->level));
         new_slot_size += is_large_node(new_slot_size) * traits::EXTERN_BUFFER_SIZE;
 
         //this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) 
@@ -315,7 +322,6 @@ public:
         node->child_ptr = new_child_ptr;
         node->bitmap_ptr = new_bitmap_ptr;
         node->slot_size = new_slot_size;
-        node->split_stats.set(set_retrain_cnt(new_slot_size));
     }
 
     inline void reallocate(data_node_ptr node, slot_type new_slot_size){
@@ -415,7 +421,13 @@ public:
         #ifdef AEX_DEBUG
         --data_node_nums;
         #endif
-        delete p;
+        //data_node_buffer.push_back(p);
+        //if (data_node_buffer.size() > 200){
+        //    for (int i = 0; i < 100; ++i){
+        //        delete data_node_buffer.back();
+        //        data_node_buffer.pop_back();
+        //    }
+        //}
     }
 
     inline void free_node(node_ptr p){      
@@ -454,6 +466,7 @@ private:
 #endif
     std::vector<key_type> dynamic_key_buf[2], static_key_buf;
     std::vector<node_ptr> dynamic_nodeptr_buf[2], static_nodeptr_buf;
+    std::vector<data_node_ptr> data_node_buffer;
     //size_type dynamic_key_buf_used, dynamic_child_buf_used;
 #ifdef AEX_DEBUG
     size_type static_key_buf_used, static_nodeptr_buf_used;

@@ -203,25 +203,16 @@ public:
         return ((text[x >> 6] >> (x & 63)) & 1);
     }
 
-    static inline slot_type next_empty_slot(bitmap* text, size_type x){
-        /*
-        //lower bound: 4
-        int p = x >> 6, q = x & 64;
-        int s = text[p] >> q;
-
-        if (s){
-            return x + (traits::ERROR_BOUND - lowbit_loop_unroll<traits::ERROR_BOUND>(s));
+    static inline slot_type next_empty_slot(bitmap* text, slot_type x){
+        text += (x >> 6);
+        bitmap base = *text >> (x & 63);
+        slot_type res = __builtin_ctz(base);
+        if (base == 0){
+            ++text;
+            base = *text;
+            res = 64 - (x & 63) + __builtin_ctzll(base);
         }
-        else if (q < 48 && text[p + 1]){
-            return x + (64 - q) + (traits::ERROR_BOUND - lowbit_loop_unroll<traits::ERROR_BOUND>(text[p + 1]));
-        }
-        else return -1;
-        */
-        for (slot_type i = x; i < x + traits::ERROR_BOUND; ++i)
-        if (!at(text, i)){
-            return i;
-        }
-        return x + traits::ERROR_BOUND;
+        return res;
     }
 
 };

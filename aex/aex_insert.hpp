@@ -49,8 +49,9 @@ inline std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree
             }
             //key_type new_key = MID_KEY(new_node->key[new_node->size - 1], node->key[0]);
             key_type new_key = new_node->key[new_node->size - 1];
-            node_ptr _ = static_cast<node_ptr>(new_node);
-            insert_recursive(stack, &new_key, &_, 1);
+            //node_ptr &_ = static_cast<node_ptr>(new_node);
+            //if (node == root || isfull(*stack) || !(*stack)->insert(new_key, new_node))
+                insert_recursive(stack, &new_key, reinterpret_cast<node_ptr*>(&new_node), 1);
             ret = std::pair<iterator, bool>(iter, true);
             //AEX_PRINT("node=" << iter._M_node << ", pos=" << iter.offset << ", iter key=" << iter.key() << ", key=" << key);
         }

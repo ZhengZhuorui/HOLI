@@ -115,8 +115,8 @@ inline bool aex_tree<_Key, _Val, traits>::insert_merge(inner_node_ptr parent, co
     if (tot_size >= traits::MIN_ML_INNER_NODE_SIZE){
         InnerNodeModel m;
         slot_type slot_size;
-        slot_size = min_slot_size(tot_size, this->inner_node_few_ratio[new_node->level], traits::MIN_INNER_NODE_SLOT_SIZE);
-        if (slot_size * this->inner_node_few_ratio[new_node->level] > tot_size) slot_size <<= 1;
+        slot_size = min_slot_size(tot_size, self::inner_node_few_ratio[new_node->level], traits::MIN_INNER_NODE_SLOT_SIZE);
+        if (slot_size * self::inner_node_few_ratio[new_node->level] > tot_size) slot_size <<= 1;
         if (!m.train(key_buf, tot_size, slot_size)){
             std::for_each(node_merge_buf, node_merge_buf + node_merge_size, [](node_ptr node){UNSET_FLAG(node, CAN_MERGED);});
             ret = false;
