@@ -666,6 +666,26 @@ inline void aex_tree<_Key, _Val, traits>::split(data_node_ptr new_node, data_nod
 }
 
 template<typename _Key, typename _Val, typename traits>
+inline void aex_tree<_Key, _Val, traits>::split_reverse(data_node_ptr new_node, data_node_ptr old_node){
+    AEX_ASSERT(traits::AllowDynamicDataNode == false);
+    #ifdef AEX_DEBUG
+    ++opt_stats.data_node_split_cnt;
+    #endif
+    new_node->next = old_node->next;
+    new_node->prev = old_node;
+    old_node->next->prev = new_node;
+    old_node->next = new_node;
+    if (this->tail_leaf == old_node) 
+        this->tail_leaf = new_node;
+    
+    size_type mid = traits::MIN_DATA_NODE_SLOT_SIZE >> 1;
+    std::move(old_node->key + mid, old_node->key + old_node->size, new_node->key);
+    std::move(old_node->data + mid, old_node->data + old_node->size, new_node->data);
+    new_node->size = old_node->size - mid;
+    old_node->size = mid;
+}
+
+template<typename _Key, typename _Val, typename traits>
 inline _Key aex_tree<_Key, _Val, traits>::split_dense_inner_node(inner_node_ptr new_node, inner_node_ptr old_node){
     AEX_ASSERT(IS_ML_NODE(old_node) == false);
     AEX_ASSERT(IS_ML_NODE(new_node) == false);

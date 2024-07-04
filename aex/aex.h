@@ -796,6 +796,7 @@ private:
 
     key_type split_dense_inner_node(inner_node_ptr new_node, inner_node_ptr old_node);
     void split(data_node_ptr new_node, data_node_ptr old_node);
+    void split_reverse(data_node_ptr new_node, data_node_ptr old_node);
 
     // check if key buffer can put in a node with slot_size slot size. The model m will be trained if the answer is true
     template<typename Model>
@@ -893,12 +894,12 @@ private:
     }
     
     inline bool isfew(const inner_node_ptr node) const {
-        return node->size < node->real_slot_size() * ((IS_ML_NODE(node) ? self::inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * traits::DENSITY_NARROW_RATIO;
+        return node->size < node->real_slot_size() * ((IS_ML_NODE(node) ? self::inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * 0.5;
         //return node->size < node->real_slot_size * ((IS_ML_NODE(node) ? self::inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * traits::DENSITY_NARROW_RATIO;
     }
 
     inline bool isfew(const inner_node_ptr node, const slot_type offset) const {
-        return node->size + offset < node->real_slot_size() * ((IS_ML_NODE(node) ? self::inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * traits::DENSITY_NARROW_RATIO;
+        return node->size + offset < node->real_slot_size() * ((IS_ML_NODE(node) ? self::inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * 0.5;
     }
 
     inline bool isfew(const node_ptr node) const{

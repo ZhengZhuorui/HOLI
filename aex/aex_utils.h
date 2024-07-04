@@ -199,20 +199,34 @@ public:
     static inline void set_zero(bitmap text, const slot_type x){
         text[x >> 6] &= ~(1LL << (x & 63));
     }
-    static inline char at(const bitmap text, const slot_type x){
+    static inline bool at(const bitmap text, const slot_type x){
         return ((text[x >> 6] >> (x & 63)) & 1);
     }
 
-    static inline slot_type next_empty_slot(bitmap* text, slot_type x){
+    static inline slot_type next_empty_slot(bitmap text, slot_type x){
         text += (x >> 6);
-        bitmap base = *text >> (x & 63);
-        slot_type res = __builtin_ctz(base);
-        if (base == 0){
+        bitmap_base base = ~(*text >> (x & 63));
+        slot_type res = __builtin_ctzll(base);
+        if (res >= 64 - (x & 63)){
             ++text;
-            base = *text;
+            base = ~(*text);
             res = 64 - (x & 63) + __builtin_ctzll(base);
         }
-        return res;
+        return x + res;
+    }
+
+    static inline slot_type prev_occ_slot(bitmap text, slot_type x){
+        if (x <= 0)
+            return x;
+        text += (x >> 6);
+        bitmap_base base = (*text) << (~(x & 63));
+        x -= (base == 0) ? ((x & 63) + 1) : __builtin_clzll(base);
+        while (base == 0 && x > 0){
+            --text;
+            base = *text;
+            x -= __builtin_clzll(base);
+        }
+        return x;
     }
 
 };

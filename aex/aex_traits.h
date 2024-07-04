@@ -124,7 +124,10 @@ struct aex_default_traits{
     static constexpr slot_type MIN_ML_INNER_NODE_SIZE = 64;
     //static constexpr slot_type MIN_ML_INNER_NODE_SIZE = MIN_INNER_NODE_SLOT_SIZE;
 
-    static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 25;
+    static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 26;
+
+    static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE_SQRT = 1 << 13;
+    static_assert(MAX_INNER_NODE_SLOT_SIZE_SQRT * MAX_INNER_NODE_SLOT_SIZE_SQRT == MAX_INNER_NODE_SLOT_SIZE);
 
     static constexpr slot_type MAX_DATA_NODE_SLOT_SIZE = 1 << 20;
 
@@ -134,7 +137,7 @@ struct aex_default_traits{
         
     static constexpr float DATA_NODE_FULL_RATIO = 1;
 
-    static constexpr float DENSITY_NARROW_RATIO = 1.0 / (traits::MIN_INNER_NODE_SLOT_SIZE / 2);
+    static constexpr float DENSITY_NARROW_RATIO = 1.0 / (MIN_INNER_NODE_SLOT_SIZE / 4);
 
     static constexpr float EXPAND_RATIO = 2;
 

@@ -77,8 +77,8 @@ inline void aex_tree<_Key, _Val, traits>::init(){
     //this->m_stats.min_key = std::numeric_limits<key_type>::max();
     self::inner_node_few_ratio[0] = traits::DATA_NODE_FEW_RATIO;
     self::inner_node_full_ratio[0] = traits::DATA_NODE_FULL_RATIO;
-    self::inner_node_few_ratio[1] = traits::DATA_NODE_FEW_RATIO;
-    self::inner_node_full_ratio[1] = traits::DATA_NODE_FULL_RATIO;
+    self::inner_node_few_ratio[1] = traits::DATA_NODE_FEW_RATIO / 2;
+    self::inner_node_full_ratio[1] = traits::DATA_NODE_FULL_RATIO / 2;
 
     for (int i = 2; i < traits::MAX_DEPTH; ++i){
         self::inner_node_few_ratio[i] = self::inner_node_few_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
@@ -88,7 +88,8 @@ inline void aex_tree<_Key, _Val, traits>::init(){
     this->max_inner_node_slot_size[0] = traits::MAX_DATA_NODE_SLOT_SIZE;
     for (int i = 1; i < traits::MAX_DEPTH; ++i){
         this->max_inner_node_slot_size[i] = traits::MAX_INNER_NODE_SLOT_SIZE;
-        self::inner_node_few_ratio[i] *= traits::DENSITY_NARROW_RATIO;
+        //self::inner_node_few_ratio[i] *= 0.5;
+        //AEX_PRINT(this->self::inner_node_few_ratio[i] << ", " << this->self::inner_node_full_ratio[i]);
     }
 
     this->root = this->head_leaf = this->tail_leaf = nullptr;

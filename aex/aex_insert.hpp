@@ -37,6 +37,7 @@ inline std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree
         if constexpr (!traits::AllowDynamicDataNode){
             data_node_ptr new_node = allocator.allocate_data_node();
             ++this->m_stats.level_node[0];
+            //split_reverse(new_node, node);
             split(new_node, node);
             iterator iter;
             if (pos < new_node->size){
@@ -50,8 +51,7 @@ inline std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree
             //key_type new_key = MID_KEY(new_node->key[new_node->size - 1], node->key[0]);
             key_type new_key = new_node->key[new_node->size - 1];
             //node_ptr &_ = static_cast<node_ptr>(new_node);
-            //if (node == root || isfull(*stack) || !(*stack)->insert(new_key, new_node))
-                insert_recursive(stack, &new_key, reinterpret_cast<node_ptr*>(&new_node), 1);
+            insert_recursive(stack, &new_key, reinterpret_cast<node_ptr*>(&new_node), 1);
             ret = std::pair<iterator, bool>(iter, true);
             //AEX_PRINT("node=" << iter._M_node << ", pos=" << iter.offset << ", iter key=" << iter.key() << ", key=" << key);
         }
@@ -706,10 +706,10 @@ inline void aex_tree<_Key, _Val, traits>::insert_recursive(inner_node_ptr* stack
     //AEX_PRINT("insert_recursive try merge");
     //if (node->prev != nullptr)
     //    if ((CAN_LEFT_MERGED_NODE(node) || CAN_RIGHT_MERGED_NODE(node->prev)) && (static_cast<inner_node_ptr>(node->prev)->slot_size == node->slot_size))
-    loop_merge_left(parent, node);
+    //loop_merge_left(parent, node);
     //if (node->next != nullptr)
     //    if ((CAN_LEFT_MERGED_NODE(node) || CAN_RIGHT_MERGED_NODE(node->next)) && (static_cast<inner_node_ptr>(node->next)->slot_size == node->slot_size))
-    loop_merge_right(parent, node);
+    //loop_merge_right(parent, node);
     //AEX_PRINT("insert_recursive end");
 }
 

@@ -230,10 +230,10 @@ DATA_PATH="/data/zzr/learned_index/data"
 
 
 ./benchmark --key_type=uint64 --index=aex --function=insert --query_dis=uniform --num_keys=20000000 --num_ops=10000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
-./benchmark --key_type=uint64 --index=aex --function=insert --query_dis=uniform --num_keys=10500000 --num_ops=500000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=insert --query_dis=uniform --num_keys=105000000 --num_ops=5000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=aex --function=lookup --query_dis=uniform --num_keys=105000000 --num_ops=5000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 
-./benchmark --key_type=uint64 --index=stx_btree --function=insert --query_dis=uniform --num_keys=10500000 --num_ops=500000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=insert --query_dis=uniform --num_keys=105000000 --num_ops=5000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=105000000 --num_ops=5000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 
 ./benchmark --key_type=uint64 --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64

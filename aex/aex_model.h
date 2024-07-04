@@ -1140,6 +1140,11 @@ public:
 
     ~piecewise_linear_model_4(){}
 
+
+    static long double S[traits::MAX_SEGMENT_NUM][traits::MAX_INNER_NODE_SLOT_SIZE_SQRT], segment_slope[MAX_INNER_NODE_SLOT_SIZE_SQRT];
+    static int ans[traits::MAX_SEGMENT_NUM][MAX_INNER_NODE_SLOT_SIZE_SQRT];
+    static key_type segment_start[MAX_INNER_NODE_SLOT_SIZE_SQRT];
+
     // return the predict position. value range from 0 to +inf.
     forceinline long double predict(const key_type &key) const {
         long double ret = 1;
@@ -1208,7 +1213,8 @@ public:
         
         std::fill(args.end, args.end + traits::MAX_SEGMENT_NUM, std::numeric_limits<key_type>::lowest());
         std::fill(args.slope, args.slope + traits::MAX_SEGMENT_NUM, 0);
-
+        
+        constexpr int MAX_SEGMENT_NUM = std::min(static_cast<slot_type>(sqrt()), 1 << traits::MAX_SEGMENT_NUM);
         const int M = std::min(static_cast<slot_type>(sqrt(n)), 1 << traits::MAX_SEGMENT_NUM);
         int N = 2 * M;
         
