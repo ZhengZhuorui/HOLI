@@ -91,6 +91,7 @@ public:
     typedef aex_bitmap_impl<traits> bitmap_impl;
 
     typedef typename traits::bitmap bitmap;
+    typedef typename traits::bitmap_base bitmap_base;
 
     // allocator:
     typedef typename components::Allocator Allocator;

@@ -555,11 +555,22 @@ void aex_tree<_Key, _Val, traits>::copy_to_buffer(const inner_node_ptr node, key
     bitmap bm = node->bitmap_ptr;
     slot_type n_slot = 0;
     if (IS_ML_NODE(node)){
-        for (slot_type i = 0; i < node->slot_size; ++i)
-        if (bitmap_impl::at(bm, i)){
-            key_buf[n_slot] = key[i];
-            child_buf[n_slot] = child[i];
-            n_slot++;
+        //for (slot_type i = 0; i < node->slot_size; ++i)
+        //if (bitmap_impl::at(bm, i)){
+        //    key_buf[n_slot] = key[i];
+        //    child_buf[n_slot] = child[i];
+        //    n_slot++;
+        //}
+        for (slot_type i = 0; i < node->slot_size; i += 64){
+            bitmap_base base = *bm;
+            while (base != 0){
+                int l = __builtin_ctzll(base);
+                key_buf[n_slot] = key[i + l];
+                child_buf[n_slot] = child[i + l];
+                n_slot++;
+                base -= base & (-base);
+            }
+            bm++;
         }
         child_buf[n_slot++] = child[node->slot_size - 1];
     }
@@ -591,7 +602,7 @@ void aex_tree<_Key, _Val, traits>::copy_to_buffer(const inner_node_ptr node, key
 
 // copy pointers of a node to pointers buffer
 template<typename _Key, typename _Val, typename traits>
-void aex_tree<_Key, _Val, traits>::copy_to_buffer(const inner_node_ptr  node, node_ptr* child_buf){
+void aex_tree<_Key, _Val, traits>::copy_to_buffer(const inner_node_ptr node, node_ptr* child_buf){
     node_ptr* child = node->child_ptr;
     bitmap bm = node->bitmap_ptr;
     slot_type n_slot = 0;

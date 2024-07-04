@@ -108,21 +108,21 @@ bool test(map<string, string> &flags){
             int level = stoi(flags["level"]);
             return test_model<T, piecewise_linear_model_3<T, aex::aex_default_traits<T, T> > >(bin_data.data(), num_keys, level);
         }
-        else if (model_type == "piecewise_linear_4"){
+        else if (model_type == "PDM"){
             int level = stoi(flags["level"]);
-            return test_model<T, piecewise_linear_model_4<T, aex::aex_default_traits<T, T> > >(bin_data.data(), num_keys, level);
+            return test_model<T, PDM<T, aex::aex_default_traits<T, T> > >(bin_data.data(), num_keys, level);
         }
-        else if (model_type == "piecewise_linear_4_avx"){
+        else if (model_type == "PDM_avx"){
             int level = stoi(flags["level"]);
-            using piecewise_linear_model_4_avx = piecewise_linear_model_avx<T, piecewise_linear_model_4<T, default_traits>, default_traits>;
-            return test_model<T, piecewise_linear_model_4_avx>(bin_data.data(), num_keys, level);
+            using PDM_avx = PDM_AVX<T, PDM<T, default_traits>, default_traits>;
+            return test_model<T, PDM_avx>(bin_data.data(), num_keys, level);
         }
-        else if (model_type == "piecewise_linear_1_avx"){
-            int level = stoi(flags["level"]);
-            //return test_piecewise_linear_model_avx_perf(bin_data.data(), num_keys, batch, level);
-            using piecewise_linear_model_1_avx = piecewise_linear_model_avx<T, piecewise_linear_model<T, default_traits>, default_traits>;
-            return test_model<T, piecewise_linear_model_1_avx>(bin_data.data(), num_keys, level);
-        }
+        //else if (model_type == "PDM_avx"){
+        //    int level = stoi(flags["level"]);
+        //    //return test_PDM_AVX_perf(bin_data.data(), num_keys, batch, level);
+        //    using PDM_avx = PDM_AVX<T, piecewise_linear_model<T, default_traits>, default_traits>;
+        //    return test_model<T, PDM_avx>(bin_data.data(), num_keys, level);
+        //}
         else if (model_type == "all")
             return test_aex_model(bin_data.data(), num_keys, spec_flag);
     }

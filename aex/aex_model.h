@@ -1123,27 +1123,27 @@ public:
 
 template<typename _Tp,
         typename traits>
-class piecewise_linear_model_4{
+class PDM{
 public:
     typedef _Tp key_type;
 
-    typedef piecewise_linear_model_4<key_type, traits> self;
+    typedef PDM<key_type, traits> self;
 
     typedef typename traits::slot_type slot_type;
 
     //typedef slope_gap<_Tp> sg;
 
-    piecewise_linear_model_4(){
+    PDM(){
         this->args.seg_nums = 0;
-        std::fill(this->args.slope, this->args.slope + traits::MAX_SEGMENT_NUM, 0);
+        std::fill(this->args.slope, this->args.slope + traits::MAX_MODEL_ARGS, 0);
     }
 
-    ~piecewise_linear_model_4(){}
+    ~PDM(){}
 
 
-    static long double S[traits::MAX_SEGMENT_NUM][traits::MAX_INNER_NODE_SLOT_SIZE_SQRT], segment_slope[MAX_INNER_NODE_SLOT_SIZE_SQRT];
-    static int ans[traits::MAX_SEGMENT_NUM][MAX_INNER_NODE_SLOT_SIZE_SQRT];
-    static key_type segment_start[MAX_INNER_NODE_SLOT_SIZE_SQRT];
+    static long double S[traits::MAX_SEGMENT_NUM][traits::MAX_INNER_NODE_SLOT_SIZE_SQRT], segment_slope[traits::MAX_INNER_NODE_SLOT_SIZE_SQRT];
+    static int ans[traits::MAX_SEGMENT_NUM][traits::MAX_INNER_NODE_SLOT_SIZE_SQRT];
+    static key_type segment_start[traits::MAX_INNER_NODE_SLOT_SIZE_SQRT];
 
     // return the predict position. value range from 0 to +inf.
     forceinline long double predict(const key_type &key) const {
@@ -1214,14 +1214,10 @@ public:
         std::fill(args.end, args.end + traits::MAX_SEGMENT_NUM, std::numeric_limits<key_type>::lowest());
         std::fill(args.slope, args.slope + traits::MAX_SEGMENT_NUM, 0);
         
-        constexpr int MAX_SEGMENT_NUM = std::min(static_cast<slot_type>(sqrt()), 1 << traits::MAX_SEGMENT_NUM);
         const int M = std::min(static_cast<slot_type>(sqrt(n)), 1 << traits::MAX_SEGMENT_NUM);
         int N = 2 * M;
         
         constexpr int MAX_SEGMENT_CANDICATE = (1 << (traits::MAX_SEGMENT_NUM + 1)) + 1;
-        long double S[traits::MAX_SEGMENT_NUM][MAX_SEGMENT_CANDICATE], segment_slope[MAX_SEGMENT_CANDICATE];
-        int ans[traits::MAX_SEGMENT_NUM][MAX_SEGMENT_CANDICATE];
-        key_type segment_start[MAX_SEGMENT_CANDICATE];
 
         long double segment_length = (key[n - 1] - key[0]) / M;
         for (slot_type i = 0; i < M; ++i){
@@ -1328,10 +1324,21 @@ public:
     #endif
 
     struct piecewise_linear_model_arguments{
-        long double end[traits::MAX_SEGMENT_NUM], slope[traits::MAX_SEGMENT_NUM];
         unsigned int seg_nums;
+        long double end[traits::MAX_MODEL_ARGS], slope[traits::MAX_MODEL_ARGS];
     }args;
 };
 
+template<typename _Tp, typename traits>
+long double PDM<_Tp, traits>::S[traits::MAX_SEGMENT_NUM][traits::MAX_INNER_NODE_SLOT_SIZE_SQRT];
+
+template<typename _Tp, typename traits>
+long double PDM<_Tp, traits>::segment_slope[traits::MAX_INNER_NODE_SLOT_SIZE_SQRT];
+
+template<typename _Tp, typename traits>
+int PDM<_Tp, traits>::ans[traits::MAX_SEGMENT_NUM][traits::MAX_INNER_NODE_SLOT_SIZE_SQRT];
+
+template<typename _Tp, typename traits>
+_Tp PDM<_Tp, traits>::segment_start[traits::MAX_INNER_NODE_SLOT_SIZE_SQRT];
 
 }

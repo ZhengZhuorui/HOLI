@@ -706,10 +706,10 @@ inline void aex_tree<_Key, _Val, traits>::insert_recursive(inner_node_ptr* stack
     //AEX_PRINT("insert_recursive try merge");
     //if (node->prev != nullptr)
     //    if ((CAN_LEFT_MERGED_NODE(node) || CAN_RIGHT_MERGED_NODE(node->prev)) && (static_cast<inner_node_ptr>(node->prev)->slot_size == node->slot_size))
-    //loop_merge_left(parent, node);
+    loop_merge_left(parent, node);
     //if (node->next != nullptr)
     //    if ((CAN_LEFT_MERGED_NODE(node) || CAN_RIGHT_MERGED_NODE(node->next)) && (static_cast<inner_node_ptr>(node->next)->slot_size == node->slot_size))
-    //loop_merge_right(parent, node);
+    loop_merge_right(parent, node);
     //AEX_PRINT("insert_recursive end");
 }
 

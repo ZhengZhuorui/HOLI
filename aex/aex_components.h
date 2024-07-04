@@ -367,8 +367,8 @@ struct aex_default_components{
     typedef typename concurrency_components::data_node data_node;
     typedef typename concurrency_components::Allocator Allocator;
 
-    typedef piecewise_linear_model_4<key_type, traits> baseInnerNodeModel;
-    typedef piecewise_linear_model_avx<key_type, baseInnerNodeModel, traits> InnerNodeModel;
+    typedef PDM<key_type, traits> baseInnerNodeModel;
+    typedef PDM_AVX<key_type, baseInnerNodeModel, traits> InnerNodeModel;
     typedef linear_model<key_type, traits> DataNodeModel;
 
     typedef aex_bitmap_impl<traits> bitmap_impl;

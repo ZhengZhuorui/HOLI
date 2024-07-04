@@ -189,7 +189,7 @@ public:
 
     typedef typename bitmap_impl::bitmap bitmap;
 
-    //typedef piecewise_linear_model_avx<key_type, traits> Model;
+    //typedef PDM_AVX<key_type, traits> Model;
     typedef typename components::InnerNodeModel Model;
 
     typedef typename components::node_split_stats node_split_stats;

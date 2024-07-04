@@ -15,7 +15,7 @@ template<typename _Key, typename _Val, typename traits> struct aex_static_data_n
 
 template<typename _Tp, typename traits> class piecewise_linear_model;
 template<typename _Tp, typename traits> class piecewise_linear_model_2;
-template<typename _Tp, typename Model, typename traits> class piecewise_linear_model_avx;
+template<typename _Tp, typename Model, typename traits> class PDM_AVX;
 
 
 template<typename traits, bool AllowBalance, bool AllowConcurrency> struct aex_node_balance_stats;
@@ -39,7 +39,7 @@ template<typename _Tp, typename traits> class gap_array_linear_model;
 template<typename _Tp, typename traits> class piecewise_linear_model;
 template<typename _Tp, typename traits> class piecewise_linear_model_2;
 template<typename _Tp, typename traits> class piecewise_linear_model_3;
-template<typename _Tp, typename traits> class piecewise_linear_model_4;
+template<typename _Tp, typename traits> class PDM;
 
 template<typename _Key, typename _Val, typename traits> class aex_iterator;
 template<typename _Key, typename _Val, typename traits> class aex_const_iterator;
