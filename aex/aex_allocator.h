@@ -49,6 +49,8 @@ public:
     typedef typename traits::slot_type slot_type;
 
     typedef typename components::bitmap_impl bitmap_impl;
+
+    typedef typename components::HashTable HashTable;
     
     typedef typename traits::bitmap_base bitmap_base;
     typedef typename traits::bitmap bitmap;
@@ -56,18 +58,20 @@ public:
     //const int node_buffer_size = 20;
 
     #ifdef AEX_DEBUG
-    aex_allocator():inner_node_nums(0), 
+    aex_allocator(base_tree* _index):inner_node_nums(0), 
                     data_node_nums(0), 
                     free_cnt(0), 
                     alloc_cnt(0), 
                     max_node_id(0), 
                     _memory_used(0), 
+                    uni_buf_used(0),
                     static_key_buf_used(0), 
-                    static_nodeptr_buf_used(0){
+                    static_nodeptr_buf_used(0),
+                    index(_index){
         //allocate_data_node_buffer();
     }
     #else
-    aex_allocator():_memory_used(0){}
+    aex_allocator(base_tree* _index):_memory_used(0), index(_index){}
     #endif
 
     ~aex_allocator(){
@@ -90,6 +94,15 @@ public:
             ++alloc_cnt;
         #endif
         return static_cast<void*>(malloc(size));
+    }
+
+    inline unsigned char* allocate_uni_buffer(size_type size){
+        uni_buffer.reserve(size);
+        #ifdef AEX_DEBUG
+        AEX_ASSERT(this->uni_buf_used == 0);
+        ++uni_buf_used;
+        #endif
+        return uni_buffer.data();
     }
 
     inline key_type* allocate_key_buffer(size_type size){
@@ -144,7 +157,7 @@ public:
     }
     
     inline static size_type INNER_NODE_MEMORY_USED(size_type slot_size){ 
-        return BITMAP_MEMORY_USED(slot_size) + KEY_MEMORY_USED(slot_size) + PTR_MEMORY_USED(slot_size) + \
+        return BITMAP_MEMORY_USED(slot_size) + KEY_MEMORY_USED(slot_size) + PTR_MEMORY_USED(slot_size) + HashTable::MEMORY_USED(__builtin_ctz(slot_size)) +\
         align_8bytes(sizeof(inner_node));
     }
 
@@ -296,7 +309,7 @@ public:
         node_ptr *new_child_ptr = static_cast<node_ptr*>(malloc(PTR_MEMORY_USED(new_slot_size)));
         bitmap new_bitmap_ptr = static_cast<bitmap>(malloc(BITMAP_MEMORY_USED(new_slot_size)));
         AEX_ASSERT(node->key_ptr != nullptr);
-        base_tree::copy_to_buffer(node, new_key_ptr, new_child_ptr);
+        index->copy_to_buffer(node, new_key_ptr, new_child_ptr);
         free(node->key_ptr);
         free(node->child_ptr);
         free(node->bitmap_ptr);
@@ -358,6 +371,13 @@ public:
         //#endif
         dynamic_nodeptr_buf[n].clear();
         return dynamic_nodeptr_buf[n];
+    }
+
+    inline void deallocate_uni_buffer(unsigned char* p){
+        #ifdef AEX_DEBUG
+        --uni_buf_used;
+        #endif
+        uni_buffer.clear();
     }
 
     inline void deallocate_key_buffer(key_type* p){
@@ -467,10 +487,12 @@ private:
     std::vector<key_type> dynamic_key_buf[2], static_key_buf;
     std::vector<node_ptr> dynamic_nodeptr_buf[2], static_nodeptr_buf;
     std::vector<data_node_ptr> data_node_buffer;
+    std::vector<unsigned char> uni_buffer;
     //size_type dynamic_key_buf_used, dynamic_child_buf_used;
 #ifdef AEX_DEBUG
-    size_type static_key_buf_used, static_nodeptr_buf_used;
+    size_type uni_buf_used, static_key_buf_used, static_nodeptr_buf_used;
 #endif
+    base_tree* index;
 };
 
 

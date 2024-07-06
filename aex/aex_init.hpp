@@ -4,7 +4,7 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
+inline aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), allocator(this), empty_leaf(nullptr){
     AEX_HINT("BEGIN");
     this->init();
     AEX_HINT("END");
@@ -12,7 +12,7 @@ inline aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr
 
 template<typename _Key, typename _Val, typename traits>
 template<typename _InputIterator>
-inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
+inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), allocator(this), empty_leaf(nullptr){
     this->init();
     /* TODO: insert data sequencely */
     std::vector<std::pair<key_type, value_type> > data;
@@ -23,7 +23,7 @@ inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIter
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
+inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(),  allocator(this), empty_leaf(nullptr){
     this->init();
     this->root = this->construct(_index.root);
     this->link_tree_ptr();
@@ -33,7 +33,7 @@ inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr),
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), empty_leaf(nullptr){
+inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(),  allocator(this), empty_leaf(nullptr){
     this->erase_tree_recursive(this->root);    
     this->init();
     this->root = _index.root;
@@ -77,12 +77,25 @@ inline void aex_tree<_Key, _Val, traits>::init(){
     //this->m_stats.min_key = std::numeric_limits<key_type>::max();
     self::inner_node_few_ratio[0] = traits::DATA_NODE_FEW_RATIO;
     self::inner_node_full_ratio[0] = traits::DATA_NODE_FULL_RATIO;
+    
+    self::log_inner_node_few_ratio[0] = traits::LOG_DATA_NODE_FEW_RATIO;
+    self::log_inner_node_full_ratio[0] = traits::LOG_DATA_NODE_FULL_RATIO;
+
     self::inner_node_few_ratio[1] = traits::DATA_NODE_FEW_RATIO / 2;
     self::inner_node_full_ratio[1] = traits::DATA_NODE_FULL_RATIO / 2;
 
+    self::log_inner_node_few_ratio[1] = traits::LOG_DATA_NODE_FEW_RATIO + 1;
+    self::log_inner_node_full_ratio[1] = traits::LOG_DATA_NODE_FULL_RATIO + 1;
+    //AEX_PRINT("log_slot_size=" << traits::LOG_INNER_NODE_SLOT_SIZE);
     for (int i = 2; i < traits::MAX_DEPTH; ++i){
         self::inner_node_few_ratio[i] = self::inner_node_few_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
         self::inner_node_full_ratio[i] = self::inner_node_full_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
+        self::log_inner_node_few_ratio[i] = self::log_inner_node_few_ratio[i - 1] + traits::LOG_DENSITY_NARROW_RATIO;
+        self::log_inner_node_full_ratio[i] = self::log_inner_node_full_ratio[i - 1] + traits::LOG_DENSITY_NARROW_RATIO;
+        //AEX_PRINT("i=" << i << ": " << (1 << self::log_inner_node_few_ratio[i]) << ", " << 1.0 / self::inner_node_few_ratio[i]);
+        //AEX_PRINT("i=" << i << ": " << (1 << self::log_inner_node_full_ratio[i]) << ", " << 1.0 / self::inner_node_full_ratio[i]);
+        AEX_ASSERT(std::abs(self::inner_node_few_ratio[i] * (1 << self::log_inner_node_few_ratio[i]) - 1) < 1e-5);
+        AEX_ASSERT(std::abs(self::inner_node_full_ratio[i] * (1 << self::log_inner_node_full_ratio[i]) - 1) < 1e-5);
     }
 
     this->max_inner_node_slot_size[0] = traits::MAX_DATA_NODE_SLOT_SIZE;
@@ -132,6 +145,10 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
             }
             new_child[_node->slot_size - 1] = construct(child[_node->slot_size - 1]);
             std::fill(new_child + prev, new_child + _node->slot_size, new_child[_node->slot_size - 1]);
+
+            for (slot_type i = 0; i < (1 << _new_node->hash_table.log_size); ++i)
+                for (slot_type j = 0; j < _new_node->hash_table.size_ptr[i]; ++j)
+                    _new_node->hash_table.child_ptr[i * traits::ERROR_BOUND + j] = construct(_node->hash_table.child_ptr[i * traits::ERROR_BOUND + j]);
         }
         else{
             for (slot_type i = 0; i < node->size; ++i){
@@ -147,6 +164,7 @@ inline void aex_tree<_Key, _Val, traits>::link_tree_ptr(){
     if (this->root == nullptr)
         return;
     std::vector<node_ptr> child_buf[2];
+    std::vector<key_type> key_buf;
     child_buf[0].resize(1);
     child_buf[0][0] = root;
     int t = 0;
@@ -162,8 +180,9 @@ inline void aex_tree<_Key, _Val, traits>::link_tree_ptr(){
             size_type cnt = 0;
             int level = static_cast<inner_node_ptr>(child_buf[t][0])->level;
             child_buf[t^1].resize(this->m_stats.level_node[level - 1]);
+            key_buf.resize(this->m_stats.level_node[level - 1]);
             for (auto &node : child_buf[t]){
-                copy_to_buffer(static_cast<inner_node_ptr>(node), child_buf[t^1].data() + cnt);
+                copy_to_buffer(static_cast<inner_node_ptr>(node), key_buf.data(), child_buf[t^1].data() + cnt);
                 cnt += node->size;
             }
         }

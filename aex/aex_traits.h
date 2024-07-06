@@ -42,6 +42,16 @@ struct aex_default_balance_args{
 
 #define AEX_MAX(a, b) (((a) < (b)) ? (b) : (a))
 
+template<int K>
+constexpr int TEMPLATE_LOG(){
+    return TEMPLATE_LOG<(K >> 1)>() + 1;
+}
+
+template<>
+constexpr int TEMPLATE_LOG<1>(){
+    return 0;
+}
+
 template<typename _Key, 
         typename _Val,
         bool _AllowMultiKey=false,
@@ -50,7 +60,7 @@ template<typename _Key,
         int _AllowBalance=0,
         bool _AllowDynamicDataNode=false,
         bool _AllowMergeNode=false,
-        int _ERROR_BOUND=8,
+        int _LOG_ERROR_BOUND=3,
         int _MAX_MODEL_ARGS=8>
 struct aex_default_traits{
 
@@ -101,11 +111,15 @@ struct aex_default_traits{
 
     static constexpr bool AllowMergeNode = true;
     
-    static constexpr int ERROR_BOUND = _ERROR_BOUND; 
+    static constexpr int LOG_ERROR_BOUND = _LOG_ERROR_BOUND; 
+
+    static constexpr int ERROR_BOUND = 1 << LOG_ERROR_BOUND; 
 
     static constexpr int DATA_NODE_ERROR_BOUND = 4;
 
     static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type) + sizeof(void*)));
+
+    static constexpr slot_type LOG_INNER_NODE_SLOT_SIZE = TEMPLATE_LOG<MIN_INNER_NODE_SLOT_SIZE>();
 
     static constexpr slot_type LEFT_BUFFER_SIZE = ERROR_BOUND;
     static constexpr slot_type RIGHT_BUFFER_SIZE = ERROR_BOUND;
@@ -124,20 +138,24 @@ struct aex_default_traits{
     static constexpr slot_type MIN_ML_INNER_NODE_SIZE = 64;
     //static constexpr slot_type MIN_ML_INNER_NODE_SIZE = MIN_INNER_NODE_SLOT_SIZE;
 
-    static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 26;
+    static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 28;
 
-    static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE_SQRT = 1 << 13;
-    static_assert(MAX_INNER_NODE_SLOT_SIZE_SQRT * MAX_INNER_NODE_SLOT_SIZE_SQRT == MAX_INNER_NODE_SLOT_SIZE);
+    static constexpr slot_type MAX_MODEL_DP_SEGMENT_SIZE = 1 << 13;
+    //static_assert(MAX_INNER_NODE_SLOT_SIZE_SQRT * MAX_INNER_NODE_SLOT_SIZE_SQRT == MAX_INNER_NODE_SLOT_SIZE);
 
     static constexpr slot_type MAX_DATA_NODE_SLOT_SIZE = 1 << 20;
 
     static constexpr slot_type MIN_ML_DATA_NODE_SLOT_SIZE = 32;
     
     static constexpr float DATA_NODE_FEW_RATIO = 0.5;
+    static constexpr int LOG_DATA_NODE_FEW_RATIO = 1;
         
     static constexpr float DATA_NODE_FULL_RATIO = 1;
+    static constexpr int LOG_DATA_NODE_FULL_RATIO = 0;
 
     static constexpr float DENSITY_NARROW_RATIO = 1.0 / (MIN_INNER_NODE_SLOT_SIZE / 4);
+    static constexpr int LOG_DENSITY_NARROW_RATIO = LOG_INNER_NODE_SLOT_SIZE - 2;
+    //static_assert(std::abs((1 << LOG_DENSITY_NARROW_RATIO) * DENSITY_NARROW_RATIO - 1) < 1e-5);
 
     static constexpr float EXPAND_RATIO = 2;
 
@@ -166,6 +184,8 @@ struct aex_default_traits{
     static constexpr double FORGET_RATE = 1 - 0.0000000001;
 
     static constexpr double RETRAIN_RATIO = 0.5;
+
+    static constexpr int LOG_HASH_TABLE_RATIO = 2 + LOG_ERROR_BOUND;
 };
 
 

@@ -16,6 +16,7 @@
 #include "aex/aex_def.h"
 #include "aex/aex_traits.h"
 #include "aex/aex_components.h"
+#include "aex/aex_hash_table.h"
 #include "aex/aex_model.h"
 #include "aex/aex_model_avx.h"
 #include "aex/aex_node.h"
@@ -180,6 +181,8 @@ private:
 
     static double inner_node_few_ratio[traits::MAX_DEPTH], inner_node_full_ratio[traits::MAX_DEPTH];
 
+    static int log_inner_node_few_ratio[traits::MAX_DEPTH], log_inner_node_full_ratio[traits::MAX_DEPTH];
+
     size_type max_inner_node_slot_size[traits::MAX_DEPTH];
 
     inner_node_ptr tree_stack[traits::MAX_DEPTH + 1];
@@ -225,7 +228,7 @@ public:
         this->balance_stats = _index.balance_stats;
         _index.m_stats = balance_stats();
         this->allocator = _index.allocator;
-        _index.allocator = allocator();
+        //_index.allocator = allocator();
         return *this;
     }
 
@@ -488,16 +491,9 @@ private:
 
     inline data_node_ptr find_leaf(const key_type &key) const{
         node_ptr node = root;
-        for (unsigned level = node->level; level > 0; --level){
-            //AEX_ASSERT(node == root || this->isfull(static_cast<inner_node_ptr>(node), -1) == false);
-            //AEX_ASSERT(node == root || this->isfew(static_cast<inner_node_ptr>(node), 1) == false);
-            //AEX_ASSERT(IS_DELETE_NODE(node) == false);
-            slot_type pos = static_cast<inner_node_ptr>(node)->find(key);
-            node = static_cast<inner_node_ptr>(node)->child_ptr[pos];
-            //AEX_ASSERT((node->prev == nullptr || node->prev->next == node));
-            //AEX_ASSERT((node->next == nullptr || node->next->prev == node));
-        }        
-        //AEX_ASSERT(IS_DELETE_NODE(node) == false);
+        for (unsigned int level = this->m_stats.height - 1; level > 0; --level){
+            node = static_cast<inner_node_ptr>(node)->find(key);
+        }
         return static_cast<data_node_ptr>(node);
     }
 
@@ -505,12 +501,9 @@ private:
         node_ptr node = root;
         AEX_ASSERT(this->m_stats.height == root->level + 1);
         int top = 0;
-        //for (unsigned level = root->level; level > 0; --level){
-        //for (unsigned level = this->m_stats.height; level > 0; --level){
-        for (unsigned int level = 0; level < this->m_stats.height - 1; ++level){
+        for (unsigned int level = this->m_stats.height - 1; level > 0; --level){
             this->tree_stack[++top] = static_cast<inner_node_ptr>(node);
-            slot_type pos = static_cast<inner_node_ptr>(node)->find(key);
-            node = static_cast<inner_node_ptr>(node)->child_ptr[pos];
+            node = static_cast<inner_node_ptr>(node)->find(key);
         }        
         stack = this->tree_stack + top;
         return static_cast<data_node_ptr>(node);
@@ -714,7 +707,7 @@ private:
     // erase one child node from parent. return false if parent or child not exists
     // free the node
     void erase_child_node(inner_node_ptr __restrict__ parent, node_ptr __restrict__ node);
-    void erase_child_node(inner_node_ptr __restrict__ parent, node_ptr __restrict__ node, slot_type left_node_pos);
+    //void erase_child_node(inner_node_ptr __restrict__ parent, node_ptr __restrict__ node, slot_type left_node_pos);
 
     // erase one item(iterator) from data_node
     void erase_data(iterator &iter);
@@ -803,6 +796,9 @@ private:
     template<typename Model>
     static bool check_collision(const key_type* const key, const slot_type size, const slot_type slot_size, Model &m);
 
+    template<typename HashModel>
+    bool check_collision_hash_table(const key_type* const key, const slot_type size, const slot_type slot_size, HashModel &m);
+
     // Rescale a node slot_size. ratio > 1 means expand and ratio < 1 means narrow. 
     // if node expand or narrow successed, the old node will free and return true. Otherwise return false.
     bool rescale(inner_node_ptr node, const slot_type new_slot_size);
@@ -811,6 +807,7 @@ private:
     bool rescale(node_ptr node, const slot_type new_slot_size);
 
     bool expand(inner_node_ptr node){
+        AEX_HINT("expand");
         bool ret;
         if (!IS_ML_NODE(node)){
             if (node->size >= traits::MIN_ML_INNER_NODE_SIZE){
@@ -887,20 +884,20 @@ private:
     }
 
     inline bool isfull(const inner_node_ptr node) const {
-        return node->size >= node->real_slot_size() * ((IS_ML_NODE(node) ? self::inner_node_full_ratio[node->level] : traits::DATA_NODE_FULL_RATIO));
+        return node->size >= node->real_slot_size() >> ((IS_ML_NODE(node) ? self::log_inner_node_full_ratio[node->level] : traits::LOG_DATA_NODE_FULL_RATIO));
     }
 
     inline bool isfull(const inner_node_ptr node, const slot_type offset) const {
-        return node->size + offset >= node->real_slot_size() * ((IS_ML_NODE(node) ? self::inner_node_full_ratio[node->level] : traits::DATA_NODE_FULL_RATIO));
+        return node->size + offset >= node->real_slot_size() >> ((IS_ML_NODE(node) ? self::log_inner_node_full_ratio[node->level] : traits::LOG_DATA_NODE_FULL_RATIO));
     }
     
     inline bool isfew(const inner_node_ptr node) const {
-        return node->size < node->real_slot_size() * ((IS_ML_NODE(node) ? self::inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * 0.5;
+        return node->size < node->real_slot_size() >> (((IS_ML_NODE(node) ? self::log_inner_node_full_ratio[node->level] : traits::LOG_DATA_NODE_FEW_RATIO)) + 1);
         //return node->size < node->real_slot_size * ((IS_ML_NODE(node) ? self::inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * traits::DENSITY_NARROW_RATIO;
     }
 
     inline bool isfew(const inner_node_ptr node, const slot_type offset) const {
-        return node->size + offset < node->real_slot_size() * ((IS_ML_NODE(node) ? self::inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * 0.5;
+        return node->size + offset < node->real_slot_size() >> (((IS_ML_NODE(node) ? self::log_inner_node_few_ratio[node->level] : traits::LOG_DATA_NODE_FEW_RATIO)) + 1);
     }
 
     inline bool isfew(const node_ptr node) const{
@@ -912,13 +909,13 @@ private:
     }
 
     // copy keys and pointers of a node to key buffer and pointers buffer
-    static void copy_to_buffer(const inner_node_ptr node, key_type* key_buf, node_ptr* child_buf);
+    void copy_to_buffer(const inner_node_ptr node, key_type* key_buf, node_ptr* child_buf);
 
     // copy keys of a node to key buffer
-    static void copy_to_buffer(const inner_node_ptr node, key_type*  key_buf);
+    //void copy_to_buffer(const inner_node_ptr node, key_type*  key_buf);
 
     // copy pointers of a node to pointers buffer
-    static void copy_to_buffer(const inner_node_ptr node, node_ptr* child_buf);
+    //void copy_to_buffer(const inner_node_ptr node, node_ptr* child_buf);
 
     void init();
 
@@ -952,6 +949,16 @@ template<typename _Key,
         typename _Val,
         typename traits>
 double aex_tree<_Key, _Val, traits>::inner_node_few_ratio[traits::MAX_DEPTH];
+
+template<typename _Key,
+        typename _Val,
+        typename traits>
+int aex_tree<_Key, _Val, traits>::log_inner_node_full_ratio[traits::MAX_DEPTH];
+
+template<typename _Key,
+        typename _Val,
+        typename traits>
+int aex_tree<_Key, _Val, traits>::log_inner_node_few_ratio[traits::MAX_DEPTH];
 
 };
 

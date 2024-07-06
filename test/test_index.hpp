@@ -343,7 +343,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     index_bak = index;
     for (long long i = 0; i < batch; ++i){
         //if (i % 1000000 == 0)
-        //    std::cout << "i=" << i << std::endl;
+            std::cout << "i=" << i << std::endl;
         typename tree::iterator iter;
         bool inserted;
         std::tie(iter, inserted) = index.insert(insert_data[i]);

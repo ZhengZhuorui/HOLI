@@ -66,7 +66,13 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
             ++insert_failed;
             AEX_PRINT("insert failed!");
         }
-        else final_node_data.push_back(insert_data[i]);
+        else{
+            if (node->find(insert_data[i]) != insert_node_ptr[i]){
+                AEX_ASSERT("no find insert item");
+                return false;
+            }
+            final_node_data.push_back(insert_data[i]);
+        }
     }
     std::sort(final_node_data.begin(), final_node_data.end());
     //for (auto &x : node_data)
@@ -79,6 +85,15 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
     //    std::cout << "(" << node->key_ptr[i] << ", " << node->child_ptr[i] << "), ";
     //}
     //std::cout << std::endl;
+    std::vector<key_type> test_key_buf(node->size);
+    std::vector<node_ptr> test_child_buf(node->size);
+    tree.copy_to_buffer(node, test_key_buf.data(), test_child_buf.data());
+    for (int i = 0; i < node->size - 1; ++i){
+        if (test_key_buf[i] != final_node_data[i]){
+            AEX_ERROR("i=" << i << ", node key=" << key_buf[i] << ", final_node_data=" << final_node_data[i]);
+            return false;
+        }
+    }
 
     AEX_ASSERT(final_node_data.size() == n + batch - insert_failed);
     printf("insert failed=%lld, fail ratio=%.4f\n", insert_failed, 1.0 * insert_failed / batch);
@@ -114,8 +129,20 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
                     AEX_ERROR("Key error, node key[" << i<< "]=" << node->key_ptr[i] << ", real key=" << final_node_data[bit_cnt]);
                     return false;
                 }
+                bit_cnt++;
+                std::pair<key_type, node_ptr> res;
+                do{
+                    res = node->hash_table.pop(i);
+                    if (res.second != nullptr){
+                        if (res.first != final_node_data[bit_cnt]){
+                            AEX_ERROR("Key error, node key[" << i<< "]=" << res.first << ", real key=" << final_node_data[bit_cnt]);
+                            return false;
+                        }
+                        bit_cnt++;
+                    }
+                }while (res.second != nullptr);
             }
-            bit_cnt += ((bitmap_impl::at(node->bitmap_ptr, i)) != 0);
+            //bit_cnt += ((bitmap_impl::at(node->bitmap_ptr, i)) != 0);
         }
         if (bit_cnt + 1 != n + batch - insert_failed){
             AEX_ERROR("bit one cnt not equal items, 1 bits=" << bit_cnt << " n=" << n + batch - insert_failed);
@@ -123,7 +150,7 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
         }
     }
 
-    AEX_PRINT("test insert node performance");
+    AEX_SUCCESS("test insert node performance");
     system_clock::time_point t1, t2;
     const int ITER = 1000;
     double delta = 0;
@@ -323,8 +350,9 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
     generate_query(pack_data, query, answer, batch);
     for (size_t i = 0; i < batch; ++i){
         slot_type pos = std::lower_bound(data.data(), data.data() + n, query[i]) - data.data();
-        if (static_cast<size_type>(pos) > 0 && !std::is_integral<key_type>::value)
+        if (static_cast<size_type>(pos) > 0 && !std::is_integral<key_type>::value){
             query[i] -= (1.0 * (rand() % 65536) / 65536) * (data[pos] - data[pos - 1]);
+        }
     }
     
     std::vector<key_type> key_buf;
@@ -343,10 +371,9 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
     *node = *static_cast<inner_node_ptr>(child_buf[0]);
     AEX_PRINT("node->slot size=" << node->slot_size << ", size=" << node->size);
     for (size_t i = 0; i < batch; ++i){
-        slot_type pos = node->find(query[i]);
-        if (node->child_ptr[pos] != answer[i]){
-            AEX_ERROR("Query Error! query=" << query[i] << ", get pos=" << pos << ", get child=" << node->child_ptr[pos] << ", real child=" << answer[i]);
-            AEX_ERROR("query key=" << query[i] << ", node key=" << node->key_ptr[pos]);
+        data_node_ptr res = static_cast<data_node_ptr>(node->find(query[i]));
+        if (res != answer[i]){
+            AEX_ERROR("Query Error! query=" << query[i] << ", get=" << res->key[0] << ", get child=" << node->find(query[i]) << ", real child=" << answer[i]);
             return false;
         }
     }
@@ -358,7 +385,7 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
     for (int T = 0; T < ITER; ++T){
         sum = 0;
         for (size_t i = 0; i < batch; ++i)
-            sum += node->find(query[i]);
+            sum += static_cast<data_node_ptr>(node->find(query[i]))->key[0];
     }
     t2 = std::chrono::high_resolution_clock::now();
     double delta = duration_cast<microseconds>(t2 - t1).count();

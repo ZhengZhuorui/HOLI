@@ -101,16 +101,16 @@ inline void aex_tree<_Key, _Val, traits>::erase_child_node(inner_node_ptr __rest
     allocator.free_node(node);
 }
 
-template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::erase_child_node(inner_node_ptr __restrict__ parent, node_ptr __restrict__ node, const slot_type node_pos){
-    //if (parent != nullptr)
-    AEX_ASSERT(parent != nullptr);
-    AEX_ASSERT(node != this->empty_leaf);
-    SET_FLAG(node, IS_DELETE);
-    parent->erase(node_pos);
-    --this->m_stats.level_node[node->level];
-    allocator.free_node(node);
-}
+//template<typename _Key, typename _Val, typename traits>
+//inline void aex_tree<_Key, _Val, traits>::erase_child_node(inner_node_ptr __restrict__ parent, node_ptr __restrict__ node, const slot_type node_pos){
+//    //if (parent != nullptr)
+//    AEX_ASSERT(parent != nullptr);
+//    AEX_ASSERT(node != this->empty_leaf);
+//    SET_FLAG(node, IS_DELETE);
+//    parent->erase(node_pos, node);
+//    --this->m_stats.level_node[node->level];
+//    allocator.free_node(node);
+//}
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::erase_tree_recursive(node_ptr node){
@@ -129,7 +129,11 @@ inline void aex_tree<_Key, _Val, traits>::erase_tree_recursive(node_ptr node){
             for (slot_type i = 0; i < slot_size; ++i)
                 if (bitmap_impl::at(bm, i))
                     this->erase_tree_recursive(child[i]);
+
             this->erase_tree_recursive(child[slot_size - 1]);
+            for (slot_type i = 0; i < (1 << _node->hash_table.log_size); ++i)
+                for (slot_type j = 0; j < _node->hash_table.size_ptr[i]; ++j)
+                    this->erase_tree_recursive(_node->hash_table.child_ptr[i * traits::ERROR_BOUND + j]);
         }
         else{
             for (slot_type i = 0; i < node->size; ++i)

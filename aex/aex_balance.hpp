@@ -121,7 +121,7 @@ inline bool aex_tree<_Key, _Val, traits>::insert_merge(inner_node_ptr parent, co
             std::for_each(node_merge_buf, node_merge_buf + node_merge_size, [](node_ptr node){UNSET_FLAG(node, CAN_MERGED);});
             ret = false;
         }
-        if (ret && !self::check_collision(key_buf, tot_size, slot_size, m)){
+        if (ret && !check_collision_hash_table(key_buf, tot_size, slot_size, m)){
             std::for_each(node_merge_buf, node_merge_buf + node_merge_size, [](node_ptr node){UNSET_FLAG(node, CAN_MERGED);});
             ret = false;
         }

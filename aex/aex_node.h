@@ -94,7 +94,6 @@ public:
 
     typedef typename components::data_node data_node;
 
-
     typedef typename traits::size_type size_type;
 
     typedef typename traits::slot_type slot_type;
@@ -179,6 +178,8 @@ public:
 
     typedef typename components::Allocator Allocator;
 
+    typedef typename components::HashTable HashTable;
+
     typedef base_node* node_ptr;
 
     typedef base_dynamic_node* dynamic_node_ptr;
@@ -198,7 +199,7 @@ public:
     
     typedef inner_node* inner_node_ptr;
 
-    explicit aex_inner_node(slot_type _slot_size, int _level) :base_dynamic_node(_slot_size, _level), split_stats(){
+    explicit aex_inner_node(slot_type _slot_size, int _level) :base_dynamic_node(_slot_size, _level), hash_table(_slot_size), split_stats(){
         this->key_ptr = static_cast<key_type*>(malloc(Allocator::KEY_MEMORY_USED(this->slot_size)));
         this->child_ptr = static_cast<node_ptr*>(malloc(Allocator::PTR_MEMORY_USED(this->slot_size)));
         this->bitmap_ptr = static_cast<bitmap>(malloc(Allocator::BITMAP_MEMORY_USED(this->slot_size)));
@@ -213,7 +214,7 @@ public:
             free(this->bitmap_ptr);
     }
 
-    aex_inner_node(inner_node &other_node) :base_dynamic_node(other_node), model(other_node.model){
+    aex_inner_node(inner_node &other_node) :base_dynamic_node(other_node), model(other_node.model), hash_table(other_node.hash_table){
         AEX_ASSERT(this->slot_size == other_node.slot_size);
         std::copy(other_node.key_ptr, other_node.key_ptr + other_node.slot_size, this->key_ptr);
         std::copy(other_node.child_ptr, other_node.child_ptr + other_node.slot_size, this->child_ptr);
@@ -224,6 +225,7 @@ public:
         this->key_ptr = other_node.key_ptr;
         this->child_ptr = other_node.child_ptr;
         this->bitmap_ptr = other_node.bitmap_ptr;
+        hash_table = std::move(other_node.hash_table);
         other_node.key_ptr = nullptr;
         other_node.child_ptr = nullptr;
         other_node.bitmap_ptr = nullptr;
@@ -233,6 +235,7 @@ public:
         AEX_ASSERT(this->slot_size == other_node.slot_size);
         *static_cast<dynamic_node_ptr>(this) = static_cast<base_dynamic_node>(other_node);
         model = other_node.model;
+        hash_table = other_node.hash_table;
         std::copy(other_node.key_ptr, other_node.key_ptr + other_node.slot_size, this->key_ptr);
         std::copy(other_node.child_ptr, other_node.child_ptr + other_node.slot_size, this->child_ptr);
         memcpy(this->bitmap_ptr, other_node.bitmap_ptr, Allocator::BITMAP_MEMORY_USED(other_node.slot_size));
@@ -251,6 +254,7 @@ public:
         this->key_ptr = other_node.key_ptr;
         this->child_ptr = other_node.child_ptr;
         this->bitmap_ptr = other_node.bitmap_ptr;
+        hash_table = std::move(other_node.hash_table);
         other_node.key_ptr = nullptr;
         other_node.child_ptr = nullptr;
         other_node.bitmap_ptr = nullptr;
@@ -277,6 +281,7 @@ public:
 
     inline void clear(){
         clear_bitmap();
+        hash_table.clear();
         std::fill(this->key_ptr, this->key_ptr + this->slot_size, std::numeric_limits<key_type>::max());
         std::fill(this->child_ptr, this->child_ptr + this->slot_size, nullptr);
     }
@@ -305,33 +310,43 @@ public:
         this->gap_array_construct(key, child, n);
     }
 
+    int hash_table_log_size(){
+        AEX_ASSERT((this->real_slot_size() & (-this->real_slot_size())) == this->real_slot_size());
+        return __builtin_ctz(this->real_slot_size()) - traits::LOG_HASH_TABLE_RATIO;
+    }
+
     inline void gap_array_construct(const key_type* const key, node_ptr* child, const slot_type n){
         bitmap bm = this->bitmap_ptr;
         AEX_ASSERT(IS_ML_NODE(this) == true);
-        slot_type start = 0, his_pos = 0;
+        slot_type his_pos = -1;
         for (slot_type i = 0; i < n - 1; ++i){
             slot_type pos = this->predict(key[i]);
-            start = std::max(start, pos);
-            bitmap_impl::set_one(bm, start);
-            AEX_ASSERT(start - pos < traits::ERROR_BOUND);
-            AEX_ASSERT(start < this->slot_size - 1);
-            std::fill(this->key_ptr + his_pos, this->key_ptr + start + 1, key[i]);
-            std::fill(this->child_ptr + his_pos, this->child_ptr + start + 1, child[i]);
-            ++start;
-            his_pos = start;
+            //AEX_PRINT("key=" << key[i] << ", pos=" << pos << "his_pos=" << his_pos);
+            if (pos == his_pos){
+                [[maybe_unused]] bool flag;
+                flag = hash_table.insert(pos, key[i], child[i]);
+                AEX_ASSERT(flag);
+            }
+            else{
+                //start = pos;
+                bitmap_impl::set_one(bm, pos);
+                std::fill(this->key_ptr + his_pos + 1, this->key_ptr + pos + 1, key[i]);
+                std::fill(this->child_ptr + his_pos + 1, this->child_ptr + pos + 1, child[i]);
+            }
+            his_pos = pos;
         }
-        std::fill(this->key_ptr + his_pos, this->key_ptr + this->slot_size, std::numeric_limits<key_type>::max());
-        std::fill(this->child_ptr + his_pos, this->child_ptr + this->slot_size, child[n - 1]);
+        std::fill(this->key_ptr + his_pos + 1, this->key_ptr + this->slot_size, std::numeric_limits<key_type>::max());
+        std::fill(this->child_ptr + his_pos + 1, this->child_ptr + this->slot_size, child[n - 1]);
     }
 
-    inline void inplace_construct(slot_type n){
-        if (IS_ML_NODE(this))
-            construct(this->key_ptr + this->slot_size - n, this->child_ptr + this->slot_size - n, n, this->model);
-        else{
-            std::move(this->key_ptr + this->slot_size - n, this->key_ptr + this->slot_size, this->key_ptr);
-            std::move(this->child_ptr + this->slot_size - n, this->child_ptr + this->slot_size, this->child_ptr);
-        }
-    }
+    //inline void inplace_construct(slot_type n){
+    //    if (IS_ML_NODE(this))
+    //        construct(this->key_ptr + this->slot_size - n, this->child_ptr + this->slot_size - n, n, this->model);
+    //    else{
+    //        std::move(this->key_ptr + this->slot_size - n, this->key_ptr + this->slot_size, this->key_ptr);
+    //        std::move(this->child_ptr + this->slot_size - n, this->child_ptr + this->slot_size, this->child_ptr);
+    //    }
+    //}
 
     //inline NODE_INSERT_CODE insert_and_replace(const key_type &key, node_ptr old_node, node_ptr new_node){
     //    if (!IS_ML_NODE(this)) {
@@ -351,9 +366,10 @@ public:
 
     // insert a node
     inline NODE_INSERT_CODE insert(const key_type &key, node_ptr child){
+        AEX_PRINT("key=" << key << ", child=" << child << ", is_ml?" << IS_ML_NODE(this));
         if (!IS_ML_NODE(this)) {
             AEX_ASSERT(this->size < this->slot_size);
-            slot_type pos = this->find(key);
+            slot_type pos = std::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, key) - this->key_ptr;
             AEX_ASSERT(pos < this->size);
             std::move_backward(this->key_ptr + pos, this->key_ptr + this->size - 1, this->key_ptr + this->size);
             std::move_backward(this->child_ptr + pos, this->child_ptr + this->size, this->child_ptr + this->size + 1);
@@ -364,46 +380,35 @@ public:
         }
         else{
             slot_type pred_pos = this->predict(key);
-            slot_type inserted_pos = pred_pos, upper_bound = std::min(this->slot_size - 1, pred_pos + traits::ERROR_BOUND);
-            for (; inserted_pos < upper_bound && key > this->key_ptr[inserted_pos]; ++inserted_pos);
-            // the distance between insert position of inserted item and the predict position should be less than ERROR_BOUND
-            if (inserted_pos >= this->slot_size - 1 || inserted_pos - pred_pos >= traits::ERROR_BOUND)
-                //goto insert_fail;
+            //AEX_PRINT("pred_pos=" << pred_pos << ", slot_size=" << this->slot_size);
+            if (pred_pos == 0 || pred_pos >= this->real_slot_size())
                 return this->insert_fail(key, child, pred_pos);
 
-            // the distance between insert position of shift item and the predict position should be less than ERROR_BOUND
-            slot_type max_slot = std::min(inserted_pos + traits::ERROR_BOUND, this->slot_size - 1);
-            slot_type empty_slot = bitmap_impl::next_empty_slot(this->bitmap_ptr, inserted_pos);
-            if (empty_slot - inserted_pos >= traits::ERROR_BOUND || empty_slot >= this->slot_size - 1)
-                return this->insert_fail(key, child, pred_pos);
-            
-            //AEX_PRINT("size=" << this->size << ", slot_size=" << this->slot_size << ", pred_pos=" << pred_pos << ", inserted_pos=" << inserted_pos << ", empty_slot=" << empty_slot << ", key=" << key << ", ori_key=" << this->key_ptr[inserted_pos] << ", is occ?=" << (bitmap_impl::at(this->bitmap_ptr, empty_slot) > 0) << ", is ori occ?" << (bitmap_impl::at(this->bitmap_ptr, inserted_pos) > 0) );
-            //AEX_ASSERT(bitmap_impl::at(this->bitmap_ptr, empty_slot) == 0);
-            //if (empty_slot != inserted_pos){
-            //    AEX_ASSERT(bitmap_impl::at(this->bitmap_ptr, inserted_pos));
-            //}
-              
-            std::move_backward(this->key_ptr + inserted_pos, this->key_ptr + empty_slot, this->key_ptr + empty_slot + 1);
-            std::move_backward(this->child_ptr + inserted_pos, this->child_ptr + empty_slot, this->child_ptr + empty_slot + 1);
-            slot_type prev_pos = bitmap_impl::prev_occ_slot(this->bitmap_ptr, inserted_pos - 1);
-            std::fill(this->key_ptr + prev_pos + 1, this->key_ptr + inserted_pos + 1, key);
-            std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + inserted_pos + 1, child);
-            //slot_type j = inserted_pos;
-            //do{
-            //    this->key_ptr[j] = key;
-            //    this->child_ptr[j] = child;
-            //    --j;
-            //}while(j >= 0 && !bitmap_impl::at(this->bitmap_ptr, j));
-            //if (prev_pos != j)
-            //    AEX_PRINT(prev_pos << ", " << j);
-            //AEX_ASSERT(prev_pos == j);
-            bitmap_impl::set_one(this->bitmap_ptr, empty_slot);
+            if (!bitmap_impl::at(this->bitmap_ptr, pred_pos)){
+                //AEX_PRINT("1");
+                slot_type prev_pos = bitmap_impl::prev_occ_slot(this->bitmap_ptr, pred_pos - 1);
+                std::fill(this->key_ptr + prev_pos + 1, this->key_ptr + pred_pos + 1, key);
+                std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + pred_pos + 1, child);
+                bitmap_impl::set_one(this->bitmap_ptr, pred_pos);
+            }
+            else if (key < this->key_ptr[pred_pos]){
+                //AEX_PRINT("2");
+                if (hash_table.insert(pred_pos, this->key_ptr[pred_pos], this->child_ptr[pred_pos]) == false)
+                    return NODE_INSERT_CODE::INNER_NODE_CONFLICT;
+                slot_type prev_pos = bitmap_impl::prev_occ_slot(this->bitmap_ptr, pred_pos - 1);
+                std::fill(this->key_ptr + prev_pos + 1, this->key_ptr + pred_pos + 1, key);
+                std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + pred_pos + 1, child);
+            }
+            else{
+                //AEX_PRINT("3");
+                //AEX_PRINT("key_ptr[pred_pos]=" << this->key_ptr[pred_pos] << ", key=" << key << ", size=" << (int)hash_table.size_ptr[hash_table.fingerprint(key)]);
+                if (hash_table.insert(pred_pos, key, child) == false){
+                    //AEX_PRINT("??");
+                    return NODE_INSERT_CODE::INNER_NODE_CONFLICT;
+                }
+            }
             ++this->size; 
             this->split_stats.update(1);
-            //if (!this->test()){
-            //    AEX_PRINT("size=" << this->size << ", slot_size=" << this->slot_size << ", pred_pos=" << pred_pos << ", inserted_pos=" << inserted_pos << ", empty_slot=" << empty_slot << ", key=" << key << ", ori_key=" << this->key_ptr[inserted_pos] << ", is occ?=" << (bitmap_impl::at(this->bitmap_ptr, empty_slot) > 0) << ", is ori occ?" << (bitmap_impl::at(this->bitmap_ptr, inserted_pos) > 0) );
-            //}
-            //AEX_ASSERT(this->test());
             return NODE_INSERT_CODE::SUCCESS;
         }
     }
@@ -465,58 +470,48 @@ public:
                 bitmap_impl::set_zero(this->bitmap_ptr, i);
             }
             ++this->size;
-            //{
-            //    slot_type sz = 0;
-            //    for (slot_type i = 0; i < this->slot_size; ++i)
-            //    if (bitmap_impl::at(this->bitmap_ptr, i)) ++sz;
-            //    AEX_ASSERT(sz + 1 == this->size);
-            //}
-            //AEX_ASSERT(this->test());
             return NODE_INSERT_CODE::SUCCESS;           
         }
-        else {
-            this->split_stats.update(-this->real_slot_size() * base_tree::inner_node_full_ratio[this->level]);
-            return NODE_INSERT_CODE::INNER_NODE_CONFLICT;
-        }
+        return NODE_INSERT_CODE::INNER_NODE_CONFLICT;           
+        AEX_ASSERT(0 == 1);
     }
 
-    inline bool test(){
-        #ifdef AEX_DEBUG
-        if (IS_ML_NODE(this)){
-            for (slot_type i = 0; i < this->slot_size - 1; ++i)
-            if (this->key_ptr[i] > this->key_ptr[i + 1]){
-                AEX_ERROR("!!!");
-                return false;
-            }
-        }
-        return true;
-        #endif
-    }
+    //inline bool test(){
+    //    #ifdef AEX_DEBUG
+    //    if (IS_ML_NODE(this)){
+    //        for (slot_type i = 0; i < this->slot_size - 1; ++i)
+    //        if (this->key_ptr[i] > this->key_ptr[i + 1]){
+    //            AEX_ERROR("!!!");
+    //            return false;
+    //        }
+    //    }
+    //    return true;
+    //    #endif
+    //}
 
-    inline void erase(slot_type pos){
+    inline void erase(slot_type pos, node_ptr node){
         if (IS_ML_NODE(this)){
             AEX_ASSERT(bitmap_impl::at(this->bitmap_ptr, pos) != 0);
-            if (pos == this->slot_size - 1){
-                if (this->size > 1){
-                    slot_type prev_pos = this->prev_item(pos);
-                    bitmap_impl::set_zero(this->bitmap_ptr, prev_pos);
-                    slot_type prev_prev_pos = this->prev_item(prev_pos);
-                    std::fill(this->key_ptr + prev_prev_pos + 1, this->key_ptr + prev_pos + 1, std::numeric_limits<key_type>::max());
-                    std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + pos + 1, this->child_ptr[prev_pos]);
+            if (this->child_ptr[pos] == node){
+                std::pair<key_type, node_ptr> kn_pair = hash_table.pop(pos);
+                slot_type prev_pos = this->prev_item(pos);
+                if (kn_pair.second == nullptr){
+                    bitmap_impl::set_zero(this->bitmap_ptr, pos);
+                    std::fill(this->key_ptr + prev_pos + 1, this->key_ptr + pos + 1, this->key_ptr[pos + 1]);
+                    std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + pos + 1, this->child_ptr[pos + 1]);
+                }
+                else{
+                    std::fill(this->key_ptr + prev_pos + 1, this->key_ptr + pos + 1, kn_pair.first);
+                    std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + pos + 1, kn_pair.second);
                 }
             }
             else{
-                bitmap_impl::set_zero(this->bitmap_ptr, pos);
-                slot_type prev_pos = this->prev_item(pos);
-                std::fill(this->key_ptr + prev_pos + 1, this->key_ptr + pos + 1, this->key_ptr[pos + 1]);
-                std::fill(this->child_ptr + prev_pos + 1, this->child_ptr + pos + 1, this->child_ptr[pos + 1]);
+                hash_table.erase(pos, node);
             }
         }
         else{
-            //if (pos < this->size - 1){
             std::move(this->key_ptr + pos + 1, this->key_ptr + this->size - 1, this->key_ptr + pos);
             std::move(this->child_ptr + pos + 1, this->child_ptr + this->size, this->child_ptr + pos);
-            //}
             this->key_ptr[this->size - 1] = std::numeric_limits<key_type>::max();
         }
         --this->size;
@@ -524,17 +519,17 @@ public:
 
     // erase a node
     inline void erase(node_ptr node){
-        slot_type pos = this->at(node);
-        this->erase(pos);
+        slot_type pos = this->at(node).first;
+        this->erase(pos, node);
     }
 
-    // return the slot of child node
-    inline slot_type at(const node_ptr node) const {
+    inline std::pair<key_type, slot_type> at(const node_ptr node) const {
         AEX_ASSERT(node != nullptr);
         slot_type pred_pos;
-        if (IS_ML_NODE(this)){
+        std::pair<key_type, bool> res;
+        if (IS_ML_NODE(node)){
             if (node == this->child_ptr[this->slot_size - 1])
-                return this->slot_size - 1;
+                return std::make_pair(std::numeric_limits<key_type>::max(), this->slot_size - 1);
 
             key_type node_key;
             if (IS_LEAF_NODE(node)) {
@@ -548,28 +543,45 @@ public:
                 node_key = static_cast<inner_node_ptr>(node)->key_ptr[0];
             }
             pred_pos = this->predict(node_key);
-            for (slot_type i = pred_pos; i < this->slot_size; ++i)
-            if (bitmap_impl::at(this->bitmap_ptr, i) && this->child_ptr[i] == node) 
-                return i;
-            //AEX_WARNING("IS LEAF NODE?" << IS_LEAF_NODE(node) << ", IS_ML_NODE?" << IS_ML_NODE(node));
+            if (this->child_ptr[pred_pos] == node)
+                return std::make_pair(this->key_ptr[pred_pos], pred_pos);
+            else{
+                res = hash_table.find(pred_pos, node);
+                if (res.second){
+                    return std::make_pair(res.first, pred_pos);
+                }
+                else{
+                    return std::make_pair(this->key_ptr[pred_pos + 1], next_item(pred_pos));
+                }
+            }
+            //if (bitmap_impl::at(this->bitmap_ptr, i) && this->child_ptr[pred_pos  + 1] == node)
+            //for (slot_type i = pred_pos; i < this->slot_size; ++i)
+            //if (bitmap_impl::at(this->bitmap_ptr, i)) return i;
+            //AEX_WARNING("IS LEAF NODE?" << IS_LEAF_NODE(node) << ", is_ml_node?" << node->is_ml);
             //AEX_WARNING("node=" << node << ", node->size=" << node->size << ", last_key=" << last_key << ", " << this->child_ptr[this->slot_size - 1]);
             AEX_ASSERT(0 == 1);
-            return this->slot_size;
+            return std::make_pair(0, -1);
             at_search:
             {
                 for (slot_type i = 0; i < this->slot_size; ++i)
-                if (bitmap_impl::at(this->bitmap_ptr, i) && this->child_ptr[i] == node) 
-                    return i;
+                if (bitmap_impl::at(this->bitmap_ptr, i)){
+                    if (child_ptr[i] == node)
+                        return std::make_pair(key_ptr[i], i);
+                    res = hash_table.find(i, node);
+                    if (res.second)
+                        return std::make_pair(res.first, i);
+                }
                 AEX_ASSERT(0 == 1);
-                return this->slot_size;
+                return std::make_pair(0, -1);
             }
         }
         else{
             slot_type pos = std::find(this->child_ptr, this->child_ptr + this->size, node) - this->child_ptr;
             AEX_ASSERT(pos < this->size);
-            return pos;
+            return std::make_pair(this->key_ptr[pos], pos);
         }
     }
+
 
     // return the prev item position. If none, return slot_size
     inline slot_type prev_item(slot_type pos) const {
@@ -597,24 +609,35 @@ public:
     // only node_property::ML_NODE can use it. check if node_property::ML_NODE first
     // position range [0, slot_size)
     inline slot_type predict(const key_type& key) const {
-        //AEX_ASSERT(model.predict(key) < 1.0 + 1e-6);
-        //return std::max((slot_type)0, static_cast<slot_type>(model.predict(key) * this->real_slot_size()));
-        double pred_pos = model.predict(key);
-        return (pred_pos >= 0) * static_cast<slot_type>(pred_pos * this->real_slot_size() + traits::LEFT_BUFFER_SIZE);
+        //double pred_pos = model.predict(key);
+        //return (pred_pos >= 0) * static_cast<slot_type>(pred_pos * this->real_slot_size() + traits::LEFT_BUFFER_SIZE);
+        //long long pred_pos = model.predict(key);
+        //return (pred_pos >= 0) * (pred_pos + traits::LEFT_BUFFER_SIZE);
+        return model.predict(key);
     }
 
     // find key pos in which slot. If not, return last item(node->slot_size)
-    inline slot_type find(const key_type& x) const{
+    inline node_ptr find(const key_type& x) const{
+        AEX_PRINT("x=" << x);
         if (IS_ML_NODE(this)){
             slot_type pred_pos = this->predict(x);
-            if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
-                return traits::SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->slot_size, x, this->key_ptr + pred_pos) - this->key_ptr;
-            //for (slot_type i = pred_pos; i < this->slot_size; ++i)
-            //if (x <= key_ptr[i]){
-            //    return i;
-            //}
-            slot_type res = linear_search_lower_bound(this->key_ptr + pred_pos, this->key_ptr + this->slot_size, x) - this->key_ptr;
-            return res;
+            AEX_PRINT("pred_pos=" << pred_pos);
+            if (this->key_ptr[pred_pos] < x){
+                node_ptr node = nullptr;
+                if (bitmap_impl::at(this->bitmap_ptr, pred_pos))
+                    node = hash_table.find(pred_pos, x);
+                if (node == nullptr){
+                    AEX_PRINT(this->key_ptr[pred_pos + 1] << ", " << this->child_ptr[pred_pos + 1]);
+                    AEX_ASSERT(this->key_ptr[pred_pos + 1] >= x);
+                    return this->child_ptr[pred_pos + 1];
+                }
+                else
+                    return node;
+            }
+            else{
+                //AEX_PRINT("pred_pos=" << pred_pos << "x=" << x << ", key_ptr=" << this->key_ptr[pred_pos]);
+                return this->child_ptr[pred_pos];
+            }
             //slot_type res = std::lower_bound
             //return this->slot_size - 1;
         }
@@ -622,9 +645,12 @@ public:
             if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
                 return traits::SearchClass::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x, this->key_ptr) - this->key_ptr;
             slot_type pos = std::lower_bound(this->key_ptr, this->key_ptr + this->size - 1, x) - this->key_ptr;
-            return pos;
+            //AEX_PRINT("pos=" << pos);
+            return this->child_ptr[pos];
         }
     }
+
+
 
     inline slot_type last(){return IS_ML_NODE(this) ? (this->slot_size - 1) : (this->size - 1);}
 
@@ -632,11 +658,13 @@ public:
 
     Model model;
 
+    HashTable hash_table;
+
     key_type* key_ptr;
 
     node_ptr* child_ptr;
     
-    bitmap bitmap_ptr;
+    bitmap bitmap_ptr, collision_bitmap_ptr;
 
     node_split_stats split_stats;
 };
