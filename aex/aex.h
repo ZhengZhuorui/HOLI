@@ -405,7 +405,7 @@ public:
         }
     }
 
-    inline size_type memory_used() const{
+    inline size_type memory_used()const{
         if (this->root == nullptr)
             return 0;
         size_t memory_used = 0;
@@ -416,15 +416,27 @@ public:
             que.pop();
             if (!IS_LEAF_NODE(now)){
                 inner_node_ptr in_now = static_cast<inner_node_ptr>(now);
-                //memory_used += Allocator::INNER_NODE_MEMORY_USED(now->slot_size);
-                memory_used += sizeof(inner_node) + 
-                                (in_now->key_ptr != nullptr) * Allocator::KEY_MEMORY_USED(in_now->slot_size) + 
-                                (in_now->child_ptr != nullptr) * Allocator::PTR_MEMORY_USED(in_now->slot_size) + 
-                                (in_now->bitmap_ptr != nullptr) * Allocator::BITMAP_MEMORY_USED(in_now->slot_size);
+                memory_used += Allocator::INNER_NODE_MEMORY_USED(in_now->slot_size) + in_now->hash_table.memory();
                 if (IS_ML_NODE(in_now)){
-                    for (slot_type i = 0; i < in_now->slot_size; ++i)
-                    if (bitmap_impl::at(in_now->bitmap_ptr, i))
-                        que.push(in_now->child_ptr[i]);
+                    std::vector<unsigned char> size_ptr(in_now->hash_array_size());
+                    memset(size_ptr.data(), 0, in_now->hash_array_size());
+                    node_ptr* child = in_now->child_ptr;
+                    bitmap bm = in_now->bitmap_ptr;
+                    for (slot_type i = 0; i < in_now->slot_size; i += 64){
+                        bitmap_base base = *bm;
+                        while (base != 0){
+                            int l = __builtin_ctzll(base);
+                            que.push(child[i + l]);
+                            int hash_key = in_now->hash_table.fingerprint(i + l);
+                            int ptr_offset = hash_key << traits::LOG_ERROR_BOUND;
+                            while(size_ptr[hash_key] < in_now->hash_table.size_ptr[hash_key] && in_now->hash_table.ori_pos[ptr_offset + size_ptr[hash_key]] == i + l){
+                                que.push(in_now->hash_table.child_ptr[ptr_offset + size_ptr[hash_key]]);
+                                ++size_ptr[hash_key];
+                            }
+                            base -= base & (-base);
+                        }
+                        bm++;
+                    }
                 }
                 else{
                     for (slot_type i = 0; i < in_now->size; ++i)
@@ -552,11 +564,14 @@ private:
             insert_recursive(stack - 1, new_key.data(), reinterpret_cast<node_ptr*>(new_child.data()), new_child.size());
     }
 
-    void insert_split_left_buffer_by_buffer(inner_node_ptr* stack, key_type* key, node_ptr* child, size_type n){
+    void insert_split_left_buffer_by_buffer(inner_node_ptr* stack, key_type* key, node_ptr* child, size_type n, key_type split_key){
+        AEX_IMPORTANT("[insert_split_left_buffer_by_buffer]");
         inner_node_ptr &node = *stack;
         std::vector<key_type>& new_key = allocator.allocate_dynamic_key_buf(node->level & 1);
         std::vector<inner_node_ptr>& new_child = reinterpret_cast<std::vector<inner_node_ptr>&>(allocator.allocate_dynamic_nodeptr_buf(node->level & 1));
         split(key, child, n, node->level, new_key, new_child);
+        new_key.push_back(split_key);
+        AEX_ASSERT(new_key.size() == new_child.size());
         size_type m = new_child.size();
         for (size_type i = 0; i < m; ++i){
             new_child[i]->next = new_child[i + 1];
@@ -577,7 +592,7 @@ private:
     }
 
     void insert_split_right_buffer_by_buffer(inner_node_ptr* stack, key_type* key, node_ptr* child, size_type n, const key_type split_key){
-        AEX_PRINT("[insert_split_right_buffer_by_buffer]");
+        AEX_IMPORTANT("[insert_split_right_buffer_by_buffer]");
         inner_node_ptr &node = *stack;
         std::vector<key_type>& new_key = allocator.allocate_dynamic_key_buf(node->level & 1);
         std::vector<inner_node_ptr>& new_child = reinterpret_cast<std::vector<inner_node_ptr>&>(allocator.allocate_dynamic_nodeptr_buf(node->level & 1));
@@ -591,6 +606,7 @@ private:
         std::move_backward(new_child.data(), new_child.data() + m - 1, new_child.data() + m);
         new_child[0] = tmp;
         new_key.insert(new_key.begin(), split_key);
+        AEX_ASSERT(new_key.size() == new_child.size());
 
         for (size_type i = 0; i < m; ++i){
             new_child[i]->next = new_child[i + 1];
@@ -775,7 +791,7 @@ private:
         if constexpr (!traits::AllowMergeNode)
             return;
         std::true_type tp;
-        while (node->next != nullptr && static_cast<inner_node_ptr>(parent->child_ptr[parent->last()]) != node){
+        while (node->next != nullptr && static_cast<inner_node_ptr>(parent->last_node()) != node){
             inner_node_ptr next_node = static_cast<inner_node_ptr>(node->next);
             if (!CAN_RIGHT_MERGED_NODE(node) && !CAN_LEFT_MERGED_NODE(next_node))
                 return;
@@ -807,7 +823,7 @@ private:
     bool rescale(node_ptr node, const slot_type new_slot_size);
 
     bool expand(inner_node_ptr node){
-        AEX_HINT("expand");
+        //AEX_HINT("expand");
         bool ret;
         if (!IS_ML_NODE(node)){
             if (node->size >= traits::MIN_ML_INNER_NODE_SIZE){
@@ -816,10 +832,10 @@ private:
                 ret = rescale(node, new_slot_size);
             }
             else
-                ret = rescale(node, node->real_slot_size() << 1);
+                ret = rescale(node, node->slot_size << 1);
         }
         else{
-            ret = rescale(node, node->real_slot_size() << 1);
+            ret = rescale(node, node->slot_size << 1);
         }
         if constexpr (traits::AllowInsertBalance)
             if (ret == true)
@@ -830,7 +846,7 @@ private:
     bool narrow(inner_node_ptr node){
         bool ret;
         if (!IS_ML_NODE(node)){
-            ret = rescale(node, node->real_slot_size() >> 1);
+            ret = rescale(node, node->slot_size >> 1);
         }
         else{
             if (node->size < traits::MIN_ML_INNER_NODE_SIZE){
@@ -838,7 +854,7 @@ private:
                 ret = rescale(node, new_slot_size);
             }
             else{
-                ret = rescale(node, node->real_slot_size() >> 1);
+                ret = rescale(node, node->slot_size >> 1);
             }
         }
         if constexpr (traits::AllowInsertBalance)
@@ -884,20 +900,20 @@ private:
     }
 
     inline bool isfull(const inner_node_ptr node) const {
-        return node->size >= node->real_slot_size() >> ((IS_ML_NODE(node) ? self::log_inner_node_full_ratio[node->level] : traits::LOG_DATA_NODE_FULL_RATIO));
+        return node->size >= node->slot_size >> ((IS_ML_NODE(node) ? self::log_inner_node_full_ratio[node->level] : traits::LOG_DATA_NODE_FULL_RATIO));
     }
 
     inline bool isfull(const inner_node_ptr node, const slot_type offset) const {
-        return node->size + offset >= node->real_slot_size() >> ((IS_ML_NODE(node) ? self::log_inner_node_full_ratio[node->level] : traits::LOG_DATA_NODE_FULL_RATIO));
+        return node->size + offset >= node->slot_size >> ((IS_ML_NODE(node) ? self::log_inner_node_full_ratio[node->level] : traits::LOG_DATA_NODE_FULL_RATIO));
     }
     
     inline bool isfew(const inner_node_ptr node) const {
-        return node->size < node->real_slot_size() >> (((IS_ML_NODE(node) ? self::log_inner_node_full_ratio[node->level] : traits::LOG_DATA_NODE_FEW_RATIO)) + 1);
+        return node->size < node->slot_size >> (((IS_ML_NODE(node) ? self::log_inner_node_full_ratio[node->level] : traits::LOG_DATA_NODE_FEW_RATIO)) + 1);
         //return node->size < node->real_slot_size * ((IS_ML_NODE(node) ? self::inner_node_few_ratio[node->level] : traits::DATA_NODE_FEW_RATIO)) * traits::DENSITY_NARROW_RATIO;
     }
 
     inline bool isfew(const inner_node_ptr node, const slot_type offset) const {
-        return node->size + offset < node->real_slot_size() >> (((IS_ML_NODE(node) ? self::log_inner_node_few_ratio[node->level] : traits::LOG_DATA_NODE_FEW_RATIO)) + 1);
+        return node->size + offset < node->slot_size >> (((IS_ML_NODE(node) ? self::log_inner_node_few_ratio[node->level] : traits::LOG_DATA_NODE_FEW_RATIO)) + 1);
     }
 
     inline bool isfew(const node_ptr node) const{

@@ -388,6 +388,69 @@ public:
 
 };
 
+template<typename _Tp,
+        typename traits>
+class gap_array_linear_model_hash_table{
+public:
+    typedef _Tp key_type;
+
+    typedef typename traits::slot_type slot_type;
+
+    // return the predict position. value range from 0 to +inf.
+    inline double predict(const key_type &key) const {
+        //return static_cast<slot_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
+        return this->args.slot_size + args.slope * (key - args.end);
+    }
+
+    inline bool train(const key_type* const key, const slot_type n, const slot_type slot_size){
+        args.slot_size = slot_size;
+        args.end = key[n - 1];
+        args.slope = (slot_size - 1) / (key[n - 1] - key[0]);
+        return train(key, n);
+    }
+
+    // train model with an key array, array size n and slot size
+    //inline bool train(const key_type* const key, const slot_type n){
+    //    args.end = key[n - 1];
+    //    args.slope = 1.0 / (key[n - 1] - key[0]);
+    //    return true;
+    //}
+
+    inline slot_type max_error(const key_type* const key, const slot_type n, const slot_type slot_size){
+        
+        slot_type error = 0;
+        for (slot_type i = 0, start = 0; i < n; ++i){
+            slot_type pos = std::max(0, static_cast<slot_type>(this->predict(key[i]) * slot_size));
+            start = std::max(start, pos);
+            AEX_PRINT("key=" << key[i] << ", pos=" << pos << ", start=" << start);
+            error = std::max(error, start - pos);
+            ++start;
+        }
+        return error;
+    }
+
+    inline double RMSE(const key_type* const key, const slot_type n){
+        double sum = 0;
+        for (slot_type i = 0; i < n; ++i){
+            sum += sqr(this->predict(key[i]) * (n - 1) - i);
+        }
+        sum /= n;
+        sum = sqrt(sum);
+        return sum;
+    }
+
+    #ifdef AEX_DEBUG
+    inline static std::string name(){
+        return "gap array linear model";
+    }
+    #endif
+
+    struct linear_arguments{
+        double slope, end;
+        slot_type slot_size;
+    }args;
+
+};
 
 //template<typename _Tp,
 //        typename traits>
@@ -1391,12 +1454,12 @@ public:
         
         //const long double max_density = 2.0 / (1.0 + 1.0 / density); //harmonic mean
         //const long double min_gap = 1.0 / slot_size;
-        this->args.slot_size = slot_size;
+        this->args.slot_size = slot_size - 1;
         if (ceil(sqrt(n)) > traits::MAX_MODEL_DP_SEGMENT_SIZE)
             return false;
 
         const long double min_gap = 1.0;
-        const slot_type max_offset = traits::ERROR_BOUND / 2;
+        const slot_type max_offset = traits::ERROR_BOUND / 2 - 2;
         
         std::vector<long double> slope(n);
         for  (slot_type i = 0; i < n - 1; ++i){
@@ -1414,7 +1477,7 @@ public:
                 //AEX_PRINT("i=" << i << ", key=" << key[i] << ", slope=" << slope[i] << ", gap=" << min_gap << ", " << slope[i] * (key[i + max_offset] - key[i]));
             }
         }
-        const double density = 1.0 * n / slot_size;
+        const double density = 1.0 * n / args.slot_size;
         constexpr int windows[3] = {64, 4096, 262144};
         //2^6  2^12 2^18
         int windows_sz = (windows[0] < n) + (windows[1] < n) + (windows[2] < n);
@@ -1509,7 +1572,7 @@ public:
             }
         }
 
-        if (S[segment_num - 1][N - 1] > slot_size){
+        if (S[segment_num - 1][N - 1] > args.slot_size){
             //AEX_PRINT("slot_size=" << slot_size << ", S[segment_num - 1][N - 1]=" << S[segment_num - 1][N - 1]);
             return false;
         }

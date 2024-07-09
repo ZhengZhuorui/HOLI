@@ -448,7 +448,7 @@ inline std::pair<_Key, typename aex_tree<_Key, _Val, traits>::node_ptr> aex_tree
     #endif
     //AEX_PRINT("insert_split_dense_inner_node, slot_size=" << node->size << ", key=" << new_key[0] << ", n=" << n);
     AEX_ASSERT(IS_ML_NODE(node) == false);
-    inner_node_ptr new_node = allocator.allocate_inner_node(node->real_slot_size(), node->level, false);
+    inner_node_ptr new_node = allocator.allocate_inner_node(node->slot_size, node->level, false);
     ++this->m_stats.level_node[new_node->level];
     key_type split_key = split_dense_inner_node(new_node, node);
     if (new_key[0] < split_key){
@@ -515,29 +515,42 @@ inline void aex_tree<_Key, _Val, traits>::__insert_split_by_buffer(inner_node_pt
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_split_left_buffer(inner_node_ptr* stack, const key_type* key, const node_ptr* child, const slot_type n){
+    AEX_PRINT("[insert_split_left_buffer]");
     #ifdef AEX_DEBUG
     ++this->opt_stats.inner_node_split_left_buffer_cnt;
     #endif
     AEX_ASSERT(n > 0);
     inner_node_ptr &node = *stack;
-    slot_type size = traits::LEFT_BUFFER_SIZE + n;
+    slot_type size = traits::ERROR_BOUND + 1 + n;
     key_type* key_buf = allocator.allocate_key_buffer(size);
     node_ptr* child_buf = allocator.allocate_nodeptr_buffer(size);
-    key_type split_key = node->key_ptr[traits::LEFT_BUFFER_SIZE - 1];
-    slot_type insert_slot = aex::linear_search_lower_bound(node->key_ptr, node->key_ptr + traits::LEFT_BUFFER_SIZE, key[0]) - node->key_ptr;
-    for (slot_type i = 0; i < traits::LEFT_BUFFER_SIZE; ++i)
-        bitmap_impl::set_zero(node->bitmap_ptr, i);
-    node->size -= traits::LEFT_BUFFER_SIZE;
-    std::copy(node->key_ptr, node->key_ptr + insert_slot, key_buf);
-    std::copy(node->child_ptr, node->child_ptr + insert_slot, child_buf);
+    AEX_ASSERT(bitmap_impl::at(node->bitmap_ptr, 0));
+    key_buf[0] = node->key_ptr[0];
+    child_buf[0] = node->child_ptr[0];
+    int hash_key = node->hash_table.fingerprint(0);
+    int offset = hash_key * traits::ERROR_BOUND;
+    AEX_ASSERT(node->hash_table.size_ptr[hash_key] == traits::ERROR_BOUND);
+    std::copy(node->hash_table.key_ptr + offset, node->hash_table.key_ptr + offset + traits::ERROR_BOUND, key_buf + 1);
+    std::copy(node->hash_table.child_ptr + offset, node->hash_table.child_ptr + offset + traits::ERROR_BOUND, child_buf + 1);
+    node->hash_table.size_ptr[hash_key] = 0;
+    
+    slot_type insert_slot = aex::linear_search_lower_bound(key_buf, key_buf + traits::ERROR_BOUND + 1, key[0]) - key_buf;
+    node->size -= traits::ERROR_BOUND + 1;
+    std::move_backward(key_buf + insert_slot, key_buf + traits::ERROR_BOUND + 1, key_buf + traits::ERROR_BOUND + 1 + n);
+    std::move_backward(child_buf + insert_slot, child_buf + traits::ERROR_BOUND + 1, child_buf + traits::ERROR_BOUND + 1 + n);
     std::copy(key, key + n, key_buf + insert_slot);
     std::copy(child, child + n, child_buf + insert_slot);
-    std::copy(node->key_ptr + insert_slot, node->key_ptr + traits::LEFT_BUFFER_SIZE, key_buf + insert_slot + n);
-    std::copy(node->child_ptr + insert_slot, node->child_ptr + traits::LEFT_BUFFER_SIZE, child_buf + insert_slot + n);
-    std::fill(node->key_ptr, node->key_ptr + traits::LEFT_BUFFER_SIZE, node->key_ptr[traits::LEFT_BUFFER_SIZE]);
-    std::fill(node->child_ptr, node->child_ptr + traits::LEFT_BUFFER_SIZE, node->child_ptr[traits::LEFT_BUFFER_SIZE]);
+    AEX_ASSERT(std::is_sorted(key_buf, key_buf + size));
+    key_type split_key = key_buf[size - 1];
+    slot_type next_slot = node->next_item(0);
+    bitmap_impl::set_zero(node->bitmap_ptr, 0);
+    if (next_slot < node->slot_size){
+        std::fill(node->key_ptr, node->key_ptr + next_slot, node->key_ptr[next_slot]);
+        std::fill(node->child_ptr, node->child_ptr + next_slot, node->child_ptr[next_slot]);
+    }
+    AEX_PRINT("9");
     if (size > traits::MIN_ML_INNER_NODE_SIZE){
-        insert_split_left_buffer_by_buffer(stack, key_buf, child_buf, size);
+        insert_split_left_buffer_by_buffer(stack, key_buf, child_buf, size, split_key);
     }
     else{
         inner_node_ptr new_node = allocator.allocate_inner_node(min_slot_size(size, traits::MIN_INNER_NODE_SLOT_SIZE), node->level, false);
@@ -553,41 +566,47 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_left_buffer(inner_node_pt
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_split_right_buffer(inner_node_ptr* stack, const key_type* key, const node_ptr* child, const slot_type n){
-    //AEX_PRINT("[insert_split_right_buffer] begin");
+    AEX_PRINT("[insert_split_right_buffer]");
     #ifdef AEX_DEBUG
     ++this->opt_stats.inner_node_split_right_buffer_cnt;
     #endif
     AEX_ASSERT(n > 0);
     inner_node_ptr &node = *stack;
-    slot_type size = traits::RIGHT_BUFFER_SIZE - 1 + n, offset = traits::LEFT_BUFFER_SIZE + node->real_slot_size();
-
+    //AEX_PRINT("[insert_split_right_buffer] begin, node->slot_size=" << node->slot_size);
+    slot_type size = traits::ERROR_BOUND + 1 + n;
     key_type* key_buf = allocator.allocate_key_buffer(size);
     node_ptr* child_buf = allocator.allocate_nodeptr_buffer(size);
-    key_type split_key = node->key_ptr[offset];
-    slot_type insert_slot = aex::linear_search_lower_bound(node->key_ptr + offset + 1, node->key_ptr + node->slot_size, key[0]) - node->key_ptr - offset - 1;
+    int hash_key = node->hash_table.fingerprint(node->slot_size - 1);
+    int offset = hash_key * traits::ERROR_BOUND;
+    key_buf[0] = node->key_ptr[node->slot_size - 1];
+    child_buf[0] = node->child_ptr[node->slot_size - 1];
 
-    //AEX_PRINT("2");
-    for (slot_type i = offset; i < node->slot_size; ++i)
-        bitmap_impl::set_zero(node->bitmap_ptr, i);
-    node->size -= traits::RIGHT_BUFFER_SIZE - 1;
-    //{
-    //    slot_type sz = 0;
-    //    for (slot_type i = 0; i < node->slot_size; ++i)
-    //    if (bitmap_impl::at(node->bitmap_ptr, i)) ++sz;
-    //    if (node->size != sz + 1)
-    //        AEX_PRINT("node->size=" << node->size << ", sz=" << sz);
-    //    AEX_ASSERT(sz + 1 == node->size);
-    //}
-    std::copy(node->key_ptr + offset + 1, node->key_ptr + offset + 1 + insert_slot, key_buf);
-    std::copy(node->child_ptr + offset + 1, node->child_ptr + offset + 1 + insert_slot, child_buf);
+    AEX_ASSERT(node->hash_table.size_ptr[hash_key] == traits::ERROR_BOUND);
+    std::copy(node->hash_table.key_ptr + offset, node->hash_table.key_ptr + offset + traits::ERROR_BOUND, key_buf + 1);
+    std::copy(node->hash_table.child_ptr + offset, node->hash_table.child_ptr + offset + traits::ERROR_BOUND, child_buf + 1);
+    node->hash_table.size_ptr[hash_key] = 0;
+    bitmap_impl::set_zero(node->bitmap_ptr, node->slot_size - 1);
+    node->size -= traits::ERROR_BOUND + 1;
+    slot_type insert_slot = aex::linear_search_lower_bound(key_buf, key_buf + traits::ERROR_BOUND + 1, key[0]) - key_buf;
+    std::move_backward(key_buf + insert_slot, key_buf + traits::ERROR_BOUND + 1, key_buf + traits::ERROR_BOUND + 1 + n);
+    std::move_backward(child_buf + insert_slot, child_buf + traits::ERROR_BOUND + 1, child_buf + traits::ERROR_BOUND + 1 + n);
     std::copy(key, key + n, key_buf + insert_slot);
     std::copy(child, child + n, child_buf + insert_slot);
-    std::copy(node->key_ptr + offset + 1 + insert_slot, node->key_ptr + node->slot_size - 1, key_buf + insert_slot + n);
-    std::copy(node->child_ptr + offset + 1 + insert_slot, node->child_ptr + node->slot_size, child_buf + insert_slot + n);
+    AEX_ASSERT(std::is_sorted(key_buf, key_buf + size));
     
-    //slot_type prev_pos = node->prev_item(offset - 1);
-    std::fill(node->key_ptr + offset, node->key_ptr + node->slot_size, std::numeric_limits<key_type>::max());
-    std::fill(node->child_ptr + offset + 1, node->child_ptr + node->slot_size, node->child_ptr[offset]);
+
+    slot_type prev_pos = node->prev_item(node->slot_size - 1);
+    key_type split_key = node->key_ptr[prev_pos];
+    std::pair<key_type, node_ptr> res = node->hash_table.top(prev_pos);
+    if (res.second != nullptr)
+        split_key = res.first;
+    
+    AEX_ASSERT(split_key >= node->key_ptr[prev_pos]);
+    AEX_ASSERT(split_key <= key_buf[0]);
+    //AEX_PRINT("split_key=" << split_key << ", key_buf[0]=" << key_buf[0]);
+    //std::fill(node->key_ptr + prev_pos + 1, node->key_ptr + node->slot_size, std::numeric_limits<key_type>::max());
+    //std::fill(node->child_ptr + prev_pos + 1, node->child_ptr + node->slot_size, nullptr);
+    //key_type split_key = node->key_ptr[node->slot_size - 1];
 
     if (size > traits::MIN_ML_INNER_NODE_SIZE){
         insert_split_right_buffer_by_buffer(stack, key_buf, child_buf, size, split_key);
@@ -607,8 +626,14 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_right_buffer(inner_node_p
         new_node->next = node;
         new_node->prev = prev_node;
         
+        {
+            copy_to_buffer(new_node, key_buf, child_buf);
+            AEX_ASSERT(key_buf[new_node->size - 1] <= split_key);
+            AEX_ASSERT(node->key_ptr[0] >= split_key);
+        }
         allocator.deallocate_key_buffer(key_buf);
         allocator.deallocate_nodeptr_buffer(child_buf);
+        
         insert_recursive(stack - 1, &split_key, reinterpret_cast<node_ptr*>(&new_node), 1);
     }
     //AEX_PRINT("[insert_split_right_buffer] end");
@@ -616,20 +641,20 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_right_buffer(inner_node_p
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_split_helper(inner_node_ptr* stack, const key_type* new_key, node_ptr* new_child, const slot_type n, const NODE_INSERT_CODE error_code){
-    //AEX_PRINT("insert_split_helper, error_code=" << error_code);
     #ifdef AEX_DEBUG
     ++opt_stats.inner_node_split_cnt;
     #endif 
     inner_node_ptr node = *stack;
+    //AEX_PRINT("insert_split_helper, node=" << node);
 
     if (node == root){ 
         // equal: node == root
         if (!IS_ML_NODE(node) && n < node->slot_size / 2){
-            AEX_HINT("[helper]: insert_split_dense_inner_node 0");
+            //AEX_HINT("[helper]: insert_split_dense_inner_node 0");
             insert_split_dense_inner_node(stack, new_key, new_child, n);
         }
         else{
-            AEX_HINT("[helper]: insert_split_by_buffer 1");
+            //AEX_HINT("[helper]: insert_split_by_buffer 1");
             insert_split_by_buffer(stack, new_key, new_child, n);
         }
         return;
@@ -640,11 +665,11 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_helper(inner_node_ptr* st
         AEX_ASSERT(error_code == NODE_INSERT_CODE::NONE);
         //AEX_PRINT("size=" << node->size);
         if (n < node->slot_size / 2){
-            AEX_HINT("[helper]: insert_split_dense_inner_node 1");
+            //AEX_HINT("[helper]: insert_split_dense_inner_node 1");
             insert_split_dense_inner_node(stack, new_key, new_child, n);
         }
         else{
-            AEX_HINT("[helper]: insert_split_by_buffer 2");
+            //AEX_HINT("[helper]: insert_split_by_buffer 2");
             insert_split_by_buffer(stack, new_key, new_child, n);
         }
         
@@ -660,11 +685,11 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_helper(inner_node_ptr* st
         //    insert_split_hotspot(stack, new_key, new_child, n);
         //}
         else if (node->size + n < node->slot_size){
-            AEX_HINT("[helper]: insert_split_pipeline 1");
+            //AEX_HINT("[helper]: insert_split_pipeline 1");
             insert_split_pipeline(stack, new_key, new_child, n);
         }
         else{
-            AEX_HINT("[helper]: insert_split_by_buffer 3");
+            //AEX_HINT("[helper]: insert_split_by_buffer 3");
             insert_split_by_buffer(stack, new_key, new_child, n);
         }
     }
@@ -672,7 +697,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_helper(inner_node_ptr* st
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_recursive(inner_node_ptr* stack, const key_type* key_buf, node_ptr* child_buf, const slot_type n){
-    AEX_PRINT("insert_recursive, n=" << n);
+    //AEX_PRINT("insert_recursive, n=" << n);
     inner_node_ptr &node = *stack;
     if (node == nullptr){
         add_root(key_buf, child_buf, n);

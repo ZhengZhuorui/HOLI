@@ -122,6 +122,7 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
         }
     }
     AEX_SUCCESS("bulk load finish...");
+    AEX_SUCCESS("index memory size=" << index.memory_used());
     index.clear();
     if (index.size() != 0){
         AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);
@@ -217,8 +218,8 @@ bool test_index_delta_lookup_perf(std::pair<key_type, value_type>* data, long lo
     vector<value_type> answer;
     generate_query(data, n, query, answer, batch);
     for (long long i = 0; i < n; ++i){
-        //if (i % 1000000 == 0)
-        //    std::cout << "i=" << i << std::endl;
+        if (i % 1000000 == 0)
+            std::cout << "i=" << i << std::endl;
         typename tree::iterator iter;
         bool inserted;
         std::tie(iter, inserted) = index.insert(data[i]);
@@ -342,7 +343,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     index.print_detail();
     index_bak = index;
     for (long long i = 0; i < batch; ++i){
-        //if (i % 1000000 == 0)
+        if (i % 1000000 == 0)
             std::cout << "i=" << i << std::endl;
         typename tree::iterator iter;
         bool inserted;

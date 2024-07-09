@@ -33,6 +33,7 @@ template<typename _Key,
 
 template<typename _Tp, typename traits> class linear_model;
 template<typename _Tp, typename traits> class gap_array_linear_model;
+template<typename _Tp, typename traits> class gap_array_linear_model_hash_table;
 template<typename _Tp, typename traits> class piecewise_linear_model;
 template<typename _Tp, typename traits> class piecewise_linear_model_2;
 template<typename _Tp, typename traits> class piecewise_linear_model_3;

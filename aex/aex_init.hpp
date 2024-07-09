@@ -59,9 +59,7 @@ inline aex_tree<_Key, _Val, traits>::~aex_tree(){
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::init(){
-    #ifdef AEX_TLI
-    std::cout << "TLI test" << std::endl;
-    #endif
+
     if (this->root != nullptr){
         this->deconstruct(this->root);
     }
@@ -128,7 +126,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
         *_new_node = *_node;
     }
     else{
-        new_node = allocator.allocate_inner_node(static_cast<inner_node_ptr>(node)->real_slot_size(), node->level, IS_ML_NODE(node));
+        new_node = allocator.allocate_inner_node(static_cast<inner_node_ptr>(node)->slot_size, node->level, IS_ML_NODE(node));
         inner_node_ptr _node = static_cast<inner_node_ptr>(node), _new_node = static_cast<inner_node_ptr>(new_node);
         ++this->m_stats.level_node[_node->level];
         *_new_node = *_node;        
@@ -143,10 +141,10 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
                 std::fill(new_child + prev, new_child + i, new_child[i]);
                 prev = i + 1;
             }
-            new_child[_node->slot_size - 1] = construct(child[_node->slot_size - 1]);
-            std::fill(new_child + prev, new_child + _node->slot_size, new_child[_node->slot_size - 1]);
+            //new_child[_node->slot_size - 1] = construct(child[_node->slot_size - 1]);
+            //std::fill(new_child + prev, new_child + _node->slot_size, new_child[_node->slot_size - 1]);
 
-            for (slot_type i = 0; i < (1 << _new_node->hash_table.log_size); ++i)
+            for (slot_type i = 0; i < _new_node->hash_array_size(); ++i)
                 for (slot_type j = 0; j < _new_node->hash_table.size_ptr[i]; ++j)
                     _new_node->hash_table.child_ptr[i * traits::ERROR_BOUND + j] = construct(_node->hash_table.child_ptr[i * traits::ERROR_BOUND + j]);
         }

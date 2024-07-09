@@ -60,8 +60,8 @@ template<typename _Key,
         int _AllowBalance=0,
         bool _AllowDynamicDataNode=false,
         bool _AllowMergeNode=false,
-        int _LOG_ERROR_BOUND=3,
-        int _MAX_MODEL_ARGS=8>
+        int _LOG_ERROR_BOUND=4,
+        int _MAX_MODEL_ARGS=16>
 struct aex_default_traits{
 
     typedef _Key key_type;
@@ -109,7 +109,7 @@ struct aex_default_traits{
 
     static constexpr bool AllowSplitBalance = ((_AllowBalance & 2) == 2);
 
-    static constexpr bool AllowMergeNode = true;
+    static constexpr bool AllowMergeNode = _AllowMergeNode;
     
     static constexpr int LOG_ERROR_BOUND = _LOG_ERROR_BOUND; 
 
@@ -121,9 +121,9 @@ struct aex_default_traits{
 
     static constexpr slot_type LOG_INNER_NODE_SLOT_SIZE = TEMPLATE_LOG<MIN_INNER_NODE_SLOT_SIZE>();
 
-    static constexpr slot_type LEFT_BUFFER_SIZE = ERROR_BOUND;
-    static constexpr slot_type RIGHT_BUFFER_SIZE = ERROR_BOUND;
-    static constexpr slot_type EXTERN_BUFFER_SIZE = LEFT_BUFFER_SIZE + RIGHT_BUFFER_SIZE;
+    //static constexpr slot_type LEFT_BUFFER_SIZE = ERROR_BOUND;
+    //static constexpr slot_type RIGHT_BUFFER_SIZE = ERROR_BOUND;
+    //static constexpr slot_type EXTERN_BUFFER_SIZE = LEFT_BUFFER_SIZE + RIGHT_BUFFER_SIZE;
 
     //static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = 32;
     //static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = 8;
@@ -135,13 +135,13 @@ struct aex_default_traits{
 
     //static constexpr slot_type MIN_ML_INNER_NODE_SLOT_SIZE = 64;
 
-    static constexpr slot_type MIN_ML_INNER_NODE_SIZE = 64;
+    static constexpr slot_type MIN_ML_INNER_NODE_SIZE = 32;
     //static constexpr slot_type MIN_ML_INNER_NODE_SIZE = MIN_INNER_NODE_SLOT_SIZE;
 
     static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 28;
 
-    static constexpr slot_type MAX_MODEL_DP_SEGMENT_SIZE = 1 << 13;
-    //static_assert(MAX_INNER_NODE_SLOT_SIZE_SQRT * MAX_INNER_NODE_SLOT_SIZE_SQRT == MAX_INNER_NODE_SLOT_SIZE);
+    static constexpr slot_type MAX_MODEL_DP_SEGMENT_SIZE = 1 << 14;
+    static_assert(MAX_MODEL_DP_SEGMENT_SIZE * MAX_MODEL_DP_SEGMENT_SIZE == MAX_INNER_NODE_SLOT_SIZE);
 
     static constexpr slot_type MAX_DATA_NODE_SLOT_SIZE = 1 << 20;
 
@@ -185,7 +185,8 @@ struct aex_default_traits{
 
     static constexpr double RETRAIN_RATIO = 0.5;
 
-    static constexpr int LOG_HASH_TABLE_RATIO = 2 + LOG_ERROR_BOUND;
+    //static constexpr int LOG_HASH_TABLE_RATIO = 2 + LOG_ERROR_BOUND;
+    static constexpr int LOG_HASH_TABLE_RATIO = 1 + LOG_ERROR_BOUND;
 };
 
 

@@ -51,7 +51,7 @@ bool test_inner_node_insert_balance_perf(vector<key_type> &data, size_t n, size_
         return false;
     }
     
-    inner_node_ptr node = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->real_slot_size(), IS_ML_NODE(child_buf[0]));
+    inner_node_ptr node = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->slot_size, IS_ML_NODE(child_buf[0]));
     *node = *static_cast<inner_node_ptr>(child_buf[0]);
 
     size_type insert_failed = 0;

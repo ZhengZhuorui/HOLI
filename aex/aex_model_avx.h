@@ -153,7 +153,7 @@ public:
         if (m.train(key, n, slot_size) == false)
             return false;
         this->args.seg_nums = m.args.seg_nums;
-        this->args.slot_size = slot_size;
+        this->args.slot_size = m.args.slot_size;
         //AEX_PRINT("seg_nums=" << m.args.seg_nums);
         for (unsigned int i = 0; i < m.args.seg_nums; ++i){
             this->args.end[i] = static_cast<double>(m.args.end[i]);

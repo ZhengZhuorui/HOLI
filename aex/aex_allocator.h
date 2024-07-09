@@ -157,7 +157,7 @@ public:
     }
     
     inline static size_type INNER_NODE_MEMORY_USED(size_type slot_size){ 
-        return BITMAP_MEMORY_USED(slot_size) + KEY_MEMORY_USED(slot_size) + PTR_MEMORY_USED(slot_size) + HashTable::MEMORY_USED(__builtin_ctz(slot_size)) +\
+        return BITMAP_MEMORY_USED(slot_size) + KEY_MEMORY_USED(slot_size) + PTR_MEMORY_USED(slot_size) + \
         align_8bytes(sizeof(inner_node));
     }
 
@@ -177,7 +177,7 @@ public:
     //    return align_8bytes(sizeof(version_type) * slot_size / traits::ERROR_BOUND);
     //}
 
-    inline bool is_large_node(slot_type real_slot_size){return real_slot_size >= traits::MIN_ML_INNER_NODE_SIZE;}
+    //inline bool is_large_node(slot_type real_slot_size){return real_slot_size >= traits::MIN_ML_INNER_NODE_SIZE;}
     inline slot_type set_retrain_cnt(slot_type slot_size, int level){
         //AEX_PRINT("slot_size=" << slot_size << ", cnt=" << traits::RETRAIN_RATIO * log(slot_size) / log(2) * slot_size);
         return static_cast<slot_type>(traits::RETRAIN_RATIO * log(slot_size) / log(2) * slot_size * base_tree::inner_node_full_ratio[level]);
@@ -196,7 +196,7 @@ public:
         //AEX_PRINT("slot_size=" << slot_size);
         AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
 
-        slot_size += is_large_node(real_slot_size) * traits::EXTERN_BUFFER_SIZE;
+        //slot_size += is_large_node(real_slot_size) * traits::EXTERN_BUFFER_SIZE;
 
         //size_type memory_used = INNER_NODE_MEMORY_USED(slot_size);
         //this->_memory_used += memory_used;
@@ -286,7 +286,8 @@ public:
 
     inline void reallocate(inner_node_ptr node, slot_type new_slot_size){
         node->split_stats.set(set_retrain_cnt(new_slot_size, node->level));
-        new_slot_size += is_large_node(new_slot_size) * traits::EXTERN_BUFFER_SIZE;
+        node->hash_table.set_slot_size(new_slot_size);
+        //new_slot_size += is_large_node(new_slot_size) * traits::EXTERN_BUFFER_SIZE;
 
         //this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) 
         //                      - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) 
@@ -300,7 +301,8 @@ public:
 
     inline void reallocate_and_copy(inner_node_ptr node, slot_type new_slot_size){
         node->split_stats.set(set_retrain_cnt(new_slot_size, node->level));
-        new_slot_size += is_large_node(new_slot_size) * traits::EXTERN_BUFFER_SIZE;
+        node->hash_table.set_slot_size(new_slot_size);
+        //new_slot_size += is_large_node(new_slot_size) * traits::EXTERN_BUFFER_SIZE;
 
         //this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) 
         //                      - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) 
@@ -320,8 +322,10 @@ public:
     }
 
     inline void reallocate_and_save(inner_node_ptr node, slot_type new_slot_size){
+        AEX_ASSERT((new_slot_size & (-new_slot_size)) == new_slot_size);
         node->split_stats.set(set_retrain_cnt(new_slot_size, node->level));
-        new_slot_size += is_large_node(new_slot_size) * traits::EXTERN_BUFFER_SIZE;
+        node->hash_table.set_slot_size(new_slot_size);
+        //new_slot_size += is_large_node(new_slot_size) * traits::EXTERN_BUFFER_SIZE;
 
         //this->_memory_used += - KEY_MEMORY_USED(node->slot_size) + KEY_MEMORY_USED(new_slot_size) 
         //                      - PTR_MEMORY_USED(node->slot_size) + PTR_MEMORY_USED(new_slot_size) 

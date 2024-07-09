@@ -52,7 +52,7 @@ inline void aex_tree<_Key, _Val, traits>::erase_recursive(inner_node_ptr* stack)
             inner_node_ptr right_node = static_cast<inner_node_ptr>(node->next);
             // if right node is in same subtree
             if (right_node != nullptr)
-                if (parent->child_ptr[parent->slot_size - 1] != node){
+                if (parent->last_node() != node){
                     // if node can be merge to right node, merge it.
                     if (IS_ML_NODE(right_node) == false && node->size + right_node->size <= right_node->slot_size)
                         merge(parent, node, right_node, fp);
@@ -96,9 +96,13 @@ inline void aex_tree<_Key, _Val, traits>::erase_child_node(inner_node_ptr __rest
     AEX_ASSERT(parent != nullptr);
     AEX_ASSERT(node != this->empty_leaf);
     SET_FLAG(node, IS_DELETE);
+    //inner_node_ptr next_node = static_cast<inner_node_ptr>(node->next);
+    //AEX_PRINT(next_node->hash_table.slot_size);
     parent->erase(node);
+    //AEX_PRINT(next_node->hash_table.slot_size);
     --this->m_stats.level_node[node->level];
     allocator.free_node(node);
+    //AEX_PRINT(next_node->hash_table.slot_size);
 }
 
 //template<typename _Key, typename _Val, typename traits>
@@ -130,8 +134,7 @@ inline void aex_tree<_Key, _Val, traits>::erase_tree_recursive(node_ptr node){
                 if (bitmap_impl::at(bm, i))
                     this->erase_tree_recursive(child[i]);
 
-            this->erase_tree_recursive(child[slot_size - 1]);
-            for (slot_type i = 0; i < (1 << _node->hash_table.log_size); ++i)
+            for (slot_type i = 0; i < _node->hash_array_size(); ++i)
                 for (slot_type j = 0; j < _node->hash_table.size_ptr[i]; ++j)
                     this->erase_tree_recursive(_node->hash_table.child_ptr[i * traits::ERROR_BOUND + j]);
         }
@@ -196,10 +199,10 @@ inline void aex_tree<_Key, _Val, traits>::_erase(inner_node_ptr* stack, data_nod
 
         data_node_ptr left_node = static_cast<data_node_ptr>(node->prev), right_node = static_cast<data_node_ptr>(node->next);
         left_node = (parent->child_ptr[0] == node) ? nullptr : left_node;
-        right_node = (parent->child_ptr[parent->last()] == node) ? nullptr : right_node;
+        right_node = (parent->last_node() == node) ? nullptr : right_node;
 
         if (left_node == nullptr && right_node == nullptr){
-            AEX_PRINT("node=" << node << ", left_node=" << left_node << ", right_node=" << right_node << ", pf=" << parent->child_ptr[0] << ", pl=" << parent->child_ptr[parent->last()] << ", size=" << parent->size);
+            AEX_PRINT("node=" << node << ", left_node=" << left_node << ", right_node=" << right_node << ", pf=" << parent->child_ptr[0] << ", pl=" << parent->last_node() << ", size=" << parent->size);
             AEX_ASSERT(parent->size == 1);
             erase_recursive(stack);
         }

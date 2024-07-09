@@ -94,10 +94,9 @@ public:
                         dfs_detail(node_child[i]);
                     }
                 }
-                for (slot_type i = 0; i < (1 << in->hash_table.log_size); ++i)
+                for (slot_type i = 0; i < (1 << in->hash_table.log_size) + 2; ++i)
                     for (slot_type j = 0; j < in->hash_table.size_ptr[i]; ++j)
                         dfs_detail(in->hash_table.child_ptr[i * traits::ERROR_BOUND + j]);
-                dfs_detail(node_child[in->slot_size - 1]);
                 //AEX_ASSERT(sz + 1 == node->size);
             }
             else{
