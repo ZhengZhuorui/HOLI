@@ -23,18 +23,18 @@ public:
     }
 
     static unsigned long long POS_ARRAY_USED(int log_size){
-        return sizeof(slot_type) * (traits::ERROR_BOUND * ((1 << log_size) + 2));
-        //return sizeof(slot_type) * (traits::ERROR_BOUND * ((1 << log_size)));
+        //return sizeof(slot_type) * (traits::ERROR_BOUND * ((1 << log_size) + 2));
+        return sizeof(slot_type) * (traits::ERROR_BOUND * ((1 << log_size)));
     }
 
     static unsigned long long KEY_ARRAY_USED(int log_size){
-        return sizeof(key_type) * (traits::ERROR_BOUND * ((1 << log_size) + 2));
-        //return sizeof(key_type) * (traits::ERROR_BOUND * ((1 << log_size)));
+        //return sizeof(key_type) * (traits::ERROR_BOUND * ((1 << log_size) + 2));
+        return sizeof(key_type) * (traits::ERROR_BOUND * ((1 << log_size)));
     }
 
     static unsigned long long PTR_ARRAY_USED(int log_size){
-        return sizeof(node_ptr) * (traits::ERROR_BOUND * ((1 << log_size) + 2));
-        //return sizeof(node_ptr) * (traits::ERROR_BOUND * ((1 << log_size)));
+        //return sizeof(node_ptr) * (traits::ERROR_BOUND * ((1 << log_size) + 2));
+        return sizeof(node_ptr) * (traits::ERROR_BOUND * ((1 << log_size)));
     }
 
     static unsigned long long MEMORY_USED(int log_size){
@@ -146,8 +146,8 @@ public:
     }
 
     inline int hash_array_size(){
-        return (1 << log_size) + 2;
-        //return (1 << log_size);
+        //return (1 << log_size) + 2;
+        return (1 << log_size);
     }
 
     inline void clear(){
@@ -155,11 +155,11 @@ public:
     }
     
     inline int fingerprint(const slot_type pos) const{
-        if (pos == 0)
-            return 1 << log_size;
-        else if (pos == slot_size - 1)
-            return (1 << log_size) + 1;
-        else 
+        //if (pos == 0)
+        //    return 1 << log_size;
+        //else if (pos == slot_size - 1)
+        //    return (1 << log_size) + 1;
+        //else 
             return pos & ((1 << log_size) - 1);
     }
 

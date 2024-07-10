@@ -61,7 +61,7 @@ template<typename _Key,
         bool _AllowDynamicDataNode=false,
         bool _AllowMergeNode=false,
         int _LOG_ERROR_BOUND=4,
-        int _MAX_MODEL_ARGS=16>
+        int _MAX_MODEL_ARGS=8>
 struct aex_default_traits{
 
     typedef _Key key_type;
@@ -135,7 +135,6 @@ struct aex_default_traits{
 
     //static constexpr slot_type MIN_ML_INNER_NODE_SLOT_SIZE = 64;
 
-    static constexpr slot_type MIN_ML_INNER_NODE_SIZE = 32;
     //static constexpr slot_type MIN_ML_INNER_NODE_SIZE = MIN_INNER_NODE_SLOT_SIZE;
 
     static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1 << 28;
@@ -187,6 +186,8 @@ struct aex_default_traits{
 
     //static constexpr int LOG_HASH_TABLE_RATIO = 2 + LOG_ERROR_BOUND;
     static constexpr int LOG_HASH_TABLE_RATIO = 1 + LOG_ERROR_BOUND;
+
+    static constexpr slot_type MIN_ML_INNER_NODE_SIZE = AEX_MAX(32, 1 << (LOG_ERROR_BOUND - 1));
 };
 
 

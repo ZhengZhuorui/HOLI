@@ -22,7 +22,9 @@ void aex_range_query_bench(vector<pair<key_type, value_type> > &data, vector<pai
 
     for (size_t T = 0; T < times; ++T){
         for (auto x : query){
-            auto iter = index.find(x.first);
+            typename aex_map<key_type, value_type>::const_iterator iter = index.lower_bound(x.first);
+            //for (int i = 0; i < 100; ++i, ++iter)
+            //    sum += iter.data();
             while (iter != index.end() && iter.key() <= x.second){
                 sum += iter.data();
                 ++iter;
@@ -178,7 +180,7 @@ void dense_array_range_query_bench(vector<pair<key_type, value_type> > &data, ve
 }
 
 template<typename key_type, typename value_type>
-void benchmark_range_query(FILE* file, long long num_keys, long long num_ops, double length_ratio, std::string index_name){ //file, num_keys, num_ops, length_ratio
+void benchmark_range_query(FILE* file, long long num_keys, long long num_ops, int length, std::string index_name){ //file, num_keys, num_ops, length_ratio
     vector<key_type> bin_data;
     vector<pair<key_type, value_type> > data;
     size_t _ = read_bineary_file<key_type>(file, bin_data, num_keys, file_is_head);
@@ -193,7 +195,6 @@ void benchmark_range_query(FILE* file, long long num_keys, long long num_ops, do
     //generate_query<key_type, value_type, std::uniform_int_distribution<long long> >(data, query, answer, num_ops);
     query.resize(num_ops);
     vector<long long> query_pos(num_ops);
-    long long length = 1.0 * num_keys * length_ratio;
     generate_data<long long, std::uniform_int_distribution<long long>, long long>(query_pos, num_ops, 0, num_keys - 1 - length);
     for (long long i = 0; i < num_ops; ++i){
         long long pos = query_pos[i];

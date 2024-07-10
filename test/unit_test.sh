@@ -549,6 +549,9 @@
 ./unit_test --unit=index --key_type=uint64 --function=insert_hotspot --num_keys=2000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 
 ./unit_test --unit=index --key_type=uint64 --function=insert_hotspot --num_keys=200000000 --batch=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
+
+./unit_test --unit=index --key_type=uint64 --function=insert_hotspot --num_keys=200000000 --batch=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=insert_hotspot --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=insert_hotspot --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=insert_hotspot --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/books_200M_uint64

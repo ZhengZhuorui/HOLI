@@ -426,11 +426,11 @@ public:
     }
 
     inline NODE_INSERT_CODE insert_fail(const slot_type pred_pos){
-        if (pred_pos == 0)
-            return NODE_INSERT_CODE::LEFT_BUFFER_OVERFLOW;
-        else if (pred_pos == this->slot_size - 1)
-            return NODE_INSERT_CODE::RIGHT_BUFFER_OVERFLOW;
-        else 
+        //if (pred_pos == 0)
+        //    return NODE_INSERT_CODE::LEFT_BUFFER_OVERFLOW;
+        //else if (pred_pos == this->slot_size - 1)
+        //    return NODE_INSERT_CODE::RIGHT_BUFFER_OVERFLOW;
+        //else 
             return NODE_INSERT_CODE::INNER_NODE_CONFLICT;
     }
 
@@ -1007,13 +1007,14 @@ public:
     inline slot_type find_lower_pos(const key_type &x){
         if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
             return traits::SearchClass::lower_bound(this->key, this->key + this->size, x, this->key) - this->key;
-        return std::lower_bound(this->key, this->key + this->size, x) - this->key;
+        //return std::lower_bound(this->key, this->key + this->size, x) - this->key;
+        return aex::linear_search_lower_bound(this->key, this->key + this->size, x) - this->key;
     }
 
     inline slot_type find_upper_pos(const key_type &x){
         if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
             return traits::SearchClass::upper_bound(this->key, this->key + this->size, x, this->key) - this->key;
-        return std::upper_bound(this->key, this->key + this->size, x) - this->key;
+        return aex::linear_search_upper_bound(this->key, this->key + this->size, x) - this->key;
     }
 
 };

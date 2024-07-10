@@ -515,7 +515,7 @@ inline void aex_tree<_Key, _Val, traits>::__insert_split_by_buffer(inner_node_pt
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_split_left_buffer(inner_node_ptr* stack, const key_type* key, const node_ptr* child, const slot_type n){
-    AEX_PRINT("[insert_split_left_buffer]");
+    //AEX_PRINT("[insert_split_left_buffer]");
     #ifdef AEX_DEBUG
     ++this->opt_stats.inner_node_split_left_buffer_cnt;
     #endif
@@ -566,7 +566,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_left_buffer(inner_node_pt
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_split_right_buffer(inner_node_ptr* stack, const key_type* key, const node_ptr* child, const slot_type n){
-    AEX_PRINT("[insert_split_right_buffer]");
+    //AEX_PRINT("[insert_split_right_buffer]");
     #ifdef AEX_DEBUG
     ++this->opt_stats.inner_node_split_right_buffer_cnt;
     #endif
@@ -580,18 +580,21 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_right_buffer(inner_node_p
     int offset = hash_key * traits::ERROR_BOUND;
     key_buf[0] = node->key_ptr[node->slot_size - 1];
     child_buf[0] = node->child_ptr[node->slot_size - 1];
-
+    //AEX_PRINT("1");
     AEX_ASSERT(node->hash_table.size_ptr[hash_key] == traits::ERROR_BOUND);
     std::copy(node->hash_table.key_ptr + offset, node->hash_table.key_ptr + offset + traits::ERROR_BOUND, key_buf + 1);
     std::copy(node->hash_table.child_ptr + offset, node->hash_table.child_ptr + offset + traits::ERROR_BOUND, child_buf + 1);
+    //AEX_PRINT("2");
     node->hash_table.size_ptr[hash_key] = 0;
     bitmap_impl::set_zero(node->bitmap_ptr, node->slot_size - 1);
     node->size -= traits::ERROR_BOUND + 1;
     slot_type insert_slot = aex::linear_search_lower_bound(key_buf, key_buf + traits::ERROR_BOUND + 1, key[0]) - key_buf;
+    //AEX_PRINT("3");
     std::move_backward(key_buf + insert_slot, key_buf + traits::ERROR_BOUND + 1, key_buf + traits::ERROR_BOUND + 1 + n);
     std::move_backward(child_buf + insert_slot, child_buf + traits::ERROR_BOUND + 1, child_buf + traits::ERROR_BOUND + 1 + n);
     std::copy(key, key + n, key_buf + insert_slot);
     std::copy(child, child + n, child_buf + insert_slot);
+    //AEX_PRINT("4");
     AEX_ASSERT(std::is_sorted(key_buf, key_buf + size));
     
 
@@ -600,7 +603,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_right_buffer(inner_node_p
     std::pair<key_type, node_ptr> res = node->hash_table.top(prev_pos);
     if (res.second != nullptr)
         split_key = res.first;
-    
+    //AEX_PRINT("5");
     AEX_ASSERT(split_key >= node->key_ptr[prev_pos]);
     AEX_ASSERT(split_key <= key_buf[0]);
     //AEX_PRINT("split_key=" << split_key << ", key_buf[0]=" << key_buf[0]);
@@ -612,11 +615,13 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_right_buffer(inner_node_p
         insert_split_right_buffer_by_buffer(stack, key_buf, child_buf, size, split_key);
     }
     else{
+        //AEX_PRINT("6");
         inner_node_ptr new_node = allocator.allocate_inner_node(min_slot_size(size, traits::MIN_INNER_NODE_SLOT_SIZE), node->level, false);
         ++this->m_stats.level_node[node->level];
         new_node->construct(key_buf, child_buf, size);
         node_ptr prev_node = node->prev, next_node = node->next;
         std::swap(*new_node, *node);
+        //AEX_PRINT("7");
         if (prev_node != nullptr)
             prev_node->next = new_node;
         if (next_node != nullptr)
@@ -625,12 +630,12 @@ inline void aex_tree<_Key, _Val, traits>::insert_split_right_buffer(inner_node_p
         node->next = next_node;
         new_node->next = node;
         new_node->prev = prev_node;
-        
-        {
-            copy_to_buffer(new_node, key_buf, child_buf);
-            AEX_ASSERT(key_buf[new_node->size - 1] <= split_key);
-            AEX_ASSERT(node->key_ptr[0] >= split_key);
-        }
+        //AEX_PRINT("8");
+        //{
+        //    copy_to_buffer(new_node, key_buf, child_buf);
+        //    AEX_ASSERT(key_buf[new_node->size - 1] <= split_key);
+        //    AEX_ASSERT(node->key_ptr[0] >= split_key);
+        //}
         allocator.deallocate_key_buffer(key_buf);
         allocator.deallocate_nodeptr_buffer(child_buf);
         

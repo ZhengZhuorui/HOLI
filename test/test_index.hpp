@@ -439,19 +439,20 @@ bool test_index_insert_hotspot_perf(std::pair<key_type, value_type>* data, long 
     typedef typename tree::node_ptr node_ptr;
     std::sort(data, data + n);
     std::vector<std::pair<key_type, value_type> > insert_data(batch), node_data(n - batch + 1); 
-    long long pos = rand() % (n - batch);
+    //long long pos = rand() % (n - batch);
+    long long pos = n - batch;
     std::copy(data, data + pos, node_data.data());
     std::copy(data + pos, data + pos + batch, insert_data.data());
     std::copy(data + pos + batch, data + n, node_data.data() + pos);
-    random_shuffle(insert_data.data(), insert_data.data() + batch);
+    //random_shuffle(insert_data.data(), insert_data.data() + batch);
     index.bulk_load(node_data.data(), n - batch);
     AEX_PRINT("bulk load finish...");
     index.print_stats();
     index.print_detail();
     index_bak = index;
     for (long long i = 0; i < batch; ++i){
-        //if (i % 1000000 == 0)
-        //    std::cout << "i=" << i << std::endl;
+        if (i % 1000000 == 0)
+            std::cout << "i=" << i << std::endl;
         typename tree::iterator iter;
         bool inserted;
         std::tie(iter, inserted) = index.insert(insert_data[i]);
@@ -466,6 +467,8 @@ bool test_index_insert_hotspot_perf(std::pair<key_type, value_type>* data, long 
         iter = index.find(insert_data[i].first);
         if (iter.key() != insert_data[i].first || iter.data() != insert_data[i].second){
             AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
+            index.print_stats();
+            index.print_detail();
             return false;
         }
     }
@@ -625,11 +628,10 @@ bool test_index_range_query_perf(std::pair<key_type, value_type>* data, long lon
     std::vector<size_t> answer;
     std::sort(data, data + n);
     index.bulk_load(data, n);
-    double length_ratio = 0.001;
     const int times = 1;
     query.resize(batch);
     vector<long long> query_pos(batch);
-    long long length = n * length_ratio;
+    long long length = 100;
     generate_data<long long, std::uniform_int_distribution<long long>, long long>(query_pos, batch, 0, n - 1 - length);
     value_type sum = 0, valid = 0;
     for (long long i = 0; i < batch; ++i){

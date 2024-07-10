@@ -71,7 +71,7 @@ void benchmark(std::map<string, string> flags){
     else if (func == "range_query"){
         long long num_keys = stoll(flags["num_keys"]);
         string index_name = flags["index"];
-        double length_ratio = stod(flags["length_ratio"]);
+        double length_ratio = stod(flags["length"]);
         long long num_ops = stoll(flags["num_ops"]);
         benchmark_range_query<key_type, value_type>(file, num_keys, num_ops, length_ratio, index_name);
     }

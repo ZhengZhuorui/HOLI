@@ -481,7 +481,9 @@ bool aex_tree<_Key, _Val, traits>::check_collision_hash_table(const key_type* co
     //    return true;
     slot_type start = -1;
     AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
-    int hash_slot = (1 << (__builtin_ctz(slot_size) - traits::LOG_HASH_TABLE_RATIO)) + 2;
+    //int hash_slot = (1 << (__builtin_ctz(slot_size) - traits::LOG_HASH_TABLE_RATIO)) + 2;
+    //int get_hash = (1 << (__builtin_ctz(slot_size) - traits::LOG_HASH_TABLE_RATIO)) - 1;
+    int hash_slot = (1 << (__builtin_ctz(slot_size) - traits::LOG_HASH_TABLE_RATIO));
     int get_hash = (1 << (__builtin_ctz(slot_size) - traits::LOG_HASH_TABLE_RATIO)) - 1;
     unsigned char* size_ptr = static_cast<unsigned char*>(allocator.allocate_uni_buffer(hash_slot));
     memset(size_ptr, 0, hash_slot);
@@ -493,10 +495,10 @@ bool aex_tree<_Key, _Val, traits>::check_collision_hash_table(const key_type* co
         //AEX_PRINT("key[i]=" << key[i] << ", pos=" << pos);
         if (start == pos){
             int hash_key = pos & get_hash;
-            if (pos == 0)
-                hash_key = hash_slot - 2;
-            else if (pos == slot_size - 1)
-                hash_key = hash_slot - 1;
+            //if (pos == 0)
+            //    hash_key = hash_slot - 2;
+            //else if (pos == slot_size - 1)
+            //    hash_key = hash_slot - 1;
             //AEX_PRINT("pos=" << pos << "hash_key=" << hash_key << ", size=" << static_cast<int>(size_ptr[hash_key]));
             if (size_ptr[hash_key] + 1 >= traits::ERROR_BOUND / 2){
                 allocator.deallocate_uni_buffer(size_ptr);

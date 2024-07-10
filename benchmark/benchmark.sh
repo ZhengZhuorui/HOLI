@@ -346,7 +346,7 @@ DATA_PATH="/data/zzr/learned_index/data"
 ./benchmark --key_type=float64 --index=lipp --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
 # facebook
-./benchmark --key_type=uint64 --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --length_ratio=0.0000005 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --length=100 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=stl_map --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.01 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --length_ratio=0.0000005 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=alex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.01 --input_file=/home/zzr/data/learned_index/fb_200M_uint64

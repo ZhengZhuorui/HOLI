@@ -293,8 +293,12 @@ public:
     }
 
     const_iterator lower_bound(const key_type &x){
-        this->balance_stats.update_timestamp();
-        return find_iterator(x);
+        //this->balance_stats.update_timestamp();
+        data_node_ptr node = this->find_leaf(x);
+        slot_type pos = node->find_lower_pos(x);
+        if (pos >= node->size)
+            return end();
+        return const_iterator(node, pos);
     }
 
     const_iterator upper_bound(const key_type &x){

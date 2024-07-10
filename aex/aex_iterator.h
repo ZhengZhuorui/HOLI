@@ -153,7 +153,7 @@ public:
 
     inline aex_const_iterator() : _M_node(nullptr), offset(0){}
     
-    inline aex_const_iterator(const data_node* ptr, slot_type _offset):_M_node(ptr), offset(_offset){}
+    inline aex_const_iterator(data_node* ptr, slot_type _offset):_M_node(ptr), offset(_offset){}
     
     inline aex_const_iterator(const aex_iterator<_Key, _Val, traits> &it) : _M_node(it._M_node), offset(it.offset){}    
     
