@@ -67,6 +67,9 @@ public:
                 ", ml inner node ratio=" << 1.0 * msg.ml_inner_node / msg.inner_node);
         AEX_HINT("data size=" << msg.data_size);
         AEX_HINT("avg seg nums=" << 1.0 * msg.tot_seg_nums / (msg.ml_inner_node + 1));
+        AEX_HINT("tot collision=" << msg.tot_collision << ", avg collision=" << 1.0 * msg.tot_collision / (msg.data_node + msg.inner_node - 1));
+        AEX_HINT("tot comparsion=" << msg.tot_comparsion << ", avg comparsion=" << 1.0 * msg.tot_comparsion / (msg.data_node + msg.inner_node - 1));
+        //AEX_HINT("UHT size=" << msg.UHT_size << ", ratio=" << msg.UHT_size / )
     }
     
     void dfs_detail(node_ptr node){
@@ -94,12 +97,17 @@ public:
                         dfs_detail(node_child[i]);
                     }
                 }
-                for (slot_type i = 0; i < (1 << in->hash_table.log_size) + 2; ++i)
+                //msg.tot_array_size += in->slot_size;
+                for (slot_type i = 0; i < (1 << in->hash_table.log_size); ++i){
+                    msg.tot_collision += in->hash_table.size_ptr[i];
+                    msg.tot_comparsion += in->hash_table.size_ptr[i] * (in->hash_table.size_ptr[i] + 1) / 2;
                     for (slot_type j = 0; j < in->hash_table.size_ptr[i]; ++j)
                         dfs_detail(in->hash_table.child_ptr[i * traits::ERROR_BOUND + j]);
+                }
                 //AEX_ASSERT(sz + 1 == node->size);
             }
             else{
+                //msg.tot_comparsion += in->size;
                 for (slot_type i = 0; i < in->size; ++i){
                     dfs_detail(node_child[i]);
                 }
@@ -108,11 +116,12 @@ public:
     }
     
     struct detail_msg{
-        detail_msg():level_node_nums(0), inner_node(0), data_node(0), ml_inner_node(0), ml_data_node(0), tot_seg_nums(0), data_size(0){}
+        detail_msg():level_node_nums(0), inner_node(0), data_node(0), ml_inner_node(0), ml_data_node(0), tot_seg_nums(0), data_size(0), tot_collision(0), tot_comparsion(0){}
         vector<size_type> level_node_nums;
         size_type inner_node, data_node;
         size_type ml_inner_node, ml_data_node;
         size_type tot_seg_nums, data_size;
+        size_type tot_collision, tot_comparsion;
     }msg;
 
     std::pair<key_type, bool> debug(node_ptr node){

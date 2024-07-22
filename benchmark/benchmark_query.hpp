@@ -150,26 +150,25 @@ template<typename key_type, typename value_type>
 void lipp_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
     LIPP<key_type, value_type> index;
     index.bulk_load(data.data(), data.size());
-    
-    system_clock::time_point t1, t2;
+
 
     //size_t cnt = 0;
     size_t num_ops = query.size();
+    key_type* start = query.data(), *end =query.data() + num_ops;
     size_t times = 1;
-    value_type sum = 0;
+    value_type _ = 0;
     std::cout << "lipp query test..." << std::endl;
     
-    t1 = std::chrono::high_resolution_clock::now();
-    for (size_t T = 0; T < times; ++T){
-        for (auto &x : query){
-            sum += index.at(x);
-        }
-    }
-    t2 = std::chrono::high_resolution_clock::now();
-    long long delta = duration_cast<microseconds>(t2 - t1).count();
-    double QPS = 1000000.0 * num_ops * times / delta;
+    const auto t1 = std::chrono::high_resolution_clock::now();
+    //for (size_t T = 0; T < times; ++T){
+        for (int i = 0; i < num_ops; ++i)
+            index.find(query[i], _);
+    //}
+    const auto t2 = std::chrono::high_resolution_clock::now();
+    long long delta = duration_cast<nanoseconds>(t2 - t1).count();
+    double QPS = 1e3 * num_ops * times / delta;
     
-    std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << std::endl;
+    std::cout << "code=" << _ << ", used time=" << delta <<  " ns, QPS=" << QPS << " M" << std::endl;
 }
 
 template<typename key_type, typename value_type>

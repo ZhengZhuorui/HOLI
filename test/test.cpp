@@ -122,6 +122,11 @@ bool test(map<string, string> &flags){
             //using PDM_avx = PDM_AVX<T, PDM<T, default_traits>, default_traits>;
             return test_model_hash_table<T, PDM_hash_table<T, default_traits>>(bin_data.data(), num_keys, level);
         }
+        else if (model_type == "linear_hash_table"){
+            int level = stoi(flags["level"]);
+            //using PDM_avx = PDM_AVX<T, PDM<T, default_traits>, default_traits>;
+            return test_model_hash_table<T, gap_array_linear_model_hash_table<T, default_traits>>(bin_data.data(), num_keys, level);
+        }
 
         else if (model_type == "PDM_hash_table_AVX"){
             int level = stoi(flags["level"]);

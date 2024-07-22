@@ -189,9 +189,7 @@ public:
         slot_type *pos = ori_pos + ptr_offset;
         key_type *key = key_ptr + ptr_offset;
         node_ptr *child = child_ptr + ptr_offset;
-        //AEX_PRINT("hash_key=" << hash_key << "size_ptr=" << int(size_ptr[hash_key]));
         for (int i = 0; i < size_ptr[hash_key] && old_pos >= pos[i]; ++i){
-            //AEX_PRINT("x=" << x << ", key=" << key[i] << ", old_pos=" << old_pos << ", pos=" << pos[i]);
             if (x <= key[i]){
                 return child[i];
             }
@@ -223,10 +221,10 @@ public:
             if (old_pos == pos[i]){
                 key_type res_key = key[i];
                 node_ptr res_node = child[i];
-                pos[size_ptr[hash_key] - 1] = -1;
                 std::move(pos + i + 1, pos + size_ptr[hash_key], pos + i);
                 std::move(key + i + 1, key + size_ptr[hash_key], key + i);
                 std::move(child + i + 1, child + size_ptr[hash_key], child + i);
+                //pos[size_ptr[hash_key] - 1] = -1;
                 --size_ptr[hash_key];
                 return std::make_pair(res_key, res_node);
             }

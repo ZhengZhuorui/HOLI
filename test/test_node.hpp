@@ -98,6 +98,12 @@ bool test_inner_node_insert_perf(vector<key_type> &data, size_t n, size_t batch,
     AEX_ASSERT(final_node_data.size() == n + batch - insert_failed);
     printf("insert failed=%lld, fail ratio=%.4f\n", insert_failed, 1.0 * insert_failed / batch);
     size_type bit_cnt = 0;
+    //key_type _ = 1713;
+    //slot_type hash_key = node->hash_table.fingerprint(_);
+    //slot_type offset = hash_key * traits::ERROR_BOUND;
+    //AEX_HINT("size=" << node->hash_table.size_ptr[hash_key]);
+    //for (int i = 0; i < node->hash_table.size_ptr[hash_key]; ++i)
+    //    AEX_PRINT(node->hash_table.ori_pos[offset + i] << ", " << node->hash_table.key_ptr[offset+i]);
     if (IS_ML_NODE(node)){
         for (slot_type i = 0; i < node->slot_size; ++i){
             if (i > 1 && node->key_ptr[i] < node->key_ptr[i - 1]){

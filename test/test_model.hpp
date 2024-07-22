@@ -142,7 +142,7 @@ bool test_model_hash_table(T* data, size_t n, int level, int batch=1000){
         AEX_ERROR("max error larger than ERROR_BOUND, max_error=" << max_error << ", ERROR_BOUND=" << traits::ERROR_BOUND);
         return false;
     }
-    AEX_SUCCESS("slot size=" << slot_size << ", max error=" << max_error << ", seg_nums=" << m.args.seg_nums);
+    AEX_SUCCESS("slot size=" << slot_size << ", max error=" << max_error);
     system_clock::time_point t1, t2;
     const int ITER = 10;
     t1 = std::chrono::high_resolution_clock::now();

@@ -67,7 +67,6 @@ std::tuple<typename traits::slot_type, typename traits::slot_type, bool> aex_tre
     for (; slot_size * self::inner_node_few_ratio[level] <= n && static_cast<size_type>(slot_size) <= this->max_inner_node_slot_size[level]; slot_size <<= 1){        
         size_type size = std::min((size_type)(slot_size * self::inner_node_few_ratio[level]), n);
         train_flag = model.train(key, size - 1, slot_size);
-        
         if (train_flag){
             if (check_collision_hash_table(key, size - 1, slot_size, model)){
                 flag = true;
@@ -185,7 +184,9 @@ void aex_tree<_Key, _Val, traits>::split(const key_type* const key, node_ptr* ch
             new_node->model.train(key + start, ans_size - 1, ans_slot_size);
             //AEX_ASSERT(self::check_collision(key + start, ans_size - 1, ans_slot_size, new_node->model) == true);
         }
+        //AEX_PRINT("1");
         new_node->construct(key + start, child + start, ans_size);
+        //AEX_PRINT("2");
         if (start + ans_size < n)
             new_key.push_back(key[start + ans_size - 1]);
         new_child.push_back(new_node);
@@ -472,7 +473,6 @@ bool aex_tree<_Key, _Val, traits>::check_collision(const key_type* const key, co
 template<typename _Key, typename _Val, typename traits>
 template<typename HashModel>
 bool aex_tree<_Key, _Val, traits>::check_collision_hash_table(const key_type* const key, const slot_type size, const slot_type slot_size, HashModel &m){
-    //AEX_PRINT("size=" << size);
     if (size + 1 < traits::MIN_ML_INNER_NODE_SIZE || slot_size < traits::MIN_INNER_NODE_SLOT_SIZE)
         return true;
     if (slot_size > traits::MAX_INNER_NODE_SLOT_SIZE)
@@ -490,9 +490,8 @@ bool aex_tree<_Key, _Val, traits>::check_collision_hash_table(const key_type* co
 
     size_ptr[hash_slot - 1]++;
     for (slot_type i = 0; i < size; ++i){            
-        //slot_type pos = std::max(0, static_cast<slot_type>(m.predict(key[i]) * slot_size));
         slot_type pos = std::max(0, m.predict(key[i]));
-        //AEX_PRINT("key[i]=" << key[i] << ", pos=" << pos);
+        //slot_type pos = std::max(0, static_cast<slot_type>(m.predict(key[i]) * slot_size));
         if (start == pos){
             int hash_key = pos & get_hash;
             //if (pos == 0)

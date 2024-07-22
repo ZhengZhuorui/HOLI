@@ -82,7 +82,7 @@ void stx_btree_range_query_bench(vector<pair<key_type, value_type> > &data, vect
     t1 = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < times; ++i){
         for (const auto& x : query){
-            typename stx::btree_map<key_type, value_type>::iterator iter = index.find(x.first);
+            typename stx::btree_map<key_type, value_type>::const_iterator iter = index.lower_bound(x.first);
             while (iter != index.end() && iter.key() <= x.second){
                 sum += iter->second;
                 ++iter;

@@ -154,7 +154,15 @@
 ./unit_test --unit=model --key_type=float64 --num_keys=65536 --level=2 --model_type=PDM --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 
 ./unit_test --unit=model --key_type=float64 --num_keys=1000000 --level=1 --model_type=PDM_hash_table --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+
+./unit_test --unit=model --key_type=uint64 --num_keys=1000000 --level=1 --model_type=PDM_hash_table --input_file=/home/zzr/data/learned_index/genome_200M_uint64
+
+
 ./unit_test --unit=model --key_type=float64 --num_keys=1000000 --level=2 --model_type=PDM_hash_table --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+
+
+./unit_test --unit=model --key_type=float64 --num_keys=1000000 --level=2 --model_type=PDM_hash_table --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+
 ./unit_test --unit=model --key_type=float64 --num_keys=1000000 --level=3 --model_type=PDM_hash_table --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 
 ./unit_test --unit=model --key_type=float64 --num_keys=1000000 --level=1 --model_type=PDM_hash_table_AVX --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
@@ -168,7 +176,9 @@
 ./unit_test --unit=model --key_type=uint64 --num_keys=1000000 --level=2 --model_type=PDM_hash_table --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./unit_test --unit=model --key_type=uint64 --num_keys=1000000 --level=3 --model_type=PDM_hash_table --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 
-./unit_test --unit=model --key_type=float64 --num_keys=65536 --level=2 --model_type=PDM_avx --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=model --key_type=float64 --num_keys=65536 --level=2 --model_type=linear_hash_table --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+
+./unit_test --unit=model --key_type=float64 --num_keys=65536 --level=3 --model_type=linear_hash_table --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 
 ./unit_test --unit=model --key_type=float64 --num_keys=10000000 --batch=10000000 --level=1 --model_type=PDM --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=model --key_type=float64 --num_keys=10000000 --batch=10000000 --level=2 --model_type=PDM --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
@@ -466,7 +476,12 @@
 ./unit_test --unit=index --key_type=float64 --function=lookup --num_keys=2000000 --batch=100000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
 ./unit_test --unit=index --key_type=uint64 --function=lookup --multikey --num_keys=1000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/generate_data/multikey_1M_int.bin
-./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=2000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/covid_200M_uint64
+./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/planet_200M_uint64
+./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/genome_200M_uint64
+
 ./unit_test --unit=index --key_type=uint64 --function=lookup --multikey --num_keys=200000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/generate_data/multikey_200M_int.bin
 
 ./unit_test --unit=index --key_type=float64 --function=delta_lookup --num_keys=2000000 --batch=2000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data

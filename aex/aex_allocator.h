@@ -97,6 +97,7 @@ public:
     }
 
     inline unsigned char* allocate_uni_buffer(size_type size){
+        //AEX_PRINT("size=" << size);
         uni_buffer.reserve(size);
         #ifdef AEX_DEBUG
         AEX_ASSERT(this->uni_buf_used == 0);

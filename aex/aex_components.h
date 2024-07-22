@@ -368,6 +368,7 @@ struct aex_default_components{
     typedef typename concurrency_components::Allocator Allocator;
 
     typedef aex_hash_table<key_type, traits> HashTable;
+    //typedef gap_array_linear_model_hash_table<key_type, traits> InnerNodeModel;
     typedef PDM_hash_table<key_type, traits> baseInnerNodeModel;
     typedef PDM_hash_table_AVX<key_type, baseInnerNodeModel, traits> InnerNodeModel;
     typedef linear_model<key_type, traits> DataNodeModel;

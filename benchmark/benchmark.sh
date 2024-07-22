@@ -236,7 +236,7 @@ DATA_PATH="/data/zzr/learned_index/data"
 ./benchmark --key_type=uint64 --index=stx_btree --function=insert --query_dis=uniform --num_keys=105000000 --num_ops=5000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=105000000 --num_ops=5000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 
-./benchmark --key_type=uint64 --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./benchmark --key_type=uint64 --index=aex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=stl_map --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=stx_btree --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=alex --function=insert --query_dis=uniform --num_keys=200000000 --num_ops=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
@@ -348,7 +348,7 @@ DATA_PATH="/data/zzr/learned_index/data"
 # facebook
 ./benchmark --key_type=uint64 --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --length=100 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=stl_map --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.01 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
-./benchmark --key_type=uint64 --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --length_ratio=0.0000005 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --length=100 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=alex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.01 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=pgm --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.01 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=lipp --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.01 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
@@ -364,12 +364,14 @@ DATA_PATH="/data/zzr/learned_index/data"
 
 
 # osm
-./benchmark --key_type=uint64 --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=1000 --length_ratio=0.01 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
-./benchmark --key_type=uint64 --index=stl_map --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=1000 --length_ratio=0.01 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
-./benchmark --key_type=uint64 --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=1000 --length_ratio=0.01 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
-./benchmark --key_type=uint64 --index=alex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=1000 --length_ratio=0.01 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
-./benchmark --key_type=uint64 --index=pgm --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=1000 --length_ratio=0.01 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
-./benchmark --key_type=uint64 --index=lipp --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=1000 --length_ratio=0.01 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
+
+./benchmark --key_type=uint64 --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --length=100 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --length=100 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=stl_map --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --length=100 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=stx_btree --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --length=100 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=alex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --length=100 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=pgm --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --length=100 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --length=100 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
 
 # book
 ./benchmark --key_type=uint64 --index=aex --function=range_query --query_dis=uniform --num_keys=200000000 --num_ops=100 --length_ratio=0.1 --input_file=/home/zzr/data/learned_index/books_200M_uint64
