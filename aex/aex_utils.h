@@ -20,10 +20,6 @@ namespace aex{
 
 
 #define UNF 0xFFFFFFFFFFFFFFFFLL
-//#define RED_FONT(str) ("\033[31m"+(str)+"\033[0m")
-//#define GREEN_FONT(str) ("\033[32m"+(str)+"\033[0m")
-//#define YELLOW_FONT(str) ("\033[33m"+(str)+"\033[0m")
-//#define BLUE_FONT(str) ("\033[34m"+(str)+"\033[0m")
 
 #define WHITE_FONT_TAG "\033[0m"
 #define RED_FONT_TAG "\033[31m"
@@ -87,6 +83,7 @@ struct AEX_LOG{
 
 #define AEX_ASSERT(x) do { assert(x); } while(0)
 
+
 #define AEX_PRINT_ELEMENT(x) do { AEX_PRINT(##x << "=" << x); } while(0)
 
 #else
@@ -116,33 +113,26 @@ struct AEX_LOG{
 
 #define AEX_IMPORTANT(x) AEX_PRINT_TAG(x, PURPLE_FONT_TAG, "[IMPORTANT]")
 
-enum node_property{
-    ML_NODE=0x1,
-    STATIC_NODE=0x2,
-    LEAF=0x4,
-    IS_DELETE=0x8,
-    CAN_LEFT_MERGED=0x10,
-    CAN_RIGHT_MERGED=0x20,
-    CAN_MERGED=0x40,
-    CONCURRENCE=0x80,
-};
+#define n_n(node) static_cast<node_ptr>(node)
 
-template<typename _NodePtr>
-inline bool IS_ML_NODE(_NodePtr node){return (node)->prop & 1;}
-template<typename _NodePtr>
-inline bool IS_LEAF_NODE(_NodePtr node){return (node)->level == 0;}
-template<typename _NodePtr>
-inline bool IS_STATIC_NODE(_NodePtr node){return ((node)->prop & node_property::STATIC_NODE) != 0;}
-template<typename _NodePtr>
-inline bool IS_DELETE_NODE(_NodePtr node){return ((node)->prop & node_property::IS_DELETE) != 0;}
-template<typename _NodePtr>
-inline bool CAN_LEFT_MERGED_NODE(_NodePtr node){return ((node->prop) & node_property::CAN_LEFT_MERGED) != 0;}
-template<typename _NodePtr>
-inline bool CAN_RIGHT_MERGED_NODE(_NodePtr node){return ((node->prop) & node_property::CAN_RIGHT_MERGED) != 0;}
-template<typename _NodePtr>
-inline void SET_FLAG(_NodePtr node, unsigned int flag){(node)->prop |= flag; }
-template<typename _NodePtr>
-inline void UNSET_FLAG(_NodePtr node, unsigned int flag){(node)->prop &= ~flag; }
+#define i_n(node) static_cast<inner_node_ptr>(node)
+
+#define h_n(node) static_cast<hash_node_ptr>(node)
+
+#define d_n(node) static_cast<dense_node_ptr>(node)
+
+#define l_n(node) static_cast<data_node_ptr>(node)
+
+
+template<typename _Tp>
+inline _Tp highbit_64(const _Tp &x){
+    return (x + 63) & (~63);
+}
+
+template<typename _Tp>
+inline _Tp pos2slot(const _Tp pos) {
+    return pos >> 6;
+}
 
 template<typename _Tp>
 inline _Tp rapid_pow(_Tp base, unsigned long long x){
@@ -166,6 +156,19 @@ inline _Tp min_slot_size(const _Tp x, double ratio, const int min_slot_size){
     _Tp slot_size = min_slot_size;
     while (slot_size * ratio < x) slot_size <<= 1;
     return slot_size;
+}
+
+template<typename K,
+        typename V>
+inline void sample_sort(K* k, V* v, int n){
+    for (int i = 0; i < n - 1; ++i){
+        int t = i;
+        for (int j = i + 1; j < n; ++j)
+            if (k[t] > k[j])
+                t = j;
+        std::swap(k[i], k[t]);
+        std::swap(v[i], v[t]);
+    }
 }
 
 template<typename _Tp>
@@ -202,33 +205,6 @@ public:
     static inline bool at(const bitmap text, const slot_type x){
         return ((text[x >> 6] >> (x & 63)) & 1);
     }
-
-    static inline slot_type next_empty_slot(bitmap text, slot_type x){
-        text += (x >> 6);
-        bitmap_base base = ~(*text >> (x & 63));
-        slot_type res = __builtin_ctzll(base);
-        if (res >= 64 - (x & 63)){
-            ++text;
-            base = ~(*text);
-            res = 64 - (x & 63) + __builtin_ctzll(base);
-        }
-        return x + res;
-    }
-
-    static inline slot_type prev_occ_slot(bitmap text, slot_type x){
-        if (x <= 0)
-            return x;
-        text += (x >> 6);
-        bitmap_base base = (*text) << (~(x & 63));
-        x -= (base == 0) ? ((x & 63) + 1) : __builtin_clzll(base);
-        while (base == 0 && x > 0){
-            --text;
-            base = *text;
-            x -= __builtin_clzll(base);
-        }
-        return x;
-    }
-
 };
 
 template<typename RandomIter, typename _Val>

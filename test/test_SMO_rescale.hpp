@@ -9,7 +9,6 @@ bool test_SMO_node_rescale_perf(key_type* key, size_t num_keys, double ratio, in
     typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
     typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
     [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
-    [[maybe_unused]] typedef typename traits::size_type size_type;
     [[maybe_unused]] typedef typename traits::slot_type slot_type;
     typedef typename aex::aex_bitmap_impl<traits> bitmap_impl;
     std::sort(key, key + num_keys);

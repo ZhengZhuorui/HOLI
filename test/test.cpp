@@ -20,10 +20,10 @@ using std::string;
 using std::map;
 const int N = 10000000, M = 10000;
 
-template <typename T>
+template <typename T, bool AllowConcurrency>
 bool test(map<string, string> &flags){
     auto unit = flags["unit"];
-    using default_traits = aex_default_traits<T, T>;
+    using default_traits = aex_default_traits<T, T, false, void, AllowConcurrency>;
     #ifdef DEBUG
     AEX_HINT("unit test...");
     #endif
@@ -149,18 +149,21 @@ bool test(map<string, string> &flags){
         long long batch = stoll(flags["batch"]);
         std::sort(bin_data.data(), bin_data.data() + num_keys);
         //vector<T> data(num_keys);
-        if (node_type == "inner_node"){
-            int level = 1;
-            if (flags.find("level") != flags.end())
-                level = stoi(flags["level"]);
+        if (node_type == "hash_node"){
+            //int level = 1;
+            //if (flags.find("level") != flags.end())
+            //    level = stoi(flags["level"]);
             if (func == "insert")
-                return test_inner_node_insert_perf<T, T>(bin_data, num_keys, batch, level);
+                return test_hash_node_insert_perf<T, T>(bin_data, num_keys, batch);
             if (func == "erase")
-                return test_inner_node_erase_perf<T, T>(bin_data, num_keys, batch, level);
+                return test_hash_node_erase_perf<T, T>(bin_data, num_keys, batch);
             if (func == "query")
-                return test_inner_node_query_perf<T, T>(bin_data, num_keys, batch, level);
+                return test_hash_node_query_perf<T, T>(bin_data, num_keys, batch);
             if (func == "other")
-                return test_inner_node_other<T, T>(bin_data, num_keys, batch, level);
+                return test_hash_node_other<T, T>(bin_data, num_keys, batch);
+        }
+        else if (node_type == "dense_node"){
+
         }
         else if (node_type == "data_node"){
             std::vector<std::pair<T, T> > data;
@@ -183,32 +186,33 @@ bool test(map<string, string> &flags){
     }
     else if (unit == "SMO"){
         auto func = flags["function"];
-        if (func == "data_split_with_exponential_probe") {
-            std::vector<T> value(num_keys);
-            for (int i = 0; i < num_keys; ++i)
-                value[i] = i;            
-            return test_SMO_data_split_with_exponential_probe_perf<T, T>(bin_data.data(), value.data(), num_keys);
-        }
-        if (func == "data_split_with_linear_probe"){
-            std::vector<T> value(num_keys);
-            for (int i = 0; i < num_keys; ++i)
-                value[i] = i;            
-            return test_SMO_data_split_with_linear_probe_perf<T, T>(bin_data.data(), value.data(), num_keys);
-        }
-        if (func == "node_split") {
-            return test_SMO_node_split_perf<T, T>(bin_data.data(), num_keys);
-        }
-        if (func == "node_rescale"){
-            double ratio = stod(flags["ratio"]);
-            int level = stoi(flags["level"]);
-            return test_SMO_node_rescale_perf<T, T>(bin_data.data(), num_keys, ratio, level);
-        }
-        if (func == "insert_split"){
-            return false;
-        }
-        if (func == "insert_ascend"){
-            return false;
-        }
+        //if (func == "data_split_with_exponential_probe") {
+        //    std::vector<T> value(num_keys);
+        //    for (int i = 0; i < num_keys; ++i)
+        //        value[i] = i;            
+        //    return test_SMO_data_split_with_exponential_probe_perf<T, T>(bin_data.data(), value.data(), num_keys);
+        //}
+        //if (func == "data_split_with_linear_probe"){
+        //    std::vector<T> value(num_keys);
+        //    for (int i = 0; i < num_keys; ++i)
+        //        value[i] = i;            
+        //    return test_SMO_data_split_with_linear_probe_perf<T, T>(bin_data.data(), value.data(), num_keys);
+        //}
+        //if (func == "node_split") {
+        //    return test_SMO_node_split_perf<T, T>(bin_data.data(), num_keys);
+        //}
+        //if (func == "node_rescale"){
+        //    double ratio = stod(flags["ratio"]);
+        //    int level = stoi(flags["level"]);
+        //    return test_SMO_node_rescale_perf<T, T>(bin_data.data(), num_keys, ratio, level);
+        //}
+        //if (func == "insert_split"){
+        //    return false;
+        //}
+        //if (func == "insert_ascend"){
+        //    return false;
+        //}
+        
     }
     else if (unit == "index"){
         auto func = flags["function"];
@@ -310,6 +314,35 @@ bool test(map<string, string> &flags){
 }
 
 
+template<bool AllowConcurrency>
+void test_con(map<string, string> &flags){
+    auto key_type = flags["key_type"];
+    bool test_result = false;
+    if (key_type == "uint64"){
+        test_result = test<unsigned long long, AllowConcurrency>(flags);
+    }
+    else if (key_type == "float64"){
+        test_result = test<double, AllowConcurrency>(flags);
+    }
+    else if (key_type == "int64"){
+        test_result = test<long long, AllowConcurrency>(flags);
+    }
+    else if (key_type == "float32"){
+        test_result = test<float, AllowConcurrency>(flags);
+    }
+    else if (key_type == "uint32"){
+        test_result = test<unsigned int, AllowConcurrency>(flags);
+    }
+    else if (key_type == "int32"){
+        test_result = test<int, AllowConcurrency>(flags);
+    }
+
+    if (test_result == false)
+        AEX_ERROR("test failed.\n");
+    else
+        AEX_SUCCESS("test successed.\n");
+}
+
 /*
  * Required flags:
  * unit ("index", "function", "model", "SMO_xxx")
@@ -317,36 +350,16 @@ bool test(map<string, string> &flags){
  * input_file
  * optional flags:
  * func: (if unit==function)
+ * con: allow concurrency
  * 
  */
 
 int main(int argc, char** argv){
     srand(0);
     auto flags = parse_flags(argc, argv);
-    auto key_type = flags["key_type"];
-    bool test_result = false;
-    if (key_type == "uint64"){
-        test_result = test<unsigned long long>(flags);
-    }
-    else if (key_type == "float64"){
-        test_result = test<double>(flags);
-    }
-    else if (key_type == "int64"){
-        test_result = test<long long>(flags);
-    }
-    else if (key_type == "float32"){
-        test_result = test<float>(flags);
-    }
-    else if (key_type == "uint32"){
-        test_result = test<unsigned int>(flags);
-    }
-    else if (key_type == "int32"){
-        test_result = test<int>(flags);
-    }
-
-    if (test_result == false)
-        AEX_ERROR("test failed.\n");
+    bool allow_concurrency = (flags.find("con") != flags.end());
+    if (allow_concurrency)
+        test_con<true>(flags);
     else
-        AEX_SUCCESS("test successed.\n");
-    
+        test_con<false>(flags);
 }

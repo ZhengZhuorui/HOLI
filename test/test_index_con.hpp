@@ -7,7 +7,6 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
     
     AEX_HINT("[test index concurrency with all interface]");
     typedef mock_aex_tree_con<key_type, value_type, traits> tree;
-    [[maybe_unused]]typedef typename mock_aex_tree<key_type, value_type, traits>::size_type size_type;
     [[maybe_unused]]typedef typename tree::node_ptr node_ptr;
     mock_aex_tree_con<key_type, value_type, traits> index;
     long long init_nums = n - write_nums, tot_nums = read_nums + write_nums + erase_nums;
@@ -26,20 +25,20 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
     std::fill(opt.data() + read_nums, opt.data() + read_nums + write_nums, OperationType::Insert);
     std::fill(opt.data() + read_nums + write_nums, opt.data() + tot_nums, OperationType::Erase);
     std::random_shuffle(opt.data(), opt.data() + tot_nums);
-    size_type insert_cnt = 0;
+    size_t insert_cnt = 0;
     AEX_PRINT("prepare finish...");
     ThreadPool tp(std::thread::hardware_concurrency());
     for (long long i = 0; i < tot_nums; ++i){
         switch (opt[i]){
             case OperationType::Lookup:{
-                size_type pos = rand() % index_data.size();
+                size_t pos = rand() % index_data.size();
                 std::function<void()> t = std::bind(test_lookup_con_unit<key_type, value_type>, index, index_data[pos], i);
                 //std::function<void()> t = std::bind(test_lookup_con_unit<key_type, value_type>, index, index_data[pos], i);
                 tp.enqueue(t);
                 break;
             }
             case OperationType::Insert:{
-                index_data.push_back(insert_data[insert_cnt]);
+                index_data.emplace_back(insert_data[insert_cnt]);
                 //std::thread t2(test_insert_con_unit, index, insert_data[insert_cnt]);
                 std::function<void()> t = std::bind(test_insert_con_unit<key_type, value_type>, index, insert_data[insert_cnt], i);
                 tp.enqueue(t);
@@ -48,7 +47,7 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
             }
             case OperationType::Erase:{                
                 //AEX_PRINT("i=" << i << ", Erase:");
-                size_type pos = rand() % index_data.size();
+                size_t pos = rand() % index_data.size();
                 while (is_delete[pos] == true) 
                     pos = rand() % index_data.size();
                 std::function<void()> t = std::bind(test_erase_con_unit<key_type, value_type>, index, index_data[pos].first, i);

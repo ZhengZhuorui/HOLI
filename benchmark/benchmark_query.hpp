@@ -154,14 +154,13 @@ void lipp_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type
 
     //size_t cnt = 0;
     size_t num_ops = query.size();
-    key_type* start = query.data(), *end =query.data() + num_ops;
     size_t times = 1;
     value_type _ = 0;
     std::cout << "lipp query test..." << std::endl;
     
     const auto t1 = std::chrono::high_resolution_clock::now();
     //for (size_t T = 0; T < times; ++T){
-        for (int i = 0; i < num_ops; ++i)
+        for (size_t i = 0; i < num_ops; ++i)
             index.find(query[i], _);
     //}
     const auto t2 = std::chrono::high_resolution_clock::now();

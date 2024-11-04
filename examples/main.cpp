@@ -1,8 +1,8 @@
 #include <bits/stdc++.h>
 #include "aex/aex.h"
 using namespace std;
-typedef int KEY_TYPE;
-typedef int PAYLOAD_TYPE;
+typedef long long KEY_TYPE;
+typedef long long PAYLOAD_TYPE;
 
 
 const int num_keys = 100;
@@ -17,7 +17,7 @@ int main(){
     //lsfor (int i = 0; i < 3*)
     //for (int i = 0; i < num_keys; ++i) 
 
-    aex::aex_map<KEY_TYPE, PAYLOAD_TYPE> index(values, values + num_keys + 1);
+    aex::aex_tree<KEY_TYPE, PAYLOAD_TYPE> index(values, values + num_keys + 1);
     
     for (int i = num_keys; i < 2 * num_keys; ++i){
         index.insert(values[i]);

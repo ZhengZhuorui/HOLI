@@ -45,58 +45,102 @@ struct aex_rw_spinlock{
     inline void unlock(){}
     inline void lock_shared(){}
     inline void unlock_shared(){}
-    inline void try_lock_shared(){}
+    inline void upgrade_lock(){}
+    inline void downgrade_lock(){}
+    inline bool try_lock(){return true;}
+    inline bool try_lock_shared(){return true;}
+    inline bool try_upgrade_lock(){return true;}
     inline bool is_lock(){return false;}
     inline bool is_lock_shared(){return false;}
-    int get_cnt(){return 0;}
 };
 
 template<typename traits>
 struct aex_rw_spinlock<traits, true>{
     typedef aex_rw_spinlock<traits, true> self;
-    aex_rw_spinlock() : writeLock(false), readCount(0) {}
-    aex_rw_spinlock(const self &x){}
-    aex_rw_spinlock(const self &&x){}
+    //aex_rw_spinlock() : writeLock(false), readCount(0) {}
+    aex_rw_spinlock() : lockCount(0) {}
+    aex_rw_spinlock(const self &x) = delete;
+    aex_rw_spinlock(const self &&x) = delete;
     ~aex_rw_spinlock(){}
-    self& operator = (const self &x){return *this;}
-    self& operator = (const self &&x){return *this;}
+    self& operator = (const self &x) = delete;
+    self& operator = (const self &&x) = delete;
     void lock_shared() {
-        while (writeLock.load(std::memory_order_acquire));
-        readCount.fetch_add(1, std::memory_order_acquire);
+        int expected = lockCount.load() & (~1);
+        int result   = expected + 0b10;
+        while (!lockCount.compare_exchange_weak(expected, result, std::memory_order_acquire)) {
+            expected = lockCount.load() & (~1);
+            result   = expected + 0b10;
+        }
     }
 
     void unlock_shared() {
-        readCount.fetch_sub(1, std::memory_order_release);
+        lockCount.fetch_sub(0b10);
     }
-
-    void lock() {
-        bool expected = false;
-        while (!writeLock.compare_exchange_weak(expected, true, std::memory_order_acquire)) {
-            expected = false;
-        }
-        while (readCount.load(std::memory_order_acquire) > 0);
-    }
-
-    void unlock() {
-        writeLock.store(false, std::memory_order_release);
-    }
-
+    
     bool try_lock_shared(){
-        if (writeLock.load(std::memory_order_acquire)){
+        int expected = lockCount.load() & (~1);
+        int result   = expected + 0b10;
+        if (!lockCount.compare_exchange_weak(expected, result, std::memory_order_acquire)) 
             return false;
-        }
-        readCount.fetch_add(1, std::memory_order_acquire);
         return true;
     }
 
-    int get_cnt(){
-        return readCount.load(std::memory_order_acquire);
+    void lock() {
+        //bool expected = false;
+        int expected = lockCount.load() & (~1);
+        int result   = expected | 1;
+        while (!lockCount.compare_exchange_weak(expected, result, std::memory_order_acquire)) {
+            expected = lockCount.load() & (~1);
+            result   = expected | 1;
+        }
+        while (lockCount.load() >= 0b10);
     }
 
-    inline bool is_lock(){return writeLock == true;}
-    inline bool is_lock_shared(){return (readCount > 0);}
-    std::atomic<bool> writeLock;
-    std::atomic<int> readCount;
+    void unlock() {
+        //writeLock.store(false, std::memory_order_release);
+        lockCount.store(0, std::memory_order_release);
+    }
+
+    bool try_lock(){
+        int expected = lockCount.load() & (~1);
+        int result   = expected | 1;
+        if (!lockCount.compare_exchange_weak(expected, result, std::memory_order_acquire)) return false;
+        while (lockCount.load() >= 0b10);
+        return true;
+    }
+
+    bool try_upgrade_lock(){
+        AEX_ASSERT(lockCount.load() >= 0b10);
+        int expected = lockCount.load() & (~1);
+        int result   = expected - 1;
+        if (!lockCount.compare_exchange_weak(expected, result, std::memory_order_acquire)) 
+            return false;
+        while (lockCount.load() >= 0b10);
+        return true;
+    }
+
+    // unused. may deadlock
+    void upgrade_lock(){
+        int expected, result;
+        AEX_ASSERT(lockCount.load() >= 0b10);
+        expected = lockCount.load() & (~1);
+        result   = expected - 1;
+        while (!lockCount.compare_exchange_weak(expected, result, std::memory_order_acquire)) {
+            expected = lockCount.load() & (~1);
+            result   = expected - 1;
+        }
+        while (lockCount.load() >= 0b10);
+    }
+
+    void downgrade_lock(){
+        lockCount.fetch_add(1);
+    }
+
+    inline bool is_lock(){return (lockCount & 1) == 1;}
+    inline bool is_lock_shared(){return (lockCount >> 1) > 0;}
+    //std::atomic<bool> writeLock;
+    //std::atomic<int> readCount;
+    std::atomic<int> lockCount;
 };
 
 template<typename traits, bool AllowSplitBalance = traits::AllowSplitBalance>
@@ -284,93 +328,107 @@ struct aex_tree_balance_stats<traits, true, true>{
     aex_spinlock<traits> lk;
 };
 
-template<typename key_type,
-        typename value_type,
-        typename traits,
-        bool _ = traits::AllowDynamicDataNode>
-struct data_node_components{
-    typedef aex_static_data_node<key_type, value_type, traits> data_node;
-};
+//template<typename T* >
+//struct no_atomic_ptr{
+//    typedef T* _Ptr;
+//    typedef no_atomic_ptr<T*> self;
+//
+//    no_atomic_ptr(_Ptr t){ptr = t;}
+//
+//    self& operator = (_Ptr t){ptr = t; return *this;}
+//
+//    self& operator = (self &x){ptr = x.ptr;return *this;}
+//
+//    inline _Ptr load(){return ptr;}
+//
+//    inline void store(_Ptr t){ptr = t;}
+//
+//    T* ptr;
+//}
 
-template<typename key_type,
-        typename value_type,
-        typename traits>
-struct data_node_components<key_type, value_type, traits, true>{
-    typedef aex_data_node<key_type, value_type, traits> data_node;
+template<typename T>
+struct empty_type{
+    empty_type(){}
+    empty_type& operator=(T &x){return *this;}
+    bool operator==(T &x){return true;}
 };
 
 template<typename traits, bool _ = traits::AllowConcurrency>
 struct aex_concurrency_components{
-    typedef typename traits::key_type key_type;
-
+    typedef typename traits::key_type   key_type;
     typedef typename traits::value_type value_type;
+    typedef unsigned long long          size_type;
 
-    typedef aex_node_base<key_type, value_type, traits> base_node;
-
-    typedef aex_dynamic_node_base<key_type, value_type, traits> base_dynamic_node;
-
-    typedef aex_inner_node<key_type, value_type, traits> inner_node;
-
-    //typedef aex_static_data_node<key_type, value_type, traits> data_node;
-
-    typedef typename data_node_components<key_type, value_type, traits>::data_node data_node;
-
-    typedef aex_rw_spinlock<traits> NodeMutex;
+    typedef aex_node_base<key_type, value_type, traits>        base_node;
+    typedef aex_inner_node<key_type, value_type, traits>       inner_node;
+    typedef aex_hash_node<key_type, value_type, traits>        hash_node;
+    typedef aex_dense_node<key_type, value_type, traits>       dense_node;
+    typedef aex_static_data_node<key_type, value_type, traits> data_node;
+    typedef base_node* node_ptr;
+    typedef inner_node* inner_node_ptr;
+    typedef hash_node* hash_node_ptr;
+    typedef dense_node* dense_node_ptr;
+    typedef data_node* data_node_ptr;    
     
     typedef aex_rw_spinlock<traits> RWLock;
-
-    typedef aex_spinlock<traits> Lock;
-
+    typedef aex_spinlock<traits>    Lock;
     typedef aex_allocator<key_type, value_type, traits> Allocator;
-
+    typedef aex_hash_table<key_type, traits>            HashTable;
+    typedef empty_type<unsigned long long> version_type;
 };
 
 template<typename traits>
 struct aex_concurrency_components<traits, true>{
     typedef typename traits::key_type key_type;
-
     typedef typename traits::value_type value_type;
+    typedef std::atomic_uint64_t size_type;
 
-    typedef aex_node_base<key_type, value_type, traits> base_node;
+    typedef aex_node_base<key_type, value_type, traits>            base_node;
+    typedef aex_inner_node<key_type, value_type, traits>           inner_node;
+    typedef aex_hash_node_con<key_type, value_type, traits>        hash_node;
+    typedef aex_dense_node<key_type, value_type, traits>           dense_node;
+    typedef aex_static_data_node<key_type, value_type, traits>     data_node;
 
-    typedef aex_dynamic_node_base<key_type, value_type, traits> base_dynamic_node;
-
-    typedef aex_inner_node_con<key_type, value_type, traits> inner_node;
-
-    typedef aex_data_node_con<key_type, value_type, traits> data_node;
-
-    typedef aex_rw_spinlock<traits> NodeMutex;
+    typedef base_node*  node_ptr;
+    typedef inner_node* inner_node_ptr;
+    typedef hash_node*  hash_node_ptr;
+    typedef dense_node* dense_node_ptr;
+    typedef data_node*  data_node_ptr;    
+    //typedef std::atomic<base_node*> atomicPtr;
 
     typedef aex_rw_spinlock<traits> RWLock;
+    typedef aex_spinlock<traits>    Lock;
+    // TODO: 
+    typedef aex_allocator<key_type, value_type, traits> Allocator;
+    typedef aex_hash_table_con<key_type, traits>        HashTable;
 
-    typedef aex_spinlock<traits> Lock;
-
-    typedef aex_allocator_con<key_type, value_type, traits> Allocator;
+    typedef unsigned long long version_type;
 };
 
 template<typename traits>
 struct aex_default_components{
-    typedef typename traits::key_type key_type;
+    typedef typename traits::key_type   key_type;
     typedef typename traits::value_type value_type;
-    
     typedef aex_concurrency_components<traits> concurrency_components;
-    typedef aex_node_balance_stats<traits> node_balance_stats;
-    typedef aex_tree_balance_stats<traits> tree_balance_stats;
-    typedef aex_node_split_stats<traits> node_split_stats;
 
-    typedef typename concurrency_components::NodeMutex NodeMutex;
-    typedef typename concurrency_components::RWLock RWLock;
-    typedef typename concurrency_components::Lock Lock;
-    typedef typename concurrency_components::base_node base_node;
-    typedef typename concurrency_components::base_dynamic_node base_dynamic_node;
-    typedef typename concurrency_components::inner_node inner_node;
-    typedef typename concurrency_components::data_node data_node;
-    typedef typename concurrency_components::Allocator Allocator;
-
-    typedef aex_hash_table<key_type, traits> HashTable;
-    //typedef gap_array_linear_model_hash_table<key_type, traits> InnerNodeModel;
-    typedef PDM_hash_table<key_type, traits> baseInnerNodeModel;
-    typedef PDM_hash_table_AVX<key_type, baseInnerNodeModel, traits> InnerNodeModel;
+    typedef typename concurrency_components::Lock           Lock;
+    typedef typename concurrency_components::RWLock         RWLock;
+    typedef typename concurrency_components::base_node      base_node;
+    typedef typename concurrency_components::inner_node     inner_node;
+    typedef typename concurrency_components::hash_node      hash_node;
+    typedef typename concurrency_components::dense_node     dense_node;    
+    typedef typename concurrency_components::data_node      data_node;
+    typedef typename concurrency_components::node_ptr       node_ptr;
+    typedef typename concurrency_components::inner_node_ptr inner_node_ptr;
+    typedef typename concurrency_components::hash_node_ptr  hash_node_ptr;
+    typedef typename concurrency_components::dense_node_ptr dense_node_ptr;
+    typedef typename concurrency_components::data_node_ptr  data_node_ptr;    
+    typedef typename concurrency_components::Allocator      Allocator;
+    typedef typename concurrency_components::HashTable      HashTable;
+    typedef aex_hash_table_block<key_type, traits>          HashTableBlock;
+    typedef typename concurrency_components::version_type   version_type;
+    typedef typename concurrency_components::size_type      size_type;
+    typedef gap_array_linear_model_hash_table<key_type, traits> InnerNodeModel;
     typedef linear_model<key_type, traits> DataNodeModel;
 
     typedef aex_bitmap_impl<traits> bitmap_impl;

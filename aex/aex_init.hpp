@@ -4,7 +4,7 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), allocator(this), empty_leaf(nullptr){
+inline aex_tree<_Key, _Val, traits>::aex_tree():version(0), root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), empty_leaf(nullptr), hash_table(traits::MIN_HASH_TABLE_SIZE){
     AEX_HINT("BEGIN");
     this->init();
     AEX_HINT("END");
@@ -12,186 +12,275 @@ inline aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr
 
 template<typename _Key, typename _Val, typename traits>
 template<typename _InputIterator>
-inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(), allocator(this), empty_leaf(nullptr){
+inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): version(0), root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), empty_leaf(nullptr), hash_table(traits::MIN_HASH_TABLE_SIZE){
     this->init();
-    /* TODO: insert data sequencely */
     std::vector<std::pair<key_type, value_type> > data;
     for (auto it = __first; it != __last; ++it)
-        data.push_back(*it);
+        data.emplace_back(*it);
     std::sort(data.begin(), data.end());
     this->bulk_load(data.data(), data.size());
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(),  allocator(this), empty_leaf(nullptr){
+inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):version(0), root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), empty_leaf(nullptr), hash_table(traits::MIN_HASH_TABLE_SIZE){
+    _index.XL();
     this->init();
-    this->root = this->construct(_index.root);
-    this->link_tree_ptr();
+    this->root = this->construct(_index, _index.root);
     this->m_stats = _index.m_stats;
-    this->balance_stats = _index.balance_stats;
-    this->allocator = _index.allocator;
+    _index.XU();
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), balance_stats(),  allocator(this), empty_leaf(nullptr){
+inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):version(0), root(nullptr), head_leaf(nullptr), tail_leaf(nullptr), m_stats(), empty_leaf(nullptr), hash_table(traits::MIN_HASH_TABLE_SIZE){
+    _index.XL();
     this->erase_tree_recursive(this->root);    
-    this->init();
+
     this->root = _index.root;
     _index.root = nullptr;
     this->head_leaf = _index.head_leaf;
     _index.head_leaf = nullptr;
     this->tail_leaf = _index.tail_leaf;
     _index.tail_leaf = nullptr;
-
     this->m_stats = _index.m_stats;
-    this->balance_stats = _index.balance_stats;
+    this->hash_table = std::move(_index.hash_table);
+    _index.XU();
 }
 
 template<typename _Key, typename _Val, typename traits>
 inline aex_tree<_Key, _Val, traits>::~aex_tree(){
+    XL();
     this->erase_tree_recursive(this->root);
-    this->root = nullptr;
-    this->head_leaf = this->tail_leaf = nullptr;
-    if (empty_leaf != nullptr)
-        delete empty_leaf;
 }
 
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::init(){
-
+    XL();
     if (this->root != nullptr){
-        this->deconstruct(this->root);
+        this->erase_tree_recursive(this->root);
+        this->hash_table.clear();
     }
     if (empty_leaf == nullptr){
-        empty_leaf = allocator.allocate_data_node();
-        empty_leaf->prev = nullptr;
+        empty_leaf = new data_node();
         empty_leaf->next = empty_leaf;
         empty_leaf->size = 0;
     }
-
-    std::fill(this->tree_stack, this->tree_stack + traits::MAX_DEPTH, nullptr);
-    //this->m_stats.max_key = std::numeric_limits<key_type>::lowest();
-    //this->m_stats.min_key = std::numeric_limits<key_type>::max();
-    self::inner_node_few_ratio[0] = traits::DATA_NODE_FEW_RATIO;
-    self::inner_node_full_ratio[0] = traits::DATA_NODE_FULL_RATIO;
-    
-    self::log_inner_node_few_ratio[0] = traits::LOG_DATA_NODE_FEW_RATIO;
-    self::log_inner_node_full_ratio[0] = traits::LOG_DATA_NODE_FULL_RATIO;
-
-    self::inner_node_few_ratio[1] = traits::DATA_NODE_FEW_RATIO / 2;
-    self::inner_node_full_ratio[1] = traits::DATA_NODE_FULL_RATIO / 2;
-
-    self::log_inner_node_few_ratio[1] = traits::LOG_DATA_NODE_FEW_RATIO + 1;
-    self::log_inner_node_full_ratio[1] = traits::LOG_DATA_NODE_FULL_RATIO + 1;
-    //AEX_PRINT("log_slot_size=" << traits::LOG_INNER_NODE_SLOT_SIZE);
-    for (int i = 2; i < traits::MAX_DEPTH; ++i){
-        self::inner_node_few_ratio[i] = self::inner_node_few_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
-        self::inner_node_full_ratio[i] = self::inner_node_full_ratio[i - 1] * traits::DENSITY_NARROW_RATIO;
-        self::log_inner_node_few_ratio[i] = self::log_inner_node_few_ratio[i - 1] + traits::LOG_DENSITY_NARROW_RATIO;
-        self::log_inner_node_full_ratio[i] = self::log_inner_node_full_ratio[i - 1] + traits::LOG_DENSITY_NARROW_RATIO;
-        //AEX_PRINT("i=" << i << ": " << (1 << self::log_inner_node_few_ratio[i]) << ", " << 1.0 / self::inner_node_few_ratio[i]);
-        //AEX_PRINT("i=" << i << ": " << (1 << self::log_inner_node_full_ratio[i]) << ", " << 1.0 / self::inner_node_full_ratio[i]);
-        AEX_ASSERT(std::abs(self::inner_node_few_ratio[i] * (1 << self::log_inner_node_few_ratio[i]) - 1) < 1e-5);
-        AEX_ASSERT(std::abs(self::inner_node_full_ratio[i] * (1 << self::log_inner_node_full_ratio[i]) - 1) < 1e-5);
-    }
-
-    this->max_inner_node_slot_size[0] = traits::MAX_DATA_NODE_SLOT_SIZE;
-    for (int i = 1; i < traits::MAX_DEPTH; ++i){
-        this->max_inner_node_slot_size[i] = traits::MAX_INNER_NODE_SLOT_SIZE;
-        //self::inner_node_few_ratio[i] *= 0.5;
-        //AEX_PRINT(this->self::inner_node_few_ratio[i] << ", " << this->self::inner_node_full_ratio[i]);
-    }
-
     this->root = this->head_leaf = this->tail_leaf = nullptr;
-    this->allocator.clear();
     this->m_stats = aex_stats();
-    this->balance_stats = tree_balance_stats();
+    XU();
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::construct(node_ptr node){
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::construct(self &other, const node_ptr node){
     //AEX_PRINT("node=" << node << ", IS LEAF?" << IS_LEAF_NODE(node));
     if (node == nullptr)
         return nullptr;
-    node_ptr new_node;
-    if (IS_LEAF_NODE(node)){
-        //new_node = allocator.allocate_data_node(node->slot_size, IS_ML_NODE(node));
-        if constexpr (traits::AllowDynamicDataNode)
-            new_node = allocator.allocate_data_node(node->slot_size, IS_ML_NODE(node));
-        else
-            new_node = allocator.allocate_data_node();
-        ++this->m_stats.level_node[0];
-        data_node_ptr _node = static_cast<data_node_ptr>(node), _new_node = static_cast<data_node_ptr>(new_node);
-        *_new_node = *_node;
-    }
-    else{
-        new_node = allocator.allocate_inner_node(static_cast<inner_node_ptr>(node)->slot_size, node->level, IS_ML_NODE(node));
-        inner_node_ptr _node = static_cast<inner_node_ptr>(node), _new_node = static_cast<inner_node_ptr>(new_node);
-        ++this->m_stats.level_node[_node->level];
-        *_new_node = *_node;        
-        bitmap bm = static_cast<inner_node_ptr>(node)->bitmap_ptr;
-        node_ptr* child = static_cast<inner_node_ptr>(node)->child_ptr;
-        node_ptr* new_child = static_cast<inner_node_ptr>(new_node)->child_ptr;
-        if (IS_ML_NODE(node)){
-            slot_type prev = 0;
-            for (slot_type i = 0; i < _node->slot_size; ++i)
-            if (bitmap_impl::at(bm, i)){
-                new_child[i] = construct(child[i]);
-                std::fill(new_child + prev, new_child + i, new_child[i]);
-                prev = i + 1;
+    switch (node->type){
+        case NodeType::LeafNode:{
+            #ifdef AEX_DEBUG
+            opt_stats.allocate_data_node_cnt++;
+            #endif
+            data_node_ptr new_node = new data_node();
+            *l_n(new_node) = *l_n(node);
+            if (head_leaf == nullptr)
+                head_leaf = new_node;
+            if (tail_leaf == nullptr)
+                tail_leaf = new_node;
+            else{
+                tail_leaf->next = new_node;
+                tail_leaf = new_node;
             }
-            //new_child[_node->slot_size - 1] = construct(child[_node->slot_size - 1]);
-            //std::fill(new_child + prev, new_child + _node->slot_size, new_child[_node->slot_size - 1]);
+            return new_node;
+        }
+        case NodeType::DenseNode:{
+            #ifdef AEX_DEBUG
+            opt_stats.allocate_dense_node_cnt++;
+            #endif
+            dense_node_ptr new_node = Allocator::allocate_dense_node(node->slot_size);
+            std::copy(node->key_ptr, node->key_ptr + node->size, new_node->key_ptr);
+            node->size = new_node->size;
+            for (slot_type i = 0; i < node->size; ++i)
+                new_node->child_ptr[i] = construct(other, d_n(node)->child_ptr[i]);
+            return new_node;
+        }
+        case NodeType::HashNode:{
+            #ifdef AEX_DEBUG
+            opt_stats.allocate_hash_node_cnt++;
+            #endif
+            hash_node_ptr new_node = Allocator::allocate_hash_node(node->slot_size);
+            std::copy(node->bitmap_ptr, node->bitmap_ptr + node->slot_size / traits::SLOT_PER_LOCK + 1, node->bitmap_ptr);
+            for (slot_type i = 0; i < node->slot_size;){
+                key_type key;
+                node_ptr child;
+                std::tie(key, child) = other.hash_table.find(node, i);
+                node_ptr new_child_node = construct(other, child);
+                hash_table.insert(new_node, i, key, new_child_node);
+                slot_type j = node->next_item(i + 1);
+                for (slot_type k = highbit_64(i + 1); k < j; )
+                    hash_table.insert(new_node, k, key, new_child_node);
 
-            for (slot_type i = 0; i < _new_node->hash_array_size(); ++i)
-                for (slot_type j = 0; j < _new_node->hash_table.size_ptr[i]; ++j)
-                    _new_node->hash_table.child_ptr[i * traits::ERROR_BOUND + j] = construct(_node->hash_table.child_ptr[i * traits::ERROR_BOUND + j]);
-        }
-        else{
-            for (slot_type i = 0; i < node->size; ++i){
-                new_child[i] = construct(child[i]);
+                i = j;
             }
+            new_node->size = node->size;
+            return new_node;
         }
     }
-    return new_node;
+    return nullptr;
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::link_tree_ptr(){
-    if (this->root == nullptr)
+inline void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, value_type>* const data, const size_t nums){
+    this->deconstruct(this->root);
+    if (nums == 0)
         return;
-    std::vector<node_ptr> child_buf[2];
-    std::vector<key_type> key_buf;
-    child_buf[0].resize(1);
-    child_buf[0][0] = root;
-    int t = 0;
-    while (child_buf[t].size() > 0){
-        child_buf[t ^ 1].clear();
-        size_type m = child_buf[t].size();
-        for (size_type i = 0; i < m - 1; ++i){
-            child_buf[t][i + 1]->prev = child_buf[t][i];
-            child_buf[t][i]->next = child_buf[t][i + 1];
-        }
-        child_buf[t][0]->prev = child_buf[t][m - 1]->next = nullptr;
-        if (!IS_LEAF_NODE(child_buf[t][0])){
-            size_type cnt = 0;
-            int level = static_cast<inner_node_ptr>(child_buf[t][0])->level;
-            child_buf[t^1].resize(this->m_stats.level_node[level - 1]);
-            key_buf.resize(this->m_stats.level_node[level - 1]);
-            for (auto &node : child_buf[t]){
-                copy_to_buffer(static_cast<inner_node_ptr>(node), key_buf.data(), child_buf[t^1].data() + cnt);
-                cnt += node->size;
-            }
-        }
-        else{
-            this->head_leaf = static_cast<data_node_ptr>(child_buf[t][0]);
-            this->tail_leaf = static_cast<data_node_ptr>(child_buf[t][m - 1]);
-        }
-        t ^= 1;
+    this->m_stats.height = 1;
+    std::vector<key_type> key_buf(nums), new_key_buf;
+    std::vector<data_node_ptr> new_child_buf;
+    std::vector<value_type> data_buf(nums);
+    
+    for (size_t i = 0; i < nums; ++i){
+        key_buf[i] = data[i].first;
+        data_buf[i] = data[i].second;
     }
-    this->tail_leaf->next = empty_leaf;
-    empty_leaf->prev = this->tail_leaf;
+
+    split_to_static_data_node(key_buf.data(), data_buf.data(), nums, new_key_buf, new_child_buf);
+    
+    size_t m = new_child_buf.size();
+    new_child_buf[m - 1]->next = this->empty_leaf;
+    for(size_t i = 0; i < m - 1; ++i)
+        new_child_buf[i]->next = new_child_buf[i + 1];
+
+    this->m_stats.size = nums;
+    this->head_leaf = new_child_buf[0];
+    this->tail_leaf = new_child_buf[m - 1];
+    this->root = this->construct(new_key_buf.data(), new_child_buf.data(), new_child_buf.size());
 }
+
+template<typename _Key, typename _Val, typename traits>
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::construct(const key_type *keys, const node_ptr* childs, const size_t n){
+    slot_type slot_size = 0;
+    if (n < traits::MIN_HASH_NODE_SIZE){
+        slot_size = min_slot_size(n, traits::MIN_DENSE_NODE_SLOT_SIZE);
+        #ifdef AEX_DEBUG
+        opt_stats.allocate_dense_node_cnt++;
+        #endif
+        dense_node_ptr new_node = Allocator::allocate_dense_node(slot_size);
+        std::copy(keys,   keys + n,   new_node->key_ptr);
+        std::copy(childs, childs + n, new_node->child_ptr);
+        new_node->size = n;
+        return new_node;
+    }
+    Model model;
+    slot_size = train(keys, n, model);
+    if (slot_size == 0){
+        #ifdef AEX_DEBUG
+        opt_stats.allocate_dense_node_cnt++;
+        #endif
+        dense_node_ptr new_node = Allocator::allocate_dense_node(traits::MIN_DENSE_NODE_SLOT_SIZE);
+        construct(new_node, keys, childs, n, model);
+        return new_node;
+    }
+    else{
+        #ifdef AEX_DEBUG
+        opt_stats.allocate_hash_node_cnt++;
+        #endif
+        hash_node_ptr new_node = Allocator::allocate_hash_node(slot_size);
+        construct(new_node, keys, childs, n);
+        return new_node;
+    }
+}
+
+template<typename _Key, typename _Val, typename traits>
+inline void aex_tree<_Key, _Val, traits>::construct(inner_node_ptr node, const key_type *keys, const node_ptr* childs, const size_t n){
+    slot_type slot_size = 0;
+    Model model;
+    if (n < traits::MIN_HASH_NODE_SIZE){
+        slot_size = min_slot_size(n, traits::MIN_DENSE_NODE_SLOT_SIZE);
+        cast_to_dense_node(node, slot_size);
+        std::copy(keys,   keys + n,   d_n(node)->key_ptr);
+        std::copy(childs, childs + n, d_n(node)->child_ptr);
+        node->size = n;
+        return;
+    }
+    slot_size = train(keys, n, model);
+    if (slot_size == 0){
+        cast_to_dense_node(node, traits::MIN_DENSE_NODE_SLOT_SIZE);
+        construct(d_n(node), keys, childs, n, model);
+    }
+    else{
+        cast_to_hash_node(node, slot_size);
+        construct(h_n(node), keys, childs, n);
+    }
+}
+
+template<typename _Key, typename _Val, typename traits>
+inline void aex_tree<_Key, _Val, traits>::construct(dense_node_ptr node, const key_type *keys, const node_ptr* childs, const size_t n, const Model &m){
+    slot_type prev_pos = m.predict(keys[0]), pos;
+    size_t start = 0;
+    for (size_t i = 1; i < n; ++i){
+        pos = m.predict(keys[i]);
+        if (pos != prev_pos){
+            if (i - start > 1){
+                node->key_ptr[node->size] = keys[i - 1];
+                node->child_ptr[node->size] = construct(keys + start, keys + i - 1, i - start);
+                ++node->size;
+            }
+            else{
+                node->key_ptr[node->size] = keys[i - 1];
+                node->child_ptr[node->size] = childs[i - 1];
+                ++node->size;
+            }
+            prev_pos = pos;
+        }
+    }
+
+    if (n - start > 1){
+        node->key_ptr[node->size] = keys[n - 1];
+        node->child_ptr[node->size] = construct(keys + start, childs + start, n - start);
+        ++node->size;
+    }
+    else{
+        node->key_ptr[node->size] = keys[n - 1];
+        node->child_ptr[node->size] = childs[n - 1];
+        ++node->size;
+    }
+    node->try_learn = true;
+}
+
+template<typename _Key, typename _Val, typename traits>
+inline void aex_tree<_Key, _Val, traits>::construct(dense_node_ptr node, const key_type *keys, const node_ptr* childs, const size_t n){
+    std::copy(keys, keys + n, node->key_ptr);
+    std::copy(childs, childs + n, node->child_ptr);
+    node->size = n;
+}
+
+template<typename _Key, typename _Val, typename traits>
+inline void aex_tree<_Key, _Val, traits>::construct(hash_node_ptr node, const key_type *keys, const node_ptr* childs, const size_t n){
+    node->model.train(keys, n, node->slot_size);
+    slot_type prev_pos = node->predict(keys[1]), pos;
+    size_t start = 0;
+    for (size_t i = 1; i < n; ++i){
+        pos = node->predict(keys[i]);
+        if (pos != prev_pos){
+            if (i - start > traits::MAX_COLLISION){
+                inner_node_ptr new_node = this->construct(keys + start, childs + start, i - start);
+                __construct_insert(node, prev_pos, pos, keys[start], childs[start]);
+            }
+            else
+                __construct_insert(node, prev_pos, pos, keys[start], childs[start]);
+            start = i;
+            prev_pos = pos;
+        }
+    }
+
+    if (n - start > traits::MAX_COLLISION){
+        inner_node_ptr new_node = construct(keys + start, childs + start, n - start);
+        __construct_insert(node, pos, node->slot_size, keys[start], new_node);
+    }
+    else
+        __construct_insert(node, pos, node->slot_size, keys[start], childs[start]);
+}
+
+
 
 }

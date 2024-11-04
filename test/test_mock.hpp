@@ -145,7 +145,7 @@ public:
             key_type* node_key = in->key_ptr;
             node_ptr* node_child = in->child_ptr;
             if (IS_ML_NODE(node)){
-                size_type cnt = 0;
+                size_t cnt = 0;
                 bitmap bm = in->bitmap_ptr;
                 for (slot_type i = 0; i < in->slot_size; ++i){
                     // check if the key is larger than prev position key
@@ -205,7 +205,7 @@ public:
 
     bool debug_error(){
         std::pair<key_type, bool> res = (this->root == nullptr)? std::make_pair(0LL, true) : debug(this->root);
-        size_type cnt = 0;
+        size_t cnt = 0;
         bool flag = res.second;
         key_type prev_key;
         for (iterator it = this->begin(); it != this->end(); ++it){
@@ -349,7 +349,7 @@ public:
             key_type* node_key = in->key_ptr;
             node_ptr* node_child = in->child_ptr;
             if (IS_ML_NODE(node)){
-                size_type cnt = 0;
+                size_t cnt = 0;
                 bitmap bm = in->bitmap_ptr;
                 for (slot_type i = 0; i < in->slot_size; ++i){
                     // check if the key is larger than prev position key
@@ -409,7 +409,7 @@ public:
 
     bool debug_error(){
         std::pair<key_type, bool> res = (this->root == nullptr)? std::make_pair(0LL, true) : debug(this->root);
-        size_type cnt = 0;
+        size_t cnt = 0;
         bool flag = res.second;
         key_type prev_key;
         for (iterator it = this->begin(); it != this->end(); ++it){

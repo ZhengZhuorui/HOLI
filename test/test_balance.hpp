@@ -12,7 +12,6 @@ bool test_inner_node_insert_balance_perf(vector<key_type> &data, size_t n, size_
     typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
     typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
     [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
-    typedef typename traits::size_type size_type;
     typedef typename traits::slot_type slot_type;
     typedef typename aex::aex_bitmap_impl<traits> bitmap_impl;
 
@@ -23,11 +22,11 @@ bool test_inner_node_insert_balance_perf(vector<key_type> &data, size_t n, size_
     split_dataset(node_data, insert_data, batch);
     printf("prepare dataset target 0\n");
     n -= batch;
-    for (size_type i = 1; i < n; ++i)
+    for (size_t i = 1; i < n; ++i)
         if (node_data[0] > node_data[i]) 
             std::swap(node_data[0], node_data[i]);
             
-    for (size_type i = 0; i < batch; ++i)
+    for (size_t i = 0; i < batch; ++i)
         if (node_data[0] > insert_data[i]) 
             std::swap(node_data[0], insert_data[i]);
     std::sort(node_data.begin(), node_data.end());
@@ -54,7 +53,7 @@ bool test_inner_node_insert_balance_perf(vector<key_type> &data, size_t n, size_
     inner_node_ptr node = tree.allocator.allocate_inner_node(static_cast<inner_node_ptr>(child_buf[0])->slot_size, IS_ML_NODE(child_buf[0]));
     *node = *static_cast<inner_node_ptr>(child_buf[0]);
 
-    size_type insert_failed = 0;
+    size_t insert_failed = 0;
     vector<key_type> final_node_data(n);
     std::copy(node_data.data(), node_data.data() + n, final_node_data.data());
 
@@ -66,7 +65,7 @@ bool test_inner_node_insert_balance_perf(vector<key_type> &data, size_t n, size_
             ++insert_failed;
             AEX_PRINT("insert failed!");
         }
-        else final_node_data.push_back(insert_data[i]);
+        else final_node_data.emplace_back(insert_data[i]);
 
         if (!full_flag && tree.isfull(node)){
             full_flag = true;
@@ -77,7 +76,7 @@ bool test_inner_node_insert_balance_perf(vector<key_type> &data, size_t n, size_
     printf("insert failed=%lld, fail ratio=%.4f\n", insert_failed, 1.0 * insert_failed / batch);
     AEX_PRINT("merge nodes=" << n + batch - insert_failed - node->size);
 
-    size_type bit_cnt = 0;
+    size_t bit_cnt = 0;
     for (slot_type i = 0; i < node->slot_size; ++i){
         if (i > 1 && node->key_ptr[i] < node->key_ptr[i - 1]){
             AEX_ERROR("Key Error! slot[" << i << "]=" << node->key_ptr[i] << ", slot[" << i - 1 << "]=" << node->key_ptr[i - 1]);

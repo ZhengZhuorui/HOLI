@@ -19,16 +19,10 @@ public:
 
     typedef aex_tree<key_type, value_type, traits> tree;
 
-    typedef typename tree::size_type size_type;
-
     typedef typename tree::iterator iterator;
-
     typedef typename tree::const_iterator const_iterator;
-
-    typedef typename tree::reverse_iterator reverse_iterator;
-
-    typedef typename tree::const_reverse_iterator const_reverse_iterator;
-
+    //typedef typename tree::reverse_iterator reverse_iterator;
+    //typedef typename tree::const_reverse_iterator const_reverse_iterator;
     typedef typename tree::aex_stats stats;
 
 //#ifndef AEX_DEBUG
@@ -114,17 +108,14 @@ public:
         _m.bulk_load(data, nums);
     }
 
-    inline const stats& get_stats() const{
-        return _m.get_stats();
-    }
+    //inline const stats& get_stats() const{
+    //    return _m.get_stats();
+    //}
 
-    inline void print_stats(){
-        return _m.print_stats();
-    }
-
-    inline void print_detail(){
-        return _m.print_detail();
-    }
+    //inline void print_stats(){
+    //    return _m.print_stats();
+    //}
+    
     /*
     inline std::pair<iterator, iterator> equal_range(const key_type &key){
         return _m.equal_range(key);
@@ -135,19 +126,10 @@ public:
     }
     */
 
-    inline size_type memory_used()const{
+    inline size_t memory_used()const{
         return _m._memory_used();
     }
 
-    #ifdef AEX_DEBUG
-    void set_debug_level(int level){
-        tree::debug_level = level;
-    }
-
-    inline bool debug_error(){
-        return _m.debug_error();
-    }
-    #endif
 };
 
 } // namespace aex

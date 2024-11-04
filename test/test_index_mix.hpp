@@ -3,7 +3,6 @@ template<typename key_type,
         typename traits=aex_default_traits<key_type, value_type>>
 bool test_index_mix_perf(std::pair<key_type, value_type>* data, long long n, long long batch, double rw_ratio){
     typedef mock_aex_tree<key_type, value_type, traits> tree;
-    [[maybe_unused]]typedef typename mock_aex_tree<key_type, value_type, traits>::size_type size_type;
     typedef typename tree::node_ptr node_ptr;
     mock_aex_tree<key_type, value_type, traits> index;
     std::map<key_type, value_type> mp;
@@ -50,7 +49,7 @@ bool test_index_mix_perf(std::pair<key_type, value_type>* data, long long n, lon
             return false;
         }
         index.print_stats();
-        size_type leaf_num = 0, data_size = 0;
+        size_t leaf_num = 0, data_size = 0;
         for (node_ptr inode = index.head_leaf; inode != index.empty_leaf; inode = inode->next){
             //std::cout << "inode=" << inode << ", key[0]=" << static_cast<data_node_ptr>(inode)->key[0] << ;
             ++leaf_num;
@@ -61,7 +60,7 @@ bool test_index_mix_perf(std::pair<key_type, value_type>* data, long long n, lon
             return false;
         }
         
-        size_type i = 0;
+        size_t i = 0;
         //AEX_PRINT("slot_size=" << index.begin()._M_node->slot_size);
         std::sort(data, data + n);
         for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
@@ -120,7 +119,6 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
     
     AEX_HINT("[test index all interface]");
     typedef mock_aex_tree<key_type, value_type, traits> tree;
-    [[maybe_unused]]typedef typename mock_aex_tree<key_type, value_type, traits>::size_type size_type;
     [[maybe_unused]]typedef typename tree::node_ptr node_ptr;
     mock_aex_tree<key_type, value_type, traits> index;
     long long init_nums = n - write_nums, tot_nums = read_nums + write_nums + erase_nums;
@@ -139,7 +137,7 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
     std::fill(opt.data() + read_nums, opt.data() + read_nums + write_nums, OperationType::Insert);
     std::fill(opt.data() + read_nums + write_nums, opt.data() + tot_nums, OperationType::Erase);
     std::random_shuffle(opt.data(), opt.data() + tot_nums);
-    size_type insert_cnt = 0;
+    size_t insert_cnt = 0;
     AEX_PRINT("prepare finish...");
     {
         index.print_stats();
@@ -151,7 +149,7 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
                 //AEX_PRINT("i=" << i << "Lookup:");
                 if (index.size() < 100)
                     continue;
-                size_type pos = rand() % index_data.size();
+                size_t pos = rand() % index_data.size();
                 while (is_delete[pos] == true) 
                     pos = rand() % index_data.size();
                 auto x = index.find(index_data[pos].first);
@@ -169,7 +167,7 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
             }
             case OperationType::Insert:{
                 //AEX_PRINT("i=" << i << "Insert:");
-                index_data.push_back(insert_data[insert_cnt]);
+                index_data.emplace_back(insert_data[insert_cnt]);
                 typename tree::iterator iter;
                 bool _;
                 std::tie(iter, _) = index.insert(insert_data[insert_cnt]);
@@ -188,7 +186,7 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
             }
             case OperationType::Erase:{
                 //AEX_PRINT("i=" << i << ", Erase:");
-                size_type pos = rand() % index_data.size();
+                size_t pos = rand() % index_data.size();
                 while (is_delete[pos] == true) 
                     pos = rand() % index_data.size();
                 auto _ = index.erase(index_data[pos].first);

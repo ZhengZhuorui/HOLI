@@ -1651,4 +1651,90 @@ int PDM_hash_table<_Tp, traits>::ans[traits::MAX_SEGMENT_NUM][traits::MAX_MODEL_
 
 template<typename _Tp, typename traits>
 _Tp PDM_hash_table<_Tp, traits>::segment_start[traits::MAX_MODEL_DP_SEGMENT_SIZE];
+
+template<typename _Tp,
+        typename traits>
+class normal_linear_model{
+public:
+    typedef _Tp key_type;
+
+    typedef typename traits::slot_type slot_type;
+
+    // return the predict position. value range from 0 to +inf.
+    inline double predict(const key_type &key) const {
+        //return static_cast<slot_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
+        return args.slope * (key - args.start);
+    }
+
+    inline bool train(const key_type* const key, const slot_type n, const slot_type slot_size){
+        if (n < slot_size)
+            return false;
+        args.start = key[0];
+        args.slope = 1.0 / (key[n - 1] - key[0]);
+        int size = 1, tot_size = 0, diff_size = 0;
+        slot_type prev_pos = 0;
+        for (int i = 1; i < n; ++i){
+            slot_type pos = static_cast<int>(this->predict(key[i]));
+            if (pos != prev_pos){
+                ++diff_size;
+                tot_size += (size > traits::NORMAL_MAX_COLLISION) ? 1 : size;
+                size = 0;
+                pos = prev_pos;
+            }
+            else 
+                ++size;
+        }
+        ++diff_size;
+        tot_size += (size > traits::NORMAL_MAX_COLLISION) ? 1 : size;
+        double density = 1.0 * tot_size / slot_size;
+        if (1.0 * tot_size / slot_size < traits::MIN_NORMAL_DENSITY_RATIO)
+            return false;
+        //if (density < density_bound::MIN_DENSITY_RATIO || density > density_bound::MAX_DENSITY_RATIO) 
+        //    return false;
+        return true;
+    }
+
+    // train model with an key array, array size n and slot size
+    inline bool train(const key_type* const key, const slot_type n){
+        args.start = key[0];
+        args.slope = 1.0 / (key[n - 1] - key[0]);
+        return true;
+    }
+
+    inline slot_type max_error(const key_type* const key, const slot_type n, const slot_type slot_size){
+        
+        slot_type error = 0;
+        for (slot_type i = 0, start = 0; i < n; ++i){
+            slot_type pos = std::max(0, static_cast<slot_type>(this->predict(key[i]) * slot_size));
+            start = std::max(start, pos);
+            AEX_PRINT("key=" << key[i] << ", pos=" << pos << ", start=" << start);
+            error = std::max(error, start - pos);
+            ++start;
+        }
+        return error;
+    }
+
+    inline double RMSE(const key_type* const key, const slot_type n){
+        double sum = 0;
+        for (slot_type i = 0; i < n; ++i){
+            sum += sqr(this->predict(key[i]) * (n - 1) - i);
+        }
+        sum /= n;
+        sum = sqrt(sum);
+        return sum;
+    }
+
+    #ifdef AEX_DEBUG
+    inline static std::string name(){
+        return "gap array linear model";
+    }
+    #endif
+
+    struct linear_arguments{
+        double slope, start;
+    }args;
+
+};
+
 }
+

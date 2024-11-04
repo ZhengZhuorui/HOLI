@@ -1,12 +1,8 @@
-#pragma once
+#pragma once 
+
 
 template<typename _Tp>
-bool test_bitmap(_Tp *data_seed, long long n){
-    srand(time(NULL));
-    const int N = 100;
-    unsigned long long* x[N];
-    for (int i = 0; i < N; ++i) x = rand();
-
+void test_lock(){
     /**
     inline void array_lock(const slot_type l_pos, const slot_type r_pos){}
     inline void array_unlock(const slot_type l_pos, const slot_type r_pos){}

@@ -19,7 +19,8 @@ public:
 
     typedef typename traits::slot_type slot_type;
 
-    typedef std::bidirectional_iterator_tag iterator_category;
+    //typedef std::bidirectional_iterator_tag iterator_category;
+    typedef std::forward_iterator_tag iterator_category;
 
     typedef aex_iterator<_Key, _Val, traits> self;
 
@@ -58,33 +59,33 @@ public:
         return tmp;
     }
 
-    self& operator--(){
-        if (offset > 0) --offset;
-        else{
-            if (_M_node != nullptr){
-                _M_node = static_cast<data_node_ptr>(_M_node->prev);
-                offset = _M_node->size - 1;
-            }
-            else{
-                offset = 0;
-            }
-        }
-        return *this;
-    }
-    self& operator--(int){
-        self tmp = *this;
-        if (offset > 0) --offset;
-        else {
-            if (_M_node != nullptr){
-                _M_node = static_cast<data_node_ptr>(_M_node->prev);
-                offset = _M_node->size - 1;
-            }
-            else{
-                offset = 0;
-            }
-        }
-        return tmp;
-    }
+    // self& operator--(){
+    //     if (offset > 0) --offset;
+    //     else{
+    //         if (_M_node != nullptr){
+    //             _M_node = static_cast<data_node_ptr>(_M_node->prev);
+    //             offset = _M_node->size - 1;
+    //         }
+    //         else{
+    //             offset = 0;
+    //         }
+    //     }
+    //     return *this;
+    // }
+    // self& operator--(int){
+    //     self tmp = *this;
+    //     if (offset > 0) --offset;
+    //     else {
+    //         if (_M_node != nullptr){
+    //             _M_node = static_cast<data_node_ptr>(_M_node->prev);
+    //             offset = _M_node->size - 1;
+    //         }
+    //         else{
+    //             offset = 0;
+    //         }
+    //     }
+    //     return tmp;
+    // }
 
     bool operator==(const self& x) const {
         return (_M_node == x._M_node) && (offset == x.offset);
@@ -115,7 +116,7 @@ private:
 
     //friend class aex_reverse_iterator<_Key, _Val, traits>;
     
-    friend class aex_const_reverse_iterator<_Key, _Val, traits>;
+    //friend class aex_const_reverse_iterator<_Key, _Val, traits>;
 
     friend class aex_tree<_Key, _Val, traits>;
     
@@ -141,7 +142,7 @@ public:
 
     typedef typename traits::slot_type slot_type;
 
-    typedef std::bidirectional_iterator_tag iterator_category;
+    typedef std::forward_iterator_tag iterator_category;
 
     typedef aex_const_iterator<_Key, _Val, traits> self;
 
@@ -171,7 +172,7 @@ public:
         ++offset;
         if (offset >= _M_node->size){
             offset = 0;
-            _M_node = static_cast<data_node_ptr>(_M_node->next);
+            _M_node = _M_node->next;
         }
         return *this;
     }
@@ -181,38 +182,38 @@ public:
         ++offset;
         if (offset >= _M_node->size){
             offset = 0;
-            _M_node = static_cast<data_node_ptr>(_M_node->next);
+            _M_node = _M_node->next;
         }
         return tmp;
     }
     
-    self& operator--(){
-        if (offset > 0) --offset;
-        else {
-            if (_M_node != nullptr){
-                _M_node = static_cast<data_node_ptr>(_M_node->prev);
-                offset = _M_node->size - 1;
-            }
-            else{
-                offset = 0;
-            }
-        }
-        return *this;
-    }
-    self& operator--(int){
-        self tmp = *this;
-        if (offset > 0)--offset;
-        else {
-            if (_M_node != nullptr){
-                _M_node = static_cast<data_node_ptr>(_M_node->prev);
-                offset = _M_node->size - 1;
-            }
-            else{
-                offset = 0;
-            }
-        }
-        return tmp;
-    }
+    // self& operator--(){
+    //     if (offset > 0) --offset;
+    //     else {
+    //         if (_M_node != nullptr){
+    //             _M_node = _M_node->prev;
+    //             offset = _M_node->size - 1;
+    //         }
+    //         else{
+    //             offset = 0;
+    //         }
+    //     }
+    //     return *this;
+    // }
+    // self& operator--(int){
+    //     self tmp = *this;
+    //     if (offset > 0)--offset;
+    //     else {
+    //         if (_M_node != nullptr){
+    //             _M_node = _M_node->prev;
+    //             offset = _M_node->size - 1;
+    //         }
+    //         else{
+    //             offset = 0;
+    //         }
+    //     }
+    //     return tmp;
+    // }
 
     bool operator==(const self& x) const {
         return (_M_node == x._M_node) && (offset == x.offset);
@@ -253,6 +254,8 @@ private:
 
 };
 
+
+/*
 template<typename _Key,
         typename _Val,
         typename traits>
@@ -293,7 +296,7 @@ public:
         ++offset;
         if (offset >= _M_node->size){
             offset = 0;
-            _M_node = static_cast<data_node_ptr>(_M_node->next);
+            _M_node = _M_node->next;
         }
         return *this;
     }
@@ -303,7 +306,7 @@ public:
         ++offset;
         if (offset >= _M_node->size){
             offset = 0;
-            _M_node = static_cast<data_node_ptr>(_M_node->next);
+            _M_node = _M_node->next;
         }
         return tmp;
     }
@@ -312,7 +315,7 @@ public:
         if (offset > 0) --offset;
         else {
             if (_M_node != nullptr){
-                _M_node = static_cast<data_node_ptr>(_M_node->prev);
+                _M_node = _M_node->prev;
                 offset = _M_node->size - 1;
             }
             else{
@@ -326,7 +329,7 @@ public:
         if (offset > 0) --offset;
         else {
             if (_M_node != nullptr){
-                _M_node = static_cast<data_node_ptr>(_M_node->prev);
+                _M_node = _M_node->prev;
                 offset = _M_node->size - 1;
             }
             else{
@@ -419,7 +422,7 @@ public:
         ++offset;
         if (offset >= _M_node->size){
             offset = 0;
-            _M_node = static_cast<data_node_ptr>(_M_node->next);
+            _M_node = _M_node->next);
         }
         return *this;
     }
@@ -429,7 +432,7 @@ public:
         ++offset;
         if (offset >= _M_node->size){
             offset = 0;
-            _M_node = static_cast<data_node_ptr>(_M_node->next);
+            _M_node = _M_node->next;
         }
         return tmp;
     }
@@ -438,7 +441,7 @@ public:
         if (offset > 0) --offset;
         else {
             if (_M_node != nullptr){
-                _M_node = static_cast<data_node_ptr>(_M_node->prev);
+                _M_node = _M_node->prev;
                 offset = _M_node->size - 1;
             }
             else{
@@ -452,7 +455,7 @@ public:
         if (offset > 0) --offset;
         else {
             if (_M_node != nullptr){
-                _M_node = static_cast<data_node_ptr>(_M_node->prev);
+                _M_node = _M_node->prev;
                 offset = _M_node->size - 1;
             }
             else{
@@ -502,4 +505,5 @@ private:
 
 };
 
+*/
 }

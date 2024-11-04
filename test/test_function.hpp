@@ -245,7 +245,6 @@ template<typename key_type,
 bool test_linear_probe(key_type* data, size_t n){
     AEX_HINT("[test linear probe]");
     mock_aex_tree<key_type, value_type, traits> tree;
-    typedef typename traits::size_type size_type;
     typedef typename traits::slot_type slot_type;
     std::sort(data, data + n);
     typename mock_aex_tree<key_type, value_type, traits>::DataNodeModel m;
@@ -260,7 +259,7 @@ bool test_linear_probe(key_type* data, size_t n){
     }
     const int ITER = 10;
     std::chrono::system_clock::time_point t1, t2;
-    size_type sum = 0;
+    size_t sum = 0;
     t1 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < 10; ++i){
         sum += tree.linear_probe(data, n, m);
