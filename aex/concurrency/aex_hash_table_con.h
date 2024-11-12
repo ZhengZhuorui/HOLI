@@ -39,13 +39,15 @@ public:
 
     self& operator=(self &other){
         static_cast<HashTableBase*>(this) = static_cast<HashTableBase*>(&other);
-        if (lock_array != nullptr)
-            delete lock_array;
+        AEX_ASSERT(this->lock_array != nullptr);
+        delete lock_array;
         lock_array = new RWLock[this->slot_size];
         return *this;
     }
 
     self& operator=(self &&other){
+        AEX_ASSERT(this->lock_array != nullptr);
+        delete lock_array;
         static_cast<HashTableBase*>(this) = std::move(static_cast<HashTableBase*>(&other));
         this->slot_size = other.slot_size;
         this->table_ = other.table_;
@@ -58,37 +60,38 @@ public:
         destory();
     }
 
-    inline size_t memory_used(){
+    inline ULL memory_used(){
         return this->HashTableBase::memory_used() + this->slot_size * sizeof(RWLock);
     }
 
     inline void destory(){
         this->HashTableBase::destory();
-        if (this->lock_array != nullptr)
-            delete this->lock_array;
+        AEX_ASSERT(this->lock_array != nullptr);
+        delete this->lock_array;
         this->lock_array = nullptr;
     }
 
     inline void rescale(const slot_type _slot_size){
         this->HashTableBase::rescale(_slot_size);
+        AEX_ASSERT(this->lock_array != nullptr);
         delete this->lock_array;
         this->lock_array = new RWLock[_slot_size];
     }
 
     inline void narrow(){
-        rescale(this->table_->slot_size >> 1);
+        rescale(this->slot_size >> 1);
     }
 
     inline void expand(){
-        rescale(this->table_->slot_size << 1);
+        rescale(this->slot_size << 1);
     }
 
     inline void insert(const node_ptr ori_node, const slot_type pos, const key_type key, const node_ptr child){
         hash_type hash_key;
 insert_start:
         lock.lock_shared();
-        hash_key = get_hash_key(ori_node, pos);
-        if (this->table_->block[hash_key].size == traits::HASH_TABLE_BLOCK_SIZE && this->isfull()){
+        hash_key = this->get_hash_key(ori_node, pos);
+        if (this->table_[hash_key].size == traits::HASH_TABLE_BLOCK_SIZE && this->isfull()){
             if (!lock.try_upgrade_lock()){
                 lock.unlock_shared();
                 goto insert_start;
@@ -97,9 +100,9 @@ insert_start:
             expand();
             lock.downgrade_lock();
         }
-        hash_key = get_hash_key(ori_node, pos);
+        hash_key = this->get_hash_key(ori_node, pos);
         lock_array[hash_key].lock();
-        this->table_[hash_key]->insert(ori_node, pos, key, child);
+        this->table_[hash_key].insert(ori_node, pos, key, child);
         lock_array[hash_key].unlock();
         ++this->size;
         lock.unlock_shared();
@@ -108,11 +111,11 @@ insert_start:
     /**
      * @brief return the ori_node->child[pos] if ori_node->key[pos] > key
      */
-    inline node_ptr find(const node_ptr ori_node, const slot_type pos, const key_type key) {
+    inline node_ptr find(const node_ptr node, const slot_type pos, const key_type key) {
         lock.lock_shared();
-        hash_type hash_key = get_hash_key(ori_node, pos);
+        hash_type hash_key = this->get_hash_key(node, pos);
         lock_array[hash_key].lock_shared();
-        node_ptr ret = this->table_[hash_key]->find(ori_node, pos, key);
+        node_ptr ret = this->table_[hash_key].find(node, pos, key);
         lock_array[hash_key].unlock_shared();
         lock.unlock_shared();
         return ret;        
@@ -121,11 +124,11 @@ insert_start:
     /**
      * @brief return the (ori_node->key[pos], ori_node->child[pos])
      */
-    inline std::pair<key_type, node_ptr> find(const slot_type ori_node, const slot_type pos) {
+    inline std::pair<key_type, node_ptr> find(const node_ptr node, const slot_type pos) {
         lock.lock_shared();
-        hash_type hash_key = get_hash_key(ori_node, pos);
+        hash_type hash_key = this->get_hash_key(node, pos);
         lock_array[hash_key].lock_shared();
-        auto ret = this->table_[hash_key]->find(ori_node, pos);
+        auto ret = this->table_[hash_key].find(node, pos);
         lock_array[hash_key].unlock_shared();
         lock.unlock_shared();
         return ret;
@@ -146,9 +149,9 @@ erase_start:
             narrow();
             lock.downgrade_lock();
         }
-        hash_key = get_hash_key(ori_node, pos);
+        hash_key = this->get_hash_key(ori_node, pos);
         lock_array[hash_key].lock();
-        bool ret = this->table_[hash_key]->erase(ori_node, pos);
+        bool ret = this->table_[hash_key].erase(ori_node, pos);
         lock_array[hash_key].unlock();
         if (ret)
             --this->size;
@@ -158,9 +161,9 @@ erase_start:
 
     inline bool update(const node_ptr ori_node, const slot_type pos, const key_type update_key, const node_ptr update_node){
         lock.lock_shared();
-        hash_type hash_key = get_hash_key(ori_node, pos);
+        hash_type hash_key = this->get_hash_key(ori_node, pos);
         lock_array[hash_key].lock();
-        bool ret = this->table_[hash_key]->update(ori_node, pos, update_key, update_node);
+        bool ret = this->table_[hash_key].update(ori_node, pos, update_key, update_node);
         lock_array[hash_key].unlock();
         AEX_ASSERT(ret == false);
         lock.unlock_shared();
@@ -168,7 +171,7 @@ erase_start:
     }
 
     RWLock* lock_array;
-    std::atomic<size_t> size;
+    size_type size;
     RWLock lock;
 };
 

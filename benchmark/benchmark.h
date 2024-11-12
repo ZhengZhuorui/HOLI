@@ -2,16 +2,22 @@
 #include <vector>
 #include <utility>
 
-#include "aex/aex_map.h"
+#include "aex/aex.h"
 #include "pgm_index.hpp"
 #include "pgm_index_dynamic.hpp"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wclass-memaccess"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #include "lipp.h"
 #pragma GCC diagnostic pop
 
+
 #include "stx/btree_map.h"
-//#include "alex_map.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wparentheses"
+#include "alex_map.h"
+#pragma GCC diagnostic pop
 
 #include "benchmark_insert.hpp"
 #include "benchmark_erase.hpp"

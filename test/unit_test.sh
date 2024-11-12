@@ -261,15 +261,14 @@
 
 # =================================================================================================
 # test inner node(gap array) and data node(dense array) query accuracy and performance
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=8 --batch=8 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=64 --batch=64 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=query --num_keys=64 --batch=64  --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=128 --batch=64 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=query --num_keys=128 --batch=64  --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=256 --batch=64 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=query --num_keys=256 --batch=64 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=512 --batch=100000 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=query --num_keys=512 --batch=100000 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 
 
 # no avx : 5.48e6 ms

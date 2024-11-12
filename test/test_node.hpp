@@ -4,14 +4,14 @@
 template<typename key_type,
         typename value_type,
         typename traits=aex::aex_default_traits<key_type, value_type> >
-bool test_hash_node_insert_perf(vector<key_type> &data, size_t n, size_t batch, int level){
+bool test_hash_node_insert_perf(vector<key_type> &data, size_t n, size_t batch){
     AEX_PRINT("[test data node insertion performance]");
-    mock_aex_tree<key_type, value_type, traits> tree;
-    typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
-    typedef typename mock_aex_tree<key_type, value_type, traits>::hash_node_ptr hash_node_ptr;
-    [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
+    aex_tree<key_type, value_type, traits> tree;
+    typedef typename aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
+    [[maybe_unused]]typedef typename aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
+    typedef typename aex_tree<key_type, value_type, traits>::hash_node_ptr hash_node_ptr;
+    [[maybe_unused]] typedef typename aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::slot_type slot_type;
-    typedef typename aex::aex_bitmap_impl<traits> bitmap_impl;
     tree.hash_table.rescale(min_slot_size(n * 2, traits::MIN_HASH_TABLE_SIZE));
     vector<key_type> node_data(n);
     std::copy(data.begin(), data.end(), node_data.begin());
@@ -20,24 +20,26 @@ bool test_hash_node_insert_perf(vector<key_type> &data, size_t n, size_t batch, 
     split_dataset(node_data, insert_data, batch);
     AEX_PRINT("prepare dataset target 0");
     n -= batch;
-    for (size_t i = 1; i < n; ++i)
-        if (node_data[0] > node_data[i]) 
-            std::swap(node_data[0], node_data[i]);
-            
-    for (size_t i = 0; i < batch; ++i)
-        if (node_data[0] > insert_data[i]) 
-            std::swap(node_data[0], insert_data[i]);
+    //for (size_t i = 1; i < n; ++i)
+    //    if (node_data[0] > node_data[i]) 
+    //        std::swap(node_data[0], node_data[i]);
+    //        
+    //for (size_t i = 0; i < batch; ++i)
+    //    if (node_data[0] > insert_data[i]) 
+    //        std::swap(node_data[0], insert_data[i]);
 
     std::sort(node_data.begin(), node_data.end());
-    node_ptr* child_ptr = new node_ptr[n];
-    node_ptr* insert_node_ptr = new node_ptr[n];
-    construct_data_node_array<key_type, value_type, node_ptr>(node_data.data(), node_data.size(), child_ptr);
-    construct_data_node_array<key_type, value_type, node_ptr>(insert_data.data(), insert_data.size(), insert_node_ptr);
-    hash_node_ptr node = tree.construct(node_data.data(), child_ptr, n);
-    slot_type node_size = node->size;
+    data_node_ptr* child_ptr = new data_node_ptr[n];
+    data_node_ptr* insert_node_ptr = new data_node_ptr[n];
+    construct_data_node_array<key_type, value_type, traits>(node_data.data(), node_data.size(), child_ptr);
+    construct_data_node_array<key_type, value_type, traits>(insert_data.data(), insert_data.size(), insert_node_ptr);
+    hash_node_ptr node = static_cast<hash_node_ptr>(tree.construct(node_data.data(), reinterpret_cast<node_ptr*>(child_ptr), n));
+    if (node->type != NodeType::HashNode){
+        AEX_ERROR("Node type is not hash node");
+        return false;
+    }
 
     size_t insert_failed = 0;
-    std::copy(node_data.data(), node_data.data() + n, final_node_data.data());
 
     for (size_t i = 0; i < batch; ++i){       
         if (tree.isfull(node)){
@@ -46,53 +48,13 @@ bool test_hash_node_insert_perf(vector<key_type> &data, size_t n, size_t batch, 
             break;
         }
         slot_type pos = node->predict(insert_data[i]);
-        slot_type next_pos = node->next_item(pos);
+        slot_type next_pos = node->next_item(pos + 1);
         if (!node->is_occupied(pos))
             tree.__insert(node, pos, next_pos, insert_data[i], insert_node_ptr[i]);
         else
             ++insert_failed;
     }
-
-    AEX_HINT("node size=" << node->size << ", insert failed=" << insert_failed);
-    AEX_ASSERT(size <= node->size);
-    std::vector<key_type> test_key_buf;
-    std::vector<node_ptr> test_child_buf;
-    for (slot_type i = 0; i < node->slot_size; i = node->next_item(i + 1)){
-        key_type key;
-        node_ptr child;
-        std::tie(key, child) = tree.hash_table.find(node, i);
-        test_key_buf.emplace_back(key);
-        test_child_buf.emplace_back(child);
-    }
-    for (slot_type i = 0; i < node->slot_size; i += trais::SLOT_PER_LOCK){
-        key_type key;
-        node_ptr child;
-        std::tie(key, child) = tree.hash_table.find(node, i);
-        if (child == nullptr){
-            AEX_ERROR("hash node empty slot:" << i);
-            return false;
-        }
-    }
-    size_t bit_cnt = 0;
-    for (slot_type i = 0; i < node->slot_size; ++i)
-        bit_cnt += node->is_occupied(i);
-
-    if (node->size != test_key_buf.size()){
-        AEX_ERROR("size error! node->size=" << node->size << ", get keys=" << test_key_buf.size() << ", bit counter=" << bit_cnt);
-        return false;
-    }
-
-    for (int i = 0; i < node->size - 1; ++i){
-        if (test_key_buf[i] >= test_key_buf[i + 1]){
-            AEX_ERROR("i=" << i << ", key[i]=" << test_key_buf[i] << ", key[i + 1]=" << test_key_buf[i + 1]);
-            return false;
-        }
-        if (test_child_buf[i] == test_child_buf[i + 1]){
-            AEX_ERROR("i=" << i << ", key[i]=" << test_child_buf[i] << ", key[i + 1]=" << test_child_buf[i + 1]);
-            return false;
-        }
-    }
-
+    AEX_HINT("node size=" << node->size << ", slot_size=" << node->slot_size << ", insert failed=" << insert_failed);
     AEX_SUCCESS("test insert node performance");
     return true;
 }
@@ -100,19 +62,18 @@ bool test_hash_node_insert_perf(vector<key_type> &data, size_t n, size_t batch, 
 template<typename key_type,
         typename value_type,
         typename traits=aex::aex_default_traits<key_type, value_type>>
-bool test_hash_node_erase_perf(vector<key_type> &data, size_t n, size_t batch, int level){
+bool test_hash_node_erase_perf(vector<key_type> &data, size_t n, size_t batch){
         AEX_PRINT("[test data node insertion performance]");
-    mock_aex_tree<key_type, value_type, traits> tree;
-    typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
-    typedef typename mock_aex_tree<key_type, value_type, traits>::hash_node_ptr hash_node_ptr;
-    [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
+    aex_tree<key_type, value_type, traits> tree;
+    typedef typename aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
+    typedef typename aex_tree<key_type, value_type, traits>::hash_node_ptr hash_node_ptr;
+    [[maybe_unused]] typedef typename aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::slot_type slot_type;
-    typedef typename aex::aex_bitmap_impl<traits> bitmap_impl;
     tree.hash_table.rescale(min_slot_size(n * 2, traits::MIN_HASH_TABLE_SIZE));
     
     AEX_PRINT("prepare dataset...");
-    node_ptr* child_ptr = new node_ptr[n];
-    construct_data_node_array<key_type, value_type, node_ptr>(data.data(), data.size(), child_ptr);
+    data_node_ptr* child_ptr = new data_node_ptr[n];
+    construct_data_node_array<key_type, value_type, traits>(data.data(), data.size(), child_ptr);
 
     vector<size_t> del_pos;
     vector<key_type> del_key(batch);
@@ -124,11 +85,12 @@ bool test_hash_node_erase_perf(vector<key_type> &data, size_t n, size_t batch, i
         del_node[i] = child_ptr[del_pos[i]];
     }
 
-    //std::sort(data.begin(), data.end());
-    node_ptr* child_ptr = new node_ptr[n];
-    construct_data_node_array<key_type, value_type, node_ptr>(data.data(), data.size(), child_ptr);
-    hash_node_ptr node = tree.construct(node_data.data(), child_ptr, n);
-    slot_type node_size = node->size;
+    construct_data_node_array<key_type, value_type, traits>(data.data(), data.size(), child_ptr);
+    hash_node_ptr node = static_cast<hash_node_ptr>(tree.construct(data.data(), reinterpret_cast<node_ptr*>(child_ptr), n));
+    if (node->type != aex::NodeType::HashNode){
+        AEX_ERROR("Node type is not hash node");
+        return false;
+    }
 
     size_t insert_failed = 0;
 
@@ -139,53 +101,13 @@ bool test_hash_node_erase_perf(vector<key_type> &data, size_t n, size_t batch, i
             break;
         }
         slot_type pos = node->predict(del_key[i]);
-        slot_type next_pos = node->next_item(pos);
+        slot_type next_pos = node->next_item(pos + 1);
         if (pos != 0 && !node->is_occupied(pos))
             tree.erase(node, node->prev_item_find(pos), pos, next_pos);
         else
             ++insert_failed;
     }
-
     AEX_HINT("node size=" << node->size << ", insert failed=" << insert_failed);
-    AEX_ASSERT(size <= node->size);
-    std::vector<key_type> test_key_buf;
-    std::vector<node_ptr> test_child_buf;
-    for (slot_type i = 0; i < node->slot_size; i = node->next_item(i + 1)){
-        key_type key;
-        node_ptr child;
-        std::tie(key, child) = tree.hash_table.find(node, i);
-        test_key_buf.emplace_back(key);
-        test_child_buf.emplace_back(child);
-    }
-    for (slot_type i = 0; i < node->slot_size; i += trais::SLOT_PER_LOCK){
-        key_type key;
-        node_ptr child;
-        std::tie(key, child) = tree.hash_table.find(node, i);
-        if (child == nullptr){
-            AEX_ERROR("hash node empty slot:" << i);
-            return false;
-        }
-    }
-    size_t bit_cnt = 0;
-    for (slot_type i = 0; i < node->slot_size; ++i)
-        bit_cnt += node->is_occupied(i);
-
-    if (node->size != test_key_buf.size()){
-        AEX_ERROR("size error! node->size=" << node->size << ", get keys=" << test_key_buf.size() << ", bit counter=" << bit_cnt);
-        return false;
-    }
-
-    for (int i = 0; i < node->size - 1; ++i){
-        if (test_key_buf[i] >= test_key_buf[i + 1]){
-            AEX_ERROR("i=" << i << ", key[i]=" << test_key_buf[i] << ", key[i + 1]=" << test_key_buf[i + 1]);
-            return false;
-        }
-        if (test_child_buf[i] == test_child_buf[i + 1]){
-            AEX_ERROR("i=" << i << ", key[i]=" << test_child_buf[i] << ", key[i + 1]=" << test_child_buf[i + 1]);
-            return false;
-        }
-    }
-
     AEX_SUCCESS("test erase node performance");
     return true;
 }
@@ -194,24 +116,28 @@ bool test_hash_node_erase_perf(vector<key_type> &data, size_t n, size_t batch, i
 template<typename key_type,
         typename value_type,
         typename traits=aex::aex_default_traits<key_type, value_type> >
-bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, int level){
+bool test_hash_node_query_perf(vector<key_type> &data, size_t n, size_t batch){
     
     AEX_PRINT("[test data node query performance]");
-    mock_aex_tree<key_type, value_type, traits> tree;
-    typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
-    typedef typename mock_aex_tree<key_type, value_type, traits>::hash_node_ptr hash_node_ptr;
-    [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
+    aex_tree<key_type, value_type, traits> tree;
+    typedef typename aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
+    [[maybe_unused]]typedef typename aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
+    typedef typename aex_tree<key_type, value_type, traits>::hash_node_ptr hash_node_ptr;
+    [[maybe_unused]] typedef typename aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::slot_type slot_type;
-    typedef typename aex::aex_bitmap_impl<traits> bitmap_impl;
+    AEX_PRINT("1");
     tree.hash_table.rescale(min_slot_size(n * 2, traits::MIN_HASH_TABLE_SIZE));
-    vector<std::pair<key_type, key_type> > pack_data(n);
+    AEX_PRINT("2");
+    data_node_ptr* child_ptr = new data_node_ptr[n];
+    construct_data_node_array<key_type, value_type, traits>(data.data(), data.size(), child_ptr);
+    AEX_PRINT("3");
+    vector<std::pair<key_type, data_node_ptr> > pack_data(n);
     vector<key_type> query;
-    vector<key_type> answer;
-    key_type key;
+    vector<data_node_ptr> answer;
     node_ptr child;
     for (size_t i = 0; i < n; ++i)
-        pack_data[i] = std::make_pair(data[i], data[i]);
-
+        pack_data[i] = std::make_pair(data[i], child_ptr[i]);
+    AEX_PRINT("4");
     generate_query(pack_data, query, answer, batch);
     for (size_t i = 0; i < batch; ++i){
         slot_type pos = std::lower_bound(data.data(), data.data() + n, query[i]) - data.data();
@@ -220,56 +146,23 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
         }
     }
 
-    node_ptr* child_ptr = new node_ptr[n];
-    construct_data_node_array<key_type, value_type, node_ptr>(node_data.data(), node_data.size(), child_ptr);
-    hash_node_ptr node = tree.construct(node_data.data(), child_ptr, n);
-    slot_type node_size = node->size;
-
-    for (size_t i = 0; i < batch; ++i){       
-        key_type key;
-        node_ptr child;
-        std::tie(key, child) = tree.find(node, query[i]);
-        data_node_ptr res = static_cast<data_node_ptr>(node->find(query[i]));
-        if (key != answer[i]){
-            AEX_ERROR("Query Error! query=" << query[i] << ", get=" << key << ", real key=" << answer[i]);
-            return false;
-        }
-    }
-
-    AEX_HINT("node size=" << node->size);
-    std::vector<key_type> test_key_buf;
-    std::vector<node_ptr> test_child_buf;
-    for (slot_type i = 0; i < node->slot_size; i = node->next_item(i + 1)){
-        std::tie(key, child) = tree.hash_table.find(node, i);
-        test_key_buf.emplace_back(key);
-        test_child_buf.emplace_back(child);
-    }
-    for (slot_type i = 0; i < node->slot_size; i += trais::SLOT_PER_LOCK){
-        std::tie(key, child) = tree.hash_table.find(node, i);
-        if (child == nullptr){
-            AEX_ERROR("hash node empty slot:" << i);
-            return false;
-        }
-    }
-    size_t bit_cnt = 0;
-    for (slot_type i = 0; i < node->slot_size; ++i)
-        bit_cnt += node->is_occupied(i);
-
-    if (node->size != test_key_buf.size()){
-        AEX_ERROR("size error! node->size=" << node->size << ", get keys=" << test_key_buf.size() << ", bit counter=" << bit_cnt);
+    hash_node_ptr node = static_cast<hash_node_ptr>(tree.construct(data.data(), reinterpret_cast<node_ptr*>(child_ptr), n));
+    if (node->type != NodeType::HashNode){
+        AEX_ERROR("Node type is not hash node");
         return false;
     }
 
-    for (int i = 0; i < node->size - 1; ++i){
-        if (test_key_buf[i] >= test_key_buf[i + 1]){
-            AEX_ERROR("i=" << i << ", key[i]=" << test_key_buf[i] << ", key[i + 1]=" << test_key_buf[i + 1]);
-            return false;
-        }
-        if (test_child_buf[i] == test_child_buf[i + 1]){
-            AEX_ERROR("i=" << i << ", key[i]=" << test_child_buf[i] << ", key[i + 1]=" << test_child_buf[i + 1]);
+    for (size_t i = 0; i < batch; ++i){       
+        [[maybe_unused]]key_type key;
+        node_ptr child;
+        child = tree.find(node, query[i]);
+        if (child->type == aex::NodeType::LeafNode && child != answer[i]){
+            AEX_ERROR("Query Error! query=" << query[i] << ", get=" << static_cast<data_node_ptr>(child)->key[0] << ", real key=" << answer[i]->key[0]);
             return false;
         }
     }
+
+    AEX_HINT("node size=" << node->size << ", node slot size=" << node->slot_size);
 
     const int ITER = 10000;
     system_clock::time_point t1, t2;
@@ -278,8 +171,8 @@ bool test_inner_node_query_perf(vector<key_type> &data, size_t n, size_t batch, 
     for (int T = 0; T < ITER; ++T){
         sum = 0;
         for (size_t i = 0; i < batch; ++i){
-            std::tie(key, child) = tree.find(query[i]);
-            sum += key;
+            child = tree.find(node, query[i]);
+            sum += child->size;
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
@@ -309,10 +202,10 @@ bool test_data_node_insert_perf(std::pair<key_type, value_type>* data, size_t n,
     }
     else{
     AEX_PRINT("[test data node insertion performance]");
-    mock_aex_tree<key_type, value_type, traits> tree;
-    [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
-    [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
-    typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
+    aex_tree<key_type, value_type, traits> tree;
+    [[maybe_unused]] typedef typename aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
+    [[maybe_unused]] typedef typename aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
+    typedef typename aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::slot_type slot_type;
 
     vector<std::pair<key_type, value_type>> insert_data(batch);
@@ -368,7 +261,7 @@ bool test_data_node_insert_perf(std::pair<key_type, value_type>* data, size_t n,
 
     for (slot_type i = 0; i < node->size; ++i){
         if (node->key[i] != data[i].first){
-            AEX_PRINT("Key Error! key[" << i << "]="<< node->key[i] << ", real key=" << data[i].first);
+            AEX_PRINT("Key Error! key[" << i << "]=" << node->key[i] << ", real key=" << data[i].first);
             return false;
         }
         if (i > 1 && node->key[i] < node->key[i - 1]){
@@ -412,9 +305,9 @@ bool test_data_node_query_perf(std::pair<key_type, value_type>* data, size_t n, 
     }
     else{
         AEX_HINT("[test data node query performance]");
-        mock_aex_tree<key_type, value_type, traits> tree;
-        typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
-        [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
+        aex_tree<key_type, value_type, traits> tree;
+        typedef typename aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
+        [[maybe_unused]] typedef typename aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
         typedef typename traits::slot_type slot_type;
 
         vector<key_type> ori_data(n);
@@ -494,10 +387,10 @@ bool test_data_node_erase_perf(std::pair<key_type, value_type>* data, size_t n, 
         return false;
     }
     else{
-        mock_aex_tree<key_type, value_type, traits> tree;
-        [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
-        [[maybe_unused]] typedef typename mock_aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
-        typedef typename mock_aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
+        aex_tree<key_type, value_type, traits> tree;
+        [[maybe_unused]] typedef typename aex_tree<key_type, value_type, traits>::node_ptr node_ptr;
+        [[maybe_unused]] typedef typename aex_tree<key_type, value_type, traits>::inner_node_ptr inner_node_ptr;
+        typedef typename aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
         typedef typename traits::slot_type slot_type;
 
         std::vector<size_t> del_pos;

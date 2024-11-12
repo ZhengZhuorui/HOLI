@@ -1,11 +1,11 @@
 #pragma once
 #include "test/test.h"
-
+/*
 template<typename T>
 bool test_linear_model(T* data, size_t n, bool spec_flag){
     AEX_HINT("[test_linear_model]");
     typedef typename aex::aex_default_traits<T, T> traits;
-    mock_aex_tree<T, T> tree;
+    aex_tree<T, T> tree;
     aex::linear_model<T, aex::aex_default_traits<T, T>> m;
     m.train(data, n);
     std::cout << "slope=" << m.args.slope << "inter=" << m.args.inter << "end=" <<  m.args.end << std::endl;
@@ -88,7 +88,7 @@ bool test_quad_model(T* data, size_t n, bool spec_flag){
 template<typename T>
 bool test_gap_array_linear_model(T* data, size_t n, bool spec_flag){
     std::cout << "[test gap array linear model]" << std::endl;
-    mock_aex_tree<T, T> tree;
+    aex_tree<T, T> tree;
     typedef typename aex::aex_default_traits<T, T> traits;
     aex::gap_array_linear_model<T, aex::aex_default_traits<T, T>> m;
     size_t slot_size = min_slot_size(n, traits::MIN_INNER_NODE_SLOT_SIZE);
@@ -105,10 +105,9 @@ template<typename T,
         typename Model>
 bool test_model_hash_table(T* data, size_t n, int level, int batch=1000){
     AEX_HINT("[test " << Model::name() << "] n=" << n);
-    //typedef mock_aex_tree<T, T> Index;
     typedef typename aex::aex_default_traits<T, T> traits;
     typedef typename traits::slot_type slot_type;
-    mock_aex_tree<T, T> tree;
+    aex_tree<T, T> tree;
     double ratio = tree.inner_node_few_ratio[level];
     Model m;
     slot_type size = traits::MIN_ML_INNER_NODE_SIZE;
@@ -171,22 +170,19 @@ bool test_model_hash_table(T* data, size_t n, int level, int batch=1000){
 template<typename T,
         typename Model>
 bool test_model(T* data, size_t n, int level, int batch=1000){
-    
     AEX_HINT("[test " << Model::name() << "] n=" << n);
-    typedef mock_aex_tree<T, T> Index;
+    typedef aex_tree<T, T> Index;
     typedef typename aex::aex_default_traits<T, T> traits;
     typedef typename traits::slot_type slot_type;
-    mock_aex_tree<T, T> tree;
+    aex_tree<T, T> tree;
     double ratio = tree.inner_node_few_ratio[level];
     Model m;
     slot_type size = traits::MIN_ML_INNER_NODE_SIZE;
     slot_type slot_size = min_slot_size(size, ratio, traits::MIN_INNER_NODE_SLOT_SIZE);
-    
     while (static_cast<size_t>(size) < n && m.train(data, size, slot_size) == true){
         AEX_PRINT("size=" << size);
         slot_size <<= 1;
         size = slot_size * ratio;
-        
     }
     slot_size >>= 1;
     size = slot_size * ratio;
@@ -240,5 +236,68 @@ bool test_aex_model(T* data, size_t n, bool spec_flag){
     aex::aex_model<T, aex::aex_default_traits<T, T>> m;
     m.train(data, n);
     printf("RMSE=%.4f\n", m.RMSE(data, n));
+    return true;
+}
+
+*/
+
+
+template<typename T,
+        typename traits>
+bool test_model(T* data, size_t size, int batch=1000){
+    typedef typename traits::slot_type slot_type;
+    typedef typename aex_tree<T, T, traits>::Model Model;
+    AEX_HINT("[test " << Model::name() << "] n=" << size);
+    aex_tree<T, T, traits> tree;
+    Model m;
+    slot_type slot_size = traits::MIN_HASH_NODE_SLOT_SIZE, ans;
+
+    while (slot_size < traits::MAX_HASH_NODE_SLOT_SIZE && m.train(data, size, slot_size) == true){
+        if (tree.check_model(m, data, size, slot_size)){
+            AEX_PRINT("slot size=" << slot_size);
+            ans = slot_size;
+            slot_size <<= 1;
+        }
+        else
+            break;
+    }
+    slot_size = ans;
+    m.train(data, size, slot_size);
+
+    if (slot_size < traits::MIN_INNER_NODE_SLOT_SIZE){
+        AEX_ERROR("TRAIN ERROR!");
+        return false;
+    }
+    /*
+    slot_type max_error = m.max_collision(data, size, slot_size);
+    AEX_PRINT("size=" << size << ", slot_size=" << slot_size << ", RMSE=" << m.RMSE(data, n) << ", max_error=" << max_error);
+    if (max_error > traits::ERROR_BOUND){
+        AEX_ERROR("max error larger than ERROR_BOUND, max_error=" << max_error << ", ERROR_BOUND=" << traits::ERROR_BOUND);
+        return false;
+    }
+    AEX_SUCCESS("slot size=" << slot_size << ", max error=" << max_error << ", seg_nums=" << m.args.seg_nums);
+    */
+    system_clock::time_point t1, t2;
+    const int ITER = 10;
+    t1 = std::chrono::high_resolution_clock::now();
+    for (size_t i = 0; i < ITER; ++i)
+        m.train(data, size, slot_size);
+    t2 = std::chrono::high_resolution_clock::now();
+    double delta2 = duration_cast<microseconds>(t2 - t1).count();
+    double OPS = 1.0 * 1e6 * ITER / delta2;
+    AEX_SUCCESS("model train time= " << delta2 << " ms, OPS=" << OPS);
+    double _ = 0;
+    std::vector<long long> query_pos(batch);
+    std::vector<T> query(batch);
+    generate_data<long long, std::uniform_int_distribution<long long>, long long>(query_pos, batch, 0, size - 1);
+    for (long long i = 0; i < batch; ++i) query[i] = data[query_pos[i]];
+    t1 = std::chrono::high_resolution_clock::now();
+    for (size_t i = 0; i < ITER; ++i)
+        for (long long j = 0; j < batch; ++j)
+            _ += m.predict(query[j]);
+    t2 = std::chrono::high_resolution_clock::now();
+    double delta3 = duration_cast<microseconds>(t2 - t1).count();
+    long double QPS = 1.0 * 1e6 * ITER * batch / delta3;
+    AEX_SUCCESS("code=" << _ << ", model Query time= " << delta3 << " ms, QPS=" << QPS);
     return true;
 }

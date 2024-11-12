@@ -5,15 +5,6 @@
 namespace aex
 {
 
-enum memory_prop{
-    MAX_POOL_MEMORY=0x400000,
-    MAX_POOL_NODE=0x20,
-    DEFAULT_DATA_NODE_SIZE=0x8,
-};
-
-struct memory_config{
-    std::vector<size_t> node_size_vec;
-};
 
 template<typename _Key, 
         typename _Val,
@@ -37,11 +28,9 @@ public:
     typedef typename components::data_node_ptr  data_node_ptr;
     typedef typename components::InnerNodeModel InnerNodeModel;
     typedef typename components::bitmap_impl    bitmap_impl;
-    typedef typename components::size_type      size_type;
     typedef typename components::HashTable HashTable;
 
     typedef typename traits::slot_type slot_type;
-
     
     typedef typename traits::bitmap_base bitmap_base;
     typedef typename traits::bitmap bitmap;
@@ -49,54 +38,57 @@ public:
     ~aex_allocator() = default;
 
 
-    static constexpr size_t MAX_INNER_NODE_SIZE(){return std::max(sizeof(hash_node), sizeof(dense_node));}
+    static constexpr ULL MAX_INNER_NODE_SIZE(){return std::max(sizeof(hash_node), sizeof(dense_node));}
 
     // used memory size of key array, align 8 bytes
-    inline static size_t KEY_MEMORY_USED(size_t slot_size){
+    inline static ULL KEY_MEMORY_USED(ULL slot_size){
         return align_8bytes((slot_size) * sizeof(key_type));
     }
 
     // used memory size of pointer array, align 8 bytes
-    inline static size_t PTR_MEMORY_USED(size_t slot_size){
+    inline static ULL PTR_MEMORY_USED(ULL slot_size){
         return align_8bytes((slot_size) * sizeof(node_ptr));
     }
 
     // used memory size of bitmap, align 8 bytes
-    inline static size_t BITMAP_MEMORY_USED(size_t slot_size){
+    inline static ULL BITMAP_MEMORY_USED(ULL slot_size){
         return align_8bytes(((slot_size >> 6) + 1) * sizeof(typename traits::bitmap_base));
     }
 
     // used memory size of data array, align 8 bytes
-    inline static size_t DATA_MEMORY_USED(size_t slot_size){
+    inline static ULL DATA_MEMORY_USED(ULL slot_size){
         return align_8bytes((slot_size) * sizeof(value_type));
     }
 
-    inline static size_t STATIC_DATA_NODE_MEMORY_USED(){
+    inline static ULL STATIC_DATA_NODE_MEMORY_USED(){
         return sizeof(data_node);
     }
 
-    inline static size_t HASH_NODE_MEMORY_USED(size_t slot_size){
+    inline static ULL HASH_NODE_MEMORY_USED(ULL slot_size){
         return BITMAP_MEMORY_USED(slot_size) + MAX_INNER_NODE_SIZE();
     }
 
-    inline static size_t DENSE_NODE_MEMORY_USED(size_t slot_size){
+    inline static ULL DENSE_NODE_MEMORY_USED(ULL slot_size){
         return KEY_MEMORY_USED(slot_size) + PTR_MEMORY_USED(slot_size) + MAX_INNER_NODE_SIZE();
     }
 
     inline static hash_node_ptr allocate_hash_node(slot_type slot_size){
-        hash_node_ptr node = h_n(malloc(MAX_INNER_NODE_SIZE()));
+        AEX_ASSERT((slot_size & (-slot_size)) == 0);
+        const hash_node_ptr node = h_n(malloc(MAX_INNER_NODE_SIZE()));
         node->type = NodeType::HashNode;
         node->slot_size = slot_size;
         node->init();
+        return node;
     }
 
-    inline static hash_node_ptr allocate_dense_node(slot_type slot_size){
-        hash_node_ptr node = d_n(malloc(MAX_INNER_NODE_SIZE()));
+    inline static dense_node_ptr allocate_dense_node(slot_type slot_size){
+        AEX_ASSERT((slot_size & (-slot_size)) == 0);
+        const dense_node_ptr node = d_n(malloc(MAX_INNER_NODE_SIZE()));
         node->type = NodeType::DenseNode;
         node->slot_size = slot_size;
         node->init();
+        return node;
     }
 };
-
 
 } // namespace name

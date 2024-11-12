@@ -238,16 +238,16 @@ bool test_search_with_error_bound_perf(_Tp* data, size_t n){
     AEX_IMPORTANT("code=" << sum << ", search used time=" << delta << " us");
     return true;
 }
-
+/*
 template<typename key_type, 
         typename value_type,
         typename traits>
 bool test_linear_probe(key_type* data, size_t n){
     AEX_HINT("[test linear probe]");
-    mock_aex_tree<key_type, value_type, traits> tree;
+    aex_tree<key_type, value_type, traits> tree;
     typedef typename traits::slot_type slot_type;
     std::sort(data, data + n);
-    typename mock_aex_tree<key_type, value_type, traits>::DataNodeModel m;
+    typename aex_tree<key_type, value_type, traits>::DataNodeModel m;
     slot_type ret = tree.linear_probe(data, n, m);
     AEX_PRINT("ret=" << ret << ", end=" << m.args.end << ", slope=" << m.args.slope << ", inter=" << m.args.inter);
     for (slot_type i = 0; i < ret; ++i){
@@ -270,3 +270,4 @@ bool test_linear_probe(key_type* data, size_t n){
     AEX_SUCCESS("code=" << sum << ", linear probe=" << delta << "ms, NPS=" << NPS);
     return true;
 }
+*/

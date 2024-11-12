@@ -2,11 +2,7 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits> class aex_tree;
-template<typename _Key, typename _Val, typename traits> class aex_tree_con;
-
 template<typename _Key, typename _Val, typename traits> class aex_allocator;
-//template<typename _Key, typename _Val, typename traits> class aex_allocator_con;
-
 template<typename _Key, typename _Val, typename traits> struct aex_node_base;
 template<typename _Key, typename _Val, typename traits> struct aex_inner_node;
 template<typename _Key, typename _Val, typename traits> struct aex_hash_node;

@@ -18,7 +18,6 @@ namespace aex{
 #endif
 #endif
 
-
 #define UNF 0xFFFFFFFFFFFFFFFFLL
 
 #define WHITE_FONT_TAG "\033[0m"
@@ -34,6 +33,9 @@ inline std::string YELLOW_FONT(std::string str){ return YELLOW_FONT_TAG + str + 
 inline std::string BLUE_FONT(std::string str){ return BLUE_FONT_TAG + str + WHITE_FONT_TAG; }
 //inline std::string DARK_GREEN_FONT(std::string str){ return DARK_GREEN_FONT_TAG + str + WHITE_FONT_TAG; }
 inline std::string PURPLE_GREEN_FONT(std::string str){ return PURPLE_FONT_TAG + str + WHITE_FONT_TAG; }
+
+typedef unsigned long long ULL;
+typedef long long LL;
 
 struct AEX_LOG{
     AEX_LOG(){
@@ -113,16 +115,26 @@ struct AEX_LOG{
 
 #define AEX_IMPORTANT(x) AEX_PRINT_TAG(x, PURPLE_FONT_TAG, "[IMPORTANT]")
 
+enum class NodeType{
+    LeafNode,
+    DenseNode,
+    HashNode,
+};
+
 #define n_n(node) static_cast<node_ptr>(node)
-
 #define i_n(node) static_cast<inner_node_ptr>(node)
-
 #define h_n(node) static_cast<hash_node_ptr>(node)
-
 #define d_n(node) static_cast<dense_node_ptr>(node)
-
 #define l_n(node) static_cast<data_node_ptr>(node)
 
+std::string to_string(NodeType type){
+    switch (type){
+        case NodeType::LeafNode  : { return "LeafNode";  }
+        case NodeType::DenseNode : { return "DenseNode"; }
+        case NodeType::HashNode  : { return "HashNode";  }
+        default : { return "Unknown"; }
+    }
+}
 
 template<typename _Tp>
 inline _Tp highbit_64(const _Tp &x){
@@ -174,7 +186,7 @@ inline void sample_sort(K* k, V* v, int n){
 template<typename _Tp>
 _Tp sqr(const _Tp &x){return x * x;}
 
-inline size_t align_8bytes(size_t x){
+inline ULL align_8bytes(ULL x){
     return ((x + 7) & (~7) );
 }
 
@@ -188,8 +200,6 @@ inline int lowbit_loop_unroll(int k){
 template<typename traits>
 class aex_bitmap_impl{
 public:
-    typedef typename traits::size_type size_type;
-
     typedef typename traits::bitmap_base bitmap_base;
 
     typedef typename traits::bitmap bitmap;
@@ -211,7 +221,7 @@ template<typename RandomIter, typename _Val>
 inline RandomIter exponential_search_lower_bound(RandomIter first, RandomIter last, RandomIter predict, _Val& key){
     AEX_ASSERT(first <= predict);
     AEX_ASSERT(predict < last);
-    size_t offset = 1;
+    ULL offset = 1;
     if (key <= *predict){
         for (; predict - offset >= first && key <= *(predict - offset); offset <<= 1);
         for (offset >>= 1; offset; offset >>= 1)
@@ -229,7 +239,7 @@ inline RandomIter exponential_search_lower_bound(RandomIter first, RandomIter la
 
 template<typename RandomIter, typename _Val>
 inline RandomIter exponential_search_upper_bound(RandomIter first, RandomIter last, RandomIter predict, _Val& key){
-    size_t offset = 1;
+    ULL offset = 1;
     AEX_ASSERT(first <= predict);
     AEX_ASSERT(predict < last);
     if (key < *predict){
@@ -249,7 +259,7 @@ inline RandomIter exponential_search_upper_bound(RandomIter first, RandomIter la
 template<typename RandomIter, typename _Val>
 inline RandomIter exponential_search_lower_bound(RandomIter predict, RandomIter last,  _Val& key){
     AEX_ASSERT(predict < last);
-    size_t offset = 8;
+    ULL offset = 8;
     //for (; predict + offset < last && *(predict + offset) < key; offset <<= 1);
     for (offset >>= 1; offset; offset >>= 1)
         if (predict + offset < last && *(predict + offset) < key)
@@ -271,7 +281,7 @@ inline RandomIter linear_search_upper_bound(RandomIter first, RandomIter last,  
 }
 //template<typename RandomIter, typename _Val>
 //inline RandomIter exponential_search_upper_bound(RandomIter predict, RandomIter last, _Val& key){
-//    size_t offset = 1;
+//    ULL offset = 1;
 //    AEX_ASSERT(predict < last);
 //    for (; predict + offset < last && *(predict + offset) <= key; offset <<= 1);
 //    for (offset >>= 1; offset; offset >>= 1)
@@ -301,10 +311,10 @@ inline long long MID_KEY(long long x, long long y){
 }
 
 template<typename _Tp>
-inline std::pair<_Tp, size_t> argmax(_Tp* x, size_t n){
+inline std::pair<_Tp, size_t> argmax(_Tp* x, ULL n){
     _Tp v = x[0];
-    size_t p = 0;
-    for (size_t i = 1; i < n; ++i)
+    ULL p = 0;
+    for (ULL i = 1; i < n; ++i)
     if (x[i] > v){
         v = x[i];
         p = i;
@@ -313,10 +323,10 @@ inline std::pair<_Tp, size_t> argmax(_Tp* x, size_t n){
 }
 
 template<typename _Tp>
-inline std::pair<_Tp, size_t> argmin(_Tp* x, size_t n){
+inline std::pair<_Tp, size_t> argmin(_Tp* x, ULL n){
     _Tp v = x[0];
-    size_t p = 0;
-    for (size_t i = 1; i < n; ++i)
+    ULL p = 0;
+    for (ULL i = 1; i < n; ++i)
     if (x[i] > v){
         v = x[i];
         p = i;
@@ -325,27 +335,81 @@ inline std::pair<_Tp, size_t> argmin(_Tp* x, size_t n){
 }
 
 template<typename _Tp>
-inline _Tp max(_Tp* x, size_t n){
+inline _Tp max(_Tp* x, ULL n){
     _Tp ret = x[0];
-    for (size_t i = 1; i < n; ++i)
+    for (ULL i = 1; i < n; ++i)
         ret = std::max(ret, x[i]);
     return ret;
 }
 
 template<typename _Tp>
-inline _Tp min(_Tp* x, size_t n){
+inline _Tp min(_Tp* x, ULL n){
     _Tp ret = x[0];
-    for (size_t i = 1; i < n; ++i)
+    for (ULL i = 1; i < n; ++i)
         ret = std::min(ret, x[i]);
     return ret;
 }
 
 template<typename _Tp>
-inline bool is_sorted(_Tp *x, size_t n){
-    for (size_t i = 1; i < n; ++i)
+inline bool is_sorted(_Tp *x, ULL n){
+    for (ULL i = 1; i < n; ++i)
     if (x[i] < x[i - 1])    
         return false;
     return true;
 }
+
+struct operation_stats{
+    //operation_stats():hash_node_rebuild_cnt(0),  cast_to_hash_node_cnt(0),  hash_node_expand_cnt(0),  hash_node_narrow_cnt(0),
+    //                  dense_node_rebuild_cnt(0), cast_to_dense_node_cnt(0), dense_node_expand_cnt(0), dense_node_narrow_cnt(0),
+    //                  hash_node_split_cnt(0), hash_node_construct_cnt(0), dense_node_split_cnt(0), dense_node_construct_cnt(0),
+    //                  data_node_split_cnt(0), data_node_merge_cnt(0){}
+    operation_stats() = default;
+    ULL cast_to_hash_node_cnt, hash_node_expand_cnt, hash_node_expand_size, hash_node_narrow_cnt, hash_node_narrow_size;
+    ULL cast_to_dense_node_cnt, dense_node_expand_cnt, dense_node_expand_size, dense_node_narrow_cnt, dense_node_narrow_size;
+    ULL inner_node_rebuild_cnt, inner_node_rebuild_size;
+    ULL inner_node_split_cnt, inner_node_split_size; 
+    //ULL hash_node_construct_cnt, hash_node_construct_size, dense_node_construct_cnt, dense_node_construct_size;
+    ULL data_node_split_cnt, data_node_merge_cnt;
+    ULL model_train_cnt, model_train_size;
+    ULL allocate_data_node_cnt, allocate_dense_node_cnt, allocate_hash_node_cnt;
+    ULL free_data_node_cnt, free_dense_node_cnt, free_hash_node_cnt;
+    void print_stats(){
+        AEX_IMPORTANT("cast_to_hash_node_cnt="    << cast_to_hash_node_cnt    << ", cast_to_dense_node_cnt="    << cast_to_dense_node_cnt);
+        AEX_IMPORTANT("hash_node_expand_cnt="     << hash_node_expand_cnt     << ", hash_node_expand_size="     << hash_node_expand_size);
+        AEX_IMPORTANT("hash_node_narrow_cnt="     << hash_node_expand_cnt     << ", hash_node_narrow_size="     << hash_node_narrow_size);
+        AEX_IMPORTANT("dense_node_expand_cnt="    << dense_node_expand_cnt    << ", dense_node_expand_size="    << dense_node_expand_size);
+        AEX_IMPORTANT("dense_node_narrow_cnt="    << dense_node_narrow_cnt    << ", dense_node_narrow_size="    << dense_node_narrow_size);
+        AEX_IMPORTANT("inner_node_rebuild_cnt="   << inner_node_rebuild_cnt   << ", inner_node_rebuild_size="   << inner_node_rebuild_size);
+        //AEX_IMPORTANT("hash_node_construct_cnt="  << hash_node_construct_cnt  << ", hash_node_construct_size="  << hash_node_construct_size);
+        //AEX_IMPORTANT("dense_node_construct_cnt=" << dense_node_construct_cnt << ", dense_node_construct_size=" << dense_node_construct_size);
+        AEX_IMPORTANT("inner_node_spilt_cnt="     << inner_node_split_cnt     << ", inner_node_split_size="     << inner_node_split_size);
+        AEX_IMPORTANT("data_node_split_cnt="      << data_node_split_cnt      << ", data_node_merge_cnt="       << data_node_merge_cnt);
+        AEX_IMPORTANT("model_train_cnt="          << model_train_cnt          << ", model_train_size="          << model_train_size);
+        AEX_IMPORTANT("allocate_data_node_cnt="   << allocate_data_node_cnt   << ", allocate_dense_node_cnt="   << allocate_dense_node_cnt << ", allocate_hash_node_cnt=" << allocate_hash_node_cnt);
+        AEX_IMPORTANT("free_data_node_cnt="       << free_data_node_cnt       << ", free_dense_node_cnt="       << free_dense_node_cnt  << ", free_hash_node_cnt=" << free_hash_node_cnt);
+    }
+};
+
+struct info_stats{
+    //infomation_stats():hash_node_cnt(0), dense_node_cnt(0), data_node_cnt(0);
+    info_stats() = default;
+    ULL hash_node_cnt, dense_node_cnt, try_learn_dense_node_cnt, data_node_cnt;
+    ULL hash_node_childs, dense_node_childs;
+    ULL tot_depth, size;
+    unsigned int max_depth;
+    ULL level_node[16];
+    ULL memory_used;
+    void print_stats(){
+        AEX_HINT("memory used=" << memory_used);
+        AEX_HINT("tot_cnt=" << hash_node_cnt + dense_node_cnt + data_node_cnt);
+        //AEX_HINT("hash_node_cnt=" << hash_node_cnt << ", dense_node_cnt=" << dense_node_cnt << ", try_learn_dense_node_cnt" << try_learn_dense_node_cnt << ", data_node_cnt=" << data_node_cnt);
+        AEX_HINT("hash_node_cnt=" << hash_node_cnt << ", dense_node_cnt=" << dense_node_cnt << ", data_node_cnt=" << data_node_cnt);
+        AEX_HINT("try_learned_dense_node_cnt=" << try_learn_dense_node_cnt);
+        AEX_HINT("hash_node_childs=" << hash_node_childs << ", dense_node_childs=" << dense_node_childs);
+        AEX_HINT("size=" << size << ", avg_depth=" << 1.0 * tot_depth / size << ", max_depth=" << max_depth);
+        for (int i = 0; i < 16; ++i)
+            AEX_HINT("level " << i << "=" << level_node[i]);
+    }
+};
 
 }

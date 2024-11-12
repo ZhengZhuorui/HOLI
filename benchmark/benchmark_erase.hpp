@@ -1,7 +1,7 @@
 #pragma once
 #include <bits/stdc++.h>
 
-#include "aex/aex_map.h"
+#include "aex/aex.h"
 #include "stx/btree_map.h"
 #include "alex_map.h"
 #include "pgm_index.hpp"
@@ -23,7 +23,7 @@ void aex_erase_bench(vector<pair<key_type, value_type> > &data, vector<key_type>
     fflush(stdout);
     long long delta = 0;
     for (size_t i = 0; i < times; ++i){
-        aex::aex_map<key_type, value_type> index;
+        aex::aex_tree<key_type, value_type> index;
         index.bulk_load(data.data(), data.size());
         t1 = std::chrono::high_resolution_clock::now();
         for (const auto& x : erase_data){

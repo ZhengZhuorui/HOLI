@@ -1,17 +1,17 @@
 #include <bits/stdc++.h>
-#include "aex/aex_map.h"
+#include "aex/aex.h"
 #include "stx/btree_map.h"
 #include "alex_map.h"
 #include "alex.h"
 #include "pgm_index.hpp"
 #include "pgm_index_dynamic.hpp"
 
+using aex::aex_tree;
 using namespace std::chrono;
-using aex::aex_map;
 
 template<typename key_type, typename value_type>
 void aex_range_query_bench(vector<pair<key_type, value_type> > &data, vector<pair<key_type, key_type> > &query){
-    aex_map<key_type, value_type> index;
+    aex_tree<key_type, value_type> index;
     index.bulk_load(data.data(), data.size());
     system_clock::time_point t1, t2;
     size_t times = 1;
@@ -22,7 +22,7 @@ void aex_range_query_bench(vector<pair<key_type, value_type> > &data, vector<pai
 
     for (size_t T = 0; T < times; ++T){
         for (auto x : query){
-            typename aex_map<key_type, value_type>::const_iterator iter = index.lower_bound(x.first);
+            typename aex_tree<key_type, value_type>::const_iterator iter = index.lower_bound(x.first);
             //for (int i = 0; i < 100; ++i, ++iter)
             //    sum += iter.data();
             while (iter != index.end() && iter.key() <= x.second){

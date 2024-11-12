@@ -14,10 +14,8 @@ int main(){
         values[i].first = i;
         values[i].second = random_values[i];
     }
-    //lsfor (int i = 0; i < 3*)
-    //for (int i = 0; i < num_keys; ++i) 
 
-    aex::aex_tree<KEY_TYPE, PAYLOAD_TYPE> index(values, values + num_keys + 1);
+    aex::aex_tree<KEY_TYPE, PAYLOAD_TYPE, aex_default_traits<_Key, _Val, false, void, false>> index(values, values + num_keys + 1);
     
     for (int i = num_keys; i < 2 * num_keys; ++i){
         index.insert(values[i]);
@@ -34,5 +32,4 @@ int main(){
 
     aex::aex<KEY_TYPE, PAYLOAD_TYPE>::iterator it = index.lower_bound(150);
     std::cout << it->key() << " " << it->payload() << endl;
-
 }

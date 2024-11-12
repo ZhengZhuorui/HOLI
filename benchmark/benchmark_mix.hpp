@@ -2,7 +2,7 @@
 
 template<typename key_type, typename value_type>
 void aex_mix_bench(vector<pair<key_type, value_type> > &init_data, vector<int> &opt, vector<pair<key_type, value_type>> &insert_data, vector<key_type> &query, vector<value_type> &answer){
-    aex_map<key_type, value_type> index;
+    aex_tree<key_type, value_type> index;
     index.bulk_load(init_data.data(), init_data.size());
     system_clock::time_point t1, t2;
     size_t times = 1;
@@ -20,7 +20,7 @@ void aex_mix_bench(vector<pair<key_type, value_type> > &init_data, vector<int> &
                 sum += iter.data();
             }
             else{
-                typename aex_map<key_type, value_type>::iterator iter;
+                typename aex_tree<key_type, value_type>::iterator iter;
                 bool inserted;
                 std::tie(iter, inserted) = index.insert(insert_data[k++]);
             }

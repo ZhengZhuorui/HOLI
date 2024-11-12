@@ -400,14 +400,15 @@ public:
     inline slot_type predict(const key_type &key) const {
         //return static_cast<slot_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
         //return this->args.slot_size + std::min(0, static_cast<slot_type>(args.slope * (key - args.end)));
-        return this->args.slot_size + (key < args.end) * args.slope * (key - args.end);
+        //return this->args.slot_size + (key < args.end) * args.slope * (key - args.end);
+        return (key - this->args.start) * this->args.slope + 1;
     }
 
-    inline bool train(const key_type* const key, const slot_type n, const slot_type slot_size){
-        args.slot_size = slot_size - 1;
-        args.end = key[n - 1];
-        args.slope = 1.0 * (slot_size - 1) / (key[n - 1] - key[0]);
-        //AEX_PRINT("slot_size=" << slot_size << "args.slope=" << args.slope << ", args.end=" << args.end << ", predict(key[0])=" << predict(key[0]) << ", predict(key[mid])=" << predict(key[n / 2]) << ", predict(key[n])=" << predict(key[n - 1]));
+    inline bool train(const key_type* const keys, const slot_type n, const slot_type slot_size){
+        AEX_ASSERT(n > 2);
+        args.start = keys[1];
+        args.slope = 1.0 * (slot_size - 2) / (keys[n - 1] - keys[1]);
+        AEX_ASSERT(this->predict(keys[0]) <= 0);
         return true;
     }
 
@@ -448,8 +449,7 @@ public:
     #endif
 
     struct linear_arguments{
-        long double slope, end;
-        slot_type slot_size;
+        long double slope, start;
     }args;
 
 };

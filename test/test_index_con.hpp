@@ -6,9 +6,9 @@ template<typename key_type,
 bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long n, long long read_nums, long long write_nums, long long erase_nums){
     
     AEX_HINT("[test index concurrency with all interface]");
-    typedef mock_aex_tree_con<key_type, value_type, traits> tree;
+    typedef aex_tree<key_type, value_type, traits> tree;
     [[maybe_unused]]typedef typename tree::node_ptr node_ptr;
-    mock_aex_tree_con<key_type, value_type, traits> index;
+    aex_tree<key_type, value_type, traits> index;
     long long init_nums = n - write_nums, tot_nums = read_nums + write_nums + erase_nums;
     std::vector<std::pair<key_type, value_type>> init_data(init_nums), index_data(init_nums);
     std::vector<bool> is_delete(n);

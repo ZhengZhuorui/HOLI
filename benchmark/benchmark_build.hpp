@@ -1,5 +1,5 @@
 #include <bits/stdc++.h>
-#include "aex/aex_map.h"
+#include "aex/aex.h"
 #include "stx/btree_map.h"
 #include "alex_map.h"
 #include "alex.h"
@@ -21,7 +21,7 @@ void aex_build_bench(vector<pair<key_type, value_type> > &data){
     size_t sum = 0;
     printf("aex map construct test...");
     t1 = std::chrono::high_resolution_clock::now();
-    aex::aex_map<key_type, value_type> index;
+    aex::aex_tree<key_type, value_type> index;
     for (size_t i = 0; i < times; ++i){
         index.bulk_load(data.data(), data.size());
         sum += index.size();

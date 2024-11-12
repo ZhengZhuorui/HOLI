@@ -40,16 +40,14 @@ struct aex_hash_table_block{
     }
 
     std::pair<key_type, node_ptr> find(const node_ptr _node, const slot_type _pos){
-        key_type min_key = std::numeric_limits<key_type>::min();
-        node_ptr ret = nullptr;
         self* b = this;
         do{
-            for (char i = 0; i < size; ++i)
+            for (int i = 0; i < b->size; ++i)
                 if (parent[i] == _node && pos[i] == _pos)
                     return std::make_pair(key[i], child[i]);
             b = b->next;
         }while(b != nullptr);
-        return nullptr;
+        return std::make_pair(std::numeric_limits<key_type>::lowest(), nullptr);
     }
 
     //std::pair<node_ptr, NodeType> find_insert(const node_ptr _node, const slot_type _pos, const key_type x){
@@ -66,7 +64,7 @@ struct aex_hash_table_block{
     node_ptr find(const node_ptr _node, const slot_type _pos, const key_type x){
         self* b = this;
         do{
-            for (char i = 0; i < size; ++i)
+            for (int i = 0; i < b->size; ++i)
                 if (parent[i] == _node && pos[i] == _pos && key[i] <= x)
                     return child[i];
             b = b->next;
@@ -89,27 +87,26 @@ struct aex_hash_table_block{
             insert_block = this->next;
         }
         {
-            insert_block->key[size]    = x;
-            insert_block->child[size]  = y;
-            insert_block->parent[size] = _node;
-            insert_block->pos[size]    = _pos;
+            int _size = insert_block->size;
+            insert_block->parent[_size] = _node;
+            insert_block->pos[_size]    = _pos;
+            insert_block->key[_size]    = x;
+            insert_block->child[_size]  = y;
             ++insert_block->size;
         }
     }
 
-    bool erase(const node_ptr _node, const slot_type _pos, const key_type x, const node_ptr y){
-        self* erase_block = this, tail = (erase_block->next == nullptr) ? this : this->next;
+    bool erase(const node_ptr _node, const slot_type _pos){
+        self* erase_block = this;
+        self* tail = (erase_block->next == nullptr) ? this : this->next;
         do{
-            for (char i = 0; i < size; ++i)
+            for (int i = 0; i < erase_block->size; ++i)
                 if (erase_block->parent[i] == _node && 
-                    erase_block->pos[i] == _pos && 
-                    erase_block->key[i] == x && 
-                    erase_block->child[i] == y){
+                    erase_block->pos[i] == _pos){
                     std::swap(erase_block->key[i], tail->key[tail->size - 1]);
                     std::swap(erase_block->child[i], tail->child[tail->size - 1]);
                     std::swap(erase_block->parent[i], tail->parent[tail->size - 1]);
                     std::swap(erase_block->pos[i], tail->pos[tail->size - 1]);
-                    std::swap(erase_block->type[i], tail->type[tail->size - 1]);
                     --tail->size;
                     if (tail != this && tail->size == 0){
                         this->next = tail->next;
@@ -122,15 +119,12 @@ struct aex_hash_table_block{
     }
 
     bool update(const node_ptr _node, const slot_type _pos, const key_type update_key, const node_ptr update_node){
-        key_type min_key = std::numeric_limits<key_type>::min();
-        node_ptr ret = nullptr;
         self* b = this;
         do{
-            for (char i = 0; i < size; ++i)
+            for (int i = 0; i < b->size; ++i)
                 if (parent[i] == _node && pos[i] == _pos){
                     key[i]   = update_key;
                     child[i] = update_node;
-                    //type[i]  = update_node->type;
                     return true;
                 }
             b = b->next;
@@ -147,10 +141,10 @@ public:
     typedef aex_default_components<traits>      components;
     typedef typename traits::slot_type          slot_type;
     typedef typename traits::hash_type          hash_type;
+    typedef typename components::size_type          size_type;
     typedef typename components::base_node      base_node;
     typedef typename components::node_ptr       node_ptr;
     typedef typename components::HashTableBlock HashTableBlock;
-    typedef typename components::size_type      size_type;
 
     typedef aex_hash_table<_Key, traits> self;
 
@@ -158,7 +152,7 @@ public:
         table_ = new HashTableBlock[slot_size];
     }
 
-    explicit aex_hash_table(int _slot_size):slot_size(_slot_size), size(0){
+    explicit aex_hash_table(LL _slot_size):slot_size(_slot_size), size(0){
         AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
         table_ = new HashTableBlock[slot_size];
     }
@@ -169,7 +163,7 @@ public:
             return;
         }
         table_ = new HashTableBlock[slot_size];
-        for (int i = 0; i < this->slot_size; ++i){
+        for (slot_type i = 0; i < this->slot_size; ++i){
             table_[i] = other_table.table_[i];
             HashTableBlock *b = other_table.table_[i];
             HashTableBlock *nb = table_[i];
@@ -195,25 +189,32 @@ public:
         destory();
     }
 
-    inline size_t memory_used(){
+    inline ULL memory_used(){
         if (table_ == nullptr) return 0;
         else{
-            size_t ret = sizeof(HashTableBlock) * this->slot_size;
-            for (int i = 0; i < this->slot_size; ++i)
-            if (table_[i]->next != nullptr){
-                HashTableBlock *b = table_[i]->next;
+            ULL ret = sizeof(HashTableBlock) * this->slot_size;
+            for (slot_type i = 0; i < this->slot_size; ++i)
+            if (table_[i].next != nullptr){
+                HashTableBlock *b = table_[i].next;
                 while (b != nullptr){
                     ret += sizeof(HashTableBlock);
                     b = b->next;
                 }
             }
+            return ret;
         }
+    }
+
+    inline void print_stats(){
+        AEX_HINT("[HashTable] size=" << size << ", slot_size=" << slot_size);
     }
 
     self& operator = (self &other_table){
         AEX_ASSERT(this->slot_size == other_table.slot_size);
+        AEX_ASSERT(table_ != nullptr);
+        delete this->table_;
         table_ = new HashTableBlock[slot_size];
-        for (int i = 0; i < this->slot_size; ++i){
+        for (slot_type i = 0; i < this->slot_size; ++i){
             table_[i] = other_table.table_[i];
             HashTableBlock *b = other_table.table_[i];
             HashTableBlock *nb = table_[i];
@@ -227,8 +228,8 @@ public:
     }
 
     self& operator = (self &&other_table){
-        if (this->table_ != nullptr)
-            delete this->table_;
+        AEX_ASSERT(table_ != nullptr);
+        delete this->table_;
         if (slot_size < traits::MIN_ML_INNER_NODE_SIZE){
             return *this;
         }
@@ -238,8 +239,8 @@ public:
         return *this;
     }
 
-    void destory(self* b){
-        self *c = b->next, *t;
+    void destory(HashTableBlock* b){
+        HashTableBlock *c = b->next, *t;
         while (c != nullptr){
             t = c;
             c = c->next;
@@ -249,40 +250,40 @@ public:
     }
 
     void destory(){
-        if (table_ == nullptr)
-            return;
-        for (int i = 0; i < this->slot_size; ++i){
-            if (table_[i]->next != nullptr)
-                destory(table_[i]->next);
+        AEX_ASSERT(table_ != nullptr);
+        for (slot_type i = 0; i < this->slot_size; ++i){
+            if (table_[i].next != nullptr)
+                destory(table_[i].next);
         }
         delete table_;
     }
 
     inline unsigned long long get_hash_key(const node_ptr n, const slot_type pos) const {
-        return (reinterpret_cast<unsigned long long>(n) * traits::K1 + reinterpret_cast<unsigned long long>(pos) * traits::K2) & (slot_size - 1);
+        unsigned long long _ = (unsigned long long)(pos);
+        return (reinterpret_cast<unsigned long long>(n) * traits::K1 + _ * traits::K2) & (slot_size - 1);
     }
 
     inline void clear(){
         destory();
-        table_ = new HashTableBlock[traits::MIN_HASHTABLE_SIZE];
+        table_ = new HashTableBlock[traits::MIN_HASH_TABLE_SIZE];
     }
 
     inline bool isfull() const {
-        return 1.0 * this->size / this->slot_size >= traits::MAX_HASH_TABLE_DENSITY_RATIO;
+        return 1.0 * this->size / this->slot_size >= traits::HASH_TABLE_FULL_RATIO;
     }
 
     inline bool isfew() const {
-        return 1.0 * this->size / this->slot_size < traits::MIN_HASH_TABLE_DENSITY_RATIO;
+        return 1.0 * this->size / this->slot_size < traits::HASH_TABLE_FEW_RATIO;
     }
     
     inline void rescale(const slot_type _slot_size){
         HashTableBlock* new_hash_table = new HashTableBlock[_slot_size];
-        for (int i = 0; i < this->_slot_size; ++i){
-            HashTableBlock *b = table_[i];
+        for (slot_type i = 0; i < this->slot_size; ++i){
+            HashTableBlock *b = &table_[i];
             do{
                 for (unsigned char j = 0; j < b->size; ++j){
-                    hash_type hash_key = fingerprint(b->ori_node[j], b->ori_node[j]);
-                    new_hash_table[hash_key]->insert(b->ori_pos[j], b->ori_key[j], b->ori_child[j], b->ori_node[j]);
+                    hash_type hash_key = get_hash_key(b->parent[j], b->pos[j]);
+                    new_hash_table[hash_key].insert(b->parent[j], b->pos[j], b->key[j], b->child[j]);
                 }
                 b = b->next;
             }while(b == nullptr);
@@ -293,69 +294,64 @@ public:
     }
 
     inline void narrow(){
-        rescale(table_->slot_size >> 1);
+        rescale(this->slot_size >> 1);
     }
 
     inline void expand(){
-        rescale(table_->slot_size << 1);
+        rescale(this->slot_size << 1);
     }
 
     /**
-     * @brief insert (ori_node->key[pos], ori_node->child[pos]) in hash table
+     * @brief insert (node->key[pos], node->child[pos]) in hash table
      */
-    inline void insert(const node_ptr ori_node, const slot_type pos, const key_type key, const node_ptr child){
-        hash_type hash_key = get_hash_key(ori_node, pos);
-        if (table_->block[hash_key].size == traits::HASH_BLOCK_SIZE && table_->isfull())
+    inline void insert(const node_ptr parent, const slot_type pos, const key_type key, const node_ptr child){
+        hash_type hash_key = get_hash_key(parent, pos);
+        if (table_[hash_key].size == traits::HASH_TABLE_BLOCK_SIZE && this->isfull())
             expand();
-        hash_key = get_hash_key(ori_node, pos);
-        table_[hash_key]->insert(ori_node, pos, key, child);
+        hash_key = get_hash_key(parent, pos);
+        table_[hash_key].insert(parent, pos, key, child);
         ++size;
     }
 
     /**
-     * @brief return the ori_node->child[pos] if ori_node->key[pos] > key
+     * @brief return the node->child[pos] if node->key[pos] > key
      */
-    inline node_ptr find(const node_ptr ori_node, const slot_type pos, const key_type key) const {
-        hash_type hash_key = get_hash_key(ori_node, pos);
-        return table_[hash_key]->find(ori_node, pos, key);
+    inline node_ptr find(const node_ptr node, const slot_type pos, const key_type key) const {
+        hash_type hash_key = get_hash_key(node, pos);
+        return table_[hash_key].find(node, pos, key);
     }
 
     /**
-     * @brief return the (ori_node->key[pos], ori_node->child[pos])
+     * @brief return the (node->key[pos], node->child[pos])
      */
-    inline std::pair<key_type, node_ptr> find(const slot_type ori_node, const slot_type pos) const {
-        hash_type hash_key = get_hash_key(ori_node, pos);
-        return table_[hash_key]->find(ori_node, pos);
+    inline std::pair<key_type, node_ptr> find(const node_ptr node, const slot_type pos) const {
+        hash_type hash_key = get_hash_key(node, pos);
+        return table_[hash_key].find(node, pos);
     }
 
-    //inline std::pair<node_ptr, NodeType> find_insert(const slot_type ori_node, const slot_type pos, const key_type key) const {
-    //    hash_type hash_key = get_hash_key(ori_node, pos);
-    //    return table_[hash_key]->find_insert(ori_node, pos);
-    //}
-
     /**
-     * @brief erase ori_node->child[pos] if ori_node->child[pos] == child
+     * @brief erase node->child[pos]
      */
-    inline bool erase(const node_ptr ori_node, const slot_type pos){
+    inline bool erase(const node_ptr node, const slot_type pos){
         if (isfew())
             narrow();
-        hash_type hash_key = get_hash_key(ori_node, pos);
-        bool ret = table_[hash_key]->erase(ori_node, pos);
-        size -= ret;
+        hash_type hash_key = get_hash_key(node, pos);
+        bool ret = table_[hash_key].erase(node, pos);
+        if (ret)
+            --size;
         return ret;
     }
 
-    inline bool update(const node_ptr ori_node, const slot_type pos, const key_type update_key, const node_ptr update_node){
-        hash_type hash_key = get_hash_key(ori_node, pos);
-        bool ret = table_[hash_key]->update(ori_node, pos, update_key, update_node);
+    inline bool update(const node_ptr parent, const slot_type pos, const key_type update_key, const node_ptr update_node){
+        hash_type hash_key = get_hash_key(parent, pos);
+        bool ret = table_[hash_key].update(parent, pos, update_key, update_node);
         AEX_ASSERT(ret == false);
         return ret;
     }
 
-    size_type slot_size, size;
-
+    LL slot_size;
+    size_type size;
     HashTableBlock* table_;
-
 };
 
 

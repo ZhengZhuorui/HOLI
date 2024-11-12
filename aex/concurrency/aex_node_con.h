@@ -15,7 +15,7 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     typedef aex_tree<key_type, value_type, traits> base_tree;
     typedef typename base_tree::components         components;
     typedef typename parent::slot_type             slot_type;
-    typedef typename parent::InnerNodeModel        Model;
+    typedef typename parent::Model                 Model;
     typedef typename parent::bitmap                bitmap;
     typedef typename parent::bitmap_base           bitmap_base;
     typedef typename parent::bitmap_impl           bitmap_impl;
@@ -43,20 +43,20 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         this->lock_array = new RWLock[this->slot_size];
     }
 
-    void array_lock(const slot_type l_pos, const slot_type r_pos){
+    void array_lock(slot_type l_pos, slot_type r_pos){
         if (l_pos > r_pos)
             return;
-        l_pos = std::max(0, l_pos);
+        l_pos = std::max((slot_type)0, l_pos);
         r_pos = std::min(this->slot_size - 1, r_pos);
         for (slot_type i = pos2slot(l_pos); i < pos2slot(r_pos); ++i)
             lock_array[i].lock();
     }
 
 
-    void array_unlock(const slot_type l_pos, const slot_type r_pos){
+    void array_unlock(slot_type l_pos, slot_type r_pos){
         if (l_pos > r_pos)
             return;
-        l_pos = std::max(0, l_pos);
+        l_pos = std::max((slot_type)0, l_pos);
         r_pos = std::min(this->slot_size - 1, r_pos);
         for (slot_type i = pos2slot(l_pos); i < pos2slot(r_pos); ++i){
             AEX_ASSERT(lock_array[i].is_lock());
@@ -64,19 +64,19 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         }
     }
 
-    void array_lock_shared(const slot_type l_pos, const slot_type r_pos){
+    void array_lock_shared(slot_type l_pos, slot_type r_pos){
         if (l_pos > r_pos)
             return;
-        l_pos = std::max(0, l_pos);
+        l_pos = std::max((slot_type)0, l_pos);
         r_pos = std::min(this->slot_size - 1, r_pos);
         for (slot_type i = pos2slot(l_pos); i < pos2slot(r_pos); ++i)
             lock_array[i].lock_shared();
     }
     
-    void array_unlock_shared(const slot_type l_pos, const slot_type r_pos){
+    void array_unlock_shared(slot_type l_pos, slot_type r_pos){
         if (l_pos > r_pos)
             return;
-        l_pos = std::max(0, l_pos);
+        l_pos = std::max((slot_type)0, l_pos);
         r_pos = std::min(this->slot_size - 1, r_pos);
         for (slot_type i = pos2slot(l_pos); i < pos2slot(r_pos); ++i){
             AEX_ASSERT(lock_array[i].is_lock_shared());
@@ -84,10 +84,10 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         }
     }
 
-    inline bool try_array_upgrade_lock(const slot_type l_pos, const slot_type r_pos){
+    inline bool try_array_upgrade_lock(slot_type l_pos, slot_type r_pos){
         if (l_pos > r_pos)
             return true;
-        l_pos = std::max(0, l_pos);
+        l_pos = std::max((slot_type)0, l_pos);
         r_pos = std::min(this->slot_size - 1, r_pos);
         for (slot_type i = pos2slot(l_pos); i < pos2slot(r_pos); ++i){
             if (!lock_array[i].try_upgrade_lock()){
@@ -99,10 +99,10 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         return true;
     }
 
-    inline void array_downgrade_lock(const slot_type l_pos, const slot_type r_pos){
+    inline void array_downgrade_lock(slot_type l_pos, slot_type r_pos){
         if (l_pos > r_pos)
             return;
-        l_pos = std::max(0, l_pos);
+        l_pos = std::max((slot_type)0, l_pos);
         r_pos = std::min(this->slot_size - 1, r_pos);
         for (slot_type i = pos2slot(l_pos); i < pos2slot(r_pos); ++i){
             AEX_ASSERT(lock_array[i].is_lock());
@@ -110,13 +110,13 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         }
     }
 
-    inline slot_type array_lock_shared_until_next_item(const slot_type prev_pos, const slot_type pos){
+    inline slot_type array_lock_shared_until_next_item(slot_type prev_pos, slot_type pos){
         slot_type x = pos;
         if (x > this->slot_size)
             return x;
         if (pos2slot(pos) != pos2slot(prev_pos))
             lock_array[pos2slot(x)].lock();
-        bitmap text = this->bitmap_ptr + x >> 6;
+        bitmap text = this->bitmap_ptr + (x >> 6);
         bitmap_base base = (*text) >> (x & 63);
         x += (base == 0) ? (64 - (x & 63)) : __builtin_ctzll(base);
         while (base == 0 && x < this->slot_size){
@@ -125,16 +125,16 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
             base = *text;
             x += __builtin_ctzll(base);
         }
-        return std::make_pair(x, false);
+        return x;
     }
 
-    inline slot_type array_lock_until_next_item(const slot_type prev_pos, const slot_type pos){
+    inline slot_type array_lock_until_next_item(slot_type prev_pos, slot_type pos){
         slot_type x = pos;
         if (x > this->slot_size)
             return x;
         if (pos2slot(pos) != pos2slot(prev_pos))
             lock_array[pos2slot(x)].lock();
-        bitmap text = this->bitmap_ptr + x >> 6;
+        bitmap text = this->bitmap_ptr + (x >> 6);
         bitmap_base base = (*text) >> (x & 63);
         x += (base == 0) ? (64 - (x & 63)) : __builtin_ctzll(base);
         while (base == 0 && x < this->slot_size){
@@ -146,24 +146,20 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         return x;
     }
 
-    inline slot_type try_array_lock_shared_until_prev_item(const slot_type next_pos, const slot_type pos, bool &restart){
-        slot_type x = pos, end_slot = pos2slot(pos);
+    inline slot_type try_array_lock_shared_until_prev_item(slot_type pos, bool &restart){
+        if (pos < 0)
+            return 0;
+        const slot_type end_slot = pos2slot(pos);
+        AEX_ASSERT(lock_array[end_slot].is_lock_shared());
+        slot_type x = pos;
         restart = false;
-        if (x <= 0)
-            return x;
-        
-        if (end_slot != pos2slot(next_pos))
-            if (!lock_array[end_slot].try_lock_shared()){
-                restart = true;
-                return -1;
-            }
 
-        bitmap text = this->bitmap_ptr + x >> 6;
+        bitmap text = this->bitmap_ptr + (x >> 6);
         bitmap_base base = (*text) << (~(x & 63));
         x -= (base == 0) ? ((x & 63) + 1) : __builtin_clzll(base);
         while (base == 0 && x > 0){
             if (!lock_array[pos2slot(x)].try_lock_shared()){
-                for (int i = pos2slot(x) + 1; i <= end_slot; ++i)
+                for (slot_type i = pos2slot(x) + 1; i < end_slot; ++i)
                     lock_array[i].unlock_shared();
             }
             --text;

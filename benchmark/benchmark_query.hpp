@@ -1,5 +1,5 @@
 #include <bits/stdc++.h>
-#include "aex/aex_map.h"
+#include "aex/aex.h"
 #include "stx/btree_map.h"
 #include "alex_map.h"
 #include "alex.h"
@@ -7,11 +7,10 @@
 #include "pgm_index_dynamic.hpp"
 
 using namespace std::chrono;
-using aex::aex_map;
 
 template<typename key_type, typename value_type>
 void aex_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
-    aex_map<key_type, value_type> index;
+    aex::aex_tree<key_type, value_type> index;
     index.bulk_load(data.data(), data.size());
     system_clock::time_point t1, t2;
     size_t times = 1;

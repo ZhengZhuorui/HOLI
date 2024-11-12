@@ -2,9 +2,9 @@ template<typename key_type,
         typename value_type,
         typename traits=aex_default_traits<key_type, value_type>>
 bool test_index_mix_perf(std::pair<key_type, value_type>* data, long long n, long long batch, double rw_ratio){
-    typedef mock_aex_tree<key_type, value_type, traits> tree;
-    typedef typename tree::node_ptr node_ptr;
-    mock_aex_tree<key_type, value_type, traits> index;
+    typedef aex_tree<key_type, value_type, traits> tree;
+    [[maybe_unused]]typedef typename tree::node_ptr node_ptr;
+    aex_tree<key_type, value_type, traits> index;
     std::map<key_type, value_type> mp;
     long long insert_num = static_cast<long long>(rw_ratio * batch);
     long long query_num = batch - insert_num;
@@ -48,18 +48,7 @@ bool test_index_mix_perf(std::pair<key_type, value_type>* data, long long n, lon
             AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);
             return false;
         }
-        index.print_stats();
-        size_t leaf_num = 0, data_size = 0;
-        for (node_ptr inode = index.head_leaf; inode != index.empty_leaf; inode = inode->next){
-            //std::cout << "inode=" << inode << ", key[0]=" << static_cast<data_node_ptr>(inode)->key[0] << ;
-            ++leaf_num;
-            data_size += inode->size;
-        }
-        if (leaf_num != index.m_stats.data_node()){
-            AEX_ERROR("leaf num error! leaf_num=" << leaf_num << "index.leaf_num=" << index.m_stats.data_node());
-            return false;
-        }
-        
+        index.print_stats();        
         size_t i = 0;
         //AEX_PRINT("slot_size=" << index.begin()._M_node->slot_size);
         std::sort(data, data + n);
@@ -118,9 +107,9 @@ template<typename key_type,
 bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, long long read_nums, long long write_nums, long long erase_nums){
     
     AEX_HINT("[test index all interface]");
-    typedef mock_aex_tree<key_type, value_type, traits> tree;
+    typedef aex_tree<key_type, value_type, traits> tree;
     [[maybe_unused]]typedef typename tree::node_ptr node_ptr;
-    mock_aex_tree<key_type, value_type, traits> index;
+    aex_tree<key_type, value_type, traits> index;
     long long init_nums = n - write_nums, tot_nums = read_nums + write_nums + erase_nums;
     std::vector<std::pair<key_type, value_type>> init_data(init_nums), index_data(init_nums);
     std::vector<bool> is_delete(n);
@@ -139,10 +128,9 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
     std::random_shuffle(opt.data(), opt.data() + tot_nums);
     size_t insert_cnt = 0;
     AEX_PRINT("prepare finish...");
-    {
-        index.print_stats();
-        index.print_detail();
-    }
+    
+    index.print_stats();
+    
     for (long long i = 0; i < tot_nums; ++i){
         switch (opt[i]){
             case OperationType::Lookup:{
@@ -156,7 +144,6 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
                 if (x == index.end()){
                     AEX_ERROR("i=" << i << ", query error, pos=" << pos << ", key=" << index_data[pos].first << ", query no exists");
                     index.print_stats();
-                    index.print_detail();
                     return false;
                 }
                 if (x.key() != index_data[pos].first || x.data() != index_data[pos].second){
@@ -204,7 +191,6 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
 
     {
         index.print_stats();
-        index.print_detail();
     }
 
     return true;
