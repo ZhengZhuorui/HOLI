@@ -4,15 +4,16 @@ template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find(const hash_node_ptr node, const key_type &key) {
     AEX_ASSERT(node->is_occupied(0));
     slot_type pos = node->predict(key), pos1;
-    key_type _;
+    key_type find_key;
     node_ptr res = nullptr;
     node->array_lock_shared(pos - 1, pos);
     if (node->is_occupied(pos))
-        res = hash_table.find(node, pos, key);
-    if (res == nullptr){
+        std::tie(find_key, res) = hash_table.find(node, pos);
+    if (res == nullptr || find_key > key){
         pos1 = node->prev_item_find(pos - 1);
-        std::tie(_, res) = hash_table.find(node, pos1);
+        std::tie(find_key, res) = hash_table.find(node, pos1);
     }
+    //AEX_PRINT("key=" << key << "pos=" << pos << ", pos1=" << pos1);
     AEX_ASSERT(res != nullptr);
     SL(res);
     node->array_unlock_shared(pos - 1, pos);
@@ -103,13 +104,17 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 find_insert_start:
     bool restart = false;
     pos = node->predict(key);
+    key_type find_key;
     node_ptr res = nullptr;
     node->array_lock_shared(pos - 1, pos);
 
     if (node->is_occupied(pos)){
-        res = hash_table.find(node, pos, key);
-        if (res == nullptr)
+        std::tie(find_key, res) = hash_table.find(node, pos);
+        AEX_ASSERT(res != nullptr);
+        if (find_key > key){
             next_pos = pos;
+            res = nullptr;
+        }
         else
             next_pos = node->array_lock_shared_until_next_item(pos, pos + 1);  
     }
@@ -122,7 +127,8 @@ find_insert_start:
             node->array_unlock_shared(pos - 1, next_pos);
             goto find_insert_start;
         }
-        res = hash_table.find(node, pos, key);
+        std::tie(find_key, res) = hash_table.find(node, pos);
+        AEX_ASSERT(find_key <= key);
     }
 
     AEX_ASSERT(res == nullptr);

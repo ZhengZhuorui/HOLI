@@ -368,7 +368,6 @@ struct aex_concurrency_components{
     typedef aex_rw_spinlock<traits> RWLock;
     typedef aex_spinlock<traits>    Lock;
     typedef aex_allocator<key_type, value_type, traits> Allocator;
-    typedef aex_hash_table_block<key_type, traits>      HashTableBlock;
     typedef aex_hash_table<key_type, traits>            HashTable;
     typedef unsigned long long                          version_type;
     //typedef empty_type<unsigned long long> version_type;

@@ -22,11 +22,10 @@ const int N = 10000000, M = 10000;
 
 template <typename T, bool AllowMultiKey, bool AllowConcurrency>
 bool test(map<string, string> &flags){
+    
     auto unit = flags["unit"];
     using default_traits = aex_default_traits<T, T, AllowMultiKey, void, AllowConcurrency>;
-    #ifdef DEBUG
-    AEX_HINT("unit test...");
-    #endif
+    AEX_HINT("unit test: AllowMultiKey=" << AllowMultiKey << ", AllowConcurrency=" << AllowConcurrency);
 
     if (unit == "avx"){
         auto func = flags["function"];
@@ -35,7 +34,7 @@ bool test(map<string, string> &flags){
         return false;
     }
     
-    auto dataset = flags["dataset"];
+auto dataset = flags["dataset"];
     
     string file_name = flags["input_file"];
     FILE* file = fopen(file_name.c_str(), "rb");
@@ -220,7 +219,8 @@ bool test(map<string, string> &flags){
         if (func == "bulk_load"){
             std::vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data);
-            return test_index_bulk_load_perf<T, T, default_traits>(data.data(), num_keys);
+            bool res = test_index_bulk_load_perf<T, T, default_traits>(data.data(), num_keys);
+            return res;
         }
         if (func == "insert"){
             long long batch = stoll(flags["batch"]);

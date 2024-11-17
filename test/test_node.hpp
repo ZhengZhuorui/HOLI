@@ -12,7 +12,7 @@ bool test_hash_node_insert_perf(vector<key_type> &data, size_t n, size_t batch){
     typedef typename aex_tree<key_type, value_type, traits>::hash_node_ptr hash_node_ptr;
     [[maybe_unused]] typedef typename aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::slot_type slot_type;
-    tree.hash_table.rescale(min_slot_size(n * 2, traits::MIN_HASH_TABLE_SIZE));
+    tree.hash_table.rescale(min_slot_size(n * 2, traits::HASH_TABLE_FULL_RATIO, traits::MIN_HASH_TABLE_SIZE));
     vector<key_type> node_data(n);
     std::copy(data.begin(), data.end(), node_data.begin());
     vector<key_type> insert_data(batch);
@@ -126,11 +126,11 @@ bool test_hash_node_query_perf(vector<key_type> &data, size_t n, size_t batch){
     [[maybe_unused]] typedef typename aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::slot_type slot_type;
     AEX_PRINT("1");
-    tree.hash_table.rescale(min_slot_size(n * 2, traits::MIN_HASH_TABLE_SIZE));
+    tree.hash_table.rescale(min_slot_size(n * 2, traits::HASH_TABLE_FEW_RATIO, traits::MIN_HASH_TABLE_SIZE));
     AEX_PRINT("2");
     data_node_ptr* child_ptr = new data_node_ptr[n];
-    construct_data_node_array<key_type, value_type, traits>(data.data(), data.size(), child_ptr);
     AEX_PRINT("3");
+    construct_data_node_array<key_type, value_type, traits>(data.data(), data.size(), child_ptr);
     vector<std::pair<key_type, data_node_ptr> > pack_data(n);
     vector<key_type> query;
     vector<data_node_ptr> answer;
@@ -141,17 +141,17 @@ bool test_hash_node_query_perf(vector<key_type> &data, size_t n, size_t batch){
     generate_query(pack_data, query, answer, batch);
     for (size_t i = 0; i < batch; ++i){
         slot_type pos = std::lower_bound(data.data(), data.data() + n, query[i]) - data.data();
-        if (static_cast<size_t>(pos) > 0 && !std::is_integral<key_type>::value){
-            query[i] -= (1.0 * (rand() % 65536) / 65536) * (data[pos] - data[pos - 1]);
+        if (static_cast<size_t>(pos) < n - 1 && !std::is_integral<key_type>::value){
+            query[i] += (1.0 * (rand() % 65536) / 65536) * (data[pos + 1] - data[pos]);
         }
     }
-
+    AEX_PRINT("5");
     hash_node_ptr node = static_cast<hash_node_ptr>(tree.construct(data.data(), reinterpret_cast<node_ptr*>(child_ptr), n));
     if (node->type != NodeType::HashNode){
         AEX_ERROR("Node type is not hash node");
         return false;
     }
-
+    AEX_PRINT("6");
     for (size_t i = 0; i < batch; ++i){       
         [[maybe_unused]]key_type key;
         node_ptr child;

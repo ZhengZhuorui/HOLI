@@ -156,15 +156,15 @@ inline _Tp rapid_pow(_Tp base, unsigned long long x){
     return ans;
 }
 
-template<typename _Tp>
-inline _Tp min_slot_size(const _Tp x, const int min_slot_size){
+template<typename _Tp, typename _T>
+inline _Tp min_slot_size(const _Tp x, const _T min_slot_size){
     _Tp slot_size = min_slot_size;
     while (slot_size < x) slot_size <<= 1;
     return slot_size;
 }
 
-template<typename _Tp>
-inline _Tp min_slot_size(const _Tp x, double ratio, const int min_slot_size){
+template<typename _Tp, typename _T>
+inline _Tp min_slot_size(const _Tp x, double ratio, const _T min_slot_size){
     _Tp slot_size = min_slot_size;
     while (slot_size * ratio < x) slot_size <<= 1;
     return slot_size;
@@ -358,6 +358,47 @@ inline bool is_sorted(_Tp *x, ULL n){
     return true;
 }
 
+LL qpow(LL a, LL n, LL p){
+    LL ans = 1;
+    while (n)
+    {
+        if (n & 1)
+            ans = ans * a % p;
+        a = a * a % p;
+        n >>= 1;
+    }
+    return ans;
+}
+
+bool is_prime(LL x){
+    if (x < 3) 
+        return x == 2;
+    if (x % 2 == 0)
+        return false;
+    LL A[] = {2, 3, 5, 7}, d = x - 1, r = 0;
+    while (d % 2 == 0) 
+        d /= 2, ++r;
+    for (auto a : A)
+    {
+        LL v = qpow(a, d, x);
+        if (v <= 1 || v == x - 1) 
+            continue;
+        for (int i = 0; i < r; ++i)
+        {
+            v = v * v % x;
+            if (v == x - 1 && i != r - 1) {
+                v = 1;
+                break;
+            }
+            if (v == 1)  
+                return false;
+        }
+        if (v != 1) 
+            return false;
+    }
+    return true;
+}
+
 struct operation_stats{
     //operation_stats():hash_node_rebuild_cnt(0),  cast_to_hash_node_cnt(0),  hash_node_expand_cnt(0),  hash_node_narrow_cnt(0),
     //                  dense_node_rebuild_cnt(0), cast_to_dense_node_cnt(0), dense_node_expand_cnt(0), dense_node_narrow_cnt(0),
@@ -374,14 +415,13 @@ struct operation_stats{
     ULL allocate_data_node_cnt, allocate_dense_node_cnt, allocate_hash_node_cnt;
     ULL free_data_node_cnt, free_dense_node_cnt, free_hash_node_cnt;
     void print_stats(){
+        AEX_SUCCESS("[Operation Stats]: ");
         AEX_IMPORTANT("cast_to_hash_node_cnt="    << cast_to_hash_node_cnt    << ", cast_to_dense_node_cnt="    << cast_to_dense_node_cnt);
         AEX_IMPORTANT("hash_node_expand_cnt="     << hash_node_expand_cnt     << ", hash_node_expand_size="     << hash_node_expand_size);
         AEX_IMPORTANT("hash_node_narrow_cnt="     << hash_node_expand_cnt     << ", hash_node_narrow_size="     << hash_node_narrow_size);
         AEX_IMPORTANT("dense_node_expand_cnt="    << dense_node_expand_cnt    << ", dense_node_expand_size="    << dense_node_expand_size);
         AEX_IMPORTANT("dense_node_narrow_cnt="    << dense_node_narrow_cnt    << ", dense_node_narrow_size="    << dense_node_narrow_size);
         AEX_IMPORTANT("inner_node_rebuild_cnt="   << inner_node_rebuild_cnt   << ", inner_node_rebuild_size="   << inner_node_rebuild_size);
-        //AEX_IMPORTANT("hash_node_construct_cnt="  << hash_node_construct_cnt  << ", hash_node_construct_size="  << hash_node_construct_size);
-        //AEX_IMPORTANT("dense_node_construct_cnt=" << dense_node_construct_cnt << ", dense_node_construct_size=" << dense_node_construct_size);
         AEX_IMPORTANT("inner_node_spilt_cnt="     << inner_node_split_cnt     << ", inner_node_split_size="     << inner_node_split_size);
         AEX_IMPORTANT("data_node_split_cnt="      << data_node_split_cnt      << ", data_node_merge_cnt="       << data_node_merge_cnt);
         AEX_IMPORTANT("model_train_cnt="          << model_train_cnt          << ", model_train_size="          << model_train_size);
@@ -400,6 +440,7 @@ struct info_stats{
     ULL level_node[16];
     ULL memory_used;
     void print_stats(){
+        AEX_SUCCESS("[Infomation Stats]: ");
         AEX_HINT("memory used=" << memory_used);
         AEX_HINT("tot_cnt=" << hash_node_cnt + dense_node_cnt + data_node_cnt);
         //AEX_HINT("hash_node_cnt=" << hash_node_cnt << ", dense_node_cnt=" << dense_node_cnt << ", try_learn_dense_node_cnt" << try_learn_dense_node_cnt << ", data_node_cnt=" << data_node_cnt);
@@ -408,6 +449,7 @@ struct info_stats{
         AEX_HINT("hash_node_childs=" << hash_node_childs << ", dense_node_childs=" << dense_node_childs);
         AEX_HINT("size=" << size << ", avg_depth=" << 1.0 * tot_depth / size << ", max_depth=" << max_depth);
         for (int i = 0; i < 16; ++i)
+        if (level_node[i] > 0)
             AEX_HINT("level " << i << "=" << level_node[i]);
     }
 };

@@ -91,11 +91,13 @@ public:
     info_stats get_info_stats();
 
     void print_stats(){
+        XL();
         AEX_HINT("size=" << m_stats.size);
-        info_stats i_stats = get_info_stats();
-        i_stats.print_stats();
+        if_stats = get_info_stats();
+        if_stats.print_stats();
         opt_stats.print_stats();
         hash_table.print_stats();
+        XU();
     }
 
 #ifndef AEX_DEBUG
@@ -107,9 +109,10 @@ private:
     data_node_ptr   head_leaf;
     aex_stats       m_stats;
     HashTable       hash_table;
+    operation_stats opt_stats;
+    info_stats      if_stats;
     RWLock          mtx;
     Lock            meta_lock;
-    operation_stats opt_stats;
 
 public:
     aex_tree();
@@ -392,8 +395,8 @@ private:
     node_ptr construct(self& other, const node_ptr node, data_node_ptr &tail_leaf);
     inner_node_ptr construct(const key_type* key, const node_ptr* node, const ULL n);
     void construct(hash_node_ptr  node, const key_type* key, const node_ptr *childs, const ULL n);
-    void construct(dense_node_ptr node, const key_type* key, const node_ptr *childs, const ULL n, const Model &m);
     void construct(dense_node_ptr node, const key_type* key, const node_ptr *childs, const ULL n);
+    void construct_simple(dense_node_ptr node, const key_type* key, const node_ptr *childs, const ULL n);
     void construct(inner_node_ptr node, const key_type* key, const node_ptr *childs, const ULL n);
     void deconstruct(node_ptr node);
 
@@ -558,7 +561,7 @@ private:
             return isfew(d_n(node));
     }
     bool isfew(const hash_node_ptr node){
-        return 1.0 * node->size < node->slot_size * traits::HASH_NODE_FEW_RATIO;
+        return 1.0 * node->size < node->slot_size * traits::HASH_NODE_FEW_RATIO || node->size < traits::MAX_DENSE_NODE_SLOT_SIZE / 2;
     }
     bool isfew(const dense_node_ptr node){
         if (node->slot_size == traits::MIN_DATA_NODE_SLOT_SIZE)
@@ -616,8 +619,12 @@ private:
     }
 
     inline void clear(hash_node_ptr node){
-        for (slot_type i = node->prev_item_find(node->slot_size - 1); i >= 0; i = node->prev_item_find(i - 1))
-            hash_table.erase(node, i);
+        for (slot_type i = node->prev_item_find(node->slot_size - 1); i >= 0; i = node->prev_item_find(i - 1)){
+            [[maybe_unused]]bool _ = hash_table.erase(node, i);
+            AEX_ASSERT(_ == true);
+            if (i == 0)
+                break;
+        }
         h_n(node)->clear();
     }
 
@@ -634,7 +641,7 @@ private:
                 #ifdef AEX_DEBUG
                 opt_stats.free_data_node_cnt++;
                 #endif
-                free(node);
+                delete node;
                 break;
             }
             case NodeType::DenseNode:{
@@ -676,30 +683,16 @@ private:
     inline bool TUL(){return this->mtx.try_upgrade_lock();}
     inline void DL() {this->mtx.downgrade_lock();}
 
-    inline bool check_lock(node_ptr node) const {
-        if constexpr (traits::AllowConcurrency)
-            return node->node_lock.is_lock();
-        else
-            return true;
-    }
-    inline bool check_lock_shared(node_ptr node) const {
-        if constexpr (traits::AllowConcurrency)
-            return node->node_lock.is_lock_shared();
-        else
-            return true;
-    }
-    inline bool check_unlock(node_ptr node) const {
-        if constexpr (traits::AllowConcurrency)
-            return !node->node_lock.is_lock();
-        else
-            return true;
-    }
-    inline bool check_unlock_shared(node_ptr node) const {
-        if constexpr (traits::AllowConcurrency)
-            return !node->node_lock.is_lock_shared();
-        else
-            return true;
-    }
+    // ========== 7. test ==========
+    bool check_lock(node_ptr node) const;
+    bool check_lock_shared(node_ptr node) const;
+    bool check_unlock(node_ptr node) const;
+    bool check_unlock_shared(node_ptr node) const;
+    bool check_node(node_ptr       node) ;
+    bool check_node(data_node_ptr  node) ;
+    bool check_node(dense_node_ptr node) ;
+    bool check_node(hash_node_ptr  node) ;
+
 };
 }
 
@@ -709,6 +702,7 @@ private:
 #include "aex/aex_erase.hpp"
 #include "aex/aex_SMO.hpp"
 #include "aex/aex_helper.hpp"
+#include "aex/aex_test.h"
 
 #undef n_n
 #undef i_n

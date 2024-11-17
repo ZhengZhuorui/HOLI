@@ -14,14 +14,13 @@ template<typename key_type,
         typename value_type,
         typename traits=aex::aex_default_traits<key_type, value_type>>
 void construct_data_node_array(key_type* key, size_t num_keys, typename aex_tree<key_type, value_type, traits>::data_node_ptr* child_buf){
-    aex_tree<key_type, value_type> tree;
     typedef typename aex_tree<key_type, value_type, traits>::data_node data_node;
     [[maybe_unused]]typedef typename aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
 
     for (size_t i = 0; i < num_keys; ++i){
         //child_buf[i] = static_cast<node_ptr>(tree.allocator.allocate_data_node());
         //child_buf[i] = reinterpret_cast<node_ptr>(new data_node(tree.version));
-        child_buf[i] = new data_node(tree.version);
+        child_buf[i] = new data_node(0);
         child_buf[i]->key[0] = key[i];
         child_buf[i]->size = 1;
     }

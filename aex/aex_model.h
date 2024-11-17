@@ -406,8 +406,17 @@ public:
 
     inline bool train(const key_type* const keys, const slot_type n, const slot_type slot_size){
         AEX_ASSERT(n > 2);
+        slot_type start = 1;
+        while (start < n && )
+        
+        if (start >= n || keys[n - 1] == keys[start])
+            return false;
         args.start = keys[1];
         args.slope = 1.0 * (slot_size - 2) / (keys[n - 1] - keys[1]);
+        //AEX_PRINT("keys[0]=" << keys[0] << ", pos[0]=" << this->predict(keys[0]));
+        //if (this->predict(keys[0]) > 0){
+        //    AEX_PRINT(this->predict(keys[0]) << ", " << this->predict(keys[1]) << ", " << this->predict(keys[0]))
+        //}
         AEX_ASSERT(this->predict(keys[0]) <= 0);
         return true;
     }

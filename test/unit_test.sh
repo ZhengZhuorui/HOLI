@@ -207,43 +207,15 @@
 # =================================================================================================
 # test inner node(few) (gap array) and data node(dense array) insertion accuracy and performance
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=64 --batch=8 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=insert --num_keys=64 --batch=8 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=128 --batch=8 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=insert --num_keys=128 --batch=16 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=256 --batch=8 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=insert --num_keys=256 --batch=32 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=512 --batch=8 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=insert --num_keys=512 --batch=64 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=1024 --batch=8 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=128 --batch=8 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=256 --batch=8 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=512 --batch=8 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=1024 --batch=8 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=2048 --batch=8 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=4096 --batch=8 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=64 --batch=8 --level=3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=128 --batch=8 --level=3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=256 --batch=8 --level=3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=512 --batch=8 --level=3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=1024 --batch=8 --level=3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=2048 --batch=8 --level=3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=insert --num_keys=4096 --batch=8 --level=3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=insert --num_keys=1024 --batch=128 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 
 # (Y)
 ./unit_test --unit=node --key_type=float64 --node_type=data_node --function=insert --num_keys=64 --batch=8 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
@@ -268,96 +240,40 @@
 # (Y)
 ./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=query --num_keys=256 --batch=64 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=query --num_keys=512 --batch=100000 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=query --num_keys=512 --batch=64 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 
-
-# no avx : 5.48e6 ms
-# avx: 4.053e6 ms
-
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=1024 --batch=64 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (N)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=2048 --batch=64 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=4096 --batch=64 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=64 --batch=64 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=128 --batch=64 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=256 --batch=64 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=512 --batch=64 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-./unit_test --unit=node --key_type=uint64 --node_type=inner_node --function=query --num_keys=64 --batch=64 --level=2 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=1024 --batch=64 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=2048 --batch=64 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=4096 --batch=64 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=2048 --batch=10000 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=4096 --batch=10000 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=32 --batch=10000 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=query --num_keys=1024 --batch=64 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 
 
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=64 --batch=64 --level=3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=uint64 --node_type=hash_node --function=query --num_keys=64 --batch=64  --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=128 --batch=64 --level=3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=uint64 --node_type=hash_node --function=query --num_keys=128 --batch=64  --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=256 --batch=64 --level=3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=uint64 --node_type=hash_node --function=query --num_keys=256 --batch=64 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=512 --batch=64 --level=3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=1024 --batch=64 --level=3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=2048 --batch=64 --level=3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=query --num_keys=4096 --batch=64 --level=3 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=uint64 --node_type=hash_node --function=query --num_keys=512 --batch=64 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
+./unit_test --unit=node --key_type=uint64 --node_type=hash_node --function=query --num_keys=1024 --batch=64 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 
 # (Y)
 ./unit_test --unit=node --key_type=float64 --node_type=data_node --function=query --num_keys=64 --batch=64 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
 ./unit_test --unit=node --key_type=float64 --node_type=data_node --function=query --num_keys=128 --batch=64  --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 
-# Datset: uniform
-# result(us):
-#                                 64         128
-# inner node(gap array)           1ms  3ms, 5.33e7
-# data node(dense array)          9ms  2.8e2ms, 5.71e7
 
 # =================================================================================================
 # test inner node(gap array) and data node(dense array) erase accuracy and perfornmance
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=erase --num_keys=16 --batch=8 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=erase --num_keys=32 --batch=4 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=erase --num_keys=64 --batch=8 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=erase --num_keys=64 --batch=8 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=erase --num_keys=128 --batch=8 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=erase --num_keys=128 --batch=16 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=erase --num_keys=256 --batch=8 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=erase --num_keys=256 --batch=32 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 # (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=erase --num_keys=512 --batch=8 --level=1 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
+./unit_test --unit=node --key_type=float64 --node_type=hash_node --function=erase --num_keys=512 --batch=64 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=erase --num_keys=64 --batch=8 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=erase --num_keys=128 --batch=8 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=erase --num_keys=256 --batch=8 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=erase --num_keys=512 --batch=8 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=erase --num_keys=1024 --batch=8 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-# (Y)
-./unit_test --unit=node --key_type=float64 --node_type=inner_node --function=erase --num_keys=2048 --batch=8 --level=2 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-
-# (X)
-./unit_test --unit=node --key_type=float64 --node_type=data_node --function=erase --num_keys=64 --batch=8 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-./unit_test --unit=node --key_type=float64 --node_type=data_node --function=erase --num_keys=128 --batch=8 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-./unit_test --unit=node --key_type=float64 --node_type=data_node --function=erase --num_keys=256 --batch=8 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
-./unit_test --unit=node --key_type=float64 --node_type=data_node --function=erase --num_keys=512 --batch=8 --input_file=/home/zzr/data/learned_index/generate_data/uniform_1M_neg100to100_float.bin
 
 # =================================================================================================
 # test inner node mixup
@@ -426,6 +342,7 @@
 # test index construction accuracy and performance
 # (Y)
 ./unit_test --unit=index --key_type=uint64 --function=bulk_load --num_keys=20000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./unit_test --unit=index --key_type=uint64 --function=bulk_load --con --num_keys=20000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=bulk_load --multikey --num_keys=1000000 --input_file=/home/zzr/data/learned_index/generate_data/multikey_1M_int.bin
 
 ./unit_test --unit=index --key_type=float64 --function=bulk_load --num_keys=20000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data

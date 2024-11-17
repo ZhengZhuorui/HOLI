@@ -105,19 +105,20 @@ public:
 
     void clear(){
         if (this->bitmap_ptr != nullptr){
-            delete this->bitmap_ptr;
+            delete[] this->bitmap_ptr;
             this->bitmap_ptr = nullptr;
         }
-        this->size = 0;
     }
 
     void init(){
         AEX_ASSERT(this->bitmap_ptr == nullptr);
-        this->bitmap_ptr = new bitmap_base[this->slot_size / sizeof(bitmap_base) + 1];
+        this->size = 0;
+        this->bitmap_ptr = new bitmap_base[this->slot_size / sizeof(bitmap_base) + 1]();
+        //std::fill(this->bitmap_ptr, this->bitmap_ptr + this->slot_size / sizeof(bitmap_base) + 1, 0);
     }
 
-    inline slot_type predict(const slot_type &key) const {
-        return std::min(std::max(static_cast<slot_type>(0), model.predict(key)), this->slot_size);
+    inline slot_type predict(const key_type &key) const {
+        return std::min(std::max(static_cast<slot_type>(0), model.predict(key)), this->slot_size - 1);
     }
 
     inline slot_type is_occupied(slot_type x) const {
@@ -127,9 +128,9 @@ public:
     inline slot_type prev_item_find(slot_type x) const {
         if (x <= 0)
             return 0;
-        bitmap_base base = (bitmap_ptr[x >> 6]) << (~(x & 63));
+        bitmap_base base = (bitmap_ptr[x >> 6]) << (63 - (x & 63));
         x -= (base == 0) ? (x & 63) : __builtin_clzll(base);
-        return x & (~63);
+        return x;
     }
 
     //inline slot_type next_item_find(slot_type x) const {
@@ -158,7 +159,7 @@ public:
         if (x <= 0)
             return x;
         bitmap text = bitmap_ptr + (x >> 6);
-        bitmap_base base = (*text) << (~(x & 63));
+        bitmap_base base = (*text) << (63 - (x & 63));
         x -= (base == 0) ? ((x & 63) + 1) : __builtin_clzll(base);
         while (base == 0 && x > 0){
             --text;
@@ -206,19 +207,21 @@ public:
 
     void clear(){
         if (key_ptr != nullptr){
-            delete key_ptr;
+            delete[] key_ptr;
             key_ptr = nullptr;
         }
         if (child_ptr != nullptr){
-            delete child_ptr;
+            delete[] child_ptr;
             child_ptr = nullptr;
         }
-        this->size = 0;
     }
 
     void init(){
-        key_ptr   = new key_type[this->slot_size];
-        child_ptr = new node_ptr[this->slot_size];
+        AEX_ASSERT(this->key_ptr == nullptr);
+        AEX_ASSERT(this->child_ptr == nullptr);
+        this->size = 0;
+        key_ptr   = new key_type[this->slot_size]();
+        child_ptr = new node_ptr[this->slot_size]();
     }
 
     key_type *key_ptr;

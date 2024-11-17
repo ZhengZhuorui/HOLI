@@ -32,15 +32,14 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     void clear(){
         this->parent::clear();
         if (this->lock_array != nullptr){
-            delete this->lock_array;
+            delete[] this->lock_array;
             this->lock_array = nullptr;
         }
     }
 
     void init(){
-        AEX_ASSERT(lock_array == nullptr);
         this->parent::init();
-        this->lock_array = new RWLock[this->slot_size];
+        this->lock_array = new RWLock[this->slot_size]();
     }
 
     void array_lock(slot_type l_pos, slot_type r_pos){
@@ -155,7 +154,7 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         restart = false;
 
         bitmap text = this->bitmap_ptr + (x >> 6);
-        bitmap_base base = (*text) << (~(x & 63));
+        bitmap_base base = (*text) << (63 - (x & 63));
         x -= (base == 0) ? ((x & 63) + 1) : __builtin_clzll(base);
         while (base == 0 && x > 0){
             if (!lock_array[pos2slot(x)].try_lock_shared()){

@@ -106,7 +106,6 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
         AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);
         return false;
     }
-    
     system_clock::time_point t1, t2;
     double delta = 0;
     const int ITER = 1;
@@ -117,7 +116,6 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
-
     double OPS = 1.0 * 1e6 * ITER / delta;
     std::cout << std::scientific;
     std::cout << std::setprecision(3);  

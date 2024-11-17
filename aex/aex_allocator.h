@@ -73,19 +73,23 @@ public:
     }
 
     inline static hash_node_ptr allocate_hash_node(slot_type slot_size){
-        AEX_ASSERT((slot_size & (-slot_size)) == 0);
+        AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
         const hash_node_ptr node = h_n(malloc(MAX_INNER_NODE_SIZE()));
         node->type = NodeType::HashNode;
         node->slot_size = slot_size;
+        node->bitmap_ptr = nullptr;
         node->init();
+        //AEX_PRINT("new_node->bitmap[0]=" << node->bitmap_ptr[0]);
         return node;
     }
 
     inline static dense_node_ptr allocate_dense_node(slot_type slot_size){
-        AEX_ASSERT((slot_size & (-slot_size)) == 0);
+        AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
         const dense_node_ptr node = d_n(malloc(MAX_INNER_NODE_SIZE()));
         node->type = NodeType::DenseNode;
         node->slot_size = slot_size;
+        node->key_ptr = nullptr;
+        node->child_ptr = nullptr;
         node->init();
         return node;
     }

@@ -141,9 +141,12 @@ inline void aex_tree<_Key, _Val, traits>::construct_tmp_node(dense_node_ptr node
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::__construct_insert(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type &key, const node_ptr child){
+    //AEX_PRINT("pos=" << pos << ", next_pos=" << next_pos);
+    //printf("bitmap[pos_slot]=%llx\n", node->bitmap_ptr[pos >> 6]);
     AEX_ASSERT(node->is_occupied(pos) == false);
     AEX_ASSERT(hash_table.find(node, pos).second == nullptr);
     bitmap_impl::set_one(node->bitmap_ptr, pos);
+    AEX_ASSERT(node->is_occupied(pos) == true);
     hash_table.insert(node, pos, key, child);
     for (slot_type i = highbit_64(pos + 1); i < next_pos; i += traits::SLOT_PER_LOCK)
         hash_table.insert(node, i, key, child);
@@ -153,14 +156,16 @@ inline void aex_tree<_Key, _Val, traits>::__construct_insert(hash_node_ptr node,
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::__insert(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type &key, const node_ptr child){
     AEX_ASSERT(node->is_occupied(pos) == false);
+    AEX_PRINT("pos=" << pos << ", pos & 63=" << (pos & 63) << ", next_pos=" << next_pos << ", key=" << key);
     bitmap_impl::set_one(node->bitmap_ptr, pos);
     if ((pos & 63) == 0)
         hash_table.update(node, pos, key, child);
     else
         hash_table.insert(node, pos, key, child);
-
-    for (slot_type i = highbit_64(pos + 1); i < next_pos; i += traits::SLOT_PER_LOCK)
+    for (slot_type i = highbit_64(pos + 1); i < next_pos; i += traits::SLOT_PER_LOCK){
+        AEX_PRINT("i=" << i);
         hash_table.update(node, i, key, child);
+    }
     node->meta_lock.lock();
     ++node->size;
     node->meta_lock.unlock();
@@ -215,9 +220,8 @@ inline bool aex_tree<_Key, _Val, traits>::check_insert_SMO(inner_node_ptr node){
     else if (isfull(node)){
         if (!TUL(node))
             return false;
-        do{
+        while (isfull(node))
             expand(node);
-        }while(isfull(node));
         DL(node);
     }
     return true;
