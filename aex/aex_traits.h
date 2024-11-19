@@ -74,7 +74,7 @@ struct aex_default_traits{
     typedef _Key                     key_type;
     typedef _Val                     value_type;
     typedef _SearchClass             SearchClass;
-    typedef long long                slot_type;
+    typedef int                      slot_type;
     typedef unsigned long long       bitmap_base;
     typedef bitmap_base*             bitmap;
     typedef unsigned long long       hash_type;
@@ -112,8 +112,7 @@ struct aex_default_traits{
     static constexpr int LOG_ERROR_BOUND = _LOG_ERROR_BOUND; 
     static constexpr int ERROR_BOUND = 1 << LOG_ERROR_BOUND; 
 
-    static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type) + sizeof(void*)));
-    static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1LL << 56;
+    static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1LL << 28;
 
     static constexpr slot_type MAX_DENSE_NODE_SLOT_SIZE = 32;
     static constexpr slot_type MIN_DENSE_NODE_SLOT_SIZE = 8;
@@ -127,18 +126,17 @@ struct aex_default_traits{
     static constexpr hash_type K1 = 233;
     static constexpr hash_type K2 = 37;
 
-
     static constexpr int HASH_TABLE_BLOCK_SIZE = 4;
 
     static constexpr float DATA_NODE_FEW_RATIO       = 0.5;
     static constexpr float DATA_NODE_FULL_RATIO      = 1;
     static constexpr int   LOG_DATA_NODE_FEW_RATIO   = 1;
     static constexpr int   LOG_DATA_NODE_FULL_RATIO  = 0;
-    static constexpr int   MIN_DATA_NODE_SLOT_SIZE   = 8;
+    static constexpr int   MIN_DATA_NODE_SLOT_SIZE   = 16;
     static constexpr int   DATA_NODE_SLOT_SIZE       = MIN_DATA_NODE_SLOT_SIZE;
 
-    static constexpr float HASH_NODE_FULL_RATIO      = 1.0 / 16;
-    static constexpr float HASH_NODE_FEW_RATIO       = 1.0 / 64;
+    static constexpr float HASH_NODE_FULL_RATIO      = 1.0 / 8;
+    static constexpr float HASH_NODE_FEW_RATIO       = 1.0 / 32;
     static constexpr int   LOG_HASH_NODE_FULL_RATIO  = 4;
     static constexpr int   LOG_HASH_NODE_FEW_RATIO   = 6;
     static constexpr float DENSE_NODE_FULL_RATIO     = DATA_NODE_FULL_RATIO;
@@ -152,6 +150,7 @@ struct aex_default_traits{
     static constexpr int MAX_DEPTH = 15;
 
     // ========== old version ==========
+    static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type) + sizeof(void*)));
     static constexpr int DATA_NODE_ERROR_BOUND = 4;
     static constexpr slot_type LOG_INNER_NODE_SLOT_SIZE = TEMPLATE_LOG<MIN_INNER_NODE_SLOT_SIZE>();
     static constexpr slot_type MAX_MODEL_DP_SEGMENT_SIZE = 1 << 14;

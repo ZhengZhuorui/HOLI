@@ -250,7 +250,7 @@ bool test_model(T* data, size_t size, int batch=1000){
     AEX_HINT("[test " << Model::name() << "] n=" << size);
     aex_tree<T, T, traits> tree;
     Model m;
-    slot_type slot_size = traits::MIN_HASH_NODE_SLOT_SIZE, ans;
+    slot_type slot_size = traits::MIN_HASH_NODE_SLOT_SIZE, ans = 0;
 
     while (slot_size < traits::MAX_HASH_NODE_SLOT_SIZE && m.train(data, size, slot_size) == true){
         if (tree.check_model(m, data, size, slot_size)){

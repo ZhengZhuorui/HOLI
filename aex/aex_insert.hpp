@@ -10,7 +10,7 @@ inline std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree
     bool restart = false, inserted, tail;
     key_type split_key;
     hash_node_ptr top_node = nullptr;
-    slot_type pos, next_pos, top_pos, top_next_pos, split_pos;
+    slot_type pos, next_pos, top_pos = 0, top_next_pos = 0, split_pos;
     data_node_ptr new_node;
     node_ptr node, child;
     version_type now_version;
@@ -302,6 +302,7 @@ inline std::pair<typename aex_tree<_Key, _Val, traits>::iterator, bool> aex_tree
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_unlock(hash_node_ptr top_node, const slot_type top_pos, const slot_type top_next_pos, node_ptr node, const slot_type pos, const slot_type next_pos, node_ptr child){
+    AEX_ASSERT(check_lock_shared(top_node));
     if constexpr (!traits::AllowConcurrency)
         return;
     top_node->array_unlock_shared(top_pos - 1, top_next_pos);           

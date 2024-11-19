@@ -188,6 +188,11 @@ public:
 
     inline void print_stats(){
         AEX_HINT("[HashTable Stats]: size=" << size << ", slot_size=" << slot_size);
+        long long cnt = 0;
+        for (slot_type i = 0; i < this->slot_size; ++i){
+            cnt += (table_[i].entry != nullptr);
+        }
+        AEX_HINT("cnt=" << cnt << ", avg collision=" << 1.0 * size / cnt);
     }
 
     void destory(){

@@ -139,22 +139,22 @@ bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, 
         return false;
     }
     AEX_HINT("bulk load finish...");
-    
     for (int i = 0; i < batch; ++i){
         //AEX_PRINT("key=" << query[i]);
-        auto iter = index.find(query[i]);
-        if (iter == index.end()){
+        value_type res;
+        //auto iter = index.find(query[i]);
+        bool find_flag = index.find(query[i], res);
+        //AEX_ASSERT(iter.data() == res);
+        if (!find_flag){
             AEX_ERROR("Query no exists, i=" << i << ", key=" << query[i]);
             return false;
         }
-        if (iter.key() != query[i]){
-            AEX_ERROR("Key Error!, i=" << i << "query key=" << query[i] << ", node key=" << iter.key() <<  ", answer=" << answer[i] << ", find=" << iter.data());
-        }
-        if (iter.data() != answer[i]){
-            AEX_ERROR("Answer Error!, i=" << i << "query key=" << query[i] << ", node key=" << iter.key() <<  ", answer=" << answer[i] << ", find=" << iter.data());
+        if (res != answer[i]){
+            AEX_ERROR("Answer Error!, i=" << i << "query key=" << query[i] <<  ", answer=" << answer[i] << ", get=" << res);
             return false;
-        }
+        }        
     }
+    
     index.print_stats();
     
     system_clock::time_point t1, t2;
@@ -164,8 +164,9 @@ bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, 
     t1 = std::chrono::high_resolution_clock::now();
     for (int T = 0; T < ITER; ++T){
         for (long long i = 0; i < batch; ++i){
-            auto iter = index.find(query[i]);
-            sum += iter.data();
+            value_type res;
+            if (index.find(query[i], res))
+                sum += res;
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
@@ -193,30 +194,35 @@ bool test_index_delta_lookup_perf(std::pair<key_type, value_type>* data, long lo
         if (i % 1000000 == 0)
             std::cout << "i=" << i << std::endl;
         typename tree::iterator iter;
-        bool inserted;
-        std::tie(iter, inserted) = index.insert(data[i]);
-        if (inserted == false){
+        bool inserted = index.insert_con(data[i]);
+        if (inserted){
             AEX_ERROR("insert failed!");
             return false;
         }
-        if (iter.key() != data[i].first || iter.data() != data[i].second){
-            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< data[i].first << "iter key=" << iter.key());
+        value_type res;
+        bool find_flag = index.find(data[i].first, res);
+        if (!find_flag){
+            AEX_ERROR("query no exists!");
             return false;
         }
-        iter = index.find(data[i].first);
-        if (iter.key() != data[i].first || iter.data() != data[i].second){
-            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< data[i].first << "iter key=" << iter.key());
+        if (res != data[i].second){
+            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< data[i].second << ", res =" << res);
             return false;
         }
     }
+    
     AEX_SUCCESS("insert finish..");
 
     {   
         for (long long i = 0; i < n; ++i){
-            typename tree::iterator iter;
-            iter = index.find(data[i].first);
-            if (iter.key() != data[i].first || iter.data() != data[i].second){
-                AEX_ERROR("return iterator is not equal item! i=" << i << "key="<< data[i].first << "iter key=" << iter.key());
+            value_type res;
+            bool find_flag = index.find(data[i].first, res);
+            if (!find_flag){
+                AEX_ERROR("query no exists!");
+                return false;
+            }
+            if (res != data[i].second){
+                AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< data[i].second << ", res =" << res);
                 return false;
             }
         }
@@ -247,16 +253,14 @@ bool test_index_delta_lookup_perf(std::pair<key_type, value_type>* data, long lo
     }
 
     for (int i = 0; i < batch; ++i){
-        auto iter = index.find(query[i]);
-        if (iter == index.end()){
-            AEX_ERROR("Query no exists, i=" << i);
+        value_type res;
+        bool find_flag = index.find(query[i], res);
+        if (!find_flag){
+            AEX_ERROR("query no exists!");
             return false;
         }
-        if (iter.key() != query[i]){
-            AEX_ERROR("Key Error!, i=" << i << "query key=" << query[i] << ", node key=" << iter.key() <<  ", answer=" << answer[i] << ", find=" << iter.data());
-        }
-        if (iter.data() != answer[i]){
-            AEX_ERROR("Answer Error!, i=" << i << "query key=" << query[i] << ", node key=" << iter.key() <<  ", answer=" << answer[i] << ", find=" << iter.data());
+        if (res != answer[i]){
+            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< query[i] << ", answer=" << answer[i] << ", res =" << res);
             return false;
         }
     }
@@ -269,8 +273,9 @@ bool test_index_delta_lookup_perf(std::pair<key_type, value_type>* data, long lo
     t1 = std::chrono::high_resolution_clock::now();
     for (int T = 0; T < ITER; ++T){
         for (long long i = 0; i < batch; ++i){
-            auto iter = index.find(query[i]);
-            sum += iter.data();
+            value_type res;
+            index.find(query[i], res);
+            sum += res;
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
@@ -305,34 +310,39 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
         if (i % 1000000 == 0)
             std::cout << "i=" << i << std::endl;
         typename tree::iterator iter;
-        bool inserted;
-        std::tie(iter, inserted) = index.insert(insert_data[i]);
+        bool inserted = index.insert_con(insert_data[i]);
         if (inserted == false){
             AEX_ERROR("insert failed!");
             return false;
         }
-        if (iter.key() != insert_data[i].first || iter.data() != insert_data[i].second){
-            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
-            return false;
-        }
-        iter = index.find(insert_data[i].first);
-        if (iter == index.end()){
-            AEX_ERROR("i=" << i << "no find inserted iterator!");
-            return false;
-        }
-        if (iter.key() != insert_data[i].first || iter.data() != insert_data[i].second){
-            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
-            return false;
-        }
+        //if (iter.key() != insert_data[i].first || iter.data() != insert_data[i].second){
+        //    AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
+        //    return false;
+        //}
+        //iter = index.find(insert_data[i].first);
+        value_type res;
+            bool find_flag = index.find(insert_data[i].first, res);
+            if (!find_flag){
+                AEX_ERROR("query " << i << " no exists!");
+                return false;
+            }
+            if (res != insert_data[i].second){
+                AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].second << ", res =" << res);
+                return false;
+            }
     }
     AEX_SUCCESS("insert finish..");
 
     {   
         for (long long i = 0; i < n; ++i){
-            typename tree::iterator iter;
-            iter = index.find(data[i].first);
-            if (iter.key() != data[i].first || iter.data() != data[i].second){
-                AEX_ERROR("return iterator is not equal item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
+            value_type res;
+            bool find_flag = index.find(insert_data[i].first, res);
+            if (!find_flag){
+                AEX_ERROR("query no exists!");
+                return false;
+            }
+            if (res != insert_data[i].second){
+                AEX_ERROR("return iterator is not equal insert item! i=" << i << "answer="<< insert_data[i].second << ", res =" << res);
                 return false;
             }
         }
@@ -366,7 +376,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
         //aex_tree<key_type, value_type, traits>::debug_level |= 1;
         t1 = std::chrono::high_resolution_clock::now();
         for (long long i = 0; i < batch; ++i)
-            index.insert(insert_data[i]);
+            index.insert_con(insert_data[i]);
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
@@ -401,20 +411,23 @@ bool test_index_insert_hotspot_perf(std::pair<key_type, value_type>* data, long 
         if (i % 1000000 == 0)
             std::cout << "i=" << i << std::endl;
         typename tree::iterator iter;
-        bool inserted;
-        std::tie(iter, inserted) = index.insert(insert_data[i]);
+        bool inserted = index.insert_con(insert_data[i]);
         if (inserted == false){
             AEX_ERROR("insert failed!");
             return false;
         }
-        if (iter.key() != insert_data[i].first || iter.data() != insert_data[i].second){
-            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
+        //if (iter.key() != insert_data[i].first || iter.data() != insert_data[i].second){
+        //    AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
+        //    return false;
+        //
+        value_type res;
+        bool find_flag = index.find(insert_data[i].first, res);
+        if (!find_flag){
+            AEX_ERROR("query no exists!");
             return false;
         }
-        iter = index.find(insert_data[i].first);
-        if (iter.key() != insert_data[i].first || iter.data() != insert_data[i].second){
-            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
-            index.print_stats();
+        if (res != insert_data[i].second){
+            AEX_ERROR("return iterator is not equal insert item! i=" << i << ", answer="<< insert_data[i].second << ", res =" << res);
             return false;
         }
     }
@@ -422,10 +435,14 @@ bool test_index_insert_hotspot_perf(std::pair<key_type, value_type>* data, long 
 
     {   
         for (long long i = 0; i < n; ++i){
-            typename tree::iterator iter;
-            iter = index.find(data[i].first);
-            if (iter.key() != data[i].first || iter.data() != data[i].second){
-                AEX_ERROR("return iterator is not equal item! i=" << i << "key="<< insert_data[i].first << "iter key=" << iter.key());
+            value_type res;
+            bool find_flag = index.find(insert_data[i].first, res);
+            if (!find_flag){
+                AEX_ERROR("query no exists!");
+                return false;
+            }
+            if (res != insert_data[i].second){
+                AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].second << ", res =" << res);
                 return false;
             }
         }
@@ -456,10 +473,9 @@ bool test_index_insert_hotspot_perf(std::pair<key_type, value_type>* data, long 
     double delta = 0;
     for (int T = 0; T < ITER; ++T){
         index = index_bak;
-        //aex_tree<key_type, value_type, traits>::debug_level |= 1;
         t1 = std::chrono::high_resolution_clock::now();
         for (long long i = 0; i < batch; ++i)
-            index.insert(insert_data[i]);
+            index.insert_con(insert_data[i]);
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
@@ -512,13 +528,14 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
             }
         }
         for (auto &x : left_data){
-            auto y = index.find(x.first);
-            if (y == index.end()){
+            value_type res;
+            bool find_flag = index.find(x.first, res);
+            if (!find_flag){
                 AEX_ERROR("query no exists!");
                 return false;
             }
-            if (y.key() != x.first || y.data() != x.second){
-                AEX_ERROR("query error! query key=" << x.first << ", data=" << x.second << ", get key=" << y.key() << ", data=" << y.data());
+            if (res != left_data[i].second){
+                AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< x.second << ", res =" << res);
                 return false;
             }
         }

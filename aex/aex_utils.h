@@ -438,10 +438,10 @@ struct info_stats{
     ULL tot_depth, size;
     unsigned int max_depth;
     ULL level_node[16];
-    ULL memory_used;
+    ULL memory_used, inner_node_memory_used, hash_table_memory_used, data_node_memory_used;
     void print_stats(){
         AEX_SUCCESS("[Infomation Stats]: ");
-        AEX_HINT("memory used=" << memory_used);
+        AEX_HINT("memory used=" << 1.0 * memory_used / 1024 / 1024 << " (MB), inner node memory used=" << 1.0 * inner_node_memory_used / 1024 / 1024 << "(MB), hash table memory used=" << 1.0 * hash_table_memory_used / 1024 / 1024 << " (MB), data node memory used=" << 1.0 * data_node_memory_used / 1024 / 1024 << "(MB)");
         AEX_HINT("tot_cnt=" << hash_node_cnt + dense_node_cnt + data_node_cnt);
         //AEX_HINT("hash_node_cnt=" << hash_node_cnt << ", dense_node_cnt=" << dense_node_cnt << ", try_learn_dense_node_cnt" << try_learn_dense_node_cnt << ", data_node_cnt=" << data_node_cnt);
         AEX_HINT("hash_node_cnt=" << hash_node_cnt << ", dense_node_cnt=" << dense_node_cnt << ", data_node_cnt=" << data_node_cnt);

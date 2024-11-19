@@ -142,7 +142,7 @@ DATA_PATH="/data/zzr/learned_index/data"
 ./benchmark --key_type=uint64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
 ./benchmark --key_type=uint64 --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=1000000 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
 ./benchmark --key_type=uint64 --index=pgm --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
-./benchmark --key_type=uint64 --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=100000 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=1000000 --input_file=/home/zzr/data/learned_index/osm_cellids_800M_uint64
 
 # book
 ./benchmark --key_type=uint64 --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/learned_index/books_200M_uint64
@@ -151,6 +151,11 @@ DATA_PATH="/data/zzr/learned_index/data"
 ./benchmark --key_type=uint64 --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/learned_index/books_200M_uint64
 ./benchmark --key_type=uint64 --index=pgm --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=10000000 --input_file=/home/zzr/data/learned_index/books_200M_uint64
 ./benchmark --key_type=uint64 --index=lipp --function=lookup --query_dis=uniform --num_keys=2000000 --num_ops=10000000 --input_file=/home/zzr/data/learned_index/books_200M_uint64
+
+# covid
+./benchmark --key_type=uint64 --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/learned_index/covid_200M_uint64
+./benchmark --key_type=uint64 --index=alex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/learned_index/covid_200M_uint64
+./benchmark --key_type=uint64 --index=lipp --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=10000000 --input_file=/home/zzr/data/learned_index/covid_200M_uint64
 
 # Dataset: longtitudes
 # size: 200M

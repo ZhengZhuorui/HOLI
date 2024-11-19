@@ -334,7 +334,7 @@ public:
     inline slot_type find_lower_pos(const key_type &x){
         if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
             return traits::SearchClass::lower_bound(this->key, this->key + this->size, x, this->key) - this->key;
-        return aex::linear_search_lower_bound(this->key, this->key + this->size, x) - this->key;
+        //return aex::linear_search_lower_bound(this->key, this->key + this->size, x) - this->key;
         return std::lower_bound(this->key, this->key + this->size, x) - this->key;
         //return std::lower_bound(this->key, this->key + this->size, x) - this->key;
     }

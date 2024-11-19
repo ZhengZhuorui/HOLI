@@ -7,6 +7,7 @@ template<typename _Key, typename _Val, typename traits>
 inline bool aex_tree<_Key, _Val, traits>::_erase(const key_type &key){
 #define ERASE_UNLOCK() erase_unlock(i_n(node), pos, next_pos, child);
 
+    //node_ptr node = nullptr, child = nullptr;
     node_ptr node, child;
     slot_type pos, next_pos, next_next_pos;
     version_type now_version;
@@ -16,6 +17,7 @@ _erase_start:
     if (!erase_init(key, erase_flag)){
         return erase_flag;
     }
+    node = root;
     SL(node);
     
     if (!check_erase_SMO(node)){
@@ -129,7 +131,7 @@ inline void aex_tree<_Key, _Val, traits>::erase(hash_node_ptr node, const slot_t
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::erase(dense_node_ptr node, const slot_type pos){
     AEX_ASSERT(check_lock(node));
-    AEX_ASSERT(pos == node->size);
+    AEX_ASSERT(pos < node->size);
     std::move(node->key_ptr   + pos + 1, node->key_ptr   + node->size, node->key_ptr   + pos);
     std::move(node->child_ptr + pos + 1, node->child_ptr + node->size, node->child_ptr + pos);
     DL(node);

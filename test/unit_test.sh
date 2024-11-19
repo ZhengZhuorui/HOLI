@@ -351,6 +351,7 @@
 ./unit_test --unit=index --key_type=float64 --function=bulk_load --num_keys=200000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
 ./unit_test --unit=index --key_type=uint64 --function=bulk_load --num_keys=200000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./unit_test --unit=index --key_type=uint64 --function=bulk_load --num_keys=200000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=bulk_load --num_keys=200000000 --input_file=/home/zzr/data/learned_index/books_200M_uint64
 # Result:
 # linear + static data node + no balance:
@@ -385,6 +386,7 @@
 
 # test index lookup accuracy
 ./unit_test --unit=index --key_type=float64 --function=lookup --num_keys=2000000 --batch=100000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float64 --function=lookup --con --num_keys=2000000 --batch=100000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=lookup --num_keys=2000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=lookup --num_keys=20000000 -batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=lookup --num_keys=200000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data

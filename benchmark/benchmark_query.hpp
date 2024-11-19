@@ -26,10 +26,10 @@ void aex_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type>
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
-    long long delta = duration_cast<microseconds>(t2 - t1).count();
-    double QPS = 1000000.0 * num_ops * times / delta;
+    long long delta = duration_cast<nanoseconds>(t2 - t1).count();
+    double QPS = 1e3 * num_ops * times / delta;
 
-    std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << std::endl;
+    std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << "e6" << std::endl;
 
 }
 
@@ -42,7 +42,7 @@ void stlmap_query_bench(vector<pair<key_type, value_type> > &data, vector<key_ty
     system_clock::time_point t1, t2;
 
     //size_t cnt = 0;
-    size_t M = query.size();
+    size_t num_ops = query.size();
     size_t times = 1;
     printf("stl map query test...\n");
     fflush(stdout);
@@ -55,10 +55,9 @@ void stlmap_query_bench(vector<pair<key_type, value_type> > &data, vector<key_ty
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
-    long long delta = duration_cast<microseconds>(t2 - t1).count();
-    double QPS = 1000000.0 * M * times / delta;
-    
-    std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << std::endl;
+    long long delta = duration_cast<nanoseconds>(t2 - t1).count();
+    double QPS = 1e3 * num_ops * times / delta;
+    std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << "e6" << std::endl;
 }
 
 template<typename key_type, typename value_type>
@@ -81,9 +80,9 @@ void stx_btree_query_bench(vector<pair<key_type, value_type> > &data, vector<key
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
-    long long delta = duration_cast<microseconds>(t2 - t1).count();
-    double QPS = 1000000.0 * num_ops * times / delta;
-    std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << std::endl;
+    long long delta = duration_cast<nanoseconds>(t2 - t1).count();
+    double QPS = 1e3 * num_ops * times / delta;
+    std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << "e6" << std::endl;
 }
 
 template<typename key_type, typename value_type>
@@ -106,10 +105,9 @@ void alex_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type
         }
     }
     auto t2 = std::chrono::high_resolution_clock::now();
-    double delta = duration_cast<microseconds>(t2 - t1).count();
-    double QPS = 1000000.0 * num_ops * times / delta;
-    
-    std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << std::endl;
+    double delta = duration_cast<nanoseconds>(t2 - t1).count();
+    double QPS = 1e3 * num_ops * times / delta;
+    std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << "e6" << std::endl;
 
 }
 
@@ -139,17 +137,15 @@ void pgm_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type>
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
-    long long delta = duration_cast<microseconds>(t2 - t1).count();
-    double QPS = 1000000.0 * num_ops * times / delta;
-    
-    std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << std::endl;
+    long long delta = duration_cast<nanoseconds>(t2 - t1).count();
+    double QPS = 1e3 * num_ops * times / delta;
+    std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << "e6" << std::endl;
 }
 
 template<typename key_type, typename value_type>
 void lipp_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
     LIPP<key_type, value_type> index;
     index.bulk_load(data.data(), data.size());
-
 
     //size_t cnt = 0;
     size_t num_ops = query.size();
@@ -166,7 +162,7 @@ void lipp_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type
     long long delta = duration_cast<nanoseconds>(t2 - t1).count();
     double QPS = 1e3 * num_ops * times / delta;
     
-    std::cout << "code=" << _ << ", used time=" << delta <<  " ns, QPS=" << QPS << " M" << std::endl;
+    std::cout << "code=" << _ << ", used time=" << delta <<  " ns, QPS=" << QPS << "e6" << std::endl;
 }
 
 template<typename key_type, typename value_type>

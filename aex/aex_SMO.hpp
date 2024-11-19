@@ -202,7 +202,7 @@ inline void aex_tree<_Key, _Val, traits>::split(hash_node_ptr node, inner_node_p
     std::vector<key_type> key_buf;
     std::vector<node_ptr> child_buf;
     ULL size;
-    slot_type prev_pos = -1, pos, start;
+    slot_type prev_pos = -1, pos, start = 0;
 
     if (split_node->type == NodeType::HashNode){
         std::tie(key, child) = hash_table.find(split_node, h_n(split_node)->prev_item_find(split_node->slot_size - 1));
@@ -263,7 +263,6 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO(hash_node_ptr node, cons
     AEX_ASSERT(check_lock(node));
     inner_node_ptr new_node;
     slot_type pos, prev_pos = node->predict(keys[0]), start = 0;
-
     for (ULL i = 1; i < n; ++i){
         pos = node->predict(keys[i]);
         if (prev_pos != pos){
@@ -278,7 +277,7 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO(hash_node_ptr node, cons
             prev_pos = pos;
         }
     }
-    AEX_ASSERT(pos == node->slot_size);
+    AEX_ASSERT(pos < node->slot_size);
     if (n - start > 1){
         new_node = construct(keys + start, childs + start, n - start);
         __construct_insert(node, pos, node->slot_size, keys[start], new_node);
@@ -355,11 +354,19 @@ inline void aex_tree<_Key, _Val, traits>::extend_tail_nodes(inner_node_ptr node,
 
 template<typename _Key, typename _Val, typename traits>
 inline bool aex_tree<_Key, _Val, traits>::check_model(const Model &m, const key_type* const keys, const ULL n, const slot_type slot_size){
+    if (1.0 * n / slot_size < traits::HASH_NODE_FEW_RATIO)
+        return false;
     slot_type cnt = 0, prev_pos = -1, pos;
+    [[maybe_unused]]slot_type max_gap = 0;
     for (ULL i = 0; i < n; ++i){
         pos = m.predict(keys[i]);
-        if (pos - prev_pos > traits::HASH_NODE_MAX_GAP)
-            return false;
+        #ifdef AEX_DEBUG
+        max_gap = std::max(max_gap, pos - prev_pos);
+        #endif
+        //if (pos - prev_pos > traits::HASH_NODE_MAX_GAP){
+        //    AEX_WARNING("pos=" << pos << ", prev_pos=" << prev_pos);
+        //    //return false;
+        //}
         if (pos != prev_pos){
             cnt += 1;
             prev_pos = pos;
@@ -367,7 +374,8 @@ inline bool aex_tree<_Key, _Val, traits>::check_model(const Model &m, const key_
     }
     AEX_ASSERT(pos < slot_size);
     double ratio = 1.0 * cnt / slot_size;
-    AEX_HINT("ratio=" << ratio << ", cnt=" << cnt << ", slot_size=" << slot_size);
+    //AEX_PRINT("max_gap=" << max_gap);
+    //AEX_HINT("ratio=" << ratio << ", cnt=" << cnt << ", slot_size=" << slot_size);
     return ratio >= traits::HASH_NODE_FEW_RATIO && cnt >= traits::MIN_HASH_NODE_CNT;
 }
 
@@ -379,7 +387,7 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
     #endif
     slot_type slot_size = traits::MIN_HASH_NODE_SLOT_SIZE, ans = 0;
     while (slot_size <= traits::MAX_INNER_NODE_SLOT_SIZE){
-        if (m.train(keys, n, slot_size))
+        if (!m.train(keys, n, slot_size))
             break;
         if (check_model(m, keys, n, slot_size))
             ans = slot_size;

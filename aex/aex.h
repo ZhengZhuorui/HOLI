@@ -11,6 +11,9 @@
 #include <queue>
 #include <algorithm>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+
 #include "aex/aex_utils.h"
 #include "aex/aex_utils_avx.h"
 #include "aex/aex_def.h"
@@ -198,13 +201,13 @@ public:
         SL();
         data_node_ptr node = find_leaf(x);
         slot_type pos = node->find_lower_pos(x);
-        if (pos < node->size && node->key[pos] == ret){
+        if (pos < node->size && node->key[pos] == x){
             y = node->data[pos];
             ret = true;
         }
         SU(node);
         SU();
-        return true;
+        return ret;
     }
 
     /**
@@ -545,7 +548,7 @@ private:
     }
     bool isfull(const hash_node_ptr node){
         AEX_ASSERT(check_lock(node) || check_lock_shared(node));
-        return 1.0 * node->size / node->slot_size >= traits::HASH_NODE_FULL_RATIO;
+        return 1.0 * node->size / node->slot_size >= traits::HASH_NODE_FULL_RATIO && node->slot_size < traits::MAX_HASH_NODE_SLOT_SIZE;
     }
     bool isfull(const dense_node_ptr node){
         return node->size == node->slot_size;
@@ -711,3 +714,5 @@ private:
 #undef l_n
 #undef ULL
 #undef LL
+
+#pragma GCC diagnostic pop

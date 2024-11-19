@@ -69,7 +69,7 @@ public:
     }
 
     inline void rescale(const slot_type _slot_size){
-        AEX_WARNING("[hashtable rescale con] slot_size=" << this->slot_size << ", _slot_size=" << _slot_size << ", size=" << this->size);
+        //AEX_WARNING("[hashtable rescale con] slot_size=" << this->slot_size << ", _slot_size=" << _slot_size << ", size=" << this->size);
         this->HashTableBase::rescale(_slot_size);
         AEX_ASSERT(this->lock_array != nullptr);
         delete[] this->lock_array;

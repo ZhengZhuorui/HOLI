@@ -129,17 +129,21 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
             opt_stats.allocate_hash_node_cnt++;
             #endif
             hash_node_ptr new_node = Allocator::allocate_hash_node(h_n(node)->slot_size);
+            std::copy(h_n(node)->bitmap_ptr, h_n(node)->bitmap_ptr + h_n(node)->slot_size / 64 + 1, h_n(new_node)->bitmap_ptr);
+            h_n(new_node)->model = h_n(new_node)->model;
+            h_n(new_node)->size = h_n(node)->size;
             key_type key;
-            node_ptr child;
+            node_ptr child, new_child;
             slot_type pos;
             for (slot_type i = 0; i < h_n(node)->slot_size; i = h_n(node)->next_item(i + 1)){
                 if (i != 0)
-                    __construct_insert(new_node, pos, i, key, child);
+                    __construct_insert(new_node, pos, i, key, new_child);
                 std::tie(key, child) = other.hash_table.find(node, i);
+                new_child = construct(other, child, tail_leaf);
                 pos = i;
             }
-            __construct_insert(new_node, pos, h_n(node)->slot_size, key, child);
-            h_n(new_node)->size = h_n(node)->size;
+            AEX_ASSERT(new_child != nullptr);
+            __construct_insert(new_node, pos, h_n(node)->slot_size, key, new_child);
             return new_node;
         }
     }
@@ -263,7 +267,7 @@ inline void aex_tree<_Key, _Val, traits>::construct(hash_node_ptr node, const ke
     AEX_ASSERT(n > 1);
     //AEX_HINT("construct hash node...");
     node->model.train(keys, n, node->slot_size);
-    slot_type prev_pos = node->predict(keys[0]), pos;
+    slot_type prev_pos = node->predict(keys[0]), pos = 0;
     //AEX_PRINT(keys[0]);
     //AEX_PRINT("prev_pos=" << prev_pos << ", model predict=" << node->model.predict(keys[0]));
     ULL start = 0;

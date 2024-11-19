@@ -29,7 +29,8 @@ set(CMAKE_CXX_FLAGS_RELEASE "-Wall -march=native -fopenmp -ffast-math -fmax-erro
 
 include_directories(${CMAKE_SOURCE_DIR})
 
-#add_executable(example ${CMAKE_SOURCE_DIR}/examples/main.cpp)
+#add_executable(example ${CMAKE_SOURCE_DIR}/examples/aex.cpp)
+#add_executable(example_con ${CMAKE_SOURCE_DIR}/examples/aex_con.cpp)
 
 # add_executable(benchmark_query ${CMAKE_SOURCE_DIR}/benchmark/benchmark_query.cpp)
 

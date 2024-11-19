@@ -407,8 +407,8 @@ public:
     inline bool train(const key_type* const keys, const slot_type n, const slot_type slot_size){
         AEX_ASSERT(n > 2);
         slot_type start = 1;
-        while (start < n && )
-        
+        while (start < n && keys[start] == keys[start - 1])
+            ++start;
         if (start >= n || keys[n - 1] == keys[start])
             return false;
         args.start = keys[1];
