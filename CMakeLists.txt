@@ -55,7 +55,7 @@ set(BENCHMARK_DIR ${CMAKE_SOURCE_DIR}/benchmark)
 file(GLOB_RECURSE BENCHMARK_SRC ${CMAKE_SOURCE_DIR}/benchmark/benchmark_*.cpp ${CMAKE_SOURCE_DIR}/benchmark/benchmark.cpp)
 find_library(JemallocLib jemalloc)
 add_executable(benchmark ${BENCHMARK_SRC})
-target_link_libraries(benchmark PRIVATE ${JemallocLib})
+#target_link_libraries(benchmark PRIVATE ${JemallocLib})
 
 # generate dataset
 add_executable(generate_dataset ${BENCHMARK_DIR}/generate_dataset.cpp)

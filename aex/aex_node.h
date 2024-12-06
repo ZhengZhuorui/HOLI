@@ -25,13 +25,9 @@ public:
     typedef typename components::RWLock RWLock;
     typedef typename components::Lock   Lock;
 
-    //explicit aex_node_base(NodeType _type) : type(_type), size(0){}
-    explicit aex_node_base(NodeType _type) : type(_type){}
-
-    aex_node_base(aex_node_base &other_node): type(other_node.type), size(other_node.size){}
-    aex_node_base(aex_node_base &&other_node):type(other_node.type), size(other_node.size){}
-    //aex_node_base(aex_node_base &other_node): type(other_node.type){}
-    //aex_node_base(aex_node_base &&other_node):type(other_node.type){}
+    explicit aex_node_base(NodeType _type) : type(_type), size(0), node_lock(){}
+    aex_node_base(aex_node_base &other_node): type(other_node.type), size(other_node.size), node_lock(){}
+    aex_node_base(aex_node_base &&other_node):type(other_node.type), size(other_node.size), node_lock(){}
 
     aex_node_base& operator = (aex_node_base &other_node) {
         this->type = other_node.type;
@@ -49,7 +45,7 @@ public:
     // size: the number of child nodes(inner node); the number of data(data node)
     NodeType  type;
     size_type size;
-    RWLock    node_lock;
+    mutable RWLock    node_lock;
 };
 
 template<typename _Key,
@@ -114,11 +110,11 @@ public:
         AEX_ASSERT(this->bitmap_ptr == nullptr);
         this->size = 0;
         this->bitmap_ptr = new bitmap_base[this->slot_size / sizeof(bitmap_base) + 1]();
-        //std::fill(this->bitmap_ptr, this->bitmap_ptr + this->slot_size / sizeof(bitmap_base) + 1, 0);
     }
 
     inline slot_type predict(const key_type &key) const {
-        return std::min(std::max(static_cast<slot_type>(0), model.predict(key)), this->slot_size - 1);
+        //return std::min(std::max(static_cast<slot_type>(0), model.predict(key)), this->slot_size - 1);
+        return std::max(0LL, static_cast<slot_type>(std::min(model.predict(key), static_cast<long double>(this->slot_size - 1))));
     }
 
     inline slot_type is_occupied(slot_type x) const {
@@ -142,7 +138,7 @@ public:
     //}
 
     inline slot_type next_item(slot_type x) const {
-        if (x > this->slot_size)
+        if (x >= this->slot_size)
             return x;
         bitmap text = bitmap_ptr + (x >> 6);
         bitmap_base base = (*text) >> (x & 63);
@@ -169,19 +165,18 @@ public:
         return x;
     }
 
-    inline void array_lock(const slot_type l_pos, const slot_type r_pos){}
-    inline void array_unlock(const slot_type l_pos, const slot_type r_pos){}
-    inline void array_lock_shared(const slot_type l_pos, const slot_type r_pos){}
-    inline void array_unlock_shared(const slot_type l_pos, const slot_type r_pos){}
-    inline bool try_array_upgrade_lock(const slot_type l_pos, const slot_type r_pos){return true;}
-    inline void array_downgrade_lock(const slot_type l_pos, const slot_type r_pos){}
-    inline slot_type array_lock_shared_until_next_item(const slot_type prev_pos, const slot_type pos){return next_item(pos);}
-    inline slot_type array_lock_until_next_item(const slot_type prev_pos, const slot_type pos){return next_item(pos);}
-    inline slot_type try_array_lock_shared_until_prev_item(const slot_type pos, bool &restart){return prev_item(pos);}
-    size_type size;
-    bitmap    bitmap_ptr;
-    Model     model;
-    Lock    meta_lock;
+    inline void array_lock(const slot_type l_pos, const slot_type r_pos) const {}
+    inline void array_unlock(const slot_type l_pos, const slot_type r_pos) const {}
+    inline void array_lock_shared(const slot_type l_pos, const slot_type r_pos) const {}
+    inline void array_unlock_shared(const slot_type l_pos, const slot_type r_pos) const {}
+    inline bool try_array_upgrade_lock(const slot_type l_pos, const slot_type r_pos) const {return true;}
+    inline void array_downgrade_lock(const slot_type l_pos, const slot_type r_pos) const {}
+    inline slot_type array_lock_shared_until_next_item(const slot_type prev_pos, const slot_type pos) const {return next_item(pos);}
+    inline slot_type array_lock_until_next_item(const slot_type prev_pos, const slot_type pos) const {return next_item(pos);}
+    inline slot_type try_array_lock_shared_until_prev_item(const slot_type pos, bool &restart) const {return prev_item(pos);}
+    bitmap       bitmap_ptr;
+    Model        model;
+    mutable Lock meta_lock;
 };
 
 template<typename _Key,
@@ -280,7 +275,6 @@ public:
     }
 
     inline void construct(const key_type *_key, const value_type *_data, slot_type nums){
-        //AEX_ASSERT(nums >= traits::MIN_DATA_NODE_SLOT_SIZE / 2);
         std::copy(_key, _key + nums, this->key);
         std::copy(_data, _data + nums, this->data);
         this->size = nums;
@@ -297,14 +291,9 @@ public:
         this->construct(_key.data(), _value.data(), nums);
     }
 
-    inline void construct(const key_type *_key, const value_type *_data, slot_type nums, Model &m){
-        AEX_ASSERT(false == true);
-    }
-
     // insert a item
     inline slot_type insert(const key_type &x, const value_type &data){
         slot_type pos = this->find_lower_pos(x);
-        //slot_type pos = this->find_upper_pos(x) - 1;
         insert(x, data, pos);
         return pos;
     }
@@ -321,17 +310,16 @@ public:
 
     inline bool erase(const key_type &x){
         slot_type pos = find_lower_pos(x);
-        if (key[pos] != x)
+        if (pos >= this->size || key[pos] != x)
             return false;
         std::move(this->key + pos + 1, this->key + this->size, this->key + pos);
         std::move(this->data + pos + 1, this->data + this->size, this->data + pos);
-        this->key[this->size - 1] = std::numeric_limits<key_type>::max();
         this->size--;
         return true;
     }
 
     // if no item greater than or equal x, return slot_size
-    inline slot_type find_lower_pos(const key_type &x){
+    inline slot_type find_lower_pos(const key_type &x) const {
         if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
             return traits::SearchClass::lower_bound(this->key, this->key + this->size, x, this->key) - this->key;
         //return aex::linear_search_lower_bound(this->key, this->key + this->size, x) - this->key;
@@ -339,10 +327,17 @@ public:
         //return std::lower_bound(this->key, this->key + this->size, x) - this->key;
     }
 
-    inline slot_type find_upper_pos(const key_type &x){
+    inline slot_type find_upper_pos(const key_type &x) const {
         if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
             return traits::SearchClass::upper_bound(this->key, this->key + this->size, x, this->key) - this->key;
         return std::upper_bound(this->key, this->key + this->size, x) - this->key;
+    }
+
+    inline bool exists(const key_type &x) const {
+        slot_type pos = find_lower_pos(x);
+        if (pos < this->size && key[pos] == x)
+            return true;
+        return false;
     }
 
     key_type      key[traits::DATA_NODE_SLOT_SIZE];

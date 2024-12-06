@@ -57,7 +57,7 @@ public:
         return *this;
     }
 
-    inline ULL memory_used(){
+    inline ULL memory_used() const {
         return this->HashTableBase::memory_used() + this->slot_size * sizeof(RWLock);
     }
 
@@ -76,20 +76,18 @@ public:
         this->lock_array = new RWLock[_slot_size]();
     }
 
-    inline void narrow(){ rescale(this->slot_size >> 1); }
+    //inline void narrow(){ rescale(this->slot_size >> 1); }
     inline void expand(){ rescale(this->slot_size << 1); }
 
     inline void insert(const node_ptr parent, const slot_type pos, const key_type key, const node_ptr child){
         hash_type hash_key;
 insert_start:
         lock.lock_shared();
-        hash_key = this->get_hash_key(parent, pos);
         if (this->isfull()){
             if (!lock.try_upgrade_lock()){
                 lock.unlock_shared();
                 goto insert_start;
             }
-            lock_array[hash_key].unlock();
             expand();
             lock.downgrade_lock();
         }
@@ -104,7 +102,7 @@ insert_start:
     /**
      * @brief return the (node->key[pos], node->child[pos])
      */
-    inline std::pair<key_type, node_ptr> find(const node_ptr node, const slot_type pos) {
+    inline std::pair<key_type, node_ptr> find(const node_ptr node, const slot_type pos) const {
         lock.lock_shared();
         const hash_type hash_key = this->get_hash_key(node, pos);
         lock_array[hash_key].lock_shared();
@@ -117,41 +115,37 @@ insert_start:
     /**
      * @brief erase node->child[pos]
      */
-    inline bool erase(const node_ptr node, const slot_type pos){
+    inline void erase(const node_ptr node, const slot_type pos){
         hash_type hash_key;
-erase_start:
         lock.lock_shared();
-        if (this->isfew()){
-            if (!lock.try_upgrade_lock()){
-                lock.unlock_shared();
-                goto erase_start;
-            }
-            narrow();
-            lock.downgrade_lock();
-        }
+//erase_start:
+//        if (this->isfew()){
+//            if (!lock.try_upgrade_lock()){
+//                lock.unlock_shared();
+//                goto erase_start;
+//            }
+//            narrow();
+//            lock.downgrade_lock();
+//        }
         hash_key = this->get_hash_key(node, pos);
         lock_array[hash_key].lock();
-        bool ret = this->table_[hash_key].erase(node, pos);
+        this->table_[hash_key].erase(node, pos);
         lock_array[hash_key].unlock();
-        if (ret)
-            --this->size;
+        --this->size;
         lock.unlock_shared();
-        return ret;
     }
 
-    inline bool update(const node_ptr parent, const slot_type pos, const key_type update_key, const node_ptr update_node){
+    inline void update(const node_ptr parent, const slot_type pos, const key_type update_key, const node_ptr update_node){
         lock.lock_shared();
         const hash_type hash_key = this->get_hash_key(parent, pos);
         lock_array[hash_key].lock();
-        bool ret = this->table_[hash_key].update(parent, pos, update_key, update_node);
+        this->table_[hash_key].update(parent, pos, update_key, update_node);
         lock_array[hash_key].unlock();
-        AEX_ASSERT(ret == false);
         lock.unlock_shared();
-        return ret;
     }
 
-    RWLock* lock_array;
-    RWLock lock;
+    mutable RWLock* lock_array;
+    mutable RWLock lock;
 };
 
 }

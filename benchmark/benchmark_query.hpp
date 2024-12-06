@@ -10,13 +10,14 @@ using namespace std::chrono;
 
 template<typename key_type, typename value_type>
 void aex_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
-    aex::aex_tree<key_type, value_type> index;
+    aex::aex_tree<key_type, value_type, aex::aex_default_traits<key_type, value_type, false, void, true> > index;
+    //aex::aex_tree<key_type, value_type> index;
     index.bulk_load(data.data(), data.size());
     system_clock::time_point t1, t2;
     size_t times = 1;
     size_t num_ops = query.size();
     value_type sum = 0;
-    printf("aex map query test...");
+    std::cout << "aex map query test..." << std::endl;
     t1 = std::chrono::high_resolution_clock::now();
 
     for (size_t T = 0; T < times; ++T){
@@ -28,9 +29,7 @@ void aex_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type>
     t2 = std::chrono::high_resolution_clock::now();
     long long delta = duration_cast<nanoseconds>(t2 - t1).count();
     double QPS = 1e3 * num_ops * times / delta;
-
     std::cout << "code=" << sum << ", used time=" << delta <<  " ms, QPS=" << QPS << "e6" << std::endl;
-
 }
 
 template<typename key_type, typename value_type>
@@ -230,9 +229,10 @@ void benchmark_lookup(FILE* file, long long num_keys, long long num_ops, std::st
         generate_query_zipf<key_type, value_type>(data, query, answer, num_ops);
 
     std::sort(data.begin(), data.end(), [](auto const &a, auto const &b){return a.first < b.first;});
-    std::cout << "query_num=" << query.size() << ", num_ops=" << num_ops;
+    std::cout << "query_num=" << query.size() << ", num_ops=" << num_ops << std::endl;
     if (index_name == "aex"){
         aex_query_bench(data, query, answer);
+        std::cout << "?" << std::endl;
     }
     else if (index_name == "stl_map"){
         stlmap_query_bench(data, query, answer);
@@ -255,4 +255,5 @@ void benchmark_lookup(FILE* file, long long num_keys, long long num_ops, std::st
     else if (index_name == "hash"){
         hash_query_bench(data, query, answer);
     }
+    std::cout << "benchmark query finish..." << std::endl;
 }

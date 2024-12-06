@@ -1,5 +1,8 @@
 #pragma once
+#include <cassert>
 #include <atomic>
+#include <immintrin.h>
+#include <sched.h>
 namespace aex{
 
 #if !defined(forceinline)
@@ -71,8 +74,6 @@ struct AEX_LOG{
 
 #ifdef AEX_DEBUG
 
-#define AEX_DEBUG_FLAG true
-
 //#define private public
 
 #define AEX_PRINT(x)  do { std::cout << "File: " << __FILE__ << ":" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << std::endl; } while(0)
@@ -85,13 +86,11 @@ struct AEX_LOG{
 
 #define AEX_ASSERT(x) do { assert(x); } while(0)
 
-
 #define AEX_PRINT_ELEMENT(x) do { AEX_PRINT(##x << "=" << x); } while(0)
 
+#define AEX_DEBUG_BLOCK(x) do { x } while(0)
+
 #else
-
-
-#define AEX_DEBUG_FLAG false
 
 #define AEX_PRINT(x) 
 
@@ -102,6 +101,8 @@ struct AEX_LOG{
 #define AEX_ASSERT(x) 
 
 #define AEX_PRINT_ELEMENT(x) 
+
+#define AEX_DEBUG_BLOCK(x)
 
 #endif
 
@@ -127,7 +128,7 @@ enum class NodeType{
 #define d_n(node) static_cast<dense_node_ptr>(node)
 #define l_n(node) static_cast<data_node_ptr>(node)
 
-std::string to_string(NodeType type){
+inline std::string to_string(NodeType type){
     switch (type){
         case NodeType::LeafNode  : { return "LeafNode";  }
         case NodeType::DenseNode : { return "DenseNode"; }
@@ -358,7 +359,7 @@ inline bool is_sorted(_Tp *x, ULL n){
     return true;
 }
 
-LL qpow(LL a, LL n, LL p){
+inline LL qpow(LL a, LL n, LL p){
     LL ans = 1;
     while (n)
     {
@@ -370,7 +371,7 @@ LL qpow(LL a, LL n, LL p){
     return ans;
 }
 
-bool is_prime(LL x){
+inline bool is_prime(LL x){
     if (x < 3) 
         return x == 2;
     if (x % 2 == 0)
@@ -414,7 +415,7 @@ struct operation_stats{
     ULL model_train_cnt, model_train_size;
     ULL allocate_data_node_cnt, allocate_dense_node_cnt, allocate_hash_node_cnt;
     ULL free_data_node_cnt, free_dense_node_cnt, free_hash_node_cnt;
-    void print_stats(){
+    void print_stats() const {
         AEX_SUCCESS("[Operation Stats]: ");
         AEX_IMPORTANT("cast_to_hash_node_cnt="    << cast_to_hash_node_cnt    << ", cast_to_dense_node_cnt="    << cast_to_dense_node_cnt);
         AEX_IMPORTANT("hash_node_expand_cnt="     << hash_node_expand_cnt     << ", hash_node_expand_size="     << hash_node_expand_size);
@@ -439,7 +440,7 @@ struct info_stats{
     unsigned int max_depth;
     ULL level_node[16];
     ULL memory_used, inner_node_memory_used, hash_table_memory_used, data_node_memory_used;
-    void print_stats(){
+    void print_stats() const {
         AEX_SUCCESS("[Infomation Stats]: ");
         AEX_HINT("memory used=" << 1.0 * memory_used / 1024 / 1024 << " (MB), inner node memory used=" << 1.0 * inner_node_memory_used / 1024 / 1024 << "(MB), hash table memory used=" << 1.0 * hash_table_memory_used / 1024 / 1024 << " (MB), data node memory used=" << 1.0 * data_node_memory_used / 1024 / 1024 << "(MB)");
         AEX_HINT("tot_cnt=" << hash_node_cnt + dense_node_cnt + data_node_cnt);

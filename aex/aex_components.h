@@ -10,6 +10,7 @@ template<typename traits, bool _ = traits::AllowConcurrency>
 struct aex_spinlock{
     aex_spinlock(){}
     ~aex_spinlock(){}
+    void init(){}
     inline void lock(){}
     inline void unlock(){}
     //inline bool is_lock(){return false;}
@@ -19,6 +20,7 @@ template<typename traits>
 struct aex_spinlock<traits, true>{
     typedef aex_spinlock<traits, true> self;
     aex_spinlock() : writeLock(false) {}
+    void init(){writeLock=false;}
     ~aex_spinlock(){}
     inline void lock() {
         bool expected = false;
@@ -37,6 +39,7 @@ struct aex_spinlock<traits, true>{
 template<typename traits, bool _ = traits::AllowConcurrency>
 struct aex_rw_spinlock{
     aex_rw_spinlock(){}
+    void init(){}
     inline void lock() const {}
     inline void unlock() const {}
     inline void lock_shared() const {}
@@ -46,6 +49,7 @@ struct aex_rw_spinlock{
     inline bool try_lock() const {return true;}
     inline bool try_lock_shared() const {return true;}
     inline bool try_upgrade_lock() const {return true;}
+    inline bool try_upgrade_lock_first() const {return true;}
     inline bool is_lock() const {return false;}
     inline bool is_lock_shared() const {return false;}
 };
@@ -53,16 +57,16 @@ struct aex_rw_spinlock{
 template<typename traits>
 struct aex_rw_spinlock<traits, true>{
     typedef aex_rw_spinlock<traits, true> self;
-    //aex_rw_spinlock() : writeLock(false), readCount(0) {}
     aex_rw_spinlock() : lockCount(0) {}
+    void init(){lockCount = 0;}
     aex_rw_spinlock(const self &x) = delete;
     aex_rw_spinlock(const self &&x) = delete;
     ~aex_rw_spinlock(){}
     self& operator = (const self &x) = delete;
     self& operator = (const self &&x) = delete;
     void lock_shared() {
-        int expected = lockCount.load() & (~1);
-        int result   = expected + 0b10;
+        unsigned int expected = lockCount.load() & (~1);
+        unsigned int result   = expected + 0b10;
         while (!lockCount.compare_exchange_weak(expected, result)) {
             expected = lockCount.load() & (~1);
             result   = expected + 0b10;
@@ -70,21 +74,21 @@ struct aex_rw_spinlock<traits, true>{
     }
 
     void unlock_shared() {
+        AEX_ASSERT(lockCount >= 0b10);
         lockCount.fetch_sub(0b10);
     }
     
     bool try_lock_shared(){
-        int expected = lockCount.load() & (~1);
-        int result   = expected + 0b10;
+        unsigned int expected = lockCount.load() & (~1);
+        unsigned int result   = expected + 0b10;
         if (!lockCount.compare_exchange_strong(expected, result)) 
             return false;
         return true;
     }
 
     void lock() {
-        //bool expected = false;
-        int expected = lockCount.load() & (~1);
-        int result   = expected | 1;
+        unsigned int expected = lockCount.load() & (~1);
+        unsigned int result   = expected | 1;
         while (!lockCount.compare_exchange_weak(expected, result)) {
             expected = lockCount.load() & (~1);
             result   = expected | 1;
@@ -93,23 +97,32 @@ struct aex_rw_spinlock<traits, true>{
     }
 
     void unlock() {
-        //writeLock.store(false, std::memory_order_release);
+        AEX_ASSERT(lockCount.load() == 1);
         lockCount.store(0);
     }
 
     bool try_lock(){
-        int expected = lockCount.load() & (~1);
-        int result   = expected | 1;
+        unsigned int expected = lockCount.load() & (~1);
+        unsigned int result   = expected | 1;
         if (!lockCount.compare_exchange_strong(expected, result)) 
             return false;
         while (lockCount.load() >= 0b10);
         return true;
     }
 
+    bool try_upgrade_lock_without_read(){
+        //unsigned int expected = lockCount.load() & (~1);
+        //unsigned int result   = expected - 1;
+        unsigned int expected = 0b10;
+        unsigned int result   = 0b1;
+        if (!lockCount.compare_exchange_strong(expected, result)) 
+            return false;
+        return true;
+    }
+    
     bool try_upgrade_lock(){
-        AEX_ASSERT(lockCount.load() >= 0b10);
-        int expected = lockCount.load() & (~1);
-        int result   = expected - 1;
+        unsigned int expected = lockCount.load() & (~1);
+        unsigned int result   = expected - 1;
         if (!lockCount.compare_exchange_strong(expected, result)) 
             return false;
         while (lockCount.load() >= 0b10);
@@ -118,209 +131,22 @@ struct aex_rw_spinlock<traits, true>{
 
     // unused. may deadlock
     void upgrade_lock(){
-        int expected, result;
-        AEX_ASSERT(lockCount.load() >= 0b10);
-        expected = lockCount.load() & (~1);
-        result   = expected - 1;
+        unsigned int expected = 0b10;
+        unsigned int result   = 0b1;
         while (!lockCount.compare_exchange_weak(expected, result)) {
             expected = lockCount.load() & (~1);
             result   = expected - 1;
         }
-        while (lockCount.load() >= 0b10);
     }
 
     void downgrade_lock(){
+        AEX_ASSERT(lockCount == 1);
         lockCount.fetch_add(1);
     }
 
-    inline bool is_lock(){return (lockCount & 1) == 1;}
-    inline bool is_lock_shared(){return (lockCount >> 1) > 0;}
-    std::atomic<int> lockCount;
-};
-
-template<typename traits, bool AllowSplitBalance = traits::AllowSplitBalance>
-struct aex_node_split_stats{
-    aex_node_split_stats(){}
-    inline void update(long long _cnt){}
-    inline void set(long long _cnt){}
-    inline long long get(){return 1;}
-};
-
-template<typename traits>
-struct aex_node_split_stats<traits, true>{
-    aex_node_split_stats(){}
-    inline void update(long long _cnt){cnt += _cnt;}
-    inline void set(long long _cnt){cnt =  _cnt;}
-    inline long long get(){return cnt;}
-    long long cnt;
-};
-
-
-template<typename traits, bool AllowBalance = traits::AllowBalance, bool AllowConcurrency = traits::AllowConcurrency>
-struct aex_node_balance_stats{
-    aex_node_balance_stats(){}
-    aex_node_balance_stats(unsigned long long _recent_update_timestamp, double _SMO_times, double _write_times){}
-    inline void update_frequency(unsigned long long timestamp){}
-    inline void update_write_frequency(unsigned long long timestamp){}
-    inline void update_SMO_frequency(unsigned long long timestamp){}
-    inline double get_write_times(){return 0;}
-    inline double get_SMO_times(){return 0;}
-    inline double get_recent_update_timestamp(){return 0;}
-};
-
-template<typename traits>
-struct aex_node_balance_stats<traits, true, false>{
-    unsigned long long recent_update_timestamp;
-    double SMO_times, write_times;
-    static constexpr double lambda = traits::FORGET_RATE;
-    aex_node_balance_stats():recent_update_timestamp(0), SMO_times(0), write_times(0){}
-    aex_node_balance_stats(unsigned long long _recent_update_timestamp,
-                            double _SMO_times, double _write_times
-                            ):recent_update_timestamp(_recent_update_timestamp), 
-                            SMO_times(_SMO_times), 
-                            write_times(_write_times){} 
-    inline void update_frequency(unsigned long long timestamp){
-        double forget_rate = rapid_pow(lambda, timestamp - recent_update_timestamp);
-        //double forget_rate = lambda_pow(lambda, timestamp - recent_update_timestamp)
-        write_times = write_times * forget_rate;
-        SMO_times = SMO_times * forget_rate;
-        recent_update_timestamp = timestamp;
-    }
-
-    inline void update_write_frequency(unsigned long long timestamp){
-        update_frequency(timestamp);
-        write_times += 1; 
-    }
-
-    inline void update_SMO_frequency(unsigned long long timestamp){
-        update_frequency(timestamp);
-        SMO_times += 1; 
-    }
-
-    inline double get_write_times(){return write_times;}
-    inline double get_SMO_times(){return SMO_times;}
-    inline double get_recent_update_timestamp(){return recent_update_timestamp;}
-
-};
-
-template<typename traits>
-struct aex_node_balance_stats<traits, true, true>{
-    typedef aex_node_balance_stats<traits, true, true> self;
-    unsigned long long recent_update_timestamp;
-    double SMO_times, write_times;
-    static constexpr double lambda = traits::FORGET_RATE;
-    aex_node_balance_stats():recent_update_timestamp(0), SMO_times(0), write_times(0){}
-    aex_node_balance_stats(unsigned long long _recent_update_timestamp,
-                            double _SMO_times, double _write_times
-                            ):recent_update_timestamp(_recent_update_timestamp), 
-                            SMO_times(_SMO_times), 
-                            write_times(_write_times){} 
-    //self& operator = (self &x){
-    //    recent_update_timestamp = x.recent_update_timestamp;
-    //    train_times = x.train_times;
-    //    write_times = x.write_times;
-    //    return *this;
-    //}
-    //self& operator = (self &&x){
-    //    recent_update_timestamp = x.recent_update_timestamp;
-    //    train_times = x.train_times;
-    //    write_times = x.write_times;
-    //    return *this;
-    //}
-    inline void update_frequency(unsigned long long timestamp){
-        lk.lock();
-        double forget_rate = rapid_pow(lambda, timestamp - recent_update_timestamp);
-        write_times = write_times * forget_rate;
-        SMO_times = SMO_times * forget_rate;
-        recent_update_timestamp = timestamp;
-        lk.unlock();
-    }
-
-    inline void update_write_frequency(unsigned long long timestamp){
-        lk.lock();
-        double forget_rate = rapid_pow(lambda, timestamp - recent_update_timestamp);
-        write_times = write_times * forget_rate;
-        SMO_times = SMO_times * forget_rate;
-        recent_update_timestamp = timestamp;
-        write_times += 1; 
-        lk.unlock();
-    }
-
-    inline void update_SMO_frequency(unsigned long long timestamp){
-        lk.lock();
-        double forget_rate = rapid_pow(lambda, timestamp - recent_update_timestamp);
-        write_times = write_times * forget_rate;
-        SMO_times = SMO_times * forget_rate;
-        recent_update_timestamp = timestamp;
-        SMO_times += 1; 
-        lk.unlock();
-    }
-
-    inline double get_write_times(){return write_times;}
-    inline double get_SMO_times(){return SMO_times;}
-    inline double get_recent_update_timestamp(){return recent_update_timestamp;}
-
-    aex_spinlock<traits> lk;
-};
-
-template<typename traits, bool AllowBalance = traits::AllowBalance, bool AllowConcurrency = traits::AllowConcurrency>
-struct aex_tree_balance_stats{
-    aex_tree_balance_stats(){}
-    ~aex_tree_balance_stats(){}
-    void update_timestamp(){}
-    inline unsigned long long get_timestamp(){return 1;}
-    inline double get_lambda_timestamp(){return 1;}
-    inline void print_stats(){}
-};
-
-template<typename traits>
-struct aex_tree_balance_stats<traits, true, false>{
-    unsigned long long timestamp;
-    double lambda_timestamp;
-    static constexpr double lambda = traits::FORGET_RATE;
-    aex_tree_balance_stats():timestamp(0), lambda_timestamp(0){}
-    ~aex_tree_balance_stats(){}
-    inline void update_timestamp(){
-        this->timestamp++;
-        lambda_timestamp = lambda_timestamp * this->lambda + 1;
-    }
-    inline unsigned long long get_timestamp(){return timestamp;}
-    inline double get_lambda_timestamp(){return lambda_timestamp;}
-    inline void print_stats(){
-        AEX_IMPORTANT("[balance stats]: timestamp=" << timestamp << "lambda timestamp=" << lambda_timestamp);
-    }
-};
-
-template<typename traits>
-struct aex_tree_balance_stats<traits, true, true>{
-    typedef aex_tree_balance_stats<traits, true, true> self;
-    volatile long long timestamp;
-    volatile double lambda_timestamp;
-    static constexpr double lambda = traits::FORGET_RATE;
-    aex_tree_balance_stats():timestamp(0), lambda_timestamp(0){}
-    ~aex_tree_balance_stats(){}
-    //self& operator = (const self &x){
-    //    timestamp = x.timestamp; 
-    //    lambda_timestamp = x.lambda_timestamp;
-    //    return *this;
-    //}
-    //self& operator = (self &&x){
-    //    timestamp = x.timestamp;
-    //    lambda_timestamp = x.lambda_timestamp;
-    //    return *this;
-    //}
-    inline void update_timestamp(){
-        lk.lock();
-        this->timestamp++;
-        lambda_timestamp = lambda_timestamp * this->lambda + 1;
-        lk.unlock();
-    }
-    inline unsigned long long get_timestamp(){return timestamp;}
-    inline double get_lambda_timestamp(){return lambda_timestamp;}
-    inline void print_stats(){
-        AEX_IMPORTANT("[balance stats]: timestamp=" << timestamp << "lambda timestamp=" << lambda_timestamp);
-    }
-    aex_spinlock<traits> lk;
+    inline bool is_lock() const {return (lockCount.load() & 1) == 1;}
+    inline bool is_lock_shared() const {return (lockCount.load() >> 1) > 0;}
+    std::atomic<unsigned int> lockCount;
 };
 
 template<typename T>
@@ -352,7 +178,7 @@ template<typename traits, bool _ = traits::AllowConcurrency>
 struct aex_concurrency_components{
     typedef typename traits::key_type   key_type;
     typedef typename traits::value_type value_type;
-    //typedef no_atomic_type<LL>   size_type;
+    typedef no_atomic_type<LL>   atomic_size_type;
 
     typedef aex_node_base<key_type, value_type, traits>        base_node;
     typedef aex_inner_node<key_type, value_type, traits>       inner_node;
@@ -377,7 +203,7 @@ template<typename traits>
 struct aex_concurrency_components<traits, true>{
     typedef typename traits::key_type key_type;
     typedef typename traits::value_type value_type;
-    //typedef std::atomic_int64_t size_type;
+    typedef std::atomic_int64_t atomic_size_type;
 
     typedef aex_node_base<key_type, value_type, traits>            base_node;
     typedef aex_inner_node<key_type, value_type, traits>           inner_node;
@@ -408,7 +234,7 @@ struct aex_default_components{
     typedef LL size_type;
     typedef aex_concurrency_components<traits> concurrency_components;
     
-    //typedef typename concurrency_components::size_type      size_type;
+    typedef typename concurrency_components::atomic_size_type      atomic_size_type;
     typedef typename concurrency_components::Lock           Lock;
     typedef typename concurrency_components::RWLock         RWLock;
     typedef typename concurrency_components::base_node      base_node;

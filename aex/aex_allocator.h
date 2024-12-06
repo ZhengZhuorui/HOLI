@@ -28,7 +28,8 @@ public:
     typedef typename components::data_node_ptr  data_node_ptr;
     typedef typename components::InnerNodeModel InnerNodeModel;
     typedef typename components::bitmap_impl    bitmap_impl;
-    typedef typename components::HashTable HashTable;
+    typedef typename components::HashTable      HashTable;
+    typedef typename components::RWLock         RWLock;
 
     typedef typename traits::slot_type slot_type;
     
@@ -76,10 +77,10 @@ public:
         AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
         const hash_node_ptr node = h_n(malloc(MAX_INNER_NODE_SIZE()));
         node->type = NodeType::HashNode;
+        node->node_lock.init();
         node->slot_size = slot_size;
         node->bitmap_ptr = nullptr;
         node->init();
-        //AEX_PRINT("new_node->bitmap[0]=" << node->bitmap_ptr[0]);
         return node;
     }
 
@@ -87,6 +88,7 @@ public:
         AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
         const dense_node_ptr node = d_n(malloc(MAX_INNER_NODE_SIZE()));
         node->type = NodeType::DenseNode;
+        node->node_lock.init();
         node->slot_size = slot_size;
         node->key_ptr = nullptr;
         node->child_ptr = nullptr;
@@ -96,3 +98,4 @@ public:
 };
 
 } // namespace name
+;

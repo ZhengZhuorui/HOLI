@@ -100,12 +100,7 @@ int main(int argc, char** argv){
     //if (flags.find("write_ratio") != flags.end())
     //    write_ratio = stod(flags["write_ratio"]);
     std::string file_name = flags["input_file"];
-    file_is_head = (file_name.find("fb_200M_uint64") != std::string::npos) | 
-                   (file_name.find("osm_cellids_200M_uint64") != std::string::npos) | 
-                   (file_name.find("wiki_ts_200M_uint64") != std::string::npos) | 
-                   (file_name.find("normal_200M_uint64") != std::string::npos) | 
-                   (file_name.find("lognormal_200M_uint64") != std::string::npos) | 
-                   (file_name.find("books_800M_uint64") != std::string::npos);
+    file_is_head = !((file_name.find(".bin.data") != std::string::npos) || (file_name.find("generate_data") != std::string::npos));
     if (key_type == "uint64") benchmark<unsigned long long, unsigned long long>(flags);
     //else if (key_type == "uint") benchmark<unsigned long long, unsigned long long>(flags);
     else if (key_type == "float64") benchmark<double, double>(flags);
@@ -113,4 +108,5 @@ int main(int argc, char** argv){
     else if (key_type == "int64") benchmark<long long, long long>(flags);
     else if (key_type == "float32") benchmark<float, float>(flags);
     else if (key_type == "int32") benchmark<int, int>(flags);
+    std::cout << "benchmark finish..." << std::endl;
 }

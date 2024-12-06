@@ -74,7 +74,7 @@ struct aex_default_traits{
     typedef _Key                     key_type;
     typedef _Val                     value_type;
     typedef _SearchClass             SearchClass;
-    typedef int                      slot_type;
+    typedef long long                slot_type;
     typedef unsigned long long       bitmap_base;
     typedef bitmap_base*             bitmap;
     typedef unsigned long long       hash_type;
@@ -96,6 +96,9 @@ struct aex_default_traits{
     //typedef std::true_type AllowBalance;
     static constexpr bool AllowBalance = ((_AllowBalance & 1) == 1);
 
+    static constexpr bool AllowExtend = true;
+    static constexpr bool AllowRebuild = true;
+
     static_assert((AllowRWBalance | AllowInsertBalance) == AllowBalance);
 
     // Allow data node slot size dynamic? (static data node slot size is MIN_DATA_NODE_SLOT_SIZE)
@@ -112,7 +115,7 @@ struct aex_default_traits{
     static constexpr int LOG_ERROR_BOUND = _LOG_ERROR_BOUND; 
     static constexpr int ERROR_BOUND = 1 << LOG_ERROR_BOUND; 
 
-    static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1LL << 28;
+    static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1LL << 56;
 
     static constexpr slot_type MAX_DENSE_NODE_SLOT_SIZE = 32;
     static constexpr slot_type MIN_DENSE_NODE_SLOT_SIZE = 8;
@@ -122,7 +125,8 @@ struct aex_default_traits{
     static constexpr slot_type MIN_HASH_NODE_SLOT_SIZE = 128;
     //static constexpr slot_type MAX_HASH_NODE_SIZE      = MAX_INNER_NODE_SLOT_SIZE;
     static constexpr slot_type MAX_HASH_NODE_SLOT_SIZE = MAX_INNER_NODE_SLOT_SIZE;
-    static constexpr slot_type HASH_NODE_MAX_GAP = 8 * SLOT_PER_LOCK;
+    static constexpr slot_type HASH_NODE_MAX_GAP_SLOT = 8;
+    static constexpr slot_type HASH_NODE_MAX_GAP = HASH_NODE_MAX_GAP_SLOT * SLOT_PER_LOCK;
     static constexpr hash_type K1 = 233;
     static constexpr hash_type K2 = 37;
 

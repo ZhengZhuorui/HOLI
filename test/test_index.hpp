@@ -123,6 +123,7 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
     return true;
 }
 
+
 template<typename key_type,
         typename value_type,
         typename traits=aex::aex_default_traits<key_type, value_type>>
@@ -132,13 +133,13 @@ bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, 
     vector<key_type> query;
     vector<value_type> answer;
     generate_query(data, n, query, answer, batch);
-    std::sort(data, data + n);
     index.bulk_load(data, n);
     if (static_cast<long long>(index.size()) != n){
         AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);
         return false;
     }
     AEX_HINT("bulk load finish...");
+
     for (int i = 0; i < batch; ++i){
         //AEX_PRINT("key=" << query[i]);
         value_type res;
@@ -170,6 +171,61 @@ bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, 
         }
     }
     t2 = std::chrono::high_resolution_clock::now();
+    delta = duration_cast<nanoseconds>(t2 - t1).count();
+    double QPS = 1.0 * 1e9 * ITER * batch/ delta;
+    std::cout << std::scientific;
+    std::cout << std::setprecision(3);  
+    AEX_SUCCESS("code=" << sum << "query use time " << delta << "ms, QPS=" << QPS);
+    return true;
+}
+
+/*
+template<typename key_type,
+        typename value_type,
+        typename traits=aex::aex_default_traits<key_type, value_type>>
+bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, long long batch){
+    AEX_HINT("[test index lookup]");
+    //typedef typename aex::aex_map<key_type, value_type, traits> Index;
+    aex_tree<key_type, value_type, traits> index;
+    vector<key_type> query;
+    vector<value_type> answer;
+    generate_query(data, n, query, answer, batch);
+    std::sort(data, data + n);
+    index.bulk_load(data, n);
+    if (static_cast<long long>(index.size()) != n){
+        AEX_ERROR("size error, index.size=" << index.size() << ", n=" << n);
+        return false;
+    }
+    AEX_HINT("bulk load finish...");
+    
+    for (int i = 0; i < batch; ++i){
+        auto iter = index.find(query[i]);
+        if (iter == index.end()){
+            AEX_ERROR("Query no exists, i=" << i << ", key=" << query[i]);
+            return false;
+        }
+        if (iter.key() != query[i]){
+            AEX_ERROR("Key Error!, i=" << i << "query key=" << query[i] << ", node key=" << iter.key() <<  ", answer=" << answer[i] << ", find=" << iter.data());
+        }
+        if (iter.data() != answer[i]){
+            AEX_ERROR("Answer Error!, i=" << i << "query key=" << query[i] << ", node key=" << iter.key() <<  ", answer=" << answer[i] << ", find=" << iter.data());
+            return false;
+        }
+    }
+    index.print_stats();
+    
+    system_clock::time_point t1, t2;
+    double delta = 0;
+    const int ITER = 1;
+    value_type sum = 0;
+    t1 = std::chrono::high_resolution_clock::now();
+    for (int T = 0; T < ITER; ++T){
+        for (long long i = 0; i < batch; ++i){
+            auto iter = index.find(query[i]);
+            sum += iter.data();
+        }
+    }
+    t2 = std::chrono::high_resolution_clock::now();
     delta = duration_cast<microseconds>(t2 - t1).count();
 
     double QPS = 1.0 * 1e6 * ITER * batch/ delta;
@@ -178,6 +234,7 @@ bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, 
     AEX_SUCCESS("code=" << sum << "query use time " << delta << "ms, QPS=" << QPS);
     return true;
 }
+*/
 
 template<typename key_type,
         typename value_type,
@@ -296,19 +353,20 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     typedef aex_tree<key_type, value_type, traits> tree;
     aex_tree<key_type, value_type, traits> index, index_bak;
     [[maybe_unused]]typedef typename tree::node_ptr node_ptr;
-    std::vector<std::pair<key_type, value_type> > insert_data(batch), node_data(n - batch + 1); 
-    std::random_shuffle(data, data + n);
-    std::copy(data, data + n - batch, node_data.data());
-    std::copy(data + n - batch, data + n, insert_data.data());
-    std::sort(data, data + n);
+    std::vector<std::pair<key_type, value_type> > insert_data(batch), node_data(n - batch + 1), tmp_data(n); 
+    std::copy(data, data + n, tmp_data.data());
+    std::random_shuffle(tmp_data.data(), tmp_data.data() + n);
+    std::copy(tmp_data.data(), tmp_data.data() + n - batch, node_data.data());
+    std::copy(tmp_data.data() + n - batch, tmp_data.data() + n, insert_data.data());
     std::sort(node_data.data(), node_data.data() + n - batch);
+    AEX_SUCCESS("dataset prepare finish...");
     index.bulk_load(node_data.data(), n - batch);
-    AEX_PRINT("bulk load finish...");
+    AEX_SUCCESS("bulk load finish...");
     index.print_stats();
     index_bak = index;
     for (long long i = 0; i < batch; ++i){
         if (i % 1000000 == 0)
-            std::cout << "i=" << i << std::endl;
+            AEX_PRINT("i=" << i << ", key=" << insert_data[i].first);
         typename tree::iterator iter;
         bool inserted = index.insert_con(insert_data[i]);
         if (inserted == false){
@@ -321,28 +379,30 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
         //}
         //iter = index.find(insert_data[i].first);
         value_type res;
-            bool find_flag = index.find(insert_data[i].first, res);
-            if (!find_flag){
-                AEX_ERROR("query " << i << " no exists!");
-                return false;
-            }
-            if (res != insert_data[i].second){
-                AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].second << ", res =" << res);
-                return false;
-            }
+        bool find_flag = index.find(insert_data[i].first, res);
+        if (!find_flag){
+            AEX_ERROR("query " << i << " no exists!");
+            index.print_stats();
+            return false;
+        }
+        if (res != insert_data[i].second){
+            AEX_ERROR("return iterator is not equal insert item! i=" << i << "key="<< insert_data[i].second << ", res =" << res);
+            return false;
+        }
     }
     AEX_SUCCESS("insert finish..");
+    index.print_stats();
 
     {   
         for (long long i = 0; i < n; ++i){
             value_type res;
-            bool find_flag = index.find(insert_data[i].first, res);
+            bool find_flag = index.find(data[i].first, res);
             if (!find_flag){
-                AEX_ERROR("query no exists!");
+                AEX_ERROR("query no exists! i=" << i << ", key=" << data[i].first);
                 return false;
             }
-            if (res != insert_data[i].second){
-                AEX_ERROR("return iterator is not equal insert item! i=" << i << "answer="<< insert_data[i].second << ", res =" << res);
+            if (res != data[i].second){
+                AEX_ERROR("return iterator is not equal insert item! i=" << i << "answer="<< data[i].second << ", res =" << res);
                 return false;
             }
         }
@@ -505,8 +565,11 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
     index.bulk_load(data, n);
     index.print_stats();
     AEX_SUCCESS("bulk load finish...");
-    for (long long i = 0; i < batch; ++i)
+    for (long long i = 0; i < batch; ++i){
+        //if (i % 1000000 == 0)
+            AEX_PRINT("i=" << i << ", key=" << erase_key[i]);
         index.erase(erase_key[i]);
+    }
     AEX_SUCCESS("erase finish...");
 
     {
@@ -583,14 +646,15 @@ bool test_index_range_query_perf(std::pair<key_type, value_type>* data, long lon
         for (int j = pos; j < pos + length; ++j)
             valid += data[j].second;
     }
+    std::vector<std::pair<key_type, value_type> > results;
     
     for (auto x : query){
-        auto iter = index.find(x.first);
-        while (iter != index.end() && iter.key() <= x.second){
-            sum += iter.data();
-            ++iter;
-        }
+        results.clear();
+        index.range_query(x.first, x.second, results);
+        for (auto &y : results)
+            sum += y.second;
     }
+
     if (sum != valid){
         AEX_ERROR("sum=" << sum << ", valid=" << valid);
         return false;
@@ -603,11 +667,10 @@ bool test_index_range_query_perf(std::pair<key_type, value_type>* data, long lon
     for (int T = 0; T < times; ++T){
         sum = 0;
         for (auto x : query){
-            auto iter = index.find(x.first);
-            while (iter != index.end() && iter.key() <= x.second){
-                sum += iter.data();
-                ++iter;
-            }
+            results.clear();
+            index.range_query(x.first, x.second, results);
+            for (auto &y : results)
+                sum += y.second;
         }
     }
     t2 = std::chrono::high_resolution_clock::now();

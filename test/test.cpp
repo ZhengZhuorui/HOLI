@@ -51,9 +51,8 @@ auto dataset = flags["dataset"];
     AEX_PRINT("is_head=" << is_head);
     size_t _ = read_bineary_file<T>(file, bin_data, num_keys, is_head);
     assert((long long)_ == num_keys);
-    
     std::cout << "Data Example: " << bin_data[0] << ", " << bin_data[num_keys / 2] << ", " << bin_data[num_keys - 1] << std::endl;
-
+    AEX_PRINT("Is sorted?: " << is_sorted(bin_data.data(), num_keys));
     long long unique_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
     //bool multikey_flag = (num_keys != unique_keys);
     std::cout << "Is unique? " << (num_keys == unique_keys ? "Yes" : "No") << ", unique_keys=" << unique_keys << std::endl;

@@ -396,8 +396,8 @@ public:
 
     typedef typename traits::slot_type slot_type;
 
-    // return the predict position. value range from 0 to +inf.
-    inline slot_type predict(const key_type &key) const {
+    // return the predict position. value range from -inf to +inf.
+    inline long double predict(const key_type &key) const {
         //return static_cast<slot_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
         //return this->args.slot_size + std::min(0, static_cast<slot_type>(args.slope * (key - args.end)));
         //return this->args.slot_size + (key < args.end) * args.slope * (key - args.end);
@@ -406,18 +406,20 @@ public:
 
     inline bool train(const key_type* const keys, const slot_type n, const slot_type slot_size){
         AEX_ASSERT(n > 2);
+        AEX_ASSERT(slot_size >= traits::MIN_HASH_NODE_SLOT_SIZE);
         slot_type start = 1;
         while (start < n && keys[start] == keys[start - 1])
             ++start;
         if (start >= n || keys[n - 1] == keys[start])
             return false;
-        args.start = keys[1];
-        args.slope = 1.0 * (slot_size - 2) / (keys[n - 1] - keys[1]);
+        args.start = keys[start];
+        args.slope = 1.0 * (slot_size - 2) / (keys[n - 1] - keys[start]);
         //AEX_PRINT("keys[0]=" << keys[0] << ", pos[0]=" << this->predict(keys[0]));
         //if (this->predict(keys[0]) > 0){
-        //    AEX_PRINT(this->predict(keys[0]) << ", " << this->predict(keys[1]) << ", " << this->predict(keys[0]))
+            //AEX_PRINT("n=" << n << ", keys[n-1]=" << keys[n - 1] << ", slot_size=" << slot_size << ", slope=" << this->args.slope << "start=" << start << ", key[0]=" << keys[0] << ", key[start]" << keys[start] << ", " << this->predict(keys[0]) << ", " << this->predict(keys[start]) << ", " << (keys[0] - this->args.start) * this->args.slope + 1);
         //}
-        AEX_ASSERT(this->predict(keys[0]) <= 0);
+        //offset = (8 * traits::SLOT_PER_LOCK * this->args.slope < (this->args.start - keys[0])) ? (HASH_NODE_MAX_GAP_SLOT * traits::SLOT_PER_LOCK) : -((keys[0] - this->args.start) * this->args.slope);
+        AEX_ASSERT(static_cast<slot_type>(this->predict(keys[0])) <= 0);
         return true;
     }
 
@@ -459,6 +461,7 @@ public:
 
     struct linear_arguments{
         long double slope, start;
+        //int offset;
     }args;
 
 };

@@ -103,7 +103,7 @@ bool test_hash_node_erase_perf(vector<key_type> &data, size_t n, size_t batch){
         slot_type pos = node->predict(del_key[i]);
         slot_type next_pos = node->next_item(pos + 1);
         if (pos != 0 && !node->is_occupied(pos))
-            tree.erase(node, node->prev_item_find(pos), pos, next_pos);
+            tree.erase(node, pos, next_pos);
         else
             ++insert_failed;
     }

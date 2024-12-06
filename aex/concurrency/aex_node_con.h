@@ -42,53 +42,55 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         this->lock_array = new RWLock[this->slot_size]();
     }
 
-    void array_lock(slot_type l_pos, slot_type r_pos){
+    void array_lock(slot_type l_pos, slot_type r_pos) const {
         if (l_pos > r_pos)
             return;
         l_pos = std::max((slot_type)0, l_pos);
         r_pos = std::min(this->slot_size - 1, r_pos);
-        for (slot_type i = pos2slot(l_pos); i < pos2slot(r_pos); ++i)
+        for (slot_type i = pos2slot(l_pos); i <= pos2slot(r_pos); ++i)
             lock_array[i].lock();
     }
 
 
-    void array_unlock(slot_type l_pos, slot_type r_pos){
+    void array_unlock(slot_type l_pos, slot_type r_pos) const {
         if (l_pos > r_pos)
             return;
         l_pos = std::max((slot_type)0, l_pos);
         r_pos = std::min(this->slot_size - 1, r_pos);
-        for (slot_type i = pos2slot(l_pos); i < pos2slot(r_pos); ++i){
+        for (slot_type i = pos2slot(l_pos); i <= pos2slot(r_pos); ++i){
+            AEX_DEBUG_BLOCK({if (!lock_array[i].is_lock()) AEX_PRINT("i=" << i);});
             AEX_ASSERT(lock_array[i].is_lock());
             lock_array[i].unlock();
         }
     }
 
-    void array_lock_shared(slot_type l_pos, slot_type r_pos){
+    void array_lock_shared(slot_type l_pos, slot_type r_pos) const {
         if (l_pos > r_pos)
             return;
         l_pos = std::max((slot_type)0, l_pos);
         r_pos = std::min(this->slot_size - 1, r_pos);
-        for (slot_type i = pos2slot(l_pos); i < pos2slot(r_pos); ++i)
+        for (slot_type i = pos2slot(l_pos); i <= pos2slot(r_pos); ++i)
             lock_array[i].lock_shared();
     }
     
-    void array_unlock_shared(slot_type l_pos, slot_type r_pos){
+    void array_unlock_shared(slot_type l_pos, slot_type r_pos) const {
         if (l_pos > r_pos)
             return;
         l_pos = std::max((slot_type)0, l_pos);
         r_pos = std::min(this->slot_size - 1, r_pos);
-        for (slot_type i = pos2slot(l_pos); i < pos2slot(r_pos); ++i){
+        for (slot_type i = pos2slot(l_pos); i <= pos2slot(r_pos); ++i){
             AEX_ASSERT(lock_array[i].is_lock_shared());
             lock_array[i].unlock_shared();
         }
     }
 
-    inline bool try_array_upgrade_lock(slot_type l_pos, slot_type r_pos){
+    inline bool try_array_upgrade_lock(slot_type l_pos, slot_type r_pos) const {
         if (l_pos > r_pos)
             return true;
         l_pos = std::max((slot_type)0, l_pos);
         r_pos = std::min(this->slot_size - 1, r_pos);
-        for (slot_type i = pos2slot(l_pos); i < pos2slot(r_pos); ++i){
+        for (slot_type i = pos2slot(l_pos); i <= pos2slot(r_pos); ++i){
+            AEX_ASSERT(this->lock_array[i].is_lock_shared());
             if (!lock_array[i].try_upgrade_lock()){
                 for (slot_type j = pos2slot(l_pos); j < i; ++j)
                     lock_array[j].downgrade_lock();
@@ -98,23 +100,23 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         return true;
     }
 
-    inline void array_downgrade_lock(slot_type l_pos, slot_type r_pos){
+    inline void array_downgrade_lock(slot_type l_pos, slot_type r_pos) const {
         if (l_pos > r_pos)
             return;
         l_pos = std::max((slot_type)0, l_pos);
         r_pos = std::min(this->slot_size - 1, r_pos);
-        for (slot_type i = pos2slot(l_pos); i < pos2slot(r_pos); ++i){
+        for (slot_type i = pos2slot(l_pos); i <= pos2slot(r_pos); ++i){
             AEX_ASSERT(lock_array[i].is_lock());
             lock_array[i].downgrade_lock();
         }
     }
 
-    inline slot_type array_lock_shared_until_next_item(slot_type prev_pos, slot_type pos){
+    inline slot_type array_lock_shared_until_next_item(slot_type prev_pos, slot_type pos) const {
         slot_type x = pos;
-        if (x > this->slot_size)
+        if (x >= this->slot_size)
             return x;
         if (pos2slot(pos) != pos2slot(prev_pos))
-            lock_array[pos2slot(x)].lock();
+            lock_array[pos2slot(pos)].lock_shared();
         bitmap text = this->bitmap_ptr + (x >> 6);
         bitmap_base base = (*text) >> (x & 63);
         x += (base == 0) ? (64 - (x & 63)) : __builtin_ctzll(base);
@@ -127,12 +129,12 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         return x;
     }
 
-    inline slot_type array_lock_until_next_item(slot_type prev_pos, slot_type pos){
+    inline slot_type array_lock_until_next_item(slot_type prev_pos, slot_type pos) const {
         slot_type x = pos;
-        if (x > this->slot_size)
+        if (x >= this->slot_size)
             return x;
         if (pos2slot(pos) != pos2slot(prev_pos))
-            lock_array[pos2slot(x)].lock();
+            lock_array[pos2slot(pos)].lock();
         bitmap text = this->bitmap_ptr + (x >> 6);
         bitmap_base base = (*text) >> (x & 63);
         x += (base == 0) ? (64 - (x & 63)) : __builtin_ctzll(base);
@@ -145,7 +147,7 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         return x;
     }
 
-    inline slot_type try_array_lock_shared_until_prev_item(slot_type pos, bool &restart){
+    inline slot_type try_array_lock_shared_until_prev_item(slot_type pos, bool &restart) const {
         if (pos < 0)
             return 0;
         const slot_type end_slot = pos2slot(pos);
@@ -165,10 +167,14 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
             base = *text;
             x -= __builtin_clzll(base);
         }
+        if (pos2slot(x) != pos2slot(x - 1))
+            if (!lock_array[pos2slot(x - 1)].try_lock_shared())
+                for (slot_type i = pos2slot(x) ; i < end_slot; ++i)
+                    lock_array[i].unlock_shared();
         return x;
     }
 
-    RWLock* lock_array;
+    mutable RWLock* lock_array;
 };
 
 //template<typename _Key,

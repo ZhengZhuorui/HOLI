@@ -32,7 +32,7 @@ public:
         return *this;
     }
 
-    self& operator++(int){
+    self operator++(int){
         self tmp = *this;
         ++offset;
         if (offset >= _M_node->size){
@@ -85,7 +85,7 @@ public:
         }
         return *this;
     }
-    self& operator++(int){
+    self operator++(int){
         self tmp = *this;
         ++offset;
         if (offset >= _M_node->size){
