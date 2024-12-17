@@ -59,7 +59,7 @@ inline void aex_tree<_Key, _Val, traits>::update(hash_node_ptr parent, const slo
     AEX_ASSERT(check_lock_shared(parent));
 
     hash_table.update(parent, pos, new_key, new_node);
-    for (slot_type j = highbit<slot_type, traits::SLOT_PER_SHORT_CUT>(pos + 1); j < next_pos; j += traits::SLOT_PER_SHORT_CUT)
+    for (slot_type j = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); j < next_pos; j += traits::SLOT_PER_SHORTCUT)
         hash_table.update(parent, j, new_key, new_node);
     parent->array_downgrade_lock(pos, next_pos);
 }

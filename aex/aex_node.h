@@ -121,40 +121,29 @@ public:
         return bitmap_impl::at(this->bitmap_ptr, x);
     }
 
+    //inline slot_type prev_item_find(slot_type x) const {
+    //    if (x <= 0)
+    //        return x;
+    //    bitmap text = bitmap_ptr + (x >> 6);
+    //    bitmap_base base = (*text) << (63 - (x & 63));
+    //    slot_type y = x & (~(traits::SLOT_PER_SHORTCUT - 1));
+    //    x -= (base == 0) ? ((x & 63) + 1) : __builtin_clzll(base);
+    //    while (base == 0 && x > 0){
+    //        --text;
+    //        base = *text;
+    //        x -= __builtin_clzll(base);
+    //    }
+    //    return x;
+    //}
+
     inline slot_type prev_item_find(slot_type x) const {
         if (x <= 0)
             return 0;
-        slot_type y = x & (~(traits::SLOT_PER_SHORTCUT - 1));
+        //slot_type y = x & (~(traits::SLOT_PER_SHORTCUT - 1));
         bitmap_base base = (bitmap_ptr[x >> 6]) << (63 - (x & 63));
         x -= (base == 0) ? (x & 63) : __builtin_clzll(base);
-        while (x > y){
-
-        }
-        return x;
-
-
-        if (x <= 0)
-            return x;
-        bitmap text = bitmap_ptr + (x >> 6);
-        bitmap_base base = (*text) << (63 - (x & 63));
-        slot_type y = x & (~(traits::SLOT_PER_SHORTCUT - 1));
-        x -= (base == 0) ? ((x & 63) + 1) : __builtin_clzll(base);
-        while (base == 0 && x > 0){
-            --text;
-            base = *text;
-            x -= __builtin_clzll(base);
-        }
         return x;
     }
-
-    //inline slot_type prev_item_find(slot_type x) const {
-    //    if (x <= 0)
-    //        return 0;
-    //    //slot_type y = x & (~(traits::SLOT_PER_SHORTCUT - 1));
-    //    bitmap_base base = (bitmap_ptr[x >> 6]) << (63 - (x & 63));
-    //    x -= (base == 0) ? (x & 63) : __builtin_clzll(base);
-    //    return x;
-    //}
 
     //inline slot_type next_item_find(slot_type x) const {
     //    if (x >= slot_size)

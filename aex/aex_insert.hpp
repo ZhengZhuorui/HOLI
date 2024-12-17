@@ -74,6 +74,7 @@ insert_start:
                     split_pos = top_node->predict(split_key);
                     inserted = check_upgrade_and_lock(top_node, split_pos, top_pos, top_next_pos, restart);
                     if (restart){
+                        SU(child);
                         INSERT_UNLOCK();
                         goto insert_start;
                     }
@@ -183,7 +184,7 @@ inline void aex_tree<_Key, _Val, traits>::__construct_insert(hash_node_ptr node,
     bitmap_impl::set_one(node->bitmap_ptr, pos);
     AEX_ASSERT(node->is_occupied(pos) == true);
     hash_table.insert(node, pos, key, child);
-    for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORT_CUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORT_CUT)
+    for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORTCUT)
         hash_table.insert(node, i, key, child);
     node->meta_lock.lock();
     ++node->size;
@@ -200,7 +201,7 @@ inline void aex_tree<_Key, _Val, traits>::__insert(hash_node_ptr node, const slo
         hash_table.update(node, pos, key, child);
     else
         hash_table.insert(node, pos, key, child);
-    for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORT_CUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORT_CUT)
+    for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORTCUT)
         hash_table.update(node, i, key, child);
     node->meta_lock.lock();
     ++node->size;
@@ -213,7 +214,6 @@ inline void aex_tree<_Key, _Val, traits>::insert(hash_node_ptr node, const slot_
     node_ptr old_node;
 
     AEX_ASSERT(check_lock_shared(node));
-    AEX_ASSERT(check_unlock(node));
     AEX_ASSERT(pos < node->slot_size);
 
     if (node->is_occupied(pos)){
@@ -224,7 +224,7 @@ inline void aex_tree<_Key, _Val, traits>::insert(hash_node_ptr node, const slot_
         std::tie(old_key, old_node) = hash_table.find(node, pos);
         construct_tmp_node(new_node, old_key, old_node, key, child);
         hash_table.update(node, pos, new_node->key_ptr[0], new_node);
-        for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORT_CUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORT_CUT)
+        for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORTCUT)
             hash_table.update(node, i, new_node->key_ptr[0], new_node);
         AEX_ASSERT(check_unlock_shared(new_node));
         AEX_ASSERT(check_unlock(new_node));

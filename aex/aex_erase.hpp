@@ -140,7 +140,6 @@ template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::erase(hash_node_ptr node, const slot_type pos, const slot_type next_pos){
     AEX_ASSERT(node->is_occupied(pos) == true);
     AEX_ASSERT(check_lock_shared(node));
-    AEX_ASSERT(check_unlock(node));
     key_type prev_key;
     node_ptr prev_node;
     std::tie(prev_key, prev_node) = hash_table.find(node, node->prev_item_find(pos - 1));
@@ -149,7 +148,7 @@ inline void aex_tree<_Key, _Val, traits>::erase(hash_node_ptr node, const slot_t
         hash_table.update(node, pos, prev_key, prev_node);
     else
         hash_table.erase(node, pos);
-    for (slot_type j = highbit<slot_type, traits::SLOT_PER_SHORT_CUT>(pos + 1); j < next_pos; j += traits::SLOT_PER_SHORT_CUT)
+    for (slot_type j = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); j < next_pos; j += traits::SLOT_PER_SHORTCUT)
         hash_table.update(node, j, prev_key, prev_node);
     node->meta_lock.lock();
     --node->size;

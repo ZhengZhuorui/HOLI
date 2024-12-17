@@ -688,8 +688,8 @@ private:
     // XL: lock                 XU: unlock
     // UL: upgrade_lock(SL->XL) DL: downgrade_lock(XL->SL)
     inline void SL(node_ptr  node) const { node->node_lock.lock_shared(); }
-    inline void SU(node_ptr  node) const { AEX_ASSERT(check_lock_shared(node)); AEX_ASSERT(check_unlock(node)); node->node_lock.unlock_shared(); }
-    inline void SU(hash_node_ptr node, slot_type l_pos, slot_type r_pos) const { AEX_ASSERT(check_lock_shared(node)); AEX_ASSERT(check_unlock(node));node->array_unlock_shared(l_pos, r_pos); SU(node); }
+    inline void SU(node_ptr  node) const { AEX_ASSERT(check_lock_shared(node)); node->node_lock.unlock_shared(); }
+    inline void SU(hash_node_ptr node, slot_type l_pos, slot_type r_pos) const { AEX_ASSERT(check_lock_shared(node)); node->array_unlock_shared(l_pos, r_pos); SU(node); }
     inline void SU(inner_node_ptr node, slot_type l_pos, slot_type r_pos) const {
         if (node->type == NodeType::HashNode) SU(h_n(node), l_pos, r_pos);
         else SU(node);
