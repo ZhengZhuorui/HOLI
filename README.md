@@ -13,7 +13,7 @@ git clone ...
 ```
 mkdir build
 cd build
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
 ```
 
 ## debug mode

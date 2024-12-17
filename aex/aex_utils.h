@@ -1,8 +1,16 @@
 #pragma once
+#include <algorithm>
+#include <utility>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <cstdio>
+#include <iostream>
 #include <cassert>
 #include <atomic>
 #include <immintrin.h>
 #include <sched.h>
+#include <mutex>
 namespace aex{
 
 #if !defined(forceinline)
@@ -74,12 +82,14 @@ struct AEX_LOG{
 
 #ifdef AEX_DEBUG
 
+static std::mutex log_mutex;
+
 //#define private public
 
-#define AEX_PRINT(x)  do { std::cout << "File: " << __FILE__ << ":" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << std::endl; } while(0)
+#define AEX_PRINT(x)  do { aex::log_mutex.lock(); std::cout << "File: " << __FILE__ << ":" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << std::endl; aex::log_mutex.unlock();} while(0)
 //#define AEX_PRINT(...)  do { ____(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__); } while(0)
 
-#define AEX_PRINT_TAG(x, TAG_FONT, TAG_NAME)  do { std::cout << TAG_FONT << TAG_NAME << " File: " << __FILE__ << ":" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << WHITE_FONT_TAG << std::endl; } while(0)
+#define AEX_PRINT_TAG(x, TAG_FONT, TAG_NAME)  do { aex::log_mutex.lock(); std::cout << TAG_FONT << TAG_NAME << " File: " << __FILE__ << ":" << __LINE__ << ", Function:" << __FUNCTION__ << ", output:" << x << WHITE_FONT_TAG << std::endl; aex::log_mutex.unlock(); } while(0)
 //#define AEX_PRINT_TAG(x, TAG_FONT, TAG_NAME)  do { ____(TAG_FONT, TAG_NAME, __FILE__, __LINE__, __FUNCTION__); } while(0)
 
 #define AEX_FORMAT(FORMAT, ...) do{ printf("File: %s:%d, Function: %s, output: ", __FILE__, __LINE__, __FUNCTION__); printf(FORMAT, ##__VA_ARGS__); printf("\n"); fflush(stdout);} while(0);
@@ -116,6 +126,14 @@ struct AEX_LOG{
 
 #define AEX_IMPORTANT(x) AEX_PRINT_TAG(x, PURPLE_FONT_TAG, "[IMPORTANT]")
 
+
+inline void yield(int count){
+    if (count>3)
+        sched_yield();
+    else
+        _mm_pause();
+}
+
 enum class NodeType{
     LeafNode,
     DenseNode,
@@ -140,6 +158,11 @@ inline std::string to_string(NodeType type){
 template<typename _Tp>
 inline _Tp highbit_64(const _Tp &x){
     return (x + 63) & (~63);
+}
+
+template<typename _Tp, int K>
+inline _Tp highbit(const _Tp &x){
+    return (x + (K - 1)) & (~(K - 1));
 }
 
 template<typename _Tp>
@@ -267,18 +290,6 @@ inline RandomIter exponential_search_lower_bound(RandomIter predict, RandomIter 
             predict += offset;
     ++predict;
     return predict;
-}
-
-template<typename RandomIter, typename _Val>
-inline RandomIter linear_search_lower_bound(RandomIter first, RandomIter last,  _Val& key){
-    for (; first < last && key > *first; ++first);
-    return first;
-}
-
-template<typename RandomIter, typename _Val>
-inline RandomIter linear_search_upper_bound(RandomIter first, RandomIter last,  _Val& key){
-    for (; first < last && key >= *first; ++first);
-    return first;
 }
 //template<typename RandomIter, typename _Val>
 //inline RandomIter exponential_search_upper_bound(RandomIter predict, RandomIter last, _Val& key){

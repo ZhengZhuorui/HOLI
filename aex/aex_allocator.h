@@ -78,6 +78,7 @@ public:
         const hash_node_ptr node = h_n(malloc(MAX_INNER_NODE_SIZE()));
         node->type = NodeType::HashNode;
         node->node_lock.init();
+        node->meta_lock.init();
         node->slot_size = slot_size;
         node->bitmap_ptr = nullptr;
         node->init();

@@ -585,7 +585,7 @@ private:
             return isfew(d_n(node));
     }
     inline bool isfew(const hash_node_ptr node) const {
-        return 1.0 * node->size < node->slot_size * traits::HASH_NODE_FEW_RATIO || node->size < traits::MAX_DENSE_NODE_SLOT_SIZE / 2;
+        return 1.0 * node->size < node->slot_size * traits::HASH_NODE_FEW_RATIO / 2 || node->size < traits::MAX_DENSE_NODE_SLOT_SIZE / 2;
     }
     inline bool isfew(const dense_node_ptr node) const {
         if (node->slot_size == traits::MIN_DATA_NODE_SLOT_SIZE)
@@ -603,12 +603,12 @@ private:
             return false;
         if (node->type == NodeType::HashNode){
             h_n(node)->array_lock_shared(0, 0);
-            h_n(node)->array_lock_shared(node->slot_size - 1, node->slot_size - 1);
             std::tie(key, child1) = hash_table.find(node, 0);
             SL(child1);
+            h_n(node)->array_unlock_shared(0, 0);
+            h_n(node)->array_lock_shared(node->slot_size - 1, node->slot_size - 1);
             std::tie(key, child2) = hash_table.find(node, h_n(node)->prev_item_find(node->slot_size - 1));
             SL(child2);
-            h_n(node)->array_unlock_shared(0, 0);
             h_n(node)->array_unlock_shared(node->slot_size - 1, node->slot_size - 1);
         }
         else{
@@ -713,13 +713,6 @@ private:
     inline void XU() const {AEX_ASSERT(check_unlock_shared()); AEX_ASSERT(check_lock()); this->mtx.unlock();}
     inline bool TUL()const {AEX_ASSERT(check_lock_shared()); return this->mtx.try_upgrade_lock();}
     inline void DL() const {AEX_ASSERT(check_lock()); this->mtx.downgrade_lock();}
-
-    inline void yield(int count) const {
-        if (count>3)
-            sched_yield();
-        else
-            _mm_pause();
-    }
 
     // ========== 7. test ==========
     bool check_lock(node_ptr node) const;

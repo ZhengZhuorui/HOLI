@@ -2,24 +2,23 @@
 
 namespace aex{
 
-#pragma pack(push)
-#pragma pack(1)
+//#pragma pack(push)
+//#pragma pack(1)
 template<typename _Key,
         typename traits>
-struct aex_hash_table_unit{
+struct aex_hash_table_block_unit{
+    
     typedef aex_default_components<traits> components;
-    typedef typename components::base_node base_node;
-    typedef base_node* node_ptr;
     typedef typename traits::slot_type slot_type;
     typedef typename traits::key_type key_type;
-    typedef aex_hash_table_unit<_Key, traits> self;
-    key_type key;
+    typedef typename components::base_node base_node;
+    typedef base_node* node_ptr;
     slot_type pos;
-    node_ptr parent, child;
-    self* next;
-    aex_hash_table_unit():next(nullptr){}
+    node_ptr parent;
+    key_type key;
+    node_ptr child;
 };
-#pragma pack(pop)
+//#pragma pack(pop)
 
 template<typename _Key,
         typename traits>
@@ -30,68 +29,98 @@ struct aex_hash_table_block{
     typedef typename traits::slot_type slot_type;
     typedef typename traits::key_type key_type;
     typedef aex_hash_table_block<_Key, traits> self;
-    typedef aex_hash_table_unit<_Key, traits> Unit;
-    Unit* entry;
+    typedef aex_hash_table_block_unit<_Key, traits> Unit;
+    Unit          unit_array[traits::HASH_TABLE_BLOCK_SIZE];
+    unsigned char fingerprint[traits::HASH_TABLE_BLOCK_SIZE];
+    int           size;
+    self*         next;
 
-    aex_hash_table_block():entry(nullptr){}
+    aex_hash_table_block():size(0), next(nullptr){}
+
+    static unsigned char get_fingerprint(node_ptr node, slot_type pos){
+        return static_cast<unsigned char>(((reinterpret_cast<unsigned long long>(node) * traits::K3 + static_cast<unsigned long long>(pos) * traits::K4) % traits::K5));
+    }
 
     self& operator=(self &other){
-        if (entry == nullptr && other.entry != nullptr)
-            entry = new Unit();
-        for (Unit* b = entry, *ob = other.entry; ob != nullptr; b = b->next, ob = ob->next){
-            b->key = ob->key;
-            b->child = ob->child;
-            b->parent = ob->parent;
-            b->pos = ob->pos;
+        for (self* b = this, *ob = &other; ob != nullptr; b = b->next, ob = ob->next){
+            b->size = ob->size;
+            memcpy(unit_array, ob->unit_array, sizeof(Unit) * traits::HASH_TABLE_BLOCK_SIZE);
+            memcpy(fingerprint, ob->fingerprint, sizeof(unsigned char) * traits::HASH_TABLE_BLOCK_SIZE);
             if (ob->next != nullptr)
-                b->next = new Unit();
+                b->next = new aex_hash_table_block();
         }
     }
 
     inline std::pair<key_type, node_ptr> find(const node_ptr _node, const slot_type _pos){
-        for (Unit* b = entry; b != nullptr; b = b->next){
-            if (b->parent == _node && b->pos == _pos)
-                return std::make_pair(b->key, b->child);
+        const unsigned char fp = get_fingerprint(_node, _pos);
+        for (self* b = this; b != nullptr; b = b->next){
+            for (int cmp_res = (cmp_eq_epi8(b->fingerprint, fp) & ((1 << b->size) - 1)); cmp_res; cmp_res -= cmp_res & (-cmp_res)){
+                int i = __builtin_ctz(cmp_res);
+                if (b->unit_array[i].pos == _pos && b->unit_array[i].parent == _node)
+                    return std::make_pair(b->unit_array[i].key, b->unit_array[i].child);
+            }
         }
-        return std::make_pair(std::numeric_limits<key_type>::lowest(), nullptr);
+        return std::make_pair(0, nullptr);
     }
 
     inline void insert(const node_ptr _node, const slot_type _pos, const key_type x, const node_ptr y){
-        Unit* new_unit = new Unit();
-        new_unit->next = entry;
-        entry = new_unit;
-        entry->parent = _node;
-        entry->pos    = _pos;
-        entry->key    = x;
-        entry->child  = y;
+        self* insert_block = this;
+        if (this->size == traits::HASH_TABLE_BLOCK_SIZE){
+            if (this->next == nullptr){
+                this->next = new self();
+            }
+            else if (this->next->size == traits::HASH_TABLE_BLOCK_SIZE){
+                self* new_block = new self();
+                new_block->next = this->next;
+                this->next = new_block;
+            }
+            insert_block = this->next;
+        }
+        {
+            int& _size = insert_block->size;
+            insert_block->unit_array[_size].pos    = _pos;
+            insert_block->unit_array[_size].parent = _node;
+            insert_block->unit_array[_size].key    = x;
+            insert_block->unit_array[_size].child  = y;
+            insert_block->fingerprint[_size]       = get_fingerprint(_node, _pos);
+            ++insert_block->size;
+        }
     }
 
     inline void erase(const node_ptr _node, const slot_type _pos){
-        for(Unit* erase_block = entry; erase_block != nullptr; erase_block = erase_block->next){
-            if (erase_block->parent == _node && erase_block->pos == _pos){
-                std::swap(erase_block->parent, entry->parent);
-                std::swap(erase_block->pos,    entry->pos);
-                std::swap(erase_block->key,    entry->key);
-                std::swap(erase_block->child,  entry->child);
-                Unit* next = entry->next;
-                delete entry;
-                entry = next;
-                return;
+        self* erase_block = this;
+        self* tail = (erase_block->next == nullptr) ? this : this->next;
+        for(self* erase_block = this; erase_block != nullptr; erase_block = erase_block->next){
+            for (int cmp_res = (cmp_eq_epi8(erase_block->fingerprint, get_fingerprint(_node, _pos)) & ((1 << erase_block->size) - 1)); cmp_res; cmp_res -= cmp_res & (-cmp_res)){
+                int i = __builtin_ctz(cmp_res);
+                if (erase_block->unit_array[i].pos == _pos && 
+                    erase_block->unit_array[i].parent == _node){
+                    //memcpy(erase_block->unit_array + i, tail->unit_array + tail->size - 1, sizeof(Unit));
+                    erase_block->unit_array[i]  = tail->unit_array[tail->size - 1];
+                    erase_block->fingerprint[i] = tail->fingerprint[tail->size - 1];
+                    --tail->size;
+                    if (tail != this && tail->size == 0){
+                        this->next = tail->next;
+                        delete tail;
+                    }
+                    return;
+                }
             }
         }
-        AEX_ERROR("node=" << _node << ", pos=" << _pos);
         AEX_ASSERT(0 == 1);
     }
 
-    inline void update(const node_ptr _node, const slot_type _pos, const key_type update_key, const node_ptr update_node){
-        for (Unit *b = entry; b != nullptr; b = b->next){
-            if (b->parent == _node && b->pos == _pos){
-                b->key   = update_key;
-                b->child = update_node;
-                return;
+    void update(const node_ptr _node, const slot_type _pos, const key_type update_key, const node_ptr update_node){
+        for (self *b = this; b != nullptr; b = b->next){
+            for (int cmp_res = (cmp_eq_epi8(b->fingerprint, get_fingerprint(_node, _pos)) & ((1 << b->size) - 1)); cmp_res; cmp_res -= cmp_res & (-cmp_res)){
+                int i = __builtin_ctz(cmp_res);
+                if (b->unit_array[i].pos == _pos && b->unit_array[i].parent == _node){
+                    b->unit_array[i].key   = update_key;
+                    b->unit_array[i].child = update_node;
+                    return;
+                }
             }
         }
-        AEX_ERROR("node=" << _node << ", pos=" << _pos);
         AEX_ASSERT(0 == 1);
     }
 };
@@ -190,8 +219,8 @@ public:
         else{
             ULL ret = sizeof(HashTableBlock) * this->slot_size;
             for (slot_type i = 0; i < this->slot_size; ++i)
-                for (Unit *b = table_[i].entry; b != nullptr; b = b->next)
-                    ret += sizeof(Unit);
+                for (HashTableBlock *b = table_[i].next; b != nullptr; b = b->next)
+                    ret += sizeof(HashTableBlock);
             return ret;
         }
     }
@@ -200,15 +229,15 @@ public:
         AEX_HINT("[HashTable Stats]: size=" << size.load() << ", slot_size=" << slot_size);
         long long cnt = 0;
         for (slot_type i = 0; i < this->slot_size; ++i){
-            cnt += (table_[i].entry != nullptr);
+            cnt += (table_[i].next != nullptr);
         }
-        AEX_HINT("cnt=" << cnt << ", avg collision=" << 1.0 * size.load() / cnt);
+        AEX_HINT("collision cnt=" << cnt);
     }
 
     void destory(){
         AEX_ASSERT(table_ != nullptr);
         for (slot_type i = 0; i < this->slot_size; ++i){
-            for (Unit *b = table_[i].entry, *t; b != nullptr; ){
+            for (HashTableBlock *b = table_[i].next, *t; b != nullptr; ){
                 t = b;
                 b = b->next;
                 delete t;
@@ -229,7 +258,7 @@ public:
     }
 
     inline bool isfull() const {
-        return 1.0 * this->size.load() / this->slot_size >= traits::HASH_TABLE_FULL_RATIO;
+        return 1.0 * this->size.load() / (this->slot_size * traits::HASH_TABLE_BLOCK_SIZE) >= traits::HASH_TABLE_FULL_RATIO;
     }
 
     //inline bool isfew() const {
@@ -241,11 +270,13 @@ public:
         AEX_ASSERT(_slot_size >= (slot_type)traits::MIN_HASH_TABLE_SIZE);
         slot_type new_real_slot_size = get_real_slot_size(_slot_size);
         HashTableBlock* new_hash_table = new HashTableBlock[_slot_size]();
-        //AEX_WARNING("[hashtable rescale] slot_size=" << this->slot_size << ", _slot_size=" << _slot_size << ", size=" << this->size << ", real_slot_size=" << this->real_slot_size << ", new_real_slot_size=" << new_real_slot_size);
+        AEX_WARNING("[hashtable rescale] slot_size=" << this->slot_size << ", _slot_size=" << _slot_size << ", size=" << this->size.load() << ", real_slot_size=" << this->real_slot_size << ", new_real_slot_size=" << new_real_slot_size);
         for (slot_type i = 0; i < this->slot_size; ++i){
-            for (Unit* b = table_[i].entry; b != nullptr; b = b->next){
-                hash_type new_hash_key = (reinterpret_cast<unsigned long long>(b->parent) * traits::K1 + static_cast<unsigned long long>(b->pos) * traits::K2) % new_real_slot_size;
-                new_hash_table[new_hash_key].insert(b->parent, b->pos, b->key, b->child);
+            for (HashTableBlock* b = table_ + i; b != nullptr; b = b->next){
+                for (int j = 0; j < b->size; ++j){
+                    hash_type new_hash_key = (reinterpret_cast<unsigned long long>(b->unit_array[j].parent) * traits::K1 + static_cast<unsigned long long>(b->unit_array[j].pos) * traits::K2) % new_real_slot_size;
+                    new_hash_table[new_hash_key].insert(b->unit_array[j].parent, b->unit_array[j].pos, b->unit_array[j].key, b->unit_array[j].child);
+                }
             }
         }
         destory();
@@ -263,6 +294,7 @@ public:
     inline void insert(const node_ptr parent, const slot_type pos, const key_type key, const node_ptr child){
         AEX_ASSERT(this->find(parent, pos).second == nullptr);
         hash_type hash_key = get_hash_key(parent, pos);
+        //AEX_PRINT("parent=" << parent << ", pos=" << pos << ", hash_key=" << hash_key);
         if (this->isfull()){
             expand();
             hash_key = get_hash_key(parent, pos);
@@ -302,4 +334,4 @@ public:
 };
 
 
-}
+};

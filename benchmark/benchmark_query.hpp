@@ -12,6 +12,7 @@ template<typename key_type, typename value_type>
 void aex_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
     aex::aex_tree<key_type, value_type, aex::aex_default_traits<key_type, value_type, false, void, true> > index;
     //aex::aex_tree<key_type, value_type> index;
+    std::cout << "[AEX]" << std::endl;
     index.bulk_load(data.data(), data.size());
     system_clock::time_point t1, t2;
     size_t times = 1;
@@ -232,7 +233,6 @@ void benchmark_lookup(FILE* file, long long num_keys, long long num_ops, std::st
     std::cout << "query_num=" << query.size() << ", num_ops=" << num_ops << std::endl;
     if (index_name == "aex"){
         aex_query_bench(data, query, answer);
-        std::cout << "?" << std::endl;
     }
     else if (index_name == "stl_map"){
         stlmap_query_bench(data, query, answer);

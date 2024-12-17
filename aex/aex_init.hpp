@@ -177,14 +177,14 @@ inline void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, va
     split_to_static_data_node(key_buf.data(), data_buf.data(), nums, new_key_buf, new_child_buf);
     ULL m = new_child_buf.size();
     new_child_buf[m - 1]->next = nullptr;
-    for(ULL i = 0; i < m - 1; ++i){
+    for(ULL i = 0; i < m - 1; ++i)
         new_child_buf[i]->next = new_child_buf[i + 1];
-    }
-
+    
     this->m_stats.size = nums;
     this->head_leaf = new_child_buf[0];
     new_key_buf[0] = std::numeric_limits<key_type>::lowest();
-    this->hash_table.rescale(min_slot_size(m, traits::HASH_TABLE_FULL_RATIO, traits::MIN_HASH_TABLE_SIZE));
+    //this->hash_table.rescale(min_slot_size(m, traits::HASH_TABLE_FULL_RATIO, traits::MIN_HASH_TABLE_SIZE));
+    //this->hash_table.rescale(min_slot_size(m, traits::HASH_TABLE_BLOCK_SIZE * traits::HASH_TABLE_FULL_RATIO, traits::MIN_HASH_TABLE_SIZE));
     this->root = this->construct(new_key_buf.data(), reinterpret_cast<node_ptr*>(new_child_buf.data()), new_child_buf.size());
 }
 
@@ -200,7 +200,7 @@ inline typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val
         new_node->size = n;
         #ifdef AEX_DEBUG
         opt_stats.allocate_dense_node_cnt++;
-        check_node(new_node);
+        AEX_ASSERT(check_node(new_node));
         #endif
         return new_node;
     }
@@ -211,7 +211,7 @@ inline typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val
         construct_dense_node(new_node, keys, childs, n);
         #ifdef AEX_DEBUG
         opt_stats.allocate_dense_node_cnt++;
-        check_node(new_node);
+        AEX_ASSERT(check_node(new_node));
         #endif
         return new_node;
     }
@@ -250,7 +250,7 @@ inline void aex_tree<_Key, _Val, traits>::construct(inner_node_ptr node, const k
         construct_SMO(h_n(node), keys, childs, n);
     }
     #ifdef AEX_DEBUG
-    check_node(node);
+    AEX_ASSERT(check_node(node));
     #endif
 }
 

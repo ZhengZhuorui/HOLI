@@ -168,4 +168,25 @@ inline int* lower_bound_with_error_bound<int, 8>(int* first, int* last, int x){
     return first + res;
 }
 
+
+
+inline int cmp_eq_epi8(unsigned char* x, char y){
+    __m128i q = _mm_set1_epi8(y);
+    __m128i k = _mm_loadu_si128((__m128i*)x);
+    __m128i r = _mm_cmpeq_epi8(q, k);
+    int mask = _mm_movemask_epi8(r);
+    return mask;
+}
+
+template<typename _Tp>
+inline _Tp* linear_search_lower_bound(_Tp* first, _Tp* last, const _Tp& key){
+    for (; first < last && key > *first; ++first);
+    return first;
+}
+template<typename _Tp>
+inline _Tp* linear_search_upper_bound(_Tp* first, _Tp* last, const _Tp& key){
+    for (; first < last && key >= *first; ++first);
+    return first;
+}
+
 }

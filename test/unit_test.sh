@@ -1,5 +1,7 @@
 # generate dataset
 
+./generate_dataset --prime --key=1000000000
+
 # (Y)
 ./generate_dataset --key_type=uint64  --num_keys=1000000   --distribution=uniform   --output_file=/home/zzr/data/learned_index/generate_data/uniform_1M_int.bin --lower=-1000000000000 --upper=1000000000000
 
@@ -397,8 +399,11 @@
 ./unit_test --unit=index --key_type=float64 --function=lookup --num_keys=2000000 --batch=100000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
 ./unit_test --unit=index --key_type=uint64 --function=lookup --multikey --num_keys=1000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/generate_data/multikey_1M_int.bin
-./unit_test --unit=index --con --key_type=uint64 --function=lookup --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./unit_test --unit=index --con --key_type=uint64 --function=lookup --num_keys=30000000 --batch=30000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
+./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=300000 --batch=300000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
 
 ./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/covid_200M_uint64
@@ -441,20 +446,20 @@
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=200000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
-./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=10000 --batch=1 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=10000 --batch=10000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 
 ./unit_test --unit=index --key_type=float64 --function=insert --num_keys=105000000 --batch=105000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=100000000 --batch=5000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./unit_test --unit=index --key_type=uint64 --con --function=insert --num_keys=10000000 --batch=5000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
 ./unit_test --unit=index --key_type=uint64 --con --function=insert --num_keys=100000000 --batch=5000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=105000000 --batch=5000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
-
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=180000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
-
-
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./unit_test --unit=index --con --key_type=uint64 --function=insert --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=20000000 --batch=10000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=100000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/books_200M_uint64

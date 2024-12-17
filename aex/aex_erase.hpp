@@ -149,7 +149,7 @@ inline void aex_tree<_Key, _Val, traits>::erase(hash_node_ptr node, const slot_t
         hash_table.update(node, pos, prev_key, prev_node);
     else
         hash_table.erase(node, pos);
-    for (slot_type j = highbit_64(pos + 1); j < next_pos; j += traits::SLOT_PER_LOCK)
+    for (slot_type j = highbit<slot_type, traits::SLOT_PER_SHORT_CUT>(pos + 1); j < next_pos; j += traits::SLOT_PER_SHORT_CUT)
         hash_table.update(node, j, prev_key, prev_node);
     node->meta_lock.lock();
     --node->size;

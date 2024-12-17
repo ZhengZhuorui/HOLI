@@ -137,9 +137,10 @@ public:
 
 template<typename key_type,
         typename value_type>
-inline void pack_KV_dataset(vector<key_type> &data, vector<std::pair<key_type, value_type> > &pack_data){
+inline void pack_KV_dataset(vector<key_type> &data, vector<std::pair<key_type, value_type> > &pack_data, bool is_sorted=false){
     pack_data.resize(data.size());
-    std::sort(data.begin(), data.end());
+    if (!is_sorted)
+        std::sort(data.begin(), data.end());
     value_type id = 0;
     pack_data[0] = std::make_pair(data[0], id);
     for (size_t i = 1; i < data.size(); ++i){

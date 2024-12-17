@@ -1,10 +1,26 @@
 #include <bits/stdc++.h>
-
 #include "utils.h"
 #include "generate_dataset.h"
 
+
 const long long LONG_MAX_VALUE = (1LL << 62) - 1, LONG_MIN_VALUE = - ((1LL << 62) - 1);
 typedef unsigned long long ULL;
+
+bool utils(std::map<std::string, std::string> flags){
+    bool generate_prime = (flags.find("prime") != flags.end());
+    if (generate_prime){
+        long long key = stoll(flags["key"]);
+        std::cout << "Max Prime < " << key << std::endl;
+        for (int i = key; i >= 0; --i)
+            if (aex::is_prime(i)){
+                std::cout << "prime=" << i << std::endl;
+                break;
+            }
+        return true;
+    }
+    return false;
+}
+
 /*
  * Required flags:
  * key_type
@@ -23,10 +39,15 @@ typedef unsigned long long ULL;
 
 int main(int argc, char** argv){
     auto flags = parse_flags(argc, argv);
+    
+    if (utils(flags))
+        return 0;
+
     auto output_file_name = flags["output_file"];
     auto key_type = flags["key_type"];
     auto distribution = flags["distribution"];
     long long num_keys = stoll(flags["num_keys"]);
+
     FILE* output_file = fopen(output_file_name.c_str(), "wb");
     FILE* input_file;
     std::string input_file_name;
@@ -34,11 +55,11 @@ int main(int argc, char** argv){
         input_file_name = flags["input_file"];
         input_file = fopen(input_file_name.c_str(), "rb");
     }
+
     bool generate_real_dataset = (flags.find("real") != flags.end());
     
     //printf("%s\n", output_files.c_str());
     if (generate_real_dataset){
-        
         bool is_head = !((input_file_name.find(".bin.data") != std::string::npos) || (input_file_name.find("generate_data") != std::string::npos));
         std::vector<ULL> bin_data;
         read_bineary_file(input_file, bin_data, num_keys, is_head);

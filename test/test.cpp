@@ -16,6 +16,7 @@ using namespace aex;
 #include "aex/aex_traits.h"
 
 typedef long long LL;
+typedef unsigned long long ULL;
 using std::string;
 using std::map;
 const int N = 10000000, M = 10000;
@@ -52,7 +53,8 @@ auto dataset = flags["dataset"];
     size_t _ = read_bineary_file<T>(file, bin_data, num_keys, is_head);
     assert((long long)_ == num_keys);
     std::cout << "Data Example: " << bin_data[0] << ", " << bin_data[num_keys / 2] << ", " << bin_data[num_keys - 1] << std::endl;
-    AEX_PRINT("Is sorted?: " << is_sorted(bin_data.data(), num_keys));
+    bool is_sorted_flag = is_sorted(bin_data.data(), num_keys);
+    AEX_PRINT("Is sorted?: " << is_sorted_flag);
     long long unique_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
     //bool multikey_flag = (num_keys != unique_keys);
     std::cout << "Is unique? " << (num_keys == unique_keys ? "Yes" : "No") << ", unique_keys=" << unique_keys << std::endl;
@@ -165,7 +167,7 @@ auto dataset = flags["dataset"];
         }
         else if (node_type == "data_node"){
             std::vector<std::pair<T, T> > data;
-            pack_KV_dataset(bin_data, data);
+            pack_KV_dataset(bin_data, data, is_sorted_flag);
             if (func == "insert")
                 return test_data_node_insert_perf<T, T, default_traits>(data.data(), num_keys, batch);
             if (func == "erase")
@@ -217,61 +219,61 @@ auto dataset = flags["dataset"];
         //bool multikey_flag = (flags.find("multikey") != flags.end());
         if (func == "bulk_load"){
             std::vector<std::pair<T, T> > data;
-            pack_KV_dataset(bin_data, data);
+            pack_KV_dataset(bin_data, data, is_sorted_flag);
             bool res = test_index_bulk_load_perf<T, T, default_traits>(data.data(), num_keys);
             return res;
         }
         if (func == "insert"){
             long long batch = stoll(flags["batch"]);
             std::vector<std::pair<T, T> > data;
-            pack_KV_dataset(bin_data, data);
+            pack_KV_dataset(bin_data, data, is_sorted_flag);
             return test_index_insert_perf<T, T, default_traits>(data.data(), num_keys, batch);
         }
         if (func == "lookup"){
             long long batch = stoll(flags["batch"]);
             std::vector<std::pair<T, T> > data;
-            pack_KV_dataset(bin_data, data);
+            pack_KV_dataset(bin_data, data, is_sorted_flag);
             return test_index_lookup_perf<T, T, default_traits>(data.data(), num_keys, batch);
         }
         if (func == "delta_lookup"){
             long long batch = stoll(flags["batch"]);
             std::vector<std::pair<T, T> > data;
-            pack_KV_dataset(bin_data, data);
+            pack_KV_dataset(bin_data, data, is_sorted_flag);
             return test_index_delta_lookup_perf<T, T, default_traits>(data.data(), num_keys, batch);
         }
         if (func == "insert_hotspot"){
             long long batch = stoll(flags["batch"]);
             std::vector<std::pair<T, T> > data;
-            pack_KV_dataset(bin_data, data);
+            pack_KV_dataset(bin_data, data, is_sorted_flag);
             return test_index_insert_hotspot_perf<T, T, default_traits>(data.data(), num_keys, batch);
         }
         if (func == "range_query"){
             long long batch = stoll(flags["batch"]);
             std::vector<std::pair<T, T> > data;
-            pack_KV_dataset(bin_data, data);
+            pack_KV_dataset(bin_data, data, is_sorted_flag);
             return test_index_range_query_perf<T, T, default_traits>(data.data(), num_keys, batch);
         }
         if (func == "erase"){
             long long batch = stoll(flags["batch"]);
             std::vector<std::pair<T, T> > data;
-            pack_KV_dataset(bin_data, data);
+            pack_KV_dataset(bin_data, data, is_sorted_flag);
             return test_index_erase_perf<T, T, default_traits>(data.data(), num_keys, batch);
         }
         if (func == "mix"){
             long long batch = stoll(flags["batch"]);
             double rw_ratio = stod(flags["read_ratio"]);
             std::vector<std::pair<T, T> > data;
-            pack_KV_dataset(bin_data, data);
+            pack_KV_dataset(bin_data, data, is_sorted_flag);
             return test_index_mix_perf<T, T, default_traits>(data.data(), num_keys, batch, rw_ratio);
         }
         if (func == "demo"){
             vector<std::pair<T, T> > data;
-            pack_KV_dataset(bin_data, data);
+            pack_KV_dataset(bin_data, data, is_sorted_flag);
             return test_index<T, T, default_traits>(data.data(), data.size());
         }
         if (func == "tot"){
             vector<std::pair<T, T>> data;
-            pack_KV_dataset(bin_data, data);
+            pack_KV_dataset(bin_data, data, is_sorted_flag);
             long long read_nums = stoll(flags["read_nums"]);
             long long write_nums = stoll(flags["write_nums"]);
             long long erase_nums = stoll(flags["erase_nums"]);
@@ -348,6 +350,12 @@ void test_mul_key(map<string, string> &flags){
 int main(int argc, char** argv){
     srand(0);
     auto flags = parse_flags(argc, argv);
+    if (flags.find("general") != flags.end()){
+        AEX_HINT("<ULL, ULL> unconcurrency data node size=" << sizeof(aex::aex_static_data_node<ULL, ULL, aex_default_traits<ULL, ULL, false, void, false>>));
+        AEX_HINT("<ULL, ULL> concurrency data node size=" << sizeof(aex::aex_static_data_node<ULL, ULL, aex_default_traits<ULL, ULL, false, void, true>>));
+        AEX_HINT("<ULL, ULL> hash table block size=" << sizeof(aex::aex_hash_table_block<ULL, aex_default_traits<ULL, ULL, false, void, false>>));
+        return 0;
+    }
     bool allow_multi_key = (flags.find("multikey") != flags.end());
     if (allow_multi_key)
         test_mul_key<true>(flags);

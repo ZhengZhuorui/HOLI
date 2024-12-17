@@ -130,7 +130,7 @@ struct aex_rw_spinlock<traits, true>{
     }
 
     // unused. may deadlock
-    void upgrade_lock(){
+    [[deprecated]] void upgrade_lock(){
         unsigned int expected = 0b10;
         unsigned int result   = 0b1;
         while (!lockCount.compare_exchange_weak(expected, result)) {

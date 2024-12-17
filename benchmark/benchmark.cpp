@@ -1,9 +1,12 @@
 #include <bits/stdc++.h>
 
+//#define AEX_DEBUG
+
 bool file_is_head;
 #include "benchmark/benchmark.h"
 #include "benchmark/utils.h"
 #include "benchmark/generate_dataset.h"
+
 
 using std::string;
 /*
@@ -93,6 +96,7 @@ void benchmark(std::map<string, string> flags){
 
 int main(int argc, char** argv){
     //auto flags = parse_flags(argc, argv);
+    AEX_PRINT("[Debug Mode]");
     auto flags = parse_flags(argc, argv);
     auto key_type = flags["key_type"];
 

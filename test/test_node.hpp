@@ -12,7 +12,7 @@ bool test_hash_node_insert_perf(vector<key_type> &data, size_t n, size_t batch){
     typedef typename aex_tree<key_type, value_type, traits>::hash_node_ptr hash_node_ptr;
     [[maybe_unused]] typedef typename aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::slot_type slot_type;
-    tree.hash_table.rescale(min_slot_size(n * 2, traits::HASH_TABLE_FULL_RATIO, traits::MIN_HASH_TABLE_SIZE));
+    //tree.hash_table.rescale(min_slot_size(n * 2, traits::HASH_TABLE_FULL_RATIO, traits::MIN_HASH_TABLE_SIZE));
     vector<key_type> node_data(n);
     std::copy(data.begin(), data.end(), node_data.begin());
     vector<key_type> insert_data(batch);
@@ -69,7 +69,7 @@ bool test_hash_node_erase_perf(vector<key_type> &data, size_t n, size_t batch){
     typedef typename aex_tree<key_type, value_type, traits>::hash_node_ptr hash_node_ptr;
     [[maybe_unused]] typedef typename aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::slot_type slot_type;
-    tree.hash_table.rescale(min_slot_size(n * 2, traits::MIN_HASH_TABLE_SIZE));
+    //tree.hash_table.rescale(min_slot_size(n * 2, traits::MIN_HASH_TABLE_SIZE));
     
     AEX_PRINT("prepare dataset...");
     data_node_ptr* child_ptr = new data_node_ptr[n];
@@ -126,7 +126,7 @@ bool test_hash_node_query_perf(vector<key_type> &data, size_t n, size_t batch){
     [[maybe_unused]] typedef typename aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
     typedef typename traits::slot_type slot_type;
     AEX_PRINT("1");
-    tree.hash_table.rescale(min_slot_size(n * 2, traits::HASH_TABLE_FEW_RATIO, traits::MIN_HASH_TABLE_SIZE));
+    //tree.hash_table.rescale(min_slot_size(n * 2, traits::HASH_TABLE_FEW_RATIO, traits::MIN_HASH_TABLE_SIZE));
     AEX_PRINT("2");
     data_node_ptr* child_ptr = new data_node_ptr[n];
     AEX_PRINT("3");

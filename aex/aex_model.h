@@ -407,13 +407,18 @@ public:
     inline bool train(const key_type* const keys, const slot_type n, const slot_type slot_size){
         AEX_ASSERT(n > 2);
         AEX_ASSERT(slot_size >= traits::MIN_HASH_NODE_SLOT_SIZE);
-        slot_type start = 1;
-        while (start < n && keys[start] == keys[start - 1])
-            ++start;
-        if (start >= n || keys[n - 1] == keys[start])
+        slot_type H = 1, T = n - 1;
+        slot_type S = n / 8, E = n / 8 * 7;
+        while (S < E && keys[S] == keys[0])
+            ++S;
+        if (S >= E || keys[S] == keys[E])
             return false;
-        args.start = keys[start];
-        args.slope = 1.0 * (slot_size - 2) / (keys[n - 1] - keys[start]);
+        while (H < S && 1.0 * (S - H) / (keys[S] - keys[H]) < 0.5 * (E - S) / (keys[E] - keys[S]))
+            ++H;
+        while (T > E && 1.0 * (T - E) / (keys[T] - keys[E]) < 0.5 * (E - S) / (keys[E] - keys[S]))
+            --T;
+        args.start = keys[H];
+        args.slope = 1.0 * (slot_size - 2) / (keys[T] - keys[H]);
         //AEX_PRINT("keys[0]=" << keys[0] << ", pos[0]=" << this->predict(keys[0]));
         //if (this->predict(keys[0]) > 0){
             //AEX_PRINT("n=" << n << ", keys[n-1]=" << keys[n - 1] << ", slot_size=" << slot_size << ", slope=" << this->args.slope << "start=" << start << ", key[0]=" << keys[0] << ", key[start]" << keys[start] << ", " << this->predict(keys[0]) << ", " << this->predict(keys[start]) << ", " << (keys[0] - this->args.start) * this->args.slope + 1);
@@ -1747,6 +1752,90 @@ public:
     }args;
 
 };
+
+template<typename _Tp,
+        typename traits>
+class FMCD{
+public:
+    typedef _Tp key_type;
+
+    typedef typename traits::slot_type slot_type;
+
+    // return the predict position. value range from -inf to +inf.
+    inline long double predict(const key_type &key) const {
+        //return static_cast<slot_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
+        //return this->args.slot_size + std::min(0, static_cast<slot_type>(args.slope * (key - args.end)));
+        //return this->args.slot_size + (key < args.end) * args.slope * (key - args.end);
+        return (key - this->args.start) * this->args.slope + 1;
+    }
+
+    inline bool train(const key_type* const keys, const slot_type n, const slot_type slot_size){
+        AEX_ASSERT(n > 2);
+        AEX_ASSERT(slot_size >= traits::MIN_HASH_NODE_SLOT_SIZE);
+        slot_type H = 1, T = n - 1;
+        slot_type S = n / 8, E = n / 8 * 7;
+        while (S < E && keys[S] == keys[0])
+            ++S;
+        if (S >= E || keys[S] == keys[E])
+            return false;
+        while (H < S && 1.0 * (S - H) / (keys[S] - keys[H]) < 0.5 * (E - S) / (keys[E] - keys[S]))
+            ++H;
+        while (T > E && 1.0 * (T - E) / (keys[T] - keys[E]) < 0.5 * (E - S) / (keys[E] - keys[S]))
+            --T;
+        args.start = keys[H];
+        args.slope = 1.0 * (slot_size - 2) / (keys[T] - keys[H]);
+        //AEX_PRINT("keys[0]=" << keys[0] << ", pos[0]=" << this->predict(keys[0]));
+        //if (this->predict(keys[0]) > 0){
+            //AEX_PRINT("n=" << n << ", keys[n-1]=" << keys[n - 1] << ", slot_size=" << slot_size << ", slope=" << this->args.slope << "start=" << start << ", key[0]=" << keys[0] << ", key[start]" << keys[start] << ", " << this->predict(keys[0]) << ", " << this->predict(keys[start]) << ", " << (keys[0] - this->args.start) * this->args.slope + 1);
+        //}
+        //offset = (8 * traits::SLOT_PER_LOCK * this->args.slope < (this->args.start - keys[0])) ? (HASH_NODE_MAX_GAP_SLOT * traits::SLOT_PER_LOCK) : -((keys[0] - this->args.start) * this->args.slope);
+        AEX_ASSERT(static_cast<slot_type>(this->predict(keys[0])) <= 0);
+        return true;
+    }
+
+    // train model with an key array, array size n and slot size
+    //inline bool train(const key_type* const key, const slot_type n){
+    //    args.end = key[n - 1];
+    //    args.slope = 1.0 / (key[n - 1] - key[0]);
+    //    return true;
+    //}
+
+    inline slot_type max_error(const key_type* const key, const slot_type n, const slot_type slot_size){
+        
+        slot_type error = 0, m_error = 0, start = -1;
+        for (slot_type i = 0; i < n; ++i){
+            slot_type pos = std::max(0, this->predict(key[i]));
+            if (pos == start) ++error;
+            else error = 0;
+            m_error = std::max(m_error, error);
+            start = pos;
+        }
+        return m_error;
+    }
+
+    inline double RMSE(const key_type* const key, const slot_type n){
+        double sum = 0;
+        for (slot_type i = 0; i < n; ++i){
+            sum += sqr(this->predict(key[i]) * (n - 1) - i);
+        }
+        sum /= n;
+        sum = sqrt(sum);
+        return sum;
+    }
+
+    #ifdef AEX_DEBUG
+    inline static std::string name(){
+        return "gap array linear model";
+    }
+    #endif
+
+    struct linear_arguments{
+        long double slope, start;
+        //int offset;
+    }args;
+
+};
+
 
 }
 

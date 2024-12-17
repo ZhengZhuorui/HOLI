@@ -120,6 +120,9 @@ DATA_PATH="/data/zzr/learned_index/data"
 
 # facebook
 ./benchmark --key_type=uint64 --index=aex --function=lookup --query_dis=uniform --num_keys=20000000 --num_ops=2000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
+./benchmark --key_type=uint64 --index=aex --function=lookup --query_dis=uniform --num_keys=2000 --num_ops=2000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
 ./benchmark --key_type=uint64 --index=aex --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=stl_map --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./benchmark --key_type=uint64 --index=stx_btree --function=lookup --query_dis=uniform --num_keys=200000000 --num_ops=20000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64

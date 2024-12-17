@@ -1,5 +1,7 @@
 #pragma once
+#include "aex/aex_utils.h"
 #include "aex/aex_hash_table.h"
+
 namespace aex{
 
 template<typename _Key,
@@ -81,7 +83,10 @@ public:
 
     inline void insert(const node_ptr parent, const slot_type pos, const key_type key, const node_ptr child){
         hash_type hash_key;
+        int restart_count = 0;
 insert_start:
+        if (restart_count++)
+            yield(restart_count);
         lock.lock_shared();
         if (this->isfull()){
             if (!lock.try_upgrade_lock()){

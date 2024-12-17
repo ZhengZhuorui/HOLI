@@ -59,7 +59,7 @@ inline void aex_tree<_Key, _Val, traits>::update(hash_node_ptr parent, const slo
     AEX_ASSERT(check_lock_shared(parent));
 
     hash_table.update(parent, pos, new_key, new_node);
-    for (slot_type j = highbit_64(pos + 1); j < next_pos; j += traits::SLOT_PER_LOCK)
+    for (slot_type j = highbit<slot_type, traits::SLOT_PER_SHORT_CUT>(pos + 1); j < next_pos; j += traits::SLOT_PER_SHORT_CUT)
         hash_table.update(parent, j, new_key, new_node);
     parent->array_downgrade_lock(pos, next_pos);
 }
@@ -84,7 +84,7 @@ inline void aex_tree<_Key, _Val, traits>::update(inner_node_ptr parent, const sl
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::expand(dense_node_ptr node){
-    //AEX_WARNING("[dense node expand], slot_size=" << node->slot_size); 
+    AEX_WARNING("[dense node expand], slot_size=" << node->slot_size); 
     AEX_ASSERT(node->type == NodeType::DenseNode);
     AEX_ASSERT(check_lock(node));
     #ifdef AEX_DEBUG
@@ -394,7 +394,7 @@ inline bool aex_tree<_Key, _Val, traits>::check_model(const Model &m, const key_
     slot_type cnt = 0, prev_pos = -1, pos;
     [[maybe_unused]]slot_type max_gap = 0;
     for (ULL i = 0; i < n; ++i){
-        pos = std::max(0LL, static_cast<slot_type>(std::min(m.predict(keys[i]), (long double)slot_size)));
+        pos = std::max(0LL, static_cast<slot_type>(std::min(m.predict(keys[i]), (long double)(slot_size - 1))));
         #ifdef AEX_DEBUG
         max_gap = std::max(max_gap, pos - prev_pos);
         #endif
@@ -409,6 +409,7 @@ inline bool aex_tree<_Key, _Val, traits>::check_model(const Model &m, const key_
     }
     AEX_ASSERT(pos < slot_size);
     double ratio = 1.0 * cnt / slot_size;
+    AEX_PRINT("ratio=" << ratio << ", cnt=" << cnt << ", slot_size=" << slot_size);
     return ratio >= traits::HASH_NODE_FEW_RATIO;
 }
 
@@ -433,7 +434,7 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
         ULL cnt = 0, occupied = 1;
         slot_type prev_pos = 0;
         for (ULL i = 1; i < n; ++i){
-            slot_type pos = std::max(0LL, static_cast<slot_type>(std::min(m.predict(keys[i]), (long double)ans)));
+            slot_type pos = std::max(0LL, static_cast<slot_type>(std::min(m.predict(keys[i]), (long double)(ans - 1))));
             if (pos == prev_pos) ++cnt;
             else{
                 cnt = 1;
@@ -447,6 +448,7 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
         if (occupied < traits::MIN_HASH_NODE_CNT)    
             ans = 0;
     }
+    AEX_PRINT("n=" << n << ", ans=" << ans);
     return ans;
 }
 
