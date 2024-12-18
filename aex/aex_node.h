@@ -188,7 +188,6 @@ public:
     inline bool try_array_upgrade_lock(const slot_type l_pos, const slot_type r_pos) const {return true;}
     inline void array_downgrade_lock(const slot_type l_pos, const slot_type r_pos) const {}
     inline slot_type array_lock_shared_until_next_item(const slot_type prev_pos, const slot_type pos) const {return next_item(pos);}
-    inline slot_type array_lock_until_next_item(const slot_type prev_pos, const slot_type pos) const {return next_item(pos);}
     inline slot_type try_array_lock_shared_until_prev_item(const slot_type pos, bool &restart) const {return prev_item(pos);}
     bitmap       bitmap_ptr;
     Model        model;

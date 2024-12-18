@@ -31,15 +31,7 @@ insert_start:
 
     while (true){
         child = find_update(i_n(node), key, pos, next_pos);
-        AEX_PRINT("node=" << node << ", key=" << key << ", pos=" << pos << ", next_pos=" << next_pos);
-        AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency){
-            if (node->type == NodeType::HashNode){
-                if (pos - 1 >= 0) AEX_ASSERT(h_n(node)->lock_array[pos2slot(pos - 1)].is_lock_shared());
-                if (next_pos < h_n(node)->slot_size) AEX_ASSERT(h_n(node)->lock_array[pos2slot(next_pos)].is_lock_shared());
-                //if (next_pos + traits::SLOT_PER_LOCK < h_n(node)->slot_size) AEX_ASSERT(!h_n(node)->lock_array[pos2slot(next_pos) + 1].is_lock_shared());
-            }
-        }});
-
+        AEX_PRINT("node=" << node << ", key=" << key << ", pos=" << pos << ", next_pos=" << next_pos << ", child->type=" << to_string(child->type));
         tail = (node->type == NodeType::HashNode) ? (next_pos >= h_n(node)->slot_size) : (next_pos >= d_n(node)->size);        
         if (!tail){
             if (top_node != nullptr){
@@ -47,8 +39,8 @@ insert_start:
                 top_node = nullptr;
             }
             if (node->type == NodeType::HashNode && next_pos - pos > 1){
-                top_node = h_n(node);
-                top_pos  = pos;
+                top_node     = h_n(node);
+                top_pos      = pos;
                 top_next_pos = next_pos;
             }
         }
@@ -71,18 +63,16 @@ insert_start:
                 inserted = false;
                 split_key = l_n(child)->key[traits::MIN_DATA_NODE_SLOT_SIZE >> 1];
                 if (top_node != nullptr && top_node != node){
+                    AEX_PRINT("??, node=" << node << ", key=" << key << ", pos=" << pos << ", next_pos=" << next_pos);
                     split_pos = top_node->predict(split_key);
                     inserted = check_upgrade_and_lock(top_node, split_pos, top_pos, top_next_pos, restart);
                     if (restart){
-                        SU(child);
-                        INSERT_UNLOCK();
+                        INSERT_UNLOCK(); SU(child);
                         goto insert_start;
                     }
                     if (inserted){
                         if (!TUL(child)){
-                            SU(child);
-                            XU(top_node, top_pos - 1, top_next_pos);
-                            SU(h_n(node), pos - 1, next_pos);
+                            SU(child); XU(top_node, top_pos - 1, top_next_pos); SU(h_n(node), pos - 1, next_pos);
                             goto insert_start;
                         }
                         ret = insert_data_node(l_n(child), new_node, key, value);
@@ -100,6 +90,8 @@ insert_start:
                 if (!inserted){
                     if (node->type == NodeType::HashNode){
                         split_pos = h_n(node)->predict(split_key);
+                        AEX_PRINT("2, node=" << node << ", key=" << key << ", pos=" << pos << ", next_pos=" << next_pos);
+                        AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) AEX_HINT("key=" << key << ", lockCount=" << h_n(node)->lock_array[pos2slot(pos - 1)].lockCount.load());});
                         if (!h_n(node)->try_array_upgrade_lock(pos - 1, next_pos)){
                             SU(child); SU(h_n(node), pos - 1, next_pos);
                             goto insert_start;
@@ -131,6 +123,7 @@ insert_start:
                 }
             }
             else{
+                //AEX_PRINT("2, node=" << node << ", key=" << key << ", pos=" << pos << ", next_pos=" << next_pos);
                 if (!TUL(child)){
                     SU(child); INSERT_UNLOCK();
                     goto insert_start;
@@ -145,6 +138,7 @@ insert_start:
         }
 
         if (!check_insert_SMO(i_n(child))){
+            SU(child);
             INSERT_UNLOCK();
             goto insert_start;
         }
@@ -226,8 +220,6 @@ inline void aex_tree<_Key, _Val, traits>::insert(hash_node_ptr node, const slot_
         hash_table.update(node, pos, new_node->key_ptr[0], new_node);
         for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORTCUT)
             hash_table.update(node, i, new_node->key_ptr[0], new_node);
-        AEX_ASSERT(check_unlock_shared(new_node));
-        AEX_ASSERT(check_unlock(new_node));
     }
     else {
         __insert(node, pos, next_pos, key, child);

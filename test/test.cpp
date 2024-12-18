@@ -356,6 +356,10 @@ int main(int argc, char** argv){
         AEX_HINT("<ULL, ULL> hash table block size=" << sizeof(aex::aex_hash_table_block<ULL, aex_default_traits<ULL, ULL, false, void, false>>));
         return 0;
     }
+    else if (flags.find("rw_lock") != flags.end()){
+        bool res = test_rw_lock();
+        return res;
+    }
     bool allow_multi_key = (flags.find("multikey") != flags.end());
     if (allow_multi_key)
         test_mul_key<true>(flags);

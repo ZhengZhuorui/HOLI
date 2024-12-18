@@ -49,7 +49,7 @@ struct aex_rw_spinlock{
     inline bool try_lock() const {return true;}
     inline bool try_lock_shared() const {return true;}
     inline bool try_upgrade_lock() const {return true;}
-    inline bool try_upgrade_lock_first() const {return true;}
+    inline bool try_upgrade_lock_without_read() const {return true;}
     inline bool is_lock() const {return false;}
     inline bool is_lock_shared() const {return false;}
 };
@@ -74,7 +74,7 @@ struct aex_rw_spinlock<traits, true>{
     }
 
     void unlock_shared() {
-        AEX_ASSERT(lockCount >= 0b10);
+        AEX_ASSERT(is_lock_shared());
         lockCount.fetch_sub(0b10);
     }
     
@@ -97,8 +97,8 @@ struct aex_rw_spinlock<traits, true>{
     }
 
     void unlock() {
-        AEX_ASSERT(lockCount.load() == 1);
-        lockCount.store(0);
+        AEX_ASSERT(is_lock());
+        lockCount.fetch_sub(1);
     }
 
     bool try_lock(){
@@ -140,12 +140,12 @@ struct aex_rw_spinlock<traits, true>{
     }
 
     void downgrade_lock(){
-        AEX_ASSERT(lockCount == 1);
+        AEX_ASSERT(is_lock());
         lockCount.fetch_add(1);
     }
 
     inline bool is_lock() const {return (lockCount.load() & 1) == 1;}
-    inline bool is_lock_shared() const {return (lockCount.load() >> 1) > 0;}
+    inline bool is_lock_shared() const {return lockCount.load() >= 0b10;}
     std::atomic<unsigned int> lockCount;
 };
 

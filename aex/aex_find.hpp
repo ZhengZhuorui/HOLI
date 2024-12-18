@@ -146,7 +146,13 @@ find_insert_start:
         }
         AEX_ASSERT(next_child != nullptr);
         AEX_ASSERT(key < next_key);}});
-    AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (next_pos < node->slot_size) AEX_ASSERT(node->lock_array[pos2slot(next_pos)].is_lock_shared());});
+    AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency){
+        if (pos - 1 >= 0 && !node->lock_array[pos2slot(pos - 1)].is_lock_shared()){
+            AEX_ERROR("node=" << node << ", key=" << key << ", pos=" << pos << ", lockCount=" << h_n(node)->lock_array[pos2slot(pos - 1)].lockCount.load());
+            AEX_ASSERT(h_n(node)->lock_array[pos2slot(pos - 1)].is_lock_shared());
+        }
+        if (next_pos < h_n(node)->slot_size) AEX_ASSERT(h_n(node)->lock_array[pos2slot(next_pos)].is_lock_shared());
+    }});
     SL(res);
     return res;
 }
