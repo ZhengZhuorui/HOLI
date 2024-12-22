@@ -117,6 +117,17 @@ insert_start:
         return ret;
     }
 
+    inline bool exists(const node_ptr node, const slot_type pos) const {
+        bool ret;
+        lock.lock_shared();
+        const hash_type hash_key = get_hash_key(node, pos);
+        lock_array[hash_key].lock_shared();
+        ret = this->table_[hash_key].exists(node, pos);
+        lock_array[hash_key].unlock_shared();
+        lock.unlock_shared();
+        return ret;
+    }
+
     /**
      * @brief erase node->child[pos]
      */
@@ -147,6 +158,47 @@ insert_start:
         this->table_[hash_key].update(parent, pos, update_key, update_node);
         lock_array[hash_key].unlock();
         lock.unlock_shared();
+    }
+
+    inline bool compare_and_swap(const node_ptr parent, const slot_type pos, const node_ptr ori_node, const key_type update_key, const node_ptr update_node){
+        lock.lock_shared();
+        bool res = false;
+        const hash_type hash_key = this->get_hash_key(parent, pos);
+        lock_array[hash_key].lock();
+        key_type find_key;
+        node_ptr find_node;
+        std::tie(find_key, find_node) = this->table_[hash_key].find(parent, pos);
+        if (find_node == ori_node){
+            this->table_[hash_key].update(parent, pos, update_key, update_node);
+            res = true;
+        }
+        lock_array[hash_key].unlock();
+        lock.unlock_shared();
+        return res;
+    }
+
+    inline bool compare_and_swap(const node_ptr parent, const slot_type pos, const node_ptr ori_node, const slot_type copy_pos){
+        lock.lock_shared();
+        bool res = false;
+        const hash_type hash_key1 = this->get_hash_key(parent, pos), hash_key2 = this->get_hash_key(parent, copy_pos);
+        lock_array[hash_key1].lock();
+
+        key_type find_key;
+        node_ptr find_node;
+        std::tie(find_key, find_node) = this->table_[hash_key1].find(parent, pos);
+        if (find_node == ori_node){
+            if (hash_key1 != hash_key2)
+                lock_array[hash_key2].lock_shared();
+            std::tie(find_key, find_node) = this->table_[hash_key2].find(parent, copy_pos);
+            this->table_[hash_key1].update(parent, pos, find_key, find_node);
+            res = true;
+            if (hash_key1 != hash_key2)
+                lock_array[hash_key2].unlock_shared();
+        }
+
+        lock_array[hash_key1].unlock();
+        lock.unlock_shared();
+        return res;
     }
 
     mutable RWLock* lock_array;

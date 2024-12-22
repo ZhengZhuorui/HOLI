@@ -42,6 +42,44 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         this->lock_array = new RWLock[this->slot_size / traits::SLOT_PER_LOCK + 1]();
     }
 
+    inline bool is_occupied_con(const slot_type x) const {
+        this->lock_array[x].lock_shared();
+        bool res = bitmap_impl::at(this->bitmap_ptr, x);
+        this->lock_array[x].unlock_shared();
+        return res;
+    }
+
+    inline void set_one(const slot_type x) {
+        this->lock_array[x].lock();
+        bitmap_impl::set_one(this->bitmap_ptr, x);
+        this->lock_array[x].unlock();
+    }
+
+    inline void set_zero(const slot_type x) {
+        this->lock_array[x].lock();
+        bitmap_impl::set_zero(this->bitmap_ptr, x);
+        this->lock_array[x].unlock();
+    }
+
+    inline slot_type prev_item(slot_type x) const {
+        if (x < 0)
+            return 0;
+        lock_array[pos2slot(x)].lock_shared();
+        bitmap text = this->bitmap_ptr + (x >> 6);
+        bitmap_base base = (*text) << (63 - (x & 63));
+        x -= (base == 0) ? ((x & 63) + 1) : __builtin_clzll(base);
+        while (base == 0 && x > 0){
+            lock_array[pos2slot(x) + 1].unlock_shared();
+            lock_array[pos2slot(x)].lock_shared();
+            --text;
+            base = *text;
+            x -= __builtin_clzll(base);
+        }
+        AEX_ASSERT(x < 0);
+        return x;
+    }
+
+    
     void array_lock(slot_type l_pos, slot_type r_pos) const {
         if (l_pos > r_pos)
             return;

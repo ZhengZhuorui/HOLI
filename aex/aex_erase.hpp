@@ -12,11 +12,6 @@ inline bool aex_tree<_Key, _Val, traits>::_erase(const key_type &key){
     bool ret;
     int restart_count = 0;
 
-    SL();
-    if (root == nullptr){
-        SU();
-        return false;
-    }
 _erase_start:
     if (restart_count++)
         yield(restart_count);
@@ -30,7 +25,7 @@ _erase_start:
     now_version = this->version;
     
     while (true){
-        child = find_update(i_n(node), key, pos, next_pos);
+        child = find_erase(i_n(node), key, pos, next_pos);
         AEX_PRINT("child=" << child << ", pos=" << pos << ", next_pos=" << next_pos << ", slot_size=" << i_n(node)->slot_size);
         if (child->type == NodeType::LeafNode){
             AEX_PRINT("1");
@@ -51,12 +46,18 @@ _erase_start:
             else{
                 key_type prev_key;
                 node_ptr prev_node;
+                data_node_ptr prev_child;
                 if (node->type == NodeType::HashNode){
                     if (!h_n(node)->try_array_upgrade_lock(pos - 1, next_pos)){
                         SU(child); SU(h_n(node), pos - 1, next_pos);
                         goto _erase_start;
                     }
                     std::tie(prev_key, prev_node) = hash_table.find(node, h_n(node)->prev_item_find(pos - 1));
+                    prev_child = find_tail_leaf(prev_node);
+                    if (prev_child->next != child){
+                        SU(prev_child); SU(child); XU(h_n(node), pos - 1, next_pos);
+                    }
+
                 }
                 else{
                     if (!TUL(node)){
@@ -64,8 +65,9 @@ _erase_start:
                         goto _erase_start;
                     }
                     prev_node = d_n(node)->child_ptr[pos - 1];
+                    prev_child = find_tail_leaf(prev_node);
                 }
-                data_node_ptr prev_child = find_tail_leaf(prev_node);
+
                 if (prev_child->size + child->size - l_n(child)->exists(key) <= traits::DATA_NODE_SLOT_SIZE){
                     if (!TUL(prev_child)){
                         SU(child); XU(i_n(node), pos - 1, next_pos);
@@ -76,53 +78,58 @@ _erase_start:
                         goto _erase_start;
                     }
                     ret = l_n(child)->erase(key);
+                    if (node->type == NodeType::HashNode)
+                        erase(h_n(node), pos, next_pos);
+                    else
+                        erase(d_n(node), pos);
                     merge(prev_child, l_n(child));
-                    XU(prev_child);
+                    XU(prev_child); XU(i_n(node), pos, next_pos);
                 }
                 else{
                     SU(prev_child);
                     ret = l_n(child)->erase(key);
-                    XU(child);
+                    XU(child); XU(i_n(node), pos - 1, next_pos);
                 }
-
-                if (node->type == NodeType::HashNode)
-                    erase(h_n(node), pos, next_pos);
-                else
-                    erase(d_n(node), pos);
-                XU(i_n(node), pos - 1, next_pos);
             }
-            SU();
             return ret;
         }
-        else if (d_n(child)->size == 1){
-            AEX_PRINT("7");
+
+        if (d_n(child)->size == 1){
+            AEX_PRINT("3");
             AEX_ASSERT(child->type == NodeType::DenseNode);
-            if (!erase_lock(i_n(node), pos, next_pos)){
-                SU(child);
-                ERASE_UNLOCK();
-                goto _erase_start;
-            }
-            if (!TUL(child)){
-                SU(child);
-                if (node->type == NodeType::HashNode)
-                    XU(h_n(node), pos - 1, next_pos);
-                else
-                    XU(node);
-                goto _erase_start;
-            }
-            key_type child_key;
-            node_ptr _;
             if (node->type == NodeType::HashNode){
+                if (!h_n(node)->try_array_upgrade_lock(pos - 1, next_pos)){
+                    SU(child); SU(h_n(node), pos - 1, next_pos);
+                    goto _erase_start;
+                }
+                if (!TUL(child)){
+                    SU(child); XU(h_n(node), pos - 1, next_pos);
+                    goto _erase_start;
+                }
+                key_type child_key;
+                node_ptr _;
                 std::tie(child_key, _) = hash_table.find(node, pos);
                 AEX_ASSERT(_ == child);
+                update(h_n(node), pos, next_pos, child_key, d_n(child)->child_ptr[0]);
+                XU(h_n(node), pos - 1, next_pos);
             }
-            else
-                child_key = d_n(node)->key_ptr[0];
-            update(i_n(node), pos, next_pos, child_key, d_n(child)->child_ptr[0]);
+            else{
+                if (!TUL(node)){
+                    SU(child); SU(node);
+                    goto _erase_start;
+                }
+                if (!TUL(child)){
+                    SU(child); XU(h_n(node), pos - 1, next_pos);
+                    goto _erase_start;
+                }
+                d_n(node)->child_ptr[pos] = d_n(child)->child_ptr[0];
+                XU(node);
+            }
             free_node(child);
-            continue;
+            goto _erase_start;
         }
-        AEX_PRINT("8");
+
+        AEX_PRINT("4");
         if (!check_erase_SMO(child)){
             SU(child);
             ERASE_UNLOCK();
@@ -132,7 +139,6 @@ _erase_start:
         node = child;
     }
     AEX_ASSERT(0 == 1);
-    SU();
     #undef ERASE_UNLOCK
 }
 
@@ -140,6 +146,7 @@ template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::erase(hash_node_ptr node, const slot_type pos, const slot_type next_pos){
     AEX_ASSERT(node->is_occupied(pos) == true);
     AEX_ASSERT(check_lock_shared(node));
+    AEX_ASSERT(check_unlock(node));
     key_type prev_key;
     node_ptr prev_node;
     std::tie(prev_key, prev_node) = hash_table.find(node, node->prev_item_find(pos - 1));

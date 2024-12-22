@@ -4,13 +4,13 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree():version(0), root(nullptr), head_leaf(nullptr), m_stats(), hash_table(traits::MIN_HASH_TABLE_SIZE), opt_stats(), mtx(){
+inline aex_tree<_Key, _Val, traits>::aex_tree():version(0), root(nullptr), head_leaf(nullptr), m_stats(), hash_table(traits::MIN_HASH_TABLE_SIZE), opt_stats(){
     this->init_index();
 }
 
 template<typename _Key, typename _Val, typename traits>
 template<typename _InputIterator>
-inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): version(0), root(nullptr), head_leaf(nullptr), m_stats(), hash_table(traits::MIN_HASH_TABLE_SIZE), opt_stats(), mtx(){
+inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): version(0), root(nullptr), head_leaf(nullptr), m_stats(), hash_table(traits::MIN_HASH_TABLE_SIZE), opt_stats(){
     this->init();
     std::vector<std::pair<key_type, value_type> > data;
     for (auto it = __first; it != __last; ++it)
@@ -20,17 +20,14 @@ inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIter
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):version(0), root(nullptr), head_leaf(nullptr), m_stats(), hash_table(traits::MIN_HASH_TABLE_SIZE), opt_stats(), mtx(){
-    _index.XL();
+inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):version(0), root(nullptr), head_leaf(nullptr), m_stats(), hash_table(traits::MIN_HASH_TABLE_SIZE), opt_stats(){
     this->init();
     this->root = i_n(this->construct(_index, _index.root));
     this->m_stats = _index.m_stats;
-    _index.XU();
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):version(0), root(nullptr), head_leaf(nullptr), m_stats(), hash_table(traits::MIN_HASH_TABLE_SIZE), opt_stats(), mtx(){
-    _index.XL();
+inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):version(0), root(nullptr), head_leaf(nullptr), m_stats(), hash_table(traits::MIN_HASH_TABLE_SIZE), opt_stats(){
     this->deconstruct(this->root);    
     this->version = _index.version;
     this->root = _index.root;
@@ -39,12 +36,10 @@ inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):version(0), root(nu
     _index.head_leaf = nullptr;
     this->m_stats = _index.m_stats;
     this->hash_table = std::move(_index.hash_table);
-    _index.XU();
 }
 
 template<typename _Key, typename _Val, typename traits>
 inline aex_tree<_Key, _Val, traits>::~aex_tree(){
-    XL();
     this->deconstruct(this->root);
     AEX_ASSERT(hash_table.size.load() == 0);
 }
@@ -80,16 +75,19 @@ inline void aex_tree<_Key, _Val, traits>::deconstruct(node_ptr node){
         return;
     switch (node->type){
         case NodeType::LeafNode:{
+            XL(node);
             free_node(node);
             break;
         }
         case NodeType::DenseNode:{
+            XL(node);
             for (slot_type i = 0; i < d_n(node)->size; ++i)
                 deconstruct(d_n(node)->child_ptr[i]);
             free_node(node);
             break;
         }
         case NodeType::HashNode:{
+            XL(node);
             for (slot_type i = 0; i < h_n(node)->slot_size; i = h_n(node)->next_item(i + 1)){
                 std::tie(key, child) = hash_table.find(h_n(node), i);
                 AEX_ASSERT(child != nullptr);
@@ -162,7 +160,9 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, value_type>* const data, const ULL nums){
+    AEX_PRINT("[bulk load]");
     this->clear();
+    AEX_PRINT("1");
     if (nums == 0)
         return;
     std::vector<key_type> key_buf(nums), new_key_buf;

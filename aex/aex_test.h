@@ -31,35 +31,6 @@ inline bool aex_tree<_Key, _Val, traits>::check_unlock_shared(node_ptr node) con
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline bool aex_tree<_Key, _Val, traits>::check_lock() const {
-    if constexpr (traits::AllowConcurrency)
-        return this->mtx.is_lock();
-    else
-        return true;
-}
-template<typename _Key, typename _Val, typename traits>
-inline bool aex_tree<_Key, _Val, traits>::check_lock_shared() const {
-    if constexpr (traits::AllowConcurrency)
-        return this->mtx.is_lock_shared();
-    else
-        return true;
-}
-template<typename _Key, typename _Val, typename traits>
-inline bool aex_tree<_Key, _Val, traits>::check_unlock() const {
-    if constexpr (traits::AllowConcurrency)
-        return !this->mtx.is_lock();
-    else
-        return true;
-}
-template<typename _Key, typename _Val, typename traits>
-inline bool aex_tree<_Key, _Val, traits>::check_unlock_shared() const {
-    if constexpr (traits::AllowConcurrency)
-        return !this->mtx.is_lock_shared();
-    else
-        return true;
-}
-
-template<typename _Key, typename _Val, typename traits>
 inline bool aex_tree<_Key, _Val, traits>::check_node(node_ptr node) const {
     switch (node->type){
         case NodeType::LeafNode : { return check_node(l_n(node));}
@@ -132,7 +103,7 @@ inline bool aex_tree<_Key, _Val, traits>::check_node(hash_node_ptr node) const {
     }
     AEX_DEBUG_BLOCK({
         if constexpr(traits::AllowConcurrency) 
-            for (slot_type i = 0; i < pos2slot(node->slot_size); ++i) {
+            for (slot_type i = 0; i < pos2slot(node->slot_size - 1); ++i) {
                 AEX_ASSERT(!node->lock_array[i].is_lock());
                 AEX_ASSERT(!node->lock_array[i].is_lock_shared());
             }

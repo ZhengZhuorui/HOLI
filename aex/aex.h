@@ -114,7 +114,6 @@ private:
     aex_stats       m_stats;
     HashTable       hash_table;
     operation_stats opt_stats;
-    mutable RWLock  mtx;
 
 public:
     aex_tree();
@@ -125,20 +124,14 @@ public:
     ~aex_tree();
 
     inline aex_tree& operator = (aex_tree &_index){
-        _index.XL();
-        XL();
         this->init();
         data_node_ptr _tail_leaf;
         this->root = i_n(this->construct(_index, _index.root, _tail_leaf));
         this->m_stats = _index.m_stats;
-        XU();
-        _index.XU();
         return *this;
     }
 
     inline aex_tree& operator = (aex_tree &&_index){
-        _index.XL();
-        XL();
         this->init();
         this->root = _index.root;
         _index.root = nullptr;
@@ -146,15 +139,11 @@ public:
         _index.head_leaf = nullptr;
         this->allocator = _index.allocator;
         this->hash_table = std::move(_index.hash_table);
-        XU();
-        _index.XU();
         return *this;
     }
 
     inline void clear(){
-        XL();
         this->init_index();
-        XU();
     }
 
     /**
@@ -201,7 +190,6 @@ public:
      */
     inline bool find(const key_type &x, value_type &y){
         bool ret = false;
-        SL();
         data_node_ptr node = find_leaf(x);
         slot_type pos = node->find_lower_pos(x);
         if (pos < node->size && node->key[pos] == x){
@@ -209,7 +197,6 @@ public:
             ret = true;
         }
         SU(node);
-        SU();
         return ret;
     }
 
@@ -218,6 +205,25 @@ public:
      * @details the interface support concurrency
      */
     void range_query(const key_type &lower_key, const key_type &upper_key, std::vector<std::pair<key_type, value_type>>& answer) const ;
+
+    inline bool update(const key_type &x, value_type &y){
+        bool ret = false;
+        data_node_ptr node;
+    update_restart:
+        node = find_leaf(x);
+        while (!TUL(node)){
+            SU(node);
+            node = find_leaf(x);
+        }
+
+        slot_type pos = node->find_lower_pos(x);
+        if (pos < node->size && node->key[pos] == x){
+            node->data[pos] = y;
+            ret = true;
+        }
+        XU(node);
+        return ret;
+    }
 
     /**
      * @brief find the value of key $x$
@@ -243,12 +249,10 @@ public:
      * @details the interface support concurrency
      */
     inline bool lower_bound(const key_type &x, const std::pair<key_type, value_type> &res){
-        SL();
         data_node_ptr node = this->find_leaf(x);
         slot_type pos = node->find_lower_pos(x);
         if (pos >= node->size && node->next == nullptr){
             SU(node);
-            SU();
             return false;
         }
         else{
@@ -260,7 +264,6 @@ public:
         }
         res = std::make_pair(node->key[pos], node->child[pos]);
         SU(node);
-        SU();
         return true;
     }
 
@@ -309,12 +312,10 @@ public:
      * @details the interface support concurrency
      */
     inline bool upper_bound(const key_type &x, const std::pair<key_type, value_type> &res){
-        SL();
         data_node_ptr node = this->find_leaf(x);
         slot_type pos = node->find_upper_pos(x);
         if (pos >= node->size && node->next == nullptr){
             SU(node);
-            SU();
             return false;
         }
         else{
@@ -326,7 +327,6 @@ public:
         }
         res = std::make_pair(node->key[pos], node->child[pos]);
         SU(node);
-        SU();
         return true;
     }
 
@@ -471,9 +471,13 @@ private:
     node_ptr find(const hash_node_ptr  node, const key_type &key) const ;
     node_ptr find(const dense_node_ptr node, const key_type &key) const ;
 
-    node_ptr find_update(inner_node_ptr node, const key_type &key, slot_type &pos, slot_type &next_pos) const ;
-    node_ptr find_update(hash_node_ptr  node, const key_type &key, slot_type &pos, slot_type &next_pos) const ;
-    node_ptr find_update(dense_node_ptr node, const key_type &key, slot_type &pos, slot_type &next_pos) const ;
+    node_ptr find_insert(inner_node_ptr node, const key_type &key, slot_type &pos) const ;
+    node_ptr find_insert(hash_node_ptr  node, const key_type &key, slot_type &pos) const ;
+    node_ptr find_insert(dense_node_ptr node, const key_type &key, slot_type &pos) const ;
+
+    node_ptr find_erase(inner_node_ptr node, const key_type &key, slot_type &pos, slot_type &next_pos) const ;
+    node_ptr find_erase(hash_node_ptr  node, const key_type &key, slot_type &pos, slot_type &next_pos) const ;
+    node_ptr find_erase(dense_node_ptr node, const key_type &key, slot_type &pos, slot_type &next_pos) const ;
 
     data_node_ptr find_tail_leaf(node_ptr node) const ;
     inline key_type node_zero_key(const inner_node_ptr node) const {
@@ -485,6 +489,15 @@ private:
     inline key_type node_last_key(const inner_node_ptr node) const {
         return (node->type == NodeType::DenseNode) ? (d_n(node)->key_ptr[node->size - 1]) : (hash_table.find(node, h_n(node)->next_item(h_n(node)->slot_size - 1)).first);
     }
+    inline node_ptr last_node(const hash_node_ptr node) const{
+        key_type last_key;
+        node_ptr last_node;
+        SL(node, node->slot_size - 1);
+        std::tie(last_key, last_node) = hash_table.find(node, node->prev_item_find(node->slot_size - 1));
+        SU(node, node->slot_size - 1);
+        return last_node;
+    }
+
     // ========== 2. insert ==========
     // below function implemention at 'aex_insert.hpp'
     /**
@@ -492,13 +505,12 @@ private:
      */
     void construct_tmp_node(dense_node_ptr node, const key_type &old_key, const node_ptr old_node, const key_type &new_key, const node_ptr new_node);
     void __construct_insert(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type &key, const node_ptr child);
-    void __insert(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type &key, const node_ptr child);
-    void insert(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type &key, const node_ptr child);
+    void insert(hash_node_ptr node, const slot_type pos, const key_type &key, const node_ptr child);
     void insert(dense_node_ptr node, const key_type &key, const node_ptr child);
     bool check_insert_SMO(inner_node_ptr node);
-    bool check_upgrade_and_lock(hash_node_ptr node, const slot_type split_pos, const slot_type top_pos, const slot_type top_next_pos, bool &restart) const ;
+    bool check_upgrade(hash_node_ptr node, const slot_type split_pos, const slot_type top_pos) const ;
     std::pair<iterator, bool> insert_data_node(data_node_ptr node, data_node_ptr &new_node, const key_type &key, const value_type &value);
-    void insert_unlock(hash_node_ptr top_node, const slot_type top_pos, const slot_type top_next_pos, node_ptr node, const slot_type pos, const slot_type next_pos) const;
+    void insert_unlock(hash_node_ptr top_node, node_ptr node) const;
     void split(data_node_ptr old_node, data_node_ptr new_node);
 
     // ========== 3. erase ==========
@@ -526,8 +538,6 @@ private:
     void cast_to_dense_node(inner_node_ptr node, const slot_type slot_size);
 
     void update(hash_node_ptr parent,  const slot_type pos, const slot_type next_pos, const key_type new_key, const node_ptr new_node);
-    void update(dense_node_ptr parent, const slot_type pos, const slot_type next_pos, const key_type new_key, const node_ptr new_node);
-    void update(inner_node_ptr parent, const slot_type pos, const slot_type next_pos, const key_type new_key, const node_ptr new_node);
     /**
      * @brief expand a node slot size
      */
@@ -602,20 +612,16 @@ private:
         if (node->size <= 1)
             return false;
         if (node->type == NodeType::HashNode){
-            h_n(node)->array_lock_shared(0, 0);
+            SL(h_n(node), 0);
             std::tie(key, child1) = hash_table.find(node, 0);
-            SL(child1);
-            h_n(node)->array_unlock_shared(0, 0);
-            h_n(node)->array_lock_shared(node->slot_size - 1, node->slot_size - 1);
+            SU(h_n(node), 0);
+            SL(h_n(node), node->slot_size - 1);
             std::tie(key, child2) = hash_table.find(node, h_n(node)->prev_item_find(node->slot_size - 1));
-            SL(child2);
-            h_n(node)->array_unlock_shared(node->slot_size - 1, node->slot_size - 1);
+            SU(h_n(node), node->slot_size - 1);
         }
         else{
             child1 = d_n(node)->child_ptr[0];
             child2 = d_n(node)->child_ptr[d_n(node)->size - 1];
-            SL(child1);
-            SL(child2);
         }
         if (child1->type != NodeType::LeafNode)
             tot_size += child1->size;
@@ -623,8 +629,6 @@ private:
             tot_size += child2->size;
         if (tot_size >= node_size * traits::MIN_REBUILD_RATIO)
             res = true;
-        SU(child1);
-        SU(child2);
         return res;
     }
 
@@ -655,6 +659,7 @@ private:
     }
 
     inline void free_node(node_ptr node){
+        AEX_ASSERT(check_lock(node));
         switch (node->type){
             case NodeType::LeafNode:{
                 #ifdef AEX_DEBUG
@@ -688,8 +693,10 @@ private:
     // XL: lock                 XU: unlock
     // UL: upgrade_lock(SL->XL) DL: downgrade_lock(XL->SL)
     inline void SL(node_ptr  node) const { node->node_lock.lock_shared(); }
-    inline void SU(node_ptr  node) const { AEX_ASSERT(check_lock_shared(node)); node->node_lock.unlock_shared(); }
+    inline void SL(hash_node_ptr node, const slot_type pos) const { if constexpr(traits::AllowConcurrency) {AEX_ASSERT(check_lock_shared(node)); node->lock_array[pos].lock_shared(); }}
+    inline void SU(node_ptr  node) const { AEX_ASSERT(check_lock_shared(node)); node->node_lock.unlock_shared();}
     inline void SU(hash_node_ptr node, slot_type l_pos, slot_type r_pos) const { AEX_ASSERT(check_lock_shared(node)); node->array_unlock_shared(l_pos, r_pos); SU(node); }
+    inline void SU(hash_node_ptr node, const slot_type pos) const { if constexpr(traits::AllowConcurrency) {AEX_ASSERT(check_lock_shared(node)); AEX_ASSERT(node->lock_array[pos2slot(pos)].is_lock_shared()); node->lock_array[pos2slot(pos)].unlock_shared(); } }
     inline void SU(inner_node_ptr node, slot_type l_pos, slot_type r_pos) const {
         if (node->type == NodeType::HashNode) SU(h_n(node), l_pos, r_pos);
         else SU(node);
@@ -706,23 +713,12 @@ private:
     inline bool TSL(node_ptr node) const { return node->node_lock.try_lock_shared(); }
     inline bool TXL(node_ptr node) const { return node->node_lock.try_lock();        }
     inline bool TUL(node_ptr node) const { AEX_ASSERT(check_lock_shared(node)); return node->node_lock.try_upgrade_lock(); }
-    //inline bool TULF(node_ptr node) const { return node->node_lock.try_upgrade_lock_first();}
-    inline void SL() const {this->mtx.lock_shared();}
-    inline void SU() const {AEX_ASSERT(check_lock_shared()); this->mtx.unlock_shared();}
-    inline void XL() const {this->mtx.lock();}
-    inline void XU() const {AEX_ASSERT(check_unlock_shared()); AEX_ASSERT(check_lock()); this->mtx.unlock();}
-    inline bool TUL()const {AEX_ASSERT(check_lock_shared()); return this->mtx.try_upgrade_lock();}
-    inline void DL() const {AEX_ASSERT(check_lock()); this->mtx.downgrade_lock();}
 
     // ========== 7. test ==========
     bool check_lock(node_ptr node) const;
     bool check_lock_shared(node_ptr node) const;
     bool check_unlock(node_ptr node) const;
     bool check_unlock_shared(node_ptr node) const;
-    bool check_lock() const ;
-    bool check_unlock() const;
-    bool check_lock_shared() const;
-    bool check_unlock_shared() const;
     bool check_node(node_ptr       node) const ;
     bool check_node(data_node_ptr  node) const ;
     bool check_node(dense_node_ptr node) const ;

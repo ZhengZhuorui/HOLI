@@ -150,6 +150,22 @@ struct aex_rw_spinlock<traits, true>{
 };
 
 template<typename T>
+struct empty_type{
+    typedef empty_type<T> self;
+    empty_type() = default;
+    empty_type(const T &t){}
+    self& operator = (const self &y){return *this;}
+    self& operator = (const T &y){return *this;}
+    bool operator == (const T &y){return true;}
+    bool operator == (const self &y){return true;}
+    bool operator != (const T &y){return true;}
+    inline T load() const {return 0;}
+    inline void store(T t){}
+    inline self& operator++(){return *this;}
+    inline self& operator--(){return *this;}
+};
+
+template<typename T>
 struct no_atomic_type{
     typedef no_atomic_type<T> self;
     no_atomic_type() = default;
@@ -165,20 +181,13 @@ struct no_atomic_type{
     T x;
 };
 
-template<typename T>
-struct empty_type{
-    empty_type(){}
-    empty_type(T x){}
-    empty_type& operator=(T x){return *this;}
-    empty_type& operator=(empty_type<T> x){return *this;}
-    bool operator==(T &x){return true;}
-};
 
 template<typename traits, bool _ = traits::AllowConcurrency>
 struct aex_concurrency_components{
     typedef typename traits::key_type   key_type;
     typedef typename traits::value_type value_type;
-    typedef no_atomic_type<LL>   atomic_size_type;
+    typedef no_atomic_type<LL>          atomic_size_type;
+    typedef empty_type<unsigned int>    ref_count_type;
 
     typedef aex_node_base<key_type, value_type, traits>        base_node;
     typedef aex_inner_node<key_type, value_type, traits>       inner_node;
@@ -204,6 +213,7 @@ struct aex_concurrency_components<traits, true>{
     typedef typename traits::key_type key_type;
     typedef typename traits::value_type value_type;
     typedef std::atomic_int64_t atomic_size_type;
+    typedef std::atomic_uint8_t ref_count_type;
 
     typedef aex_node_base<key_type, value_type, traits>            base_node;
     typedef aex_inner_node<key_type, value_type, traits>           inner_node;
@@ -235,6 +245,7 @@ struct aex_default_components{
     typedef aex_concurrency_components<traits> concurrency_components;
     
     typedef typename concurrency_components::atomic_size_type      atomic_size_type;
+    typedef typename concurrency_components::ref_count_type ref_count_type;
     typedef typename concurrency_components::Lock           Lock;
     typedef typename concurrency_components::RWLock         RWLock;
     typedef typename concurrency_components::base_node      base_node;

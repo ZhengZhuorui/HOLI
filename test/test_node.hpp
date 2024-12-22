@@ -48,9 +48,8 @@ bool test_hash_node_insert_perf(vector<key_type> &data, size_t n, size_t batch){
             break;
         }
         slot_type pos = node->predict(insert_data[i]);
-        slot_type next_pos = node->next_item(pos + 1);
         if (!node->is_occupied(pos))
-            tree.__insert(node, pos, next_pos, insert_data[i], insert_node_ptr[i]);
+            tree.insert(node, pos, insert_data[i], insert_node_ptr[i]);
         else
             ++insert_failed;
     }

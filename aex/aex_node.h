@@ -12,12 +12,13 @@ public:
     typedef aex_node_base<key_type, value_type, traits> self;
     typedef aex_tree<key_type, value_type, traits> base_tree;
     typedef typename traits::slot_type slot_type;
-    typedef typename base_tree::components components;
-    typedef typename components::size_type size_type;
-    typedef typename components::inner_node inner_node;
-    typedef typename components::hash_node  hash_node;
-    typedef typename components::dense_node dense_node;
-    typedef typename components::data_node  data_node;
+    typedef typename base_tree::components      components;
+    typedef typename components::size_type      size_type;
+    typedef typename components::ref_count_type ref_count_type;
+    typedef typename components::inner_node     inner_node;
+    typedef typename components::hash_node      hash_node;
+    typedef typename components::dense_node     dense_node;
+    typedef typename components::data_node      data_node;
     typedef typename components::inner_node_ptr inner_node_ptr;
     typedef typename components::hash_node_ptr  hash_node_ptr;
     typedef typename components::dense_node_ptr dense_node_ptr;
@@ -41,11 +42,10 @@ public:
         return *this;
     }
 
-
     // size: the number of child nodes(inner node); the number of data(data node)
-    size_type      size;
-    NodeType       type;
-    mutable RWLock node_lock;
+    size_type              size;
+    NodeType               type;
+    mutable RWLock         node_lock;
 };
 
 template<typename _Key,
@@ -117,8 +117,20 @@ public:
         return std::max(0LL, static_cast<slot_type>(std::min(model.predict(key), static_cast<long double>(this->slot_size - 1))));
     }
 
-    inline slot_type is_occupied(slot_type x) const {
+    inline bool is_occupied(const slot_type x) const {
         return bitmap_impl::at(this->bitmap_ptr, x);
+    }
+
+    inline bool is_occupied_con(const slot_type x) const {
+        return bitmap_impl::at(this->bitmap_ptr, x);
+    }
+
+    inline void set_one(const slot_type x) {
+        bitmap_impl::set_one(this->bitmap_ptr, x);
+    }
+
+    inline void set_zero(const slot_type x) {
+        bitmap_impl::set_zero(this->bitmap_ptr, x);
     }
 
     //inline slot_type prev_item_find(slot_type x) const {
@@ -180,7 +192,7 @@ public:
         }
         return x;
     }
-
+    
     inline void array_lock(const slot_type l_pos, const slot_type r_pos) const {}
     inline void array_unlock(const slot_type l_pos, const slot_type r_pos) const {}
     inline void array_lock_shared(const slot_type l_pos, const slot_type r_pos) const {}
@@ -189,6 +201,7 @@ public:
     inline void array_downgrade_lock(const slot_type l_pos, const slot_type r_pos) const {}
     inline slot_type array_lock_shared_until_next_item(const slot_type prev_pos, const slot_type pos) const {return next_item(pos);}
     inline slot_type try_array_lock_shared_until_prev_item(const slot_type pos, bool &restart) const {return prev_item(pos);}
+
     bitmap       bitmap_ptr;
     Model        model;
     mutable Lock meta_lock;

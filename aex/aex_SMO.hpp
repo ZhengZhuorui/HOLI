@@ -61,25 +61,7 @@ inline void aex_tree<_Key, _Val, traits>::update(hash_node_ptr parent, const slo
     hash_table.update(parent, pos, new_key, new_node);
     for (slot_type j = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); j < next_pos; j += traits::SLOT_PER_SHORTCUT)
         hash_table.update(parent, j, new_key, new_node);
-    parent->array_downgrade_lock(pos, next_pos);
-}
-
-template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::update(dense_node_ptr parent, const slot_type pos, const slot_type next_pos, const key_type new_key, const node_ptr new_node){
-    AEX_ASSERT(parent != nullptr);
-    AEX_ASSERT(parent->type == NodeType::HashNode);
-    AEX_ASSERT(check_lock(parent));
-    parent->key_ptr[pos] = new_key;
-    parent->child_ptr[pos] = new_node;
-}
-
-template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::update(inner_node_ptr parent, const slot_type pos, const slot_type next_pos, const key_type new_key, const node_ptr new_node){
-    switch (parent->type){
-        case NodeType::HashNode  : { return update(h_n(parent), pos, next_pos, new_key, new_node); }
-        case NodeType::DenseNode : { return update(d_n(parent), pos, next_pos, new_key, new_node); }
-        default : { AEX_ASSERT(0 == 1); }
-    }
+    parent->array_unlock(pos - 1, next_pos);
 }
 
 template<typename _Key, typename _Val, typename traits>

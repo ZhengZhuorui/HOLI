@@ -54,12 +54,13 @@ constexpr int TEMPLATE_LOG<1>(){
 
 template<bool _AllowConcurrency>
 struct aex_concurrency_traits{
-    typedef long long size_type;
+    
+    
 };
 
 template<>
 struct aex_concurrency_traits<true>{
-    typedef std::atomic_int64_t size_type;
+    
 };
 
 template<typename _Key, 
