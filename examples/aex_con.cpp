@@ -3,53 +3,75 @@
 using namespace std;
 typedef long long KEY_TYPE;
 typedef long long PAYLOAD_TYPE;
-
-
 const int num_keys = 10000;
-const int thread_number = 4;
+const int thread_num = 4;
+
 int main(){
+    srand(0);
+    aex::aex_tree<KEY_TYPE, PAYLOAD_TYPE, aex::aex_default_traits<KEY_TYPE, PAYLOAD_TYPE, false, void, true>> index;
+
     std::pair<KEY_TYPE, PAYLOAD_TYPE> values[3 * num_keys];
+    int query_start[thread_num + 1], insert_start[thread_num + 1], erase_start[thread_num + 1];
+    for (int i = 0; i < thread_num; ++i){
+        query_start[i] = num_keys / thread_num;
+        erase_start[i] = num_keys + num_keys / thread_num;
+        insert_start[i] = 2 * num_keys + num_keys / thread_num;
+    }
+    query_start[thread_num] = num_keys;
+    erase_start[thread_num] = 2 * num_keys;
+    insert_start[thread_num] = 3 * num_keys;
+    
+    
     PAYLOAD_TYPE random_values[3 * num_keys];
     for (int i = 0; i < 2 * num_keys; ++i){
         random_values[i] = rand();
-        values[i].first = i;
-        values[i].second = random_values[i];
+        values[i].first = random_values[i];
+        values[i].second = i;
     }
+    std::sort(values, values + num_keys, [&](auto &x, auto &y)->bool{return x.first < y.first ;});
+    //std::sort(values, values + num_keys);
 
-    aex::aex_tree<KEY_TYPE, PAYLOAD_TYPE, aex_default_traits<_Key, _Val, false, void, false>> index(values, values + num_keys + 1);
-    int cnt = 0;
-    std::thread threads[thread_number];
-    for (int i = 0; i < thread_number; ++i){
-        threads[i] = std::thread([&](int &i){
-            for (int j = insert_start[i]; j < insert_start[i + 1]; ++j)
-                index.insert_con(values[j]);
-        });
-    }
-    for (int i = 0; i < thread_num; ++i)
-        threads[i].join();
-    for (int i = 0; i < thread_number; ++i){
-        threads[i] = std::thread([&](int &i){
-            for (int j = erase_start[i]; j < erase_start[i + 1]; ++j)
-                index.erase(values[j]);
-        });
+    index.bulk_load(values, num_keys);
+    
+    std::thread threads[thread_num];
+    for (int i = 0; i < thread_num; ++i){
+        threads[i] = std::thread([](auto index, auto *start, auto* end){
+            for (auto j = start; j < end; ++j)
+                index->insert_con(*j);
+        }, &index, values + insert_start[i], values + insert_start[i + 1]);
     }
     for (int i = 0; i < thread_num; ++i)
         threads[i].join();
 
-    for (int i = num_keys ; i < 2 * num_keys; ++i){
-        assert(index[i] == values[i]);
+    for (int i = 0; i < thread_num; ++i){
+        threads[i] = std::thread([](auto index, auto *start, auto *end){
+            for (auto j = start; j < end; ++j)
+                index->erase((*j).first);
+        }, &index, values + erase_start[i], values + erase_start[i + 1]);
     }
-    assert(index[i].find(3*num_keys) == index.end());
+    for (int i = 0; i < thread_num; ++i)
+        threads[i].join();
+
+    for (int i = num_keys; i < 2 * num_keys; ++i){
+        PAYLOAD_TYPE y;
+        bool x = index.find(values[i].first, y);
+        assert(x && y == values[i].second);
+    }
+    {
+        PAYLOAD_TYPE _;
+        assert(index.find(3 * num_keys, _) == false);
+    }
     
     PAYLOAD_TYPE sum[thread_num];
-    for (int i = 0; i < thread_number; ++i){
-        threads[i] = std::thread([&](int &i){
-            for (int j = query_start[i]; j < query_start[i + 1]; ++j){
-                PAYLOAD_TYPE res;
-                index.lower_bound(query[i], res);
-                sum[i] += res;
+    for (int i = 0; i < thread_num; ++i){
+        threads[i] = std::thread([](auto index, auto *start, auto* end, PAYLOAD_TYPE &sum){
+            for (auto j = start; j < end; ++j){
+                PAYLOAD_TYPE y;
+                if (index->find((*j).first, y))
+                    sum += y;
             }
-        });
+        }, &index, values + query_start[i], values + query_start[i + 1], std::ref(sum[i]));
+        
     }
     for (int i = 0; i < thread_num; ++i){
         threads[i].join();

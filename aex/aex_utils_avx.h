@@ -57,7 +57,6 @@ __m256i static forceinline _mm256_cmple_epu64(__m256i a, __m256i b) {
     return _mm256_cmpge_epu64(b, a);
 }
 
-
 template<typename _Tp,
         int ERROR_BOUND>
 inline _Tp* lower_bound_with_error_bound(_Tp *first, _Tp* last, _Tp x){
@@ -170,11 +169,19 @@ inline int* lower_bound_with_error_bound<int, 8>(int* first, int* last, int x){
 
 
 
-inline int cmp_eq_epi8(unsigned char* x, char y){
+inline int cmp_eq_epi8(const unsigned char* x, const char y){
     __m128i q = _mm_set1_epi8(y);
     __m128i k = _mm_loadu_si128((__m128i*)x);
     __m128i r = _mm_cmpeq_epi8(q, k);
     int mask = _mm_movemask_epi8(r);
+    return mask;
+}
+
+inline int cmp_eq_epi8_32(const unsigned char* x, const char y){
+    __m256i q = _mm256_set1_epi8(y);
+    __m256i k = _mm256_loadu_si256((__m256i*)x);
+    __m256i r = _mm256_cmpeq_epi8(q, k);
+    int mask = _mm256_movemask_epi8(r);
     return mask;
 }
 
@@ -183,10 +190,66 @@ inline _Tp* linear_search_lower_bound(_Tp* first, _Tp* last, const _Tp& key){
     for (; first < last && key > *first; ++first);
     return first;
 }
+
 template<typename _Tp>
 inline _Tp* linear_search_upper_bound(_Tp* first, _Tp* last, const _Tp& key){
     for (; first < last && key >= *first; ++first);
     return first;
 }
+
+template<typename _Tp>
+inline int linear_search_lower_bound_avx512(const _Tp* first, const int size, const _Tp x){
+    return std::lower_bound(first, first + size, x) - first;
+}
+
+template<>
+inline int linear_search_lower_bound_avx512(const unsigned long long* first, const int size, const unsigned long long x){
+    __m512i key = _mm512_set1_epi64(x);
+    __m512i v0 = _mm512_loadu_si512((__m512i*)(first));
+    __m512i v1 = _mm512_loadu_si512((__m512i*)(first + 8));
+    __mmask8 cmp0 = _mm512_cmpgt_epu64_mask(key, v0);
+    __mmask8 cmp1 = _mm512_cmpgt_epu64_mask(key, v1);
+    unsigned int mask = (((unsigned int)cmp1 << 8) | (unsigned int)cmp0) & ((1 << size) - 1);
+    return __builtin_popcount(mask);
+}
+
+template<>
+inline int linear_search_lower_bound_avx512(const long long *first, const int size, const long long x){
+    __m512i key = _mm512_set1_epi64(x);
+    __m512i v0 = _mm512_loadu_si512((__m512i*)(first));
+    __m512i v1 = _mm512_loadu_si512((__m512i*)(first + 8));
+    __mmask8 cmp0 = _mm512_cmpgt_epi64_mask(key, v0);
+    __mmask8 cmp1 = _mm512_cmpgt_epi64_mask(key, v1);
+    unsigned int mask = (((unsigned int)cmp1 << 8) | (unsigned int)cmp0) & ((1 << size) - 1);
+    return __builtin_popcount(mask);
+}
+
+template<typename _Tp>
+inline int linear_search_upper_bound_avx512(const _Tp* first, const int size, const _Tp x){
+    return std::lower_bound(first, first + size, x) - first;
+}
+
+template<>
+inline int linear_search_upper_bound_avx512(const unsigned long long* first, const int size, const unsigned long long x){
+    __m512i key = _mm512_set1_epi64(x);
+    __m512i v0 = _mm512_loadu_si512((__m512i*)(first));
+    __m512i v1 = _mm512_loadu_si512((__m512i*)(first + 8));
+    __mmask8 cmp0 = _mm512_cmpge_epu64_mask(key, v0);
+    __mmask8 cmp1 = _mm512_cmpge_epu64_mask(key, v1);
+    unsigned int mask = (((unsigned int)cmp1 << 8) | (unsigned int)cmp0) & ((1 << size) - 1);
+    return __builtin_popcount(mask);
+}
+
+template<>
+inline int linear_search_upper_bound_avx512(const long long *first, const int size, const long long x){
+    __m512i key = _mm512_set1_epi64(x);
+    __m512i v0 = _mm512_loadu_si512((__m512i*)(first));
+    __m512i v1 = _mm512_loadu_si512((__m512i*)(first + 8));
+    __mmask8 cmp0 = _mm512_cmpge_epi64_mask(key, v0);
+    __mmask8 cmp1 = _mm512_cmpge_epi64_mask(key, v1);
+    unsigned int mask = (((unsigned int)cmp1 << 8) | (unsigned int)cmp0) & ((1 << size) - 1);
+    return __builtin_popcount(mask);
+}
+
 
 }

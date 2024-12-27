@@ -28,17 +28,16 @@ bool test_index_mix_perf(std::pair<key_type, value_type>* data, long long n, lon
         for (long long i = 0, qn = 0; i < batch; ++i){
             switch (operation_list[i]){
                 case OperationType::Lookup:{
-                    auto x = index.find(query[qn]);
-                    if (x != index.end()){
-                        if (x.data() != answer[qn]){
-                            AEX_ERROR("lookup data error!");
-                        }
+                    value_type y;
+                    bool x = index.find(query[qn], y);
+                    if (x == false || y != answer[qn]){
+                        AEX_ERROR("lookup data error!");
                     }
                     qn++;
                     break;
                 }
                 case OperationType::Insert:{
-                    index.insert(insert_data[i]);
+                    index.insert_con(insert_data[i].first, insert_data[i].second);
                 }
                 default:
                     break;
@@ -75,14 +74,15 @@ bool test_index_mix_perf(std::pair<key_type, value_type>* data, long long n, lon
         for (long long i = 0, qn = 0; i < batch; ++i){
             switch (operation_list[i]){
                 case OperationType::Lookup:{
-                    auto x = index.find(query[qn]);
-                    if (x != index.end())
-                        sum += x.data();
+                    value_type y;
+                    bool x = index.find(query[qn], y);
+                    if (x)
+                        sum += y;
                     qn++;
                     break;
                 }
                 case OperationType::Insert:{
-                    index.insert(insert_data[i]);
+                    index.insert_con(insert_data[i].first, insert_data[i].second);
                     break;
                 }
                 default:
@@ -140,14 +140,15 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
                 size_t pos = rand() % index_data.size();
                 while (is_delete[pos] == true) 
                     pos = rand() % index_data.size();
-                auto x = index.find(index_data[pos].first);
-                if (x == index.end()){
+                value_type x;
+                bool y = index.find(index_data[pos].first, x);
+                if (!y){
                     AEX_ERROR("i=" << i << ", query error, pos=" << pos << ", key=" << index_data[pos].first << ", query no exists");
                     index.print_stats();
                     return false;
                 }
-                if (x.key() != index_data[pos].first || x.data() != index_data[pos].second){
-                    AEX_ERROR("i=" << i << ", query error, query key=" << index_data[pos].first << ", data=" << index_data[pos].second << ", get key=" << x.key() << ", data=" << x.data());
+                if (x != index_data[pos].second){
+                    AEX_ERROR("i=" << i << ", query error, query key=" << index_data[pos].first << ", data=" << index_data[pos].second << ", get=" << x);
                     return false;
                 } 
                 break;
@@ -156,14 +157,14 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
                 //AEX_PRINT("i=" << i << "Insert:");
                 index_data.emplace_back(insert_data[insert_cnt]);
                 typename tree::iterator iter;
-                bool _;
-                std::tie(iter, _) = index.insert(insert_data[insert_cnt]);
+                bool _ = index.insert_con(insert_data[insert_cnt].first, insert_data[insert_cnt].second);
                 if (_ == false){
                     AEX_ERROR("i=" << i << ", insert error, insert_key=" << insert_data[insert_cnt].first);
                     return false;
                 }
-                auto tmp = index.find(insert_data[insert_cnt].first);
-                if (tmp == index.end()){
+                value_type x;
+                bool y = index.find(insert_data[insert_cnt].first, x);
+                if (!y){
                     AEX_ERROR("i=" << i << ", insert error, insert_key=" << insert_data[insert_cnt].first << " not found");
                     return false;
                 }

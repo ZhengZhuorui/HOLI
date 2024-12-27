@@ -78,7 +78,7 @@ inline bool aex_tree<_Key, _Val, traits>::check_node(dense_node_ptr node) const 
 template<typename _Key, typename _Val, typename traits>
 inline bool aex_tree<_Key, _Val, traits>::check_node(hash_node_ptr node) const {
     bool flag = true;
-    if (node->size < traits::MAX_DENSE_NODE_SLOT_SIZE / 2)
+    if (node->size < traits::MIN_HASH_NODE_CNT)
         AEX_ERROR("ERROR! hash node size=" << node->size << ", slot size=" << node->slot_size);
     key_type his_key = std::numeric_limits<key_type>::lowest();
     slot_type cnt = 0;
@@ -103,9 +103,12 @@ inline bool aex_tree<_Key, _Val, traits>::check_node(hash_node_ptr node) const {
     }
     AEX_DEBUG_BLOCK({
         if constexpr(traits::AllowConcurrency) 
-            for (slot_type i = 0; i < pos2slot(node->slot_size - 1); ++i) {
+            for (slot_type i = 0; i < pos2slot(node->slot_size); ++i) {
+                //if (node->lock_array[i].lockCount.load() != 0)
+                //    AEX_ERROR("node=" << node << ", i=" << i << ", " << node->lock_array[i].lockCount.load());
                 AEX_ASSERT(!node->lock_array[i].is_lock());
                 AEX_ASSERT(!node->lock_array[i].is_lock_shared());
+                AEX_ASSERT(!node->update_lock_array[i].is_lock());
             }
     });
     return flag;

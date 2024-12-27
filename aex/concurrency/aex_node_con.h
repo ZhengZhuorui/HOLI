@@ -21,6 +21,10 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     typedef typename parent::bitmap_impl           bitmap_impl;
     typedef typename parent::node_ptr              node_ptr;
     typedef typename components::RWLock            RWLock;
+    typedef typename components::Lock              Lock;
+
+    //typedef components::pos2slot pos2slot;
+    //using components::pos2slot;
 
     //aex_hash_node_con(slot_type slot_size):parent(slot_size){init();}
     //~aex_hash_node_con(){clear();}   
@@ -33,37 +37,42 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         this->parent::clear();
         if (this->lock_array != nullptr){
             delete[] this->lock_array;
+            delete[] this->update_lock_array;
             this->lock_array = nullptr;
+            this->update_lock_array = nullptr;
         }
     }
 
     void init(){
         this->parent::init();
         this->lock_array = new RWLock[this->slot_size / traits::SLOT_PER_LOCK + 1]();
+        this->update_lock_array = new Lock[this->slot_size / traits::SLOT_PER_LOCK + 1]();
     }
 
     inline bool is_occupied_con(const slot_type x) const {
-        this->lock_array[x].lock_shared();
+        this->lock_array[pos2slot(x)].lock_shared();
         bool res = bitmap_impl::at(this->bitmap_ptr, x);
-        this->lock_array[x].unlock_shared();
+        this->lock_array[pos2slot(x)].unlock_shared();
         return res;
     }
 
     inline void set_one(const slot_type x) {
-        this->lock_array[x].lock();
+        this->update_lock_array[pos2slot(x)].lock();
         bitmap_impl::set_one(this->bitmap_ptr, x);
-        this->lock_array[x].unlock();
+        this->update_lock_array[pos2slot(x)].unlock();
     }
 
     inline void set_zero(const slot_type x) {
-        this->lock_array[x].lock();
+        this->update_lock_array[pos2slot(x)].lock();
         bitmap_impl::set_zero(this->bitmap_ptr, x);
-        this->lock_array[x].unlock();
+        this->update_lock_array[pos2slot(x)].unlock();
     }
 
-    inline slot_type prev_item(slot_type x) const {
-        if (x < 0)
+    inline slot_type prev_item_con(slot_type x) const {
+        if (x <= 0){
+            lock_array[0].lock_shared();
             return 0;
+        }
         lock_array[pos2slot(x)].lock_shared();
         bitmap text = this->bitmap_ptr + (x >> 6);
         bitmap_base base = (*text) << (63 - (x & 63));
@@ -75,10 +84,46 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
             base = *text;
             x -= __builtin_clzll(base);
         }
-        AEX_ASSERT(x < 0);
+        AEX_ASSERT(x >= 0);
         return x;
     }
 
+    /*
+    inline slot_type prev_item_find(slot_type x) const {
+        if (x <= 0){
+            return 0;
+        }
+        lock_array[pos2slot(x)].lock_shared();
+        slot_type res = this->parent::prev_item_find(x);
+        lock_array[pos2slot(x)].unlock_shared();
+        return res;
+    }
+    */
+    
+    
+
+    inline slot_type next_item_con(slot_type x) const {
+        if (x >= this->slot_size){
+            lock_array[pos2slot(this->slot_size)].lock_shared();
+            return this->slot_size;
+        }
+        lock_array[pos2slot(x)].lock_shared();
+        bitmap text = this->bitmap_ptr + (x >> 6);
+        bitmap_base base = (*text) >> (x & 63);
+        x += (base == 0) ? (64 - (x & 63)) : __builtin_ctzll(base);
+        while (base == 0 && x < this->slot_size){
+            lock_array[pos2slot(x) - 1].unlock_shared();
+            lock_array[pos2slot(x)].lock_shared();
+            ++text;
+            base = *text;
+            x += __builtin_ctzll(base);
+        }
+        if (x >= this->slot_size){
+            lock_array[pos2slot(x) - 1].unlock_shared();
+            lock_array[pos2slot(x)].lock_shared();
+        }
+        return x;
+    }
     
     void array_lock(slot_type l_pos, slot_type r_pos) const {
         if (l_pos > r_pos)
@@ -130,7 +175,7 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         r_pos = std::min(this->slot_size - 1, r_pos);
         for (slot_type i = pos2slot(l_pos); i <= pos2slot(r_pos); ++i){
             AEX_ASSERT(this->lock_array[i].is_lock_shared());
-            if (!lock_array[i].try_upgrade_lock_without_read()){
+            if (!lock_array[i].try_upgrade_lock()){
                 for (slot_type j = pos2slot(l_pos); j < i; ++j)
                     lock_array[j].downgrade_lock();
                 return false;
@@ -169,7 +214,7 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     }
 
     inline slot_type try_array_lock_shared_until_prev_item(slot_type pos, bool &restart) const {
-        if (pos < 0)
+        if (pos <= 0)
             return 0;
         const slot_type end_slot = pos2slot(pos);
         AEX_ASSERT(lock_array[end_slot].is_lock_shared());
@@ -200,6 +245,7 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     }
 
     mutable RWLock* lock_array;
+    mutable Lock*   update_lock_array;
 };
 
 //template<typename _Key,

@@ -15,9 +15,7 @@ bool test_bitmap(long long n, long long batch){
     for (slot_type i = 0; i = n; ++i)
         if (x[i])
             bitmap_impl::set_one(node->bitmap_ptr, i);
-    
-    
-    
+
 
     /**
     inline void array_lock(const slot_type l_pos, const slot_type r_pos){}

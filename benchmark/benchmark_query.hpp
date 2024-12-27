@@ -10,7 +10,7 @@ using namespace std::chrono;
 
 template<typename key_type, typename value_type>
 void aex_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type> &query, vector<value_type> &answer){
-    aex::aex_tree<key_type, value_type, aex::aex_default_traits<key_type, value_type, false, void, true> > index;
+    aex::aex_tree<key_type, value_type, aex::aex_default_traits<key_type, value_type, false, void, false> > index;
     //aex::aex_tree<key_type, value_type> index;
     std::cout << "[AEX]" << std::endl;
     index.bulk_load(data.data(), data.size());

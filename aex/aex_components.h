@@ -13,6 +13,7 @@ struct aex_spinlock{
     void init(){}
     inline void lock(){}
     inline void unlock(){}
+    inline bool is_lock(){return true;}
     //inline bool is_lock(){return false;}
 };
 
@@ -31,6 +32,7 @@ struct aex_spinlock<traits, true>{
     inline void unlock() {
         writeLock.store(false);
     }
+    inline bool is_lock(){return writeLock.load();}
     //inline bool is_lock(){return false;}
 
     std::atomic<bool> writeLock;
@@ -65,8 +67,8 @@ struct aex_rw_spinlock<traits, true>{
     self& operator = (const self &x) = delete;
     self& operator = (const self &&x) = delete;
     void lock_shared() {
-        unsigned int expected = lockCount.load() & (~1);
-        unsigned int result   = expected + 0b10;
+        unsigned short expected = lockCount.load() & (~1);
+        unsigned short result   = expected + 0b10;
         while (!lockCount.compare_exchange_weak(expected, result)) {
             expected = lockCount.load() & (~1);
             result   = expected + 0b10;
@@ -79,16 +81,16 @@ struct aex_rw_spinlock<traits, true>{
     }
     
     bool try_lock_shared(){
-        unsigned int expected = lockCount.load() & (~1);
-        unsigned int result   = expected + 0b10;
+        unsigned short expected = lockCount.load() & (~1);
+        unsigned short result   = expected + 0b10;
         if (!lockCount.compare_exchange_strong(expected, result)) 
             return false;
         return true;
     }
 
     void lock() {
-        unsigned int expected = lockCount.load() & (~1);
-        unsigned int result   = expected | 1;
+        unsigned short expected = lockCount.load() & (~1);
+        unsigned short result   = expected | 1;
         while (!lockCount.compare_exchange_weak(expected, result)) {
             expected = lockCount.load() & (~1);
             result   = expected | 1;
@@ -102,8 +104,8 @@ struct aex_rw_spinlock<traits, true>{
     }
 
     bool try_lock(){
-        unsigned int expected = lockCount.load() & (~1);
-        unsigned int result   = expected | 1;
+        unsigned short expected = lockCount.load() & (~1);
+        unsigned short result   = expected | 1;
         if (!lockCount.compare_exchange_strong(expected, result)) 
             return false;
         while (lockCount.load() >= 0b10);
@@ -113,16 +115,16 @@ struct aex_rw_spinlock<traits, true>{
     bool try_upgrade_lock_without_read(){
         //unsigned int expected = lockCount.load() & (~1);
         //unsigned int result   = expected - 1;
-        unsigned int expected = 0b10;
-        unsigned int result   = 0b1;
+        unsigned short expected = 0b10;
+        unsigned short result   = 0b1;
         if (!lockCount.compare_exchange_strong(expected, result)) 
             return false;
         return true;
     }
     
     bool try_upgrade_lock(){
-        unsigned int expected = lockCount.load() & (~1);
-        unsigned int result   = expected - 1;
+        unsigned short expected = lockCount.load() & (~1);
+        unsigned short result   = expected - 1;
         if (!lockCount.compare_exchange_strong(expected, result)) 
             return false;
         while (lockCount.load() >= 0b10);
@@ -131,8 +133,8 @@ struct aex_rw_spinlock<traits, true>{
 
     // unused. may deadlock
     [[deprecated]] void upgrade_lock(){
-        unsigned int expected = 0b10;
-        unsigned int result   = 0b1;
+        unsigned short expected = 0b10;
+        unsigned short result   = 0b1;
         while (!lockCount.compare_exchange_weak(expected, result)) {
             expected = lockCount.load() & (~1);
             result   = expected - 1;
@@ -146,7 +148,7 @@ struct aex_rw_spinlock<traits, true>{
 
     inline bool is_lock() const {return (lockCount.load() & 1) == 1;}
     inline bool is_lock_shared() const {return lockCount.load() >= 0b10;}
-    std::atomic<unsigned int> lockCount;
+    std::atomic<unsigned short> lockCount;
 };
 
 template<typename T>
@@ -194,6 +196,7 @@ struct aex_concurrency_components{
     typedef aex_hash_node<key_type, value_type, traits>        hash_node;
     typedef aex_dense_node<key_type, value_type, traits>       dense_node;
     typedef aex_static_data_node<key_type, value_type, traits> data_node;
+    //typedef aex_hash_data_node<key_type, value_type, traits>   data_node;
     typedef base_node* node_ptr;
     typedef inner_node* inner_node_ptr;
     typedef hash_node* hash_node_ptr;
@@ -219,7 +222,8 @@ struct aex_concurrency_components<traits, true>{
     typedef aex_inner_node<key_type, value_type, traits>           inner_node;
     typedef aex_hash_node_con<key_type, value_type, traits>        hash_node;
     typedef aex_dense_node<key_type, value_type, traits>           dense_node;
-    typedef aex_static_data_node<key_type, value_type, traits>     data_node;
+    typedef aex_static_data_node<key_type, value_type, traits>   data_node;
+    //typedef aex_hash_data_node<key_type, value_type, traits>       data_node;
 
     typedef base_node*  node_ptr;
     typedef inner_node* inner_node_ptr;
@@ -241,6 +245,7 @@ template<typename traits>
 struct aex_default_components{
     typedef typename traits::key_type   key_type;
     typedef typename traits::value_type value_type;
+    typedef typename traits::slot_type  slot_type;
     typedef LL size_type;
     typedef aex_concurrency_components<traits> concurrency_components;
     
@@ -266,6 +271,7 @@ struct aex_default_components{
     typedef linear_model<key_type, traits> DataNodeModel;
 
     typedef aex_bitmap_impl<traits> bitmap_impl;
+
 };
 
 }

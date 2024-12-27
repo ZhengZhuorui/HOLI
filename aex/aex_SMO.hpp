@@ -53,20 +53,22 @@ inline void aex_tree<_Key, _Val, traits>::cast_to_dense_node(inner_node_ptr node
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::update(hash_node_ptr parent, const slot_type pos, const slot_type next_pos, const key_type new_key, const node_ptr new_node){
+inline void aex_tree<_Key, _Val, traits>::update(hash_node_ptr parent, const slot_type pos, const slot_type next_pos, const node_ptr old_node, const key_type new_key, const node_ptr new_node){
     AEX_ASSERT(parent != nullptr);
     AEX_ASSERT(parent->type == NodeType::HashNode);
     AEX_ASSERT(check_lock_shared(parent));
 
-    hash_table.update(parent, pos, new_key, new_node);
-    for (slot_type j = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); j < next_pos; j += traits::SLOT_PER_SHORTCUT)
-        hash_table.update(parent, j, new_key, new_node);
+    hash_table.compare_and_swap(parent, pos, old_node, new_key, new_node);
+    for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORTCUT)
+        if (!hash_table.compare_and_swap(parent, i, old_node, new_key, new_node)){
+            break;        
+        }
     parent->array_unlock(pos - 1, next_pos);
 }
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::expand(dense_node_ptr node){
-    AEX_WARNING("[dense node expand], slot_size=" << node->slot_size); 
+    //AEX_WARNING("[dense node expand], slot_size=" << node->slot_size); 
     AEX_ASSERT(node->type == NodeType::DenseNode);
     AEX_ASSERT(check_lock(node));
     #ifdef AEX_DEBUG
@@ -162,7 +164,7 @@ inline void aex_tree<_Key, _Val, traits>::narrow(hash_node_ptr node){
     opt_stats.hash_node_narrow_size += key_buf.size();
     #endif
 
-    if (key_buf.size() <= traits::MAX_DENSE_NODE_SLOT_SIZE / 2){
+    if (key_buf.size() <= traits::MIN_HASH_NODE_CNT){
         slot_type slot_size = min_slot_size(key_buf.size(), traits::MIN_DENSE_NODE_SLOT_SIZE);
         cast_to_dense_node(i_n(node), slot_size);
         construct_simple(reinterpret_cast<dense_node_ptr>(node), key_buf.data(), child_buf.data(), child_size);
@@ -391,7 +393,7 @@ inline bool aex_tree<_Key, _Val, traits>::check_model(const Model &m, const key_
     }
     AEX_ASSERT(pos < slot_size);
     double ratio = 1.0 * cnt / slot_size;
-    AEX_PRINT("ratio=" << ratio << ", cnt=" << cnt << ", slot_size=" << slot_size);
+    //AEX_PRINT("ratio=" << ratio << ", cnt=" << cnt << ", slot_size=" << slot_size);
     return ratio >= traits::HASH_NODE_FEW_RATIO;
 }
 
@@ -430,7 +432,7 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
         if (occupied < traits::MIN_HASH_NODE_CNT)    
             ans = 0;
     }
-    AEX_PRINT("n=" << n << ", ans=" << ans);
+    //AEX_PRINT("n=" << n << ", ans=" << ans);
     return ans;
 }
 

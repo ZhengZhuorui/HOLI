@@ -122,7 +122,9 @@ struct aex_default_traits{
     static constexpr slot_type MIN_DENSE_NODE_SLOT_SIZE = 8;
 
     static constexpr slot_type SLOT_PER_LOCK = 64;
-    static constexpr slot_type SLOT_PER_SHORTCUT = 64;
+    static constexpr slot_type LOG_SLOT_PER_LOCK = TEMPLATE_LOG<SLOT_PER_LOCK>();
+    static constexpr slot_type SLOT_PER_SHORTCUT = 512;
+    static constexpr slot_type LOG_SLOT_PER_SHORTCUT = TEMPLATE_LOG<SLOT_PER_SHORTCUT>();
     static constexpr slot_type MIN_HASH_NODE_CNT      = 8;
     static constexpr slot_type MIN_HASH_NODE_SLOT_SIZE = 128;
     //static constexpr slot_type MAX_HASH_NODE_SIZE      = MAX_INNER_NODE_SLOT_SIZE;
@@ -144,8 +146,8 @@ struct aex_default_traits{
     static constexpr int   MIN_DATA_NODE_SLOT_SIZE   = 16;
     static constexpr int   DATA_NODE_SLOT_SIZE       = MIN_DATA_NODE_SLOT_SIZE;
 
-    static constexpr float HASH_NODE_FULL_RATIO      = 1.0 / 8;
-    static constexpr float HASH_NODE_FEW_RATIO       = 1.0 / 16;
+    static constexpr float HASH_NODE_FULL_RATIO      = 1.0 / 16;
+    static constexpr float HASH_NODE_FEW_RATIO       = 1.0 / 32;
     static constexpr int   LOG_HASH_NODE_FULL_RATIO  = 4;
     static constexpr int   LOG_HASH_NODE_FEW_RATIO   = 6;
     static constexpr float DENSE_NODE_FULL_RATIO     = DATA_NODE_FULL_RATIO;

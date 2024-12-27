@@ -112,7 +112,7 @@ public:
         this->bitmap_ptr = new bitmap_base[this->slot_size / sizeof(bitmap_base) + 1]();
     }
 
-    inline slot_type predict(const key_type &key) const {
+    inline slot_type predict(const key_type key) const {
         //return std::min(std::max(static_cast<slot_type>(0), model.predict(key)), this->slot_size - 1);
         return std::max(0LL, static_cast<slot_type>(std::min(model.predict(key), static_cast<long double>(this->slot_size - 1))));
     }
@@ -154,6 +154,20 @@ public:
         //slot_type y = x & (~(traits::SLOT_PER_SHORTCUT - 1));
         bitmap_base base = (bitmap_ptr[x >> 6]) << (63 - (x & 63));
         x -= (base == 0) ? (x & 63) : __builtin_clzll(base);
+        while (base == 0 && )
+        return x;
+
+
+        if (x <= 0)
+            return x;
+        bitmap text = bitmap_ptr + (x >> 6);
+        bitmap_base base = (*text) << (63 - (x & 63));
+        x -= (base == 0) ? (x & 63) : __builtin_clzll(base);
+        while (base == 0 && x & traits::SLOT_PER_SHORTCUT> 0){
+            --text;
+            base = *text;
+            x -= __builtin_clzll(base);
+        }
         return x;
     }
 
@@ -167,7 +181,7 @@ public:
 
     inline slot_type next_item(slot_type x) const {
         if (x >= this->slot_size)
-            return x;
+            return this->slot_size;
         bitmap text = bitmap_ptr + (x >> 6);
         bitmap_base base = (*text) >> (x & 63);
         x += (base == 0) ? (64 - (x & 63)) : __builtin_ctzll(base);
@@ -192,6 +206,9 @@ public:
         }
         return x;
     }
+
+    inline slot_type prev_item_con(slot_type x) const {return prev_item(x); }
+    inline slot_type next_item_con(slot_type x) const {return next_item(x); }
     
     inline void array_lock(const slot_type l_pos, const slot_type r_pos) const {}
     inline void array_unlock(const slot_type l_pos, const slot_type r_pos) const {}
@@ -268,7 +285,7 @@ public:
     typedef typename components::version_type  version_type;
     typedef base_node* node_ptr;
     typedef data_node* data_node_ptr;
-    typedef typename traits::slot_type slot_type;
+    //typedef typename traits::slot_type slot_type;
 
     aex_static_data_node(version_type _version) : base_node(NodeType::LeafNode), next(nullptr), version(_version){}
 
@@ -302,17 +319,17 @@ public:
         return *this;
     }
 
-    inline void construct(const key_type *_key, const value_type *_data, slot_type nums){
+    inline void construct(const key_type *_key, const value_type *_data, int nums){
         std::copy(_key, _key + nums, this->key);
         std::copy(_data, _data + nums, this->data);
         this->size = nums;
     }
 
-    inline void construct(const std::pair<key_type, value_type> *_data, slot_type nums){
+    inline void construct(const std::pair<key_type, value_type> *_data, int nums){
         AEX_ASSERT(nums >= traits::MIN_DATA_NODE_SLOT_SIZE / 2);
         std::vector<key_type> _key(nums);
         std::vector<value_type> _value(nums);
-        for (slot_type i = 0; i < nums; ++i){
+        for (int i = 0; i < nums; ++i){
             _key[i] = _data[i].first;
             _value[i] = _data[i].second;
         }
@@ -320,14 +337,14 @@ public:
     }
 
     // insert a item
-    inline slot_type insert(const key_type &x, const value_type &data){
-        slot_type pos = this->find_lower_pos(x);
+    inline int insert(const key_type x, const value_type &data){
+        int pos = this->find_lower_pos(x);
         insert(x, data, pos);
         return pos;
     }
 
     // insert a item in position
-    inline void insert(const key_type &x, const value_type &data, const slot_type pos){
+    inline void insert(const key_type x, const value_type &data, const int pos){
         AEX_ASSERT(this->size < traits::MIN_DATA_NODE_SLOT_SIZE);
         std::move_backward(this->key + pos, this->key + this->size, this->key + this->size + 1);
         std::move_backward(this->data + pos, this->data + this->size, this->data + this->size + 1);
@@ -336,8 +353,8 @@ public:
         this->size++;
     }
 
-    inline bool erase(const key_type &x){
-        slot_type pos = find_lower_pos(x);
+    inline bool erase(const key_type x){
+        int pos = find_lower_pos(x);
         if (pos >= this->size || key[pos] != x)
             return false;
         std::move(this->key + pos + 1, this->key + this->size, this->key + pos);
@@ -346,26 +363,33 @@ public:
         return true;
     }
 
+    inline int find(const key_type x) const {
+        int pos = find_lower_pos(x);
+        if (pos >= this->size || this->key[pos] != x)
+            return this->size;
+        return pos;
+    }
+
     // if no item greater than or equal x, return slot_size
-    inline slot_type find_lower_pos(const key_type &x) const {
+    inline int find_lower_pos(const key_type x) const {
         if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
             return traits::SearchClass::lower_bound(this->key, this->key + this->size, x, this->key) - this->key;
         //return aex::linear_search_lower_bound(this->key, this->key + this->size, x) - this->key;
-        return std::lower_bound(this->key, this->key + this->size, x) - this->key;
+        //if constexpr (std::is_same_v<key_type, ULL>)
+        //    return std::lower_bound(this->key, this->key + this->size, x) - this->key;
+        //else
+        return aex::linear_search_lower_bound_avx512(this->key, (int)this->size, x);
         //return std::lower_bound(this->key, this->key + this->size, x) - this->key;
     }
 
-    inline slot_type find_upper_pos(const key_type &x) const {
+    inline int find_upper_pos(const key_type x) const {
         if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
             return traits::SearchClass::upper_bound(this->key, this->key + this->size, x, this->key) - this->key;
         return std::upper_bound(this->key, this->key + this->size, x) - this->key;
     }
 
-    inline bool exists(const key_type &x) const {
-        slot_type pos = find_lower_pos(x);
-        if (pos < this->size && key[pos] == x)
-            return true;
-        return false;
+    inline bool exists(const key_type x) const {
+        return find(x) < this->size;
     }
 
     key_type      key[traits::DATA_NODE_SLOT_SIZE];
@@ -373,5 +397,153 @@ public:
     data_node_ptr next;
     version_type  version;
 };
+
+/*
+template<typename _Key,
+        typename _Val,
+        typename traits>
+struct aex_hash_data_node : public aex_node_base<_Key, _Val, traits>{
+public:
+
+    typedef _Key key_type;
+    typedef _Val value_type;
+    typedef aex_tree<key_type, value_type, traits> base_tree;
+    typedef aex_hash_data_node<_Key, _Val, traits> data_node;
+    typedef typename base_tree::components components;
+    typedef typename components::base_node     base_node;
+    typedef typename components::DataNodeModel Model;
+    typedef typename components::version_type  version_type;
+    typedef base_node* node_ptr;
+    typedef data_node* data_node_ptr;
+    //typedef typename traits::slot_type slot_type;
+
+    aex_hash_data_node(version_type _version) : base_node(NodeType::LeafNode), next(nullptr), version(_version){}
+
+    ~aex_hash_data_node() {}
+
+    aex_hash_data_node(aex_hash_data_node &other_node) :base_node(other_node){
+        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
+        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
+        std::copy(other_node.fp, other_node.fp + traits::MIN_DATA_NODE_SLOT_SIZE, this->fp);
+        this->next = other_node.next;
+    }
+
+    aex_hash_data_node(aex_hash_data_node &&other_node) :base_node(other_node){
+        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
+        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
+        std::copy(other_node.fp, other_node.fp + traits::MIN_DATA_NODE_SLOT_SIZE, this->fp);
+        this->next = other_node.next;
+    }
+
+    aex_hash_data_node& operator = (aex_hash_data_node &other_node) {
+        *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
+        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
+        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
+        std::copy(other_node.fp, other_node.fp + traits::MIN_DATA_NODE_SLOT_SIZE, this->fp);
+        this->next = other_node.next;
+        return *this;
+    }
+
+    aex_hash_data_node& operator = (aex_hash_data_node &&other_node) {
+        *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
+        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
+        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
+        std::copy(other_node.fp, other_node.fp + traits::MIN_DATA_NODE_SLOT_SIZE, this->fp);
+        this->next = other_node.next;
+        return *this;
+    }
+
+    inline static unsigned char get_fingerprint(const key_type key){
+        
+        return (key * traits::K2) % traits::K1;
+    }
+
+    inline void construct(const key_type *_key, const value_type *_data, int nums){
+        std::copy(_key, _key + nums, this->key);
+        std::copy(_data, _data + nums, this->data);
+        for (int i = 0; i < nums; ++i)
+            this->fp[i] = get_fingerprint(_key[i]);
+        this->size = nums;
+    }
+
+    inline void construct(const std::pair<key_type, value_type> *_data, int nums){
+        AEX_ASSERT(nums >= traits::MIN_DATA_NODE_SLOT_SIZE / 2);
+        std::vector<key_type> _key(nums);
+        std::vector<value_type> _value(nums);
+        for (int i = 0; i < nums; ++i){
+            _key[i] = _data[i].first;
+            _value[i] = _data[i].second;
+            fp[i] = get_fingerprint(_key[i]);
+        }
+        this->construct(_key.data(), _value.data(), nums);
+    }
+
+    // insert a item
+    inline int insert(const key_type x, const value_type &data){
+        int pos = this->find_lower_pos(x);
+        insert(x, data, pos);
+        return pos;
+    }
+
+    // insert a item in position
+    inline void insert(const key_type x, const value_type &data, const int pos){
+        AEX_ASSERT(this->size < traits::MIN_DATA_NODE_SLOT_SIZE);
+        std::move_backward(this->key + pos, this->key + this->size, this->key + this->size + 1);
+        std::move_backward(this->data + pos, this->data + this->size, this->data + this->size + 1);
+        std::move_backward(this->fp + pos, this->fp + this->size, this->fp + this->size + 1);
+        this->key[pos] = x;
+        this->data[pos] = data;
+        this->fp[pos] = get_fingerprint(x);
+        this->size++;
+    }
+
+    inline bool erase(const key_type x){
+        int pos = find(x);
+        if (pos >= this->size || key[pos] != x)
+            return false;
+        std::move(this->key + pos + 1, this->key + this->size, this->key + pos);
+        std::move(this->data + pos + 1, this->data + this->size, this->data + pos);
+        std::move(this->fp + pos + 1, this->fp + this->size, this->fp + pos);
+        this->size--;
+        return true;
+    }
+
+    inline int find(const key_type x) const {
+        int res = 0;
+        const unsigned char qfp = get_fingerprint(x);
+        for (int cmp_res = (cmp_eq_epi8(this->fp, qfp) & ((1 << this->size) - 1)); cmp_res; cmp_res -= cmp_res & (-cmp_res)){
+            int i = __builtin_ctz(cmp_res);
+            if (this->key[i] == x)
+                return i;
+        }
+        return res;
+    }
+
+    // if no item greater than or equal x, return slot_size
+    inline int find_lower_pos(const key_type x) const {
+        if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
+            return traits::SearchClass::lower_bound(this->key, this->key + this->size, x, this->key) - this->key;
+        //return aex::linear_search_lower_bound(this->key, this->key + this->size, x) - this->key;
+        return std::lower_bound(this->key, this->key + this->size, x) - this->key;
+        //return std::lower_bound(this->key, this->key + this->size, x) - this->key;
+    }
+
+    inline int find_upper_pos(const key_type x) const {
+        if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
+            return traits::SearchClass::upper_bound(this->key, this->key + this->size, x, this->key) - this->key;
+        return std::upper_bound(this->key, this->key + this->size, x) - this->key;
+    }
+
+    inline bool exists(const key_type x) const {
+        return find(x) < this->size;
+    }
+
+    key_type      key[traits::DATA_NODE_SLOT_SIZE];
+    value_type    data[traits::DATA_NODE_SLOT_SIZE];
+    unsigned char fp[traits::DATA_NODE_SLOT_SIZE];
+    data_node_ptr next;
+    version_type  version;
+};
+*/
 
 }

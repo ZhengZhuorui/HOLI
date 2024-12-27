@@ -345,29 +345,22 @@ public:
     }
 
     inline bool compare_and_swap(const node_ptr parent, const slot_type pos, const node_ptr ori_node, const key_type update_key, const node_ptr update_node){
-        const hash_type hash_key = get_hash_key(parent, pos);
-        key_type find_key;
-        node_ptr find_node;
-        std::tie(find_key, find_node) = table_[hash_key].find(parent, pos);
-        if (find_node == ori_node){
-            table_[hash_key].update(parent, pos, update_key, update_node);
-            return true;
-        }
-        return false;
+        update(parent, pos, update_key, update_node);
+        return true;
     }
 
-    inline bool compare_and_swap(const node_ptr parent, const slot_type pos, const node_ptr ori_node, const slot_type copy_pos){
-        const hash_type hash_key1 = get_hash_key(parent, pos), hash_key2 = get_hash_key(parent, copy_pos);
-        key_type find_key;
-        node_ptr find_node;
-        std::tie(find_key, find_node) = table_[hash_key1].find(parent, pos);
-        if (find_node == ori_node){
-            std::tie(find_key, find_node) = table_[hash_key2].find(parent, copy_pos);
-            table_[hash_key1].update(parent, pos, find_key, find_node);
-            return true;
-        }
-        return false;
-    }
+    //inline bool compare_and_swap(const node_ptr parent, const slot_type pos, const node_ptr ori_node, const slot_type copy_pos){
+    //    const hash_type hash_key1 = get_hash_key(parent, pos), hash_key2 = get_hash_key(parent, copy_pos);
+    //    key_type find_key;
+    //    node_ptr find_node;
+    //    std::tie(find_key, find_node) = table_[hash_key1].find(parent, pos);
+    //    if (find_node == ori_node){
+    //        std::tie(find_key, find_node) = table_[hash_key2].find(parent, copy_pos);
+    //        table_[hash_key1].update(parent, pos, find_key, find_node);
+    //        return true;
+    //    }
+    //    return false;
+    //}
 
     LL slot_size, real_slot_size;
     atomic_size_type size;

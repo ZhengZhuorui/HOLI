@@ -220,7 +220,7 @@ auto dataset = flags["dataset"];
         if (func == "bulk_load"){
             std::vector<std::pair<T, T> > data;
             pack_KV_dataset(bin_data, data, is_sorted_flag);
-            bool res = test_index_bulk_load_perf<T, T, default_traits>(data.data(), num_keys);
+            bool res = test_index_bulk_load_perf<T, T, aex::aex_default_traits<T, T, AllowMultiKey, void, false>>(data.data(), num_keys);
             return res;
         }
         if (func == "insert"){

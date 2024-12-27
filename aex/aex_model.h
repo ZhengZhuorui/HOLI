@@ -397,7 +397,7 @@ public:
     typedef typename traits::slot_type slot_type;
 
     // return the predict position. value range from -inf to +inf.
-    inline long double predict(const key_type &key) const {
+    inline long double predict(const key_type key) const {
         //return static_cast<slot_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
         //return this->args.slot_size + std::min(0, static_cast<slot_type>(args.slope * (key - args.end)));
         //return this->args.slot_size + (key < args.end) * args.slope * (key - args.end);

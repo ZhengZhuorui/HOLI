@@ -165,10 +165,22 @@ inline _Tp highbit(const _Tp &x){
     return (x + (K - 1)) & (~(K - 1));
 }
 
+//template<typename _Tp, int K>
+//class _pos2slot{
+//public:
+//    inline _Tp operator()(const _Tp pos) const{
+//        return pos >> K;
+//    }
+//};
 template<typename _Tp>
-inline _Tp pos2slot(const _Tp pos) {
+inline constexpr _Tp pos2slot(const _Tp pos) {
     return pos >> 6;
 }
+
+//template<typename _Tp>
+//inline _Tp pos2slot(const _Tp pos) {
+//    return pos >> 6;
+//}
 
 template<typename _Tp>
 inline _Tp rapid_pow(_Tp base, unsigned long long x){

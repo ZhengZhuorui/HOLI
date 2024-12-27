@@ -49,7 +49,7 @@ bool test_hash_node_insert_perf(vector<key_type> &data, size_t n, size_t batch){
         }
         slot_type pos = node->predict(insert_data[i]);
         if (!node->is_occupied(pos))
-            tree.insert(node, pos, insert_data[i], insert_node_ptr[i]);
+            tree.insert_no_collision(node, pos, insert_data[i], insert_node_ptr[i]);
         else
             ++insert_failed;
     }
@@ -102,7 +102,7 @@ bool test_hash_node_erase_perf(vector<key_type> &data, size_t n, size_t batch){
         slot_type pos = node->predict(del_key[i]);
         slot_type next_pos = node->next_item(pos + 1);
         if (pos != 0 && !node->is_occupied(pos))
-            tree.erase(node, pos, next_pos);
+            tree.erase(node, pos, next_pos, del_node[i]);
         else
             ++insert_failed;
     }

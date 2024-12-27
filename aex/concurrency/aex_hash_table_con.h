@@ -177,29 +177,29 @@ insert_start:
         return res;
     }
 
+    /*
     inline bool compare_and_swap(const node_ptr parent, const slot_type pos, const node_ptr ori_node, const slot_type copy_pos){
         lock.lock_shared();
         bool res = false;
         const hash_type hash_key1 = this->get_hash_key(parent, pos), hash_key2 = this->get_hash_key(parent, copy_pos);
-        lock_array[hash_key1].lock();
+        hash_type h1 = hash_key1, h2 = hash_key2;
+        if (h1 > h2) std::swap(h1, h2);
+        lock_array[h1].lock();
+        lock_array[h2].lock();
 
         key_type find_key;
         node_ptr find_node;
         std::tie(find_key, find_node) = this->table_[hash_key1].find(parent, pos);
         if (find_node == ori_node){
-            if (hash_key1 != hash_key2)
-                lock_array[hash_key2].lock_shared();
             std::tie(find_key, find_node) = this->table_[hash_key2].find(parent, copy_pos);
             this->table_[hash_key1].update(parent, pos, find_key, find_node);
             res = true;
-            if (hash_key1 != hash_key2)
-                lock_array[hash_key2].unlock_shared();
         }
-
-        lock_array[hash_key1].unlock();
+        lock_array[h2].unlock();
+        lock_array[h1].unlock();
         lock.unlock_shared();
         return res;
-    }
+    }*/
 
     mutable RWLock* lock_array;
     mutable RWLock lock;

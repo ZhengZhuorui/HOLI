@@ -28,11 +28,12 @@
 #include "aex/concurrency/aex_node_con.h"
 #include "aex/concurrency/aex_hash_table_con.h"
 
+
 namespace aex{
 
 template<typename _Key, 
         typename _Val,
-        typename traits=aex_default_traits<_Key, _Val>>
+        typename traits = aex_default_traits<_Key, _Val>>
 class aex_tree{
 public:
 
@@ -79,6 +80,8 @@ public:
     typedef typename traits::slot_type   slot_type;
     typedef typename traits::bitmap      bitmap;
     typedef typename traits::bitmap_base bitmap_base;
+
+    // function:
 
     struct aex_stats{
         aex_stats() = default;
@@ -142,6 +145,13 @@ public:
         return *this;
     }
 
+    inline value_type& operator[](const key_type key){
+        //static_assert(std::is_arithmetic<_Key>::value, "key types must be numeric.");
+        static_assert(traits::AllowConcurrency == false, "The operator not support concurrency");
+        iterator iter = insert(std::pair<key_type, value_type>(key, value_type())).first;
+        return iter.data();
+    }
+
     inline void clear(){
         this->init_index();
     }
@@ -151,6 +161,7 @@ public:
      * @warning the interface not support concurrency
      */
     inline std::pair<iterator, bool> insert(const std::pair<key_type, value_type> &x){
+        static_assert(traits::AllowConcurrency == false, "The operator not support concurrency");
         return insert(x.first, x.second);
     }
     /**
@@ -160,39 +171,47 @@ public:
     inline bool insert_con(const std::pair<key_type, value_type> &x){
         return insert(x.first, x.second).second;
     }
-    inline bool insert_con(const key_type &key, const value_type &value){
+    inline bool insert_con(const key_type key, const value_type &value){
         return insert(key, value).second;
     }
 
-    std::pair<iterator, bool> insert(const key_type &key, const value_type &value);
+    std::pair<iterator, bool> insert(const key_type key, const value_type &value);
 
     /**
      * @brief find the iterator of the key
      * @warning the interface not support concurrency
      */
-    inline const_iterator find(const key_type &x) const {
-        iterator it = find_iterator(x);
-        if (it == end() || it.key() != x) 
-            return end();
-        return it;
+    inline const_iterator find(const key_type x) const {
+        static_assert(traits::AllowConcurrency == false, "The operator not support concurrency");
+        data_node_ptr node = find_leaf(x);
+        int pos = node->find(x);
+        if (pos == node->size)
+            return end();         
+        return const_iterator(node, pos);
     }
 
-    inline iterator find(const key_type &x){
-        iterator it = find_iterator(x);
-        if (it == end() || it.key() != x) 
-            return end();
-        return it;
+    /**
+     * @brief find the value of key $x$
+     * @details the interface not support concurrency
+     */
+    inline iterator find(const key_type x){
+        static_assert(traits::AllowConcurrency == false, "The operator not support concurrency");
+        data_node_ptr node = find_leaf(x);
+        int pos = node->find(x);
+        if (pos == node->size)
+            return end();         
+        return iterator(node, pos);
     }
 
     /**
      * @brief find the value of key $x$
      * @details the interface support concurrency
      */
-    inline bool find(const key_type &x, value_type &y){
+    inline bool find(const key_type x, value_type &y){
         bool ret = false;
         data_node_ptr node = find_leaf(x);
-        slot_type pos = node->find_lower_pos(x);
-        if (pos < node->size && node->key[pos] == x){
+        slot_type pos = node->find(x);
+        if (pos < node->size){
             y = node->data[pos];
             ret = true;
         }
@@ -204,9 +223,13 @@ public:
      * @brief find the value of key $x$
      * @details the interface support concurrency
      */
-    void range_query(const key_type &lower_key, const key_type &upper_key, std::vector<std::pair<key_type, value_type>>& answer) const ;
+    void range_query(const key_type lower_key, const key_type upper_key, std::vector<std::pair<key_type, value_type>>& answer) const ;
 
-    inline bool update(const key_type &x, value_type &y){
+    /**
+     * @brief update $map_[x]<-y$
+     * @details the interface support concurrency
+     */
+    inline bool update(const key_type x, value_type &y){
         bool ret = false;
         data_node_ptr node;
     update_restart:
@@ -226,10 +249,10 @@ public:
     }
 
     /**
-     * @brief find the value of key $x$
+     * @brief find the number of  key $x$
      * @details the interface support concurrency
      */
-    inline ULL count(const key_type &x) {
+    inline ULL count(const key_type x) {
         value_type _;
         if (find(x, _)) return 1;
         return 0;
@@ -239,7 +262,7 @@ public:
      * @brief check the key $x$ exists
      * @details the interface support concurrency
      */
-    inline bool exists(const key_type &x) {
+    inline bool exists(const key_type x) {
         value_type _;
         return find(x, _);
     }
@@ -248,7 +271,7 @@ public:
      * @brief find the minimum key larger than or equal to x
      * @details the interface support concurrency
      */
-    inline bool lower_bound(const key_type &x, const std::pair<key_type, value_type> &res){
+    inline bool lower_bound(const key_type x, const std::pair<key_type, value_type> &res){
         data_node_ptr node = this->find_leaf(x);
         slot_type pos = node->find_lower_pos(x);
         if (pos >= node->size && node->next == nullptr){
@@ -262,7 +285,7 @@ public:
             node = next_node;
             pos = node->find_lower_pos(x);
         }
-        res = std::make_pair(node->key[pos], node->child[pos]);
+        res = std::make_pair(node->key[pos], node->data[pos]);
         SU(node);
         return true;
     }
@@ -271,47 +294,75 @@ public:
      * @brief find the minimum key of iterator larger than or equal to x
      * @warning the interface not support concurrency
      */
-    inline iterator lower_bound(const key_type &x){
+    inline iterator lower_bound(const key_type x){
         data_node_ptr node = this->find_leaf(x);
         slot_type pos = node->find_lower_pos(x);
-        if (pos >= (LL)node->size)
-            return end();
+        if (pos >= (LL)node->size){
+            pos = 0;
+            node = node->next;
+            while (node != nullptr && node->size == 0)
+                node = node->next;
+            if (node == nullptr)
+                return end();
+        }
         return iterator(node, pos);
     }
 
-    inline const_iterator lower_bound(const key_type &x) const {
+    inline const_iterator lower_bound(const key_type x) const {
         data_node_ptr node = this->find_leaf(x);
         slot_type pos = node->find_lower_pos(x);
-        if (pos >= (LL)node->size)
-            return end();
-        return iterator(node, pos);
+        if (pos >= (LL)node->size){
+            pos = 0;
+            node = node->next;
+            while (node != nullptr && node->size == 0)
+                node = node->next;
+            if (node == nullptr)
+                return end();
+        }
+        return const_iterator(node, pos);
     }
 
     /**
      * @brief find the minimum key of iterator larger than x
      * @warning the interface not support concurrency
      */
-    inline iterator upper_bound(const key_type &x){
-        AEX_ASSERT(traits::AllowConcurrency == false);
-        iterator iter = find_iterator(x);
-        while (iter.key() <= x) 
-            ++iter;
-        return iter;
+    inline iterator upper_bound(const key_type x){
+        data_node_ptr node = this->find_leaf(x);
+        slot_type pos = node->find_lower_pos(x);
+        if (pos < node->size && node->key[pos] <= x)
+            ++pos;
+        if (pos >= (LL)node->size){
+            pos = 0;
+            node = node->next;
+            while (node != nullptr && node->size == 0)
+                node = node->next;
+            if (node == nullptr)
+                return end();
+        }
+        return iterator(node, pos);
     }
 
-    inline const_iterator upper_bound(const key_type &x)const {
-        AEX_ASSERT(traits::AllowConcurrency == false);
-        const_iterator iter = find_iterator(x);
-        while (iter.key() <= x) 
-            ++iter;
-        return iter;
+    inline const_iterator upper_bound(const key_type x)const {
+        data_node_ptr node = this->find_leaf(x);
+        slot_type pos = node->find_lower_pos(x);
+        if (pos < node->size && node->key[pos] <= x)
+            ++pos;
+        if (pos >= (LL)node->size){
+            pos = 0;
+            node = node->next;
+            while (node != nullptr && node->size == 0)
+                node = node->next;
+            if (node == nullptr)
+                return end();
+        }
+        return const_iterator(node, pos);
     }
 
     /**
      * @brief find the minimum key larger than or equal to x
      * @details the interface support concurrency
      */
-    inline bool upper_bound(const key_type &x, const std::pair<key_type, value_type> &res){
+    inline bool upper_bound(const key_type x, const std::pair<key_type, value_type> &res){
         data_node_ptr node = this->find_leaf(x);
         slot_type pos = node->find_upper_pos(x);
         if (pos >= node->size && node->next == nullptr){
@@ -334,7 +385,7 @@ public:
      * @brief erase the data which key equal to x
      * @details the interface support concurrency
      */
-    inline ULL erase(const key_type &x){
+    inline ULL erase(const key_type x){
         if (root == nullptr) return 0;
         ULL cnt = 0;
         if constexpr (traits::AllowMultiKey)
@@ -352,7 +403,7 @@ public:
         return cnt;
     }
 
-    inline bool erase_one(const key_type &x){
+    inline bool erase_one(const key_type x){
         bool res = this->_erase(x);
         if (res)
             --this->m_stats.size;
@@ -364,6 +415,7 @@ public:
      * @warning the interface not support concurrency
      */
     inline void erase(iterator &iter){
+        static_assert(traits::AllowConcurrency == false, "The operator not support concurrency");
         if (root == nullptr || iter == end()) 
             return end();
         this->erase(iter.key);
@@ -431,53 +483,38 @@ private:
 
     // ========== 1. find ==========
 
-    // if no item greater than or equal to x, return end()
-    inline const_iterator find_iterator(const key_type &x) const{
-        data_node_ptr node = find_leaf(x);
-        slot_type pos = node->find_lower_pos(x);
-        if (pos == node->size)
-            return end(); 
-        return const_iterator(node, pos);
-    }
-
-    inline iterator find_iterator(const key_type &x){
-        data_node_ptr node = find_leaf(x);
-        slot_type pos = node->find_lower_pos(x);
-        if (pos == (LL)node->size)
-            return end(); 
-        return iterator(node, pos);
-    }
-
     // below function implemention at 'aex_find.hpp'
 
     /**
      * @brief 
      * @details keep shared_lock of returned data node;
      */
-    inline data_node_ptr find_leaf(const key_type &key) const ;
-    inline data_node_ptr find_leaf_con(const key_type &key) const ;
+    inline data_node_ptr find_leaf(const key_type key) const ;
+    inline data_node_ptr find_leaf_con(const key_type key) const ;
     
     /**
      * @brief 
      * @details keep shared_lock from root to returned data node;
      */
-    // inline data_node_ptr find_leaf_with_stack(const key_type &key, inner_node_ptr* stack, int &top) const;
+    // inline data_node_ptr find_leaf_with_stack(const key_type key, inner_node_ptr* stack, int &top) const;
 
     /**
      * @brief find the child node from parent lower bound search with key.
      * @warning these funciton not support concurrency
      */
-    node_ptr find(const inner_node_ptr node, const key_type &key) const ;
-    node_ptr find(const hash_node_ptr  node, const key_type &key) const ;
-    node_ptr find(const dense_node_ptr node, const key_type &key) const ;
+    node_ptr find(const inner_node_ptr node, const key_type key) const ;
+    node_ptr find_con(const inner_node_ptr  node, const key_type key) const ;
+    node_ptr find(const hash_node_ptr  node, const key_type key) const ;
+    node_ptr find_con(const hash_node_ptr  node, const key_type key) const ;
+    node_ptr find(const dense_node_ptr node, const key_type key) const ;
 
-    node_ptr find_insert(inner_node_ptr node, const key_type &key, slot_type &pos) const ;
-    node_ptr find_insert(hash_node_ptr  node, const key_type &key, slot_type &pos) const ;
-    node_ptr find_insert(dense_node_ptr node, const key_type &key, slot_type &pos) const ;
+    node_ptr find_insert(inner_node_ptr node, const key_type key, slot_type &pos) const ;
+    node_ptr find_insert(hash_node_ptr  node, const key_type key, slot_type &pos) const ;
+    node_ptr find_insert(dense_node_ptr node, const key_type key, slot_type &pos) const ;
 
-    node_ptr find_erase(inner_node_ptr node, const key_type &key, slot_type &pos, slot_type &next_pos) const ;
-    node_ptr find_erase(hash_node_ptr  node, const key_type &key, slot_type &pos, slot_type &next_pos) const ;
-    node_ptr find_erase(dense_node_ptr node, const key_type &key, slot_type &pos, slot_type &next_pos) const ;
+    node_ptr find_erase(inner_node_ptr node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
+    node_ptr find_erase(hash_node_ptr  node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
+    node_ptr find_erase(dense_node_ptr node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
 
     data_node_ptr find_tail_leaf(node_ptr node) const ;
     inline key_type node_zero_key(const inner_node_ptr node) const {
@@ -503,21 +540,22 @@ private:
     /**
      * @brief insert a child node into parent node.
      */
-    void construct_tmp_node(dense_node_ptr node, const key_type &old_key, const node_ptr old_node, const key_type &new_key, const node_ptr new_node);
-    void __construct_insert(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type &key, const node_ptr child);
-    void insert(hash_node_ptr node, const slot_type pos, const key_type &key, const node_ptr child);
-    void insert(dense_node_ptr node, const key_type &key, const node_ptr child);
+    void construct_tmp_node(dense_node_ptr node, const key_type old_key, const node_ptr old_node, const key_type new_key, const node_ptr new_node);
+    void __construct_insert(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type key, const node_ptr child);
+    void insert_collision(hash_node_ptr node, const slot_type pos, const key_type key, const data_node_ptr child);
+    void insert_no_collision(hash_node_ptr node, const slot_type pos, const key_type key, const data_node_ptr child);
+    void insert(dense_node_ptr node, const key_type key, const node_ptr child);
     bool check_insert_SMO(inner_node_ptr node);
-    bool check_upgrade(hash_node_ptr node, const slot_type split_pos, const slot_type top_pos) const ;
-    std::pair<iterator, bool> insert_data_node(data_node_ptr node, data_node_ptr &new_node, const key_type &key, const value_type &value);
-    void insert_unlock(hash_node_ptr top_node, node_ptr node) const;
+    bool check_upgrade(hash_node_ptr node, const key_type split_key, const slot_type top_pos) const ;
+    std::pair<iterator, bool> insert_data_node(data_node_ptr node, data_node_ptr &new_node, const key_type key, const value_type &value);
+    void insert_unlock(inner_node_ptr top_node, inner_node_ptr node) const;
     void split(data_node_ptr old_node, data_node_ptr new_node);
 
     // ========== 3. erase ==========
     // below function implemention at 'aex_erase.hpp'
 
-    bool _erase(const key_type &key);
-    void erase(hash_node_ptr node, const slot_type pos, const slot_type next_pos);
+    bool _erase(const key_type key);
+    void erase(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const node_ptr old_node);
     void erase(dense_node_ptr node, const slot_type pos);
     /**
      * @brief check node need do structual modification operation
@@ -525,8 +563,6 @@ private:
      * @return false need restart find child(node)
      */
     bool check_erase_SMO(node_ptr node);
-    bool erase_lock(inner_node_ptr node, const slot_type pos, const slot_type next_pos) const ;
-    void erase_unlock(inner_node_ptr node, const slot_type pos, const slot_type next_pos) const ;
     void merge(data_node_ptr left_node, data_node_ptr right_node);
 
     // ========== 4. Structure Modify Operation(SMO) ==========
@@ -537,7 +573,7 @@ private:
     void cast_to_hash_node(inner_node_ptr node,  const slot_type slot_size);
     void cast_to_dense_node(inner_node_ptr node, const slot_type slot_size);
 
-    void update(hash_node_ptr parent,  const slot_type pos, const slot_type next_pos, const key_type new_key, const node_ptr new_node);
+    void update(hash_node_ptr parent,  const slot_type pos, const slot_type next_pos, const node_ptr old_node, const key_type new_key, const node_ptr new_node);
     /**
      * @brief expand a node slot size
      */
@@ -692,17 +728,19 @@ private:
     // SL: shared_lock          SU: shared_unlock
     // XL: lock                 XU: unlock
     // UL: upgrade_lock(SL->XL) DL: downgrade_lock(XL->SL)
-    inline void SL(node_ptr  node) const { node->node_lock.lock_shared(); }
-    inline void SL(hash_node_ptr node, const slot_type pos) const { if constexpr(traits::AllowConcurrency) {AEX_ASSERT(check_lock_shared(node)); node->lock_array[pos].lock_shared(); }}
-    inline void SU(node_ptr  node) const { AEX_ASSERT(check_lock_shared(node)); node->node_lock.unlock_shared();}
+    inline void SL(node_ptr  node) const { if constexpr(traits::AllowConcurrency) node->node_lock.lock_shared(); }
+    inline void SL(hash_node_ptr node, const slot_type pos) const { if constexpr(traits::AllowConcurrency) {AEX_ASSERT(check_lock_shared(node)); node->lock_array[pos2slot(pos)].lock_shared(); }}
+    inline void SU(node_ptr  node) const { if constexpr(traits::AllowConcurrency) {AEX_ASSERT(check_lock_shared(node)); node->node_lock.unlock_shared();} }
     inline void SU(hash_node_ptr node, slot_type l_pos, slot_type r_pos) const { AEX_ASSERT(check_lock_shared(node)); node->array_unlock_shared(l_pos, r_pos); SU(node); }
     inline void SU(hash_node_ptr node, const slot_type pos) const { if constexpr(traits::AllowConcurrency) {AEX_ASSERT(check_lock_shared(node)); AEX_ASSERT(node->lock_array[pos2slot(pos)].is_lock_shared()); node->lock_array[pos2slot(pos)].unlock_shared(); } }
     inline void SU(inner_node_ptr node, slot_type l_pos, slot_type r_pos) const {
         if (node->type == NodeType::HashNode) SU(h_n(node), l_pos, r_pos);
         else SU(node);
     }
-    inline void XL(node_ptr  node) const { node->node_lock.lock(); }
-    inline void XU(node_ptr  node) const { AEX_ASSERT(check_lock(node)); AEX_ASSERT(check_unlock_shared(node)); node->node_lock.unlock(); }
+    inline void XL(node_ptr  node) const { if constexpr(traits::AllowConcurrency) node->node_lock.lock(); }
+    inline void XU(node_ptr  node) const { if constexpr(traits::AllowConcurrency) { AEX_ASSERT(check_lock(node)); AEX_ASSERT(check_unlock_shared(node)); node->node_lock.unlock(); } }
+    //inline void XL(hash_node_ptr node, slot_type pos) const { if constexpr(traits::AllowConcurrency) {AEX_ASSERT(check_lock_shared(node)); node->lock_array[pos2slot(pos)].lock(); } }
+    //inline void XU(hash_node_ptr node, slot_type pos) const { if constexpr(traits::AllowConcurrency) {AEX_ASSERT(check_lock_shared(node)); AEX_ASSERT(node->lock_array[pos2slot(pos)].is_lock()); node->lock_array[pos2slot(pos)].unlock(); } }
     inline void XU(hash_node_ptr node, slot_type l_pos, slot_type r_pos) const { AEX_ASSERT(check_lock_shared(node)); node->array_unlock(l_pos, r_pos); SU(node); }
     inline void XU(inner_node_ptr node, slot_type l_pos, slot_type r_pos) const {
         if (node->type == NodeType::HashNode) XU(h_n(node), l_pos, r_pos);

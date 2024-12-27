@@ -6,14 +6,16 @@ bool test_index(std::pair<K, V>* data, size_t n){
     random_shuffle(data, data + n);
     // insert
     for (size_t i = 0; i < n; ++i)
-        mp.insert(std::make_pair(data[i].first, data[i].second));
+        //mp.insert_con(std::make_pair(data[i].first, data[i].second));
+        mp.insert_con(data[i].first, data[i].second);
     
     // find
     int M = std::min(n, (size_t)100);
     for (int i = 0; i < M; ++i){
         size_t x = rand() % n;
-        auto y = mp.find(data[x].first);
-        if (y.data() != data[x].second){
+        V y;
+        bool res = mp.find(data[x].first, y);
+        if (res || y != data[x].second){
             printf("Error!");
         }
     }

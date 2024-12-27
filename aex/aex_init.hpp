@@ -126,10 +126,12 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
             opt_stats.allocate_dense_node_cnt++;
             #endif
             dense_node_ptr new_node = Allocator::allocate_dense_node(d_n(node)->slot_size);
+            XL(new_node);
             std::copy(d_n(node)->key_ptr, d_n(node)->key_ptr + d_n(node)->size, new_node->key_ptr);
             d_n(new_node)->size = d_n(node)->size;
             for (slot_type i = 0; i < d_n(node)->size; ++i)
                 new_node->child_ptr[i] = construct(other, d_n(node)->child_ptr[i], tail_leaf);
+            XU(new_node);
             return new_node;
         }
         case NodeType::HashNode:{
@@ -137,6 +139,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
             opt_stats.allocate_hash_node_cnt++;
             #endif
             hash_node_ptr new_node = Allocator::allocate_hash_node(h_n(node)->slot_size);
+            XL(new_node);
             new_node->model = h_n(node)->model;
             key_type key;
             node_ptr child, new_child;
@@ -152,6 +155,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
             __construct_insert(new_node, pos, h_n(node)->slot_size, key, new_child);
             AEX_ASSERT(node->size == new_node->size);
             AEX_DEBUG_BLOCK({for (slot_type i = 0; i < h_n(node)->slot_size / 64 + 1; ++i) AEX_ASSERT(new_node->bitmap_ptr[i] == h_n(node)->bitmap_ptr[i]);});
+            XU(new_node);
             return new_node;
         }
     }
@@ -161,10 +165,11 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, value_type>* const data, const ULL nums){
     AEX_PRINT("[bulk load]");
-    this->clear();
-    AEX_PRINT("1");
-    if (nums == 0)
+    this->init();
+    if (nums == 0){
+        this->init_index();
         return;
+    }
     std::vector<key_type> key_buf(nums), new_key_buf;
     std::vector<data_node_ptr> new_child_buf;
     std::vector<value_type> data_buf(nums);
@@ -183,8 +188,6 @@ inline void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, va
     this->m_stats.size = nums;
     this->head_leaf = new_child_buf[0];
     new_key_buf[0] = std::numeric_limits<key_type>::lowest();
-    //this->hash_table.rescale(min_slot_size(m, traits::HASH_TABLE_FULL_RATIO, traits::MIN_HASH_TABLE_SIZE));
-    //this->hash_table.rescale(min_slot_size(m, traits::HASH_TABLE_BLOCK_SIZE * traits::HASH_TABLE_FULL_RATIO, traits::MIN_HASH_TABLE_SIZE));
     this->root = this->construct(new_key_buf.data(), reinterpret_cast<node_ptr*>(new_child_buf.data()), new_child_buf.size());
 }
 
@@ -208,20 +211,24 @@ inline typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val
     slot_size = this->train(keys, n, model);
     if (slot_size == 0){
         dense_node_ptr new_node = Allocator::allocate_dense_node(traits::MIN_DENSE_NODE_SLOT_SIZE);
+        XL(new_node);
         construct_dense_node(new_node, keys, childs, n);
         #ifdef AEX_DEBUG
         opt_stats.allocate_dense_node_cnt++;
         AEX_ASSERT(check_node(new_node));
         #endif
+        XU(new_node);
         return new_node;
     }
     else{
         hash_node_ptr new_node = Allocator::allocate_hash_node(slot_size);
+        XL(new_node);
         construct_hash_node(new_node, keys, childs, n);
         #ifdef AEX_DEBUG
         opt_stats.allocate_hash_node_cnt++;
         check_node(new_node);
         #endif
+        XU(new_node);
         return new_node;
     }
 }
@@ -264,8 +271,9 @@ inline void aex_tree<_Key, _Val, traits>::construct_simple(dense_node_ptr node, 
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::construct_dense_node(dense_node_ptr node, const key_type *keys, const node_ptr* childs, const ULL n){
+    AEX_ASSERT(check_lock(node));
     AEX_ASSERT(node->slot_size == traits::MIN_DENSE_NODE_SLOT_SIZE);
-    AEX_ASSERT(n > traits::MAX_DENSE_NODE_SLOT_SIZE);
+    AEX_ASSERT(n <= traits::MAX_DENSE_NODE_SLOT_SIZE);
     slot_type start = 0;
     for (ULL i = 0; i < traits::MIN_DENSE_NODE_SLOT_SIZE - 1; ++i){
         node->key_ptr[i] = keys[start];
@@ -279,10 +287,13 @@ inline void aex_tree<_Key, _Val, traits>::construct_dense_node(dense_node_ptr no
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::construct_hash_node(hash_node_ptr node, const key_type *keys, const node_ptr* childs, const ULL n){
+    AEX_ASSERT(check_lock(node));
+    AEX_ASSERT(n > traits::MAX_DENSE_NODE_SLOT_SIZE / 2);
     AEX_ASSERT(n > 1);
     //AEX_HINT("construct hash node...");
     node->model.train(keys, n, node->slot_size);
     slot_type prev_pos = node->predict(keys[0]), pos = 0;
+    //AEX_PRINT("n=" << n);
     //AEX_PRINT(keys[0]);
     //AEX_PRINT("prev_pos=" << prev_pos << ", model predict=" << node->model.predict(keys[0]));
     ULL start = 0;
@@ -290,7 +301,7 @@ inline void aex_tree<_Key, _Val, traits>::construct_hash_node(hash_node_ptr node
     for (ULL i = 1; i < n; ++i){
         pos = node->predict(keys[i]);
         if (pos != prev_pos){
-            //AEX_PRINT("pos=" << pos << ", prev_pos=" << prev_pos << ", size=" << i - start << ", keys[start]=" << keys[start]);
+            //AEX_PRINT("i=" << i << ", pos=" << pos << ", prev_pos=" << prev_pos << ", size=" << i - start << ", keys[start]=" << keys[start]);
             if (i - start > 1){
                 new_node = this->construct(keys + start, childs + start, i - start);
                 __construct_insert(node, prev_pos, pos, keys[start], new_node);
@@ -308,6 +319,8 @@ inline void aex_tree<_Key, _Val, traits>::construct_hash_node(hash_node_ptr node
     }
     else
         __construct_insert(node, pos, node->slot_size, keys[start], childs[start]);
+    //if constexpr(traits::AllowConcurrency)
+    //    AEX_PRINT("node=" << node << "node->lock_array[0]=" << node->lock_array[0].lockCount.load());
 }
 
 
