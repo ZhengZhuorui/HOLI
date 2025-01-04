@@ -193,6 +193,7 @@ inline void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, va
 
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val, traits>::construct(const key_type *keys, const node_ptr* childs, const ULL n){
+   
     slot_type slot_size = 0;
     AEX_DEBUG_BLOCK({if (!traits::AllowMultiKey) for (ULL i = 0; i < n - 1; ++i) AEX_ASSERT(keys[i] < keys[i + 1]);});
     if (n <= traits::MAX_DENSE_NODE_SLOT_SIZE){
@@ -207,10 +208,12 @@ inline typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val
         #endif
         return new_node;
     }
+        
     Model model;
     slot_size = this->train(keys, n, model);
     if (slot_size == 0){
-        dense_node_ptr new_node = Allocator::allocate_dense_node(traits::MIN_DENSE_NODE_SLOT_SIZE);
+        slot_size = min_slot_size(n + 1, traits::MIN_DENSE_NODE_SLOT_SIZE);
+        dense_node_ptr new_node = Allocator::allocate_dense_node(slot_size);
         XL(new_node);
         construct_dense_node(new_node, keys, childs, n);
         #ifdef AEX_DEBUG
@@ -226,7 +229,7 @@ inline typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val
         construct_hash_node(new_node, keys, childs, n);
         #ifdef AEX_DEBUG
         opt_stats.allocate_hash_node_cnt++;
-        check_node(new_node);
+        AEX_ASSERT(check_node(new_node));
         #endif
         XU(new_node);
         return new_node;
@@ -247,7 +250,7 @@ inline void aex_tree<_Key, _Val, traits>::construct(inner_node_ptr node, const k
     }
     slot_size = train(keys, n, model);
     if (slot_size == 0){
-        cast_to_dense_node(node, traits::MIN_DENSE_NODE_SLOT_SIZE);
+        cast_to_dense_node(node, traits::MIN_DENSE_NODE_SLOT_SIZE << 1);
         construct_dense_node(d_n(node), keys, childs, n);
     }
     else{
@@ -272,8 +275,7 @@ inline void aex_tree<_Key, _Val, traits>::construct_simple(dense_node_ptr node, 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::construct_dense_node(dense_node_ptr node, const key_type *keys, const node_ptr* childs, const ULL n){
     AEX_ASSERT(check_lock(node));
-    AEX_ASSERT(node->slot_size == traits::MIN_DENSE_NODE_SLOT_SIZE);
-    AEX_ASSERT(n <= traits::MAX_DENSE_NODE_SLOT_SIZE);
+    AEX_ASSERT(n + 1 > traits::MAX_DENSE_NODE_SLOT_SIZE);
     slot_type start = 0;
     for (ULL i = 0; i < traits::MIN_DENSE_NODE_SLOT_SIZE - 1; ++i){
         node->key_ptr[i] = keys[start];

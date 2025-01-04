@@ -251,10 +251,11 @@ bool test_index_delta_lookup_perf(std::pair<key_type, value_type>* data, long lo
     generate_query(data, n, query, answer, batch);
     for (long long i = 0; i < n; ++i){
         if (i % 1000000 == 0)
-            std::cout << "i=" << i << std::endl;
+            //std::cout << "i=" << i << std::endl;
+            AEX_PRINT("i=" << i);
         typename tree::iterator iter;
         bool inserted = index.insert_con(data[i]);
-        if (inserted){
+        if (!inserted){
             AEX_ERROR("insert failed!");
             return false;
         }

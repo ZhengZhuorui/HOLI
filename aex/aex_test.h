@@ -78,8 +78,10 @@ inline bool aex_tree<_Key, _Val, traits>::check_node(dense_node_ptr node) const 
 template<typename _Key, typename _Val, typename traits>
 inline bool aex_tree<_Key, _Val, traits>::check_node(hash_node_ptr node) const {
     bool flag = true;
-    if (node->size < traits::MIN_HASH_NODE_CNT)
+    if (node->size < traits::MIN_HASH_NODE_CNT){
         AEX_ERROR("ERROR! hash node size=" << node->size << ", slot size=" << node->slot_size);
+        flag = false;
+    }
     key_type his_key = std::numeric_limits<key_type>::lowest();
     slot_type cnt = 0;
     for(slot_type i = 0; i < node->slot_size; i = node->next_item(i + 1)){

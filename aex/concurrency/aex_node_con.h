@@ -71,35 +71,54 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     inline slot_type prev_item_con(slot_type x) const {
         if (x <= 0){
             lock_array[0].lock_shared();
-            return 0;
+            return x;
         }
         lock_array[pos2slot(x)].lock_shared();
         bitmap text = this->bitmap_ptr + (x >> 6);
-        bitmap_base base = (*text) << (63 - (x & 63));
-        x -= (base == 0) ? ((x & 63) + 1) : __builtin_clzll(base);
-        while (base == 0 && x > 0){
+        const bitmap_base base = (*text) << (63 - (x & 63));
+        if (base != 0)
+            return x - __builtin_clzll(base);
+        x -= (x & 63) + 1;
+        --text;
+        lock_array[pos2slot(x) + 1].unlock_shared();
+        lock_array[pos2slot(x)].lock_shared();
+        while ((*text) == 0){
+            --text;
+            x -= 64;
             lock_array[pos2slot(x) + 1].unlock_shared();
             lock_array[pos2slot(x)].lock_shared();
-            --text;
-            base = *text;
-            x -= __builtin_clzll(base);
         }
-        AEX_ASSERT(x >= 0);
+        x -= __builtin_clzll(*text);
         return x;
     }
 
-    /*
-    inline slot_type prev_item_find(slot_type x) const {
-        if (x <= 0){
-            return 0;
-        }
-        lock_array[pos2slot(x)].lock_shared();
-        slot_type res = this->parent::prev_item_find(x);
-        lock_array[pos2slot(x)].unlock_shared();
-        return res;
-    }
-    */
     
+    inline slot_type prev_item_find_con(slot_type x) const {
+        if (x <= 0){
+            lock_array[0].lock_shared();
+            return x;
+        }
+        const slot_type y = x - (x & (traits::SLOT_PER_SHORTCUT - 1));
+        lock_array[pos2slot(x)].lock_shared();
+        bitmap text = this->bitmap_ptr + (x >> 6);
+        const bitmap_base base = (*text) << (63 - (x & 63));
+        if (base != 0)
+            return x - __builtin_clzll(base);
+        x -= (x & 63) + 1;
+        if (x < y)
+            return y;
+        --text;
+        lock_array[pos2slot(x) + 1].unlock_shared();
+        lock_array[pos2slot(x)].lock_shared();
+        while (x - 64 > y && (*text) == 0){    
+            --text;
+            x -= 64;
+            lock_array[pos2slot(x) + 1].unlock_shared();
+            lock_array[pos2slot(x)].lock_shared();
+        }
+        x -= __builtin_clzll(*text) - ((*text) == 0);
+        return x;
+    } 
     
 
     inline slot_type next_item_con(slot_type x) const {
@@ -109,19 +128,21 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         }
         lock_array[pos2slot(x)].lock_shared();
         bitmap text = this->bitmap_ptr + (x >> 6);
-        bitmap_base base = (*text) >> (x & 63);
-        x += (base == 0) ? (64 - (x & 63)) : __builtin_ctzll(base);
-        while (base == 0 && x < this->slot_size){
+        const bitmap_base base = (*text) >> (x & 63);
+        if (base != 0)
+            return x + __builtin_ctzll(base);
+        x += 64 - (x & 63);
+        ++text;
+        while (x < this->slot_size && (*text) == 0){
             lock_array[pos2slot(x) - 1].unlock_shared();
             lock_array[pos2slot(x)].lock_shared();
             ++text;
-            base = *text;
-            x += __builtin_ctzll(base);
+            x += 64;
         }
-        if (x >= this->slot_size){
-            lock_array[pos2slot(x) - 1].unlock_shared();
-            lock_array[pos2slot(x)].lock_shared();
-        }
+        lock_array[pos2slot(x) - 1].unlock_shared();
+        lock_array[pos2slot(x)].lock_shared();
+        if (x < this->slot_size)
+            x += __builtin_ctzll((*text));
         return x;
     }
     

@@ -27,8 +27,10 @@ public:
         ++offset;
         if (offset >= _M_node->size){
             offset = 0;
-            _M_node = static_cast<data_node_ptr>(_M_node->next);
+            _M_node = _M_node->next;
         }
+        while (_M_node != nullptr && _M_node->size == 0)
+            _M_node = _M_node->next;
         return *this;
     }
 
@@ -37,8 +39,10 @@ public:
         ++offset;
         if (offset >= _M_node->size){
             offset = 0;
-            _M_node = static_cast<data_node_ptr>(_M_node->next);
+            _M_node = _M_node->next;
         }
+        while (_M_node != nullptr && _M_node->size == 0)
+            _M_node = _M_node->next;
         return tmp;
     }
     bool operator==(const self& x) const { return (_M_node == x._M_node) && (offset == x.offset); }
@@ -83,6 +87,8 @@ public:
             offset = 0;
             _M_node = _M_node->next;
         }
+        while (_M_node != nullptr && _M_node->size == 0)
+            _M_node = _M_node->next;
         return *this;
     }
     self operator++(int){
@@ -92,6 +98,8 @@ public:
             offset = 0;
             _M_node = _M_node->next;
         }
+        while (_M_node != nullptr && _M_node->size == 0)
+            _M_node = _M_node->next;
         return tmp;
     }
     bool operator==(const self& x) const { return (_M_node == x._M_node) && (offset == x.offset); }

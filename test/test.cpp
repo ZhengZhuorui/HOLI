@@ -4,6 +4,10 @@
 #define AEX_DEBUG
 #endif
 
+#ifndef AEX_DEBUG_THREAD
+#define AEX_DEBUG_THREAD
+#endif
+
 #ifndef AEX_DEBUG
 #define AEX_DEBUG
 #endif
@@ -348,6 +352,10 @@ void test_mul_key(map<string, string> &flags){
  */
 
 int main(int argc, char** argv){
+    AEX_PRINT("Debug Mode On");
+    #ifdef AEX_DEBUG_THREAD
+    AEX_PRINT("Debug Lock Mode On");
+    #endif
     srand(0);
     auto flags = parse_flags(argc, argv);
     if (flags.find("general") != flags.end()){

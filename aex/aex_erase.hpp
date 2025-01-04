@@ -181,14 +181,6 @@ inline void aex_tree<_Key, _Val, traits>::erase(dense_node_ptr node, const slot_
 template<typename _Key, typename _Val, typename traits>
 inline bool aex_tree<_Key, _Val, traits>::check_erase_SMO(node_ptr node){
     AEX_ASSERT(node->type != NodeType::LeafNode);
-    if constexpr(traits::AllowRebuild)
-        if (is_rebuild(i_n(node))){
-            if (!TUL(node))
-                return false;
-            rebuild(i_n(node));
-            DL(node);
-            return true;
-        }
     if (isfew(i_n(node))){
         if (!TUL(node))
             return false;

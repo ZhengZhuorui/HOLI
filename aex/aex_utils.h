@@ -79,7 +79,6 @@ struct AEX_LOG{
     static int recursive_cnt;
 };
 
-
 #ifdef AEX_DEBUG
 
 static std::mutex log_mutex;
@@ -126,6 +125,18 @@ static std::mutex log_mutex;
 
 #define AEX_IMPORTANT(x) AEX_PRINT_TAG(x, PURPLE_FONT_TAG, "[IMPORTANT]")
 
+
+#ifdef AEX_DEBUG_THREAD
+#define DEBUG_CHECK_LOCK(node)          AEX_ASSERT(check_lock(node));
+#define DEBUG_CHECK_UNLOCK(node)        AEX_ASSERT(check_unlock(node));
+#define DEBUG_CHECK_LOCK_SHARED(node)   AEX_ASSERT(check_lock_shared(node));
+#define DEBUG_CHECK_UNLOCK_SHARED(node) AEX_ASSERT(check_unlock_shared(node));
+#else
+#define DEBUG_CHECK_LOCK(node)
+#define DEBUG_CHECK_UNLOCK(node)
+#define DEBUG_CHECK_LOCK_SHARED(node)
+#define DEBUG_CHECK_UNLOCK_SHARED(node)
+#endif
 
 inline void yield(int count){
     if (count>3)
@@ -432,7 +443,7 @@ struct operation_stats{
     ULL cast_to_hash_node_cnt, hash_node_expand_cnt, hash_node_expand_size, hash_node_narrow_cnt, hash_node_narrow_size;
     ULL cast_to_dense_node_cnt, dense_node_expand_cnt, dense_node_expand_size, dense_node_narrow_cnt, dense_node_narrow_size;
     ULL inner_node_rebuild_cnt, inner_node_rebuild_size;
-    ULL inner_node_split_cnt, inner_node_split_size; 
+    ULL inner_node_split_cnt, inner_node_split_size, dense_node_split_cnt; 
     //ULL hash_node_construct_cnt, hash_node_construct_size, dense_node_construct_cnt, dense_node_construct_size;
     ULL data_node_split_cnt, data_node_merge_cnt;
     ULL model_train_cnt, model_train_size;
@@ -446,7 +457,7 @@ struct operation_stats{
         AEX_IMPORTANT("dense_node_expand_cnt="    << dense_node_expand_cnt    << ", dense_node_expand_size="    << dense_node_expand_size);
         AEX_IMPORTANT("dense_node_narrow_cnt="    << dense_node_narrow_cnt    << ", dense_node_narrow_size="    << dense_node_narrow_size);
         AEX_IMPORTANT("inner_node_rebuild_cnt="   << inner_node_rebuild_cnt   << ", inner_node_rebuild_size="   << inner_node_rebuild_size);
-        AEX_IMPORTANT("inner_node_spilt_cnt="     << inner_node_split_cnt     << ", inner_node_split_size="     << inner_node_split_size);
+        AEX_IMPORTANT("inner_node_spilt_cnt="     << inner_node_split_cnt     << ", inner_node_split_size="     << inner_node_split_size << ", dense_node_split_cnt" << dense_node_split_cnt);
         AEX_IMPORTANT("data_node_split_cnt="      << data_node_split_cnt      << ", data_node_merge_cnt="       << data_node_merge_cnt);
         AEX_IMPORTANT("model_train_cnt="          << model_train_cnt          << ", model_train_size="          << model_train_size);
         AEX_IMPORTANT("allocate_data_node_cnt="   << allocate_data_node_cnt   << ", allocate_dense_node_cnt="   << allocate_dense_node_cnt << ", allocate_hash_node_cnt=" << allocate_hash_node_cnt);

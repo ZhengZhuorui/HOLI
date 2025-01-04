@@ -149,25 +149,47 @@ public:
     //}
 
     inline slot_type prev_item_find(slot_type x) const {
-        if (x <= 0)
-            return 0;
-        //slot_type y = x & (~(traits::SLOT_PER_SHORTCUT - 1));
-        bitmap_base base = (bitmap_ptr[x >> 6]) << (63 - (x & 63));
-        x -= (base == 0) ? (x & 63) : __builtin_clzll(base);
-        while (base == 0 && )
-        return x;
+        // if (x <= 0)
+        //     return 0;
+        // bitmap_base base = (bitmap_ptr[x >> 6]) << (63 - (x & 63));
+        // x -= (base == 0) ? (x & 63) : __builtin_clzll(base);
+        // while (base == 0 && )
+        // return x;
 
-
+        const slot_type y = x - (x & (traits::SLOT_PER_SHORTCUT - 1));
         if (x <= 0)
             return x;
         bitmap text = bitmap_ptr + (x >> 6);
-        bitmap_base base = (*text) << (63 - (x & 63));
-        x -= (base == 0) ? (x & 63) : __builtin_clzll(base);
-        while (base == 0 && x & traits::SLOT_PER_SHORTCUT> 0){
+        const bitmap_base base = (*text) << (63 - (x & 63));
+        if (base != 0)
+            return x - __builtin_clzll(base);
+        x -= (x & 63) + 1;
+        if (x < y)
+            return y;
+        --text;
+        while (x - 64 > y && (*text) == 0){
             --text;
-            base = *text;
-            x -= __builtin_clzll(base);
+            x -= 64;
         }
+        x -= __builtin_clzll(*text) - ((*text) == 0);
+        return x;
+    }
+
+    inline slot_type prev_item(slot_type x) const {
+        if (x <= 0)
+            return x;
+        bitmap text = bitmap_ptr + (x >> 6);
+        const bitmap_base base = (*text) << (63 - (x & 63));
+        if (base != 0)
+            return x - __builtin_clzll(base);
+        x -= (x & 63) + 1;
+        //text[0] != 0
+        --text;
+        while ((*text) == 0){
+            --text;
+            x -= 64;
+        }
+        x -= __builtin_clzll(*text);
         return x;
     }
 
@@ -183,28 +205,18 @@ public:
         if (x >= this->slot_size)
             return this->slot_size;
         bitmap text = bitmap_ptr + (x >> 6);
-        bitmap_base base = (*text) >> (x & 63);
-        x += (base == 0) ? (64 - (x & 63)) : __builtin_ctzll(base);
-        while (base == 0 && x < this->slot_size){
+        const bitmap_base base = (*text) >> (x & 63);
+        if (base != 0)
+            return x + __builtin_ctzll(base);
+        x += 64 - (x & 63);
+        ++text;
+        while (x < this->slot_size && (*text) == 0){
             ++text;
-            base = *text;
-            x += __builtin_ctzll(base);
+            x += 64;
         }
-        return x;
-    }
-
-    inline slot_type prev_item(slot_type x) const {
-        if (x <= 0)
-            return x;
-        bitmap text = bitmap_ptr + (x >> 6);
-        bitmap_base base = (*text) << (63 - (x & 63));
-        x -= (base == 0) ? ((x & 63) + 1) : __builtin_clzll(base);
-        while (base == 0 && x > 0){
-            --text;
-            base = *text;
-            x -= __builtin_clzll(base);
-        }
-        return x;
+        if (x < this->slot_size)
+            x += __builtin_ctzll((*text));
+        return x;        
     }
 
     inline slot_type prev_item_con(slot_type x) const {return prev_item(x); }
@@ -378,7 +390,7 @@ public:
         //if constexpr (std::is_same_v<key_type, ULL>)
         //    return std::lower_bound(this->key, this->key + this->size, x) - this->key;
         //else
-        return aex::linear_search_lower_bound_avx512(this->key, (int)this->size, x);
+        return aex::linear_search_lower_bound_avx512x16(this->key, (int)this->size, x);
         //return std::lower_bound(this->key, this->key + this->size, x) - this->key;
     }
 

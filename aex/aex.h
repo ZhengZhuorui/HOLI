@@ -225,6 +225,8 @@ public:
      */
     void range_query(const key_type lower_key, const key_type upper_key, std::vector<std::pair<key_type, value_type>>& answer) const ;
 
+    size_t range_query_len(std::pair<key_type, value_type>* results, const key_type lower_key, const size_t key_num) const;
+
     /**
      * @brief update $map_[x]<-y$
      * @details the interface support concurrency
@@ -545,11 +547,12 @@ private:
     void insert_collision(hash_node_ptr node, const slot_type pos, const key_type key, const data_node_ptr child);
     void insert_no_collision(hash_node_ptr node, const slot_type pos, const key_type key, const data_node_ptr child);
     void insert(dense_node_ptr node, const key_type key, const node_ptr child);
-    bool check_insert_SMO(inner_node_ptr node);
+    bool check_insert_SMO(inner_node_ptr node, inner_node_ptr child);
     bool check_upgrade(hash_node_ptr node, const key_type split_key, const slot_type top_pos) const ;
     std::pair<iterator, bool> insert_data_node(data_node_ptr node, data_node_ptr &new_node, const key_type key, const value_type &value);
     void insert_unlock(inner_node_ptr top_node, inner_node_ptr node) const;
     void split(data_node_ptr old_node, data_node_ptr new_node);
+    void split(dense_node_ptr old_node, dense_node_ptr new_node);
 
     // ========== 3. erase ==========
     // below function implemention at 'aex_erase.hpp'
@@ -589,13 +592,14 @@ private:
     /**
      * @brief place split key of node into corresponding slot of hash node.
      */
+    inner_node_ptr __construct_SMO(const key_type* keys, const node_ptr* childs, const ULL n);
     slot_type split(hash_node_ptr node, node_ptr &split_node, const slot_type start_pos, const slot_type end_pos);
-    void construct_SMO(hash_node_ptr node, const key_type* const keys, node_ptr* childs, const ULL n);
+    void construct_SMO(hash_node_ptr node, const key_type* keys, node_ptr* childs, const ULL n);
     void get_childs(hash_node_ptr node,  std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
     void get_childs(dense_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
     void get_childs(inner_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
-    void extend_head_nodes(inner_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
-    void extend_tail_nodes(inner_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
+    void extend_head_nodes(std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
+    void extend_tail_nodes(std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
     bool check_model(const Model &m, const key_type* const keys, const ULL n, const slot_type slot_size) const ;
     slot_type train(const key_type* const keys, const ULL n, Model &m);
     void rebuild(inner_node_ptr node);
@@ -637,35 +641,6 @@ private:
         if (node->slot_size == traits::MIN_DATA_NODE_SLOT_SIZE)
             return false;
         return node->size < node->slot_size * traits::DENSE_NODE_FEW_RATIO;
-    }
-
-    inline bool is_rebuild(const inner_node_ptr node) const {
-        return false;
-        bool res = false;
-        key_type key;
-        node_ptr child1, child2;
-        slot_type tot_size = 0, node_size = node->size;
-        if (node->size <= 1)
-            return false;
-        if (node->type == NodeType::HashNode){
-            SL(h_n(node), 0);
-            std::tie(key, child1) = hash_table.find(node, 0);
-            SU(h_n(node), 0);
-            SL(h_n(node), node->slot_size - 1);
-            std::tie(key, child2) = hash_table.find(node, h_n(node)->prev_item_find(node->slot_size - 1));
-            SU(h_n(node), node->slot_size - 1);
-        }
-        else{
-            child1 = d_n(node)->child_ptr[0];
-            child2 = d_n(node)->child_ptr[d_n(node)->size - 1];
-        }
-        if (child1->type != NodeType::LeafNode)
-            tot_size += child1->size;
-        if (child2->type != NodeType::LeafNode)
-            tot_size += child2->size;
-        if (tot_size >= node_size * traits::MIN_REBUILD_RATIO)
-            res = true;
-        return res;
     }
 
     // ========== 5. Utility ==========
@@ -730,7 +705,7 @@ private:
     // UL: upgrade_lock(SL->XL) DL: downgrade_lock(XL->SL)
     inline void SL(node_ptr  node) const { if constexpr(traits::AllowConcurrency) node->node_lock.lock_shared(); }
     inline void SL(hash_node_ptr node, const slot_type pos) const { if constexpr(traits::AllowConcurrency) {AEX_ASSERT(check_lock_shared(node)); node->lock_array[pos2slot(pos)].lock_shared(); }}
-    inline void SU(node_ptr  node) const { if constexpr(traits::AllowConcurrency) {AEX_ASSERT(check_lock_shared(node)); node->node_lock.unlock_shared();} }
+    inline void SU(node_ptr  node) const { if constexpr(traits::AllowConcurrency) { AEX_ASSERT(check_lock_shared(node)); node->node_lock.unlock_shared();} }
     inline void SU(hash_node_ptr node, slot_type l_pos, slot_type r_pos) const { AEX_ASSERT(check_lock_shared(node)); node->array_unlock_shared(l_pos, r_pos); SU(node); }
     inline void SU(hash_node_ptr node, const slot_type pos) const { if constexpr(traits::AllowConcurrency) {AEX_ASSERT(check_lock_shared(node)); AEX_ASSERT(node->lock_array[pos2slot(pos)].is_lock_shared()); node->lock_array[pos2slot(pos)].unlock_shared(); } }
     inline void SU(inner_node_ptr node, slot_type l_pos, slot_type r_pos) const {

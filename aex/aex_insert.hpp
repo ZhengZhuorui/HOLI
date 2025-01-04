@@ -22,16 +22,34 @@ insert_start:
     now_version = this->version;
     top_node = nullptr;
     node = root;
+    DEBUG_CHECK_UNLOCK(root);
     SL(node);    
-    if (!check_insert_SMO(node)){
-        SU(node);
-        goto insert_start;
+    if (isfull(node)){
+        if (!TUL(node)){
+            SU(node); goto insert_start;
+        }
+        while (isfull(node))
+            expand(node);
+        DL(node);
     }
 
     while (true){
         child = find_insert(node, key, pos);
-        //AEX_PRINT("node=" << node << ", key=" << key << ", pos=" << pos << ", child->type=" << to_string(child->type));
+        //AEX_PRINT("node=" << node << ", key=" << key << ", pos=" << pos << ", node->size=" << node->size << ", slot_size=" << node->slot_size << ", child->type=" << to_string(child->type) << ", child=" << child << ", child->size=" << child->size);
         tail = (node->type == NodeType::HashNode) ? (last_node(h_n(node)) == child) : (pos == d_n(node)->size - 1);
+        if constexpr (traits::AllowRebuild)
+            if ((tail || pos == 0) && child->type != NodeType::LeafNode && node->type == NodeType::HashNode && child->size >= node->size * traits::MIN_REBUILD_RATIO){
+                //AEX_PRINT("node=" << node << ", key=" << key << ", pos=" << pos << ", node->size=" << node->size << ", slot_size=" << node->slot_size << ", child->type=" << to_string(child->type) << ", child=" << child << ", child->size=" << child->size);
+                if (!TUL(node)){
+                    SU(child); insert_unlock(top_node, node); goto insert_start;
+                }
+                SU(child);
+                if (top_node != node && top_node != nullptr)
+                    SU(top_node);
+                rebuild(node);
+                XU(node);
+                goto insert_start;
+            }
         if (!tail){
             if (top_node != nullptr){
                 SU(top_node);
@@ -113,7 +131,7 @@ insert_start:
             return ret;
         }
 
-        if (!check_insert_SMO(i_n(child))){
+        if (!check_insert_SMO(node, i_n(child))){
             SU(child); insert_unlock(top_node, node);
             goto insert_start;
         }
@@ -144,6 +162,7 @@ inline void aex_tree<_Key, _Val, traits>::construct_tmp_node(dense_node_ptr node
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::__construct_insert(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type key, const node_ptr child){
+    AEX_ASSERT(node->type == NodeType::HashNode);
     AEX_ASSERT(check_lock(node));
     AEX_ASSERT(pos < node->slot_size);
     AEX_ASSERT(pos < next_pos);
@@ -161,6 +180,7 @@ inline void aex_tree<_Key, _Val, traits>::__construct_insert(hash_node_ptr node,
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_collision(hash_node_ptr node, const slot_type pos, const key_type key, const data_node_ptr child){
+    AEX_ASSERT(node->type == NodeType::HashNode);
     AEX_ASSERT(check_lock_shared(node));
     AEX_ASSERT(pos < node->slot_size);
     #ifdef AEX_DEBUG
@@ -183,6 +203,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_collision(hash_node_ptr node, c
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_no_collision(hash_node_ptr node, const slot_type pos, const key_type key, const data_node_ptr child){
+    AEX_ASSERT(node->type == NodeType::HashNode);
     AEX_ASSERT(check_lock_shared(node));
     AEX_ASSERT(pos < node->slot_size);
     if ((pos & (traits::SLOT_PER_SHORTCUT - 1)) == 0)
@@ -204,6 +225,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_no_collision(hash_node_ptr node
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert(dense_node_ptr node, const key_type key, const node_ptr child){
     AEX_ASSERT(check_lock(node));
+    AEX_ASSERT(node->type == NodeType::DenseNode);
     const slot_type pos = std::upper_bound(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr;
     std::move_backward(node->key_ptr   + pos, node->key_ptr   + node->size, node->key_ptr   + node->size + 1);
     std::move_backward(node->child_ptr + pos, node->child_ptr + node->size, node->child_ptr + node->size + 1);
@@ -213,22 +235,44 @@ inline void aex_tree<_Key, _Val, traits>::insert(dense_node_ptr node, const key_
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline bool aex_tree<_Key, _Val, traits>::check_insert_SMO(inner_node_ptr node){
+inline bool aex_tree<_Key, _Val, traits>::check_insert_SMO(inner_node_ptr node, inner_node_ptr child){
     AEX_ASSERT(node->type != NodeType::LeafNode);
-    if constexpr (traits::AllowRebuild)
-        if (is_rebuild(node)){
-            if (!TUL(node))
+    DEBUG_CHECK_UNLOCK(node);
+    if (isfull(child)){
+        if (child->type == NodeType::HashNode || (child->type == NodeType::DenseNode && (child->slot_size < traits::MAX_DENSE_NODE_SLOT_SIZE || node->type == NodeType::HashNode))){
+            if (!TUL(child))
                 return false;
-            rebuild(node);
-            DL(node);
-            return true;
+            expand(child);
+            DL(child);
         }
-    if (isfull(node)){
-        if (!TUL(node))
-            return false;
-        while (isfull(node))
-            expand(node);
-        DL(node);
+        else{
+            AEX_PRINT("check_insert_SMO start");
+            AEX_ASSERT(node->type == NodeType::DenseNode);
+            AEX_ASSERT(!isfull(node));
+            Model m;
+            slot_type child_slot_size = train(d_n(child)->key_ptr, child->size, m);
+            if (child_slot_size != 0){
+                AEX_PRINT("1");
+                if (!TUL(child)){
+                    return false;
+                }
+                expand(child);
+                DL(child);
+                AEX_PRINT("end");
+            }
+            else{
+                if (!TUL(node))
+                    return false;
+                if (!TUL(child)){
+                    DL(node); return false;
+                }
+                dense_node_ptr new_child = Allocator::allocate_dense_node(child->slot_size);
+                split(d_n(child), new_child);
+                insert(d_n(node), new_child->key_ptr[0], new_child);
+                DL(node); DL(child);
+                return false;
+            }
+        }
     }
     return true;
 }
@@ -290,12 +334,28 @@ inline void aex_tree<_Key, _Val, traits>::split(data_node_ptr old_node, data_nod
     new_node->next = old_node->next;
     old_node->next = new_node;    
     
-    ULL mid = traits::MIN_DATA_NODE_SLOT_SIZE >> 1;
+    const ULL mid = traits::MIN_DATA_NODE_SLOT_SIZE >> 1;
     std::move(old_node->key  + mid, old_node->key  + old_node->size, new_node->key );
     std::move(old_node->data + mid, old_node->data + old_node->size, new_node->data);
     
     //if constexpr (std::is_same_v<data_node, aex_hash_data_node<_Key, _Val, traits>>)
     //    std::move(old_node->fp   + mid, old_node->fp   + old_node->size, new_node->fp);
+    new_node->size = old_node->size - mid;
+    old_node->size = mid;
+}
+
+template<typename _Key, typename _Val, typename traits>
+inline void aex_tree<_Key, _Val, traits>::split(dense_node_ptr old_node, dense_node_ptr new_node){
+    AEX_ASSERT(old_node->slot_size == new_node->slot_size);
+    AEX_ASSERT(check_lock(old_node));
+    #ifdef AEX_DEBUG
+    ++opt_stats.dense_node_split_cnt;
+    #endif
+    
+    const ULL mid = old_node->size;
+    std::move(old_node->key_ptr   + mid, old_node->key_ptr   + old_node->size, new_node->key_ptr  );
+    std::move(old_node->child_ptr + mid, old_node->child_ptr + old_node->size, new_node->child_ptr);
+    
     new_node->size = old_node->size - mid;
     old_node->size = mid;
 }

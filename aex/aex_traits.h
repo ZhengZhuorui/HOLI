@@ -98,7 +98,7 @@ struct aex_default_traits{
     static constexpr bool AllowBalance = ((_AllowBalance & 1) == 1);
 
     static constexpr bool AllowExtend = true;
-    static constexpr bool AllowRebuild = true;
+    static constexpr bool AllowRebuild = false;
 
     static_assert((AllowRWBalance | AllowInsertBalance) == AllowBalance);
 
@@ -146,7 +146,7 @@ struct aex_default_traits{
     static constexpr int   MIN_DATA_NODE_SLOT_SIZE   = 16;
     static constexpr int   DATA_NODE_SLOT_SIZE       = MIN_DATA_NODE_SLOT_SIZE;
 
-    static constexpr float HASH_NODE_FULL_RATIO      = 1.0 / 16;
+    static constexpr float HASH_NODE_FULL_RATIO      = 1.0 / 8;
     static constexpr float HASH_NODE_FEW_RATIO       = 1.0 / 32;
     static constexpr int   LOG_HASH_NODE_FULL_RATIO  = 4;
     static constexpr int   LOG_HASH_NODE_FEW_RATIO   = 6;
@@ -157,7 +157,7 @@ struct aex_default_traits{
     static constexpr float HASH_TABLE_FULL_RATIO            = 0.75;
     static constexpr unsigned long long MIN_HASH_TABLE_SIZE = 16;
 
-    static constexpr float MIN_REBUILD_RATIO = 0.5;
+    static constexpr float MIN_REBUILD_RATIO = 1.0;
     static constexpr int MAX_DEPTH = 15;
 
     // ========== old version ==========
