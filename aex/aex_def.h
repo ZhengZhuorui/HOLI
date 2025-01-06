@@ -4,7 +4,7 @@ namespace aex{
 template<typename _Key, typename _Val, typename traits> class aex_tree;
 template<typename _Key, typename _Val, typename traits> class aex_allocator;
 template<typename _Key, typename _Val, typename traits> struct aex_node_base;
-template<typename _Key, typename _Val, typename traits> struct aex_inner_node;
+//template<typename _Key, typename _Val, typename traits> struct aex_inner_node;
 template<typename _Key, typename _Val, typename traits> struct aex_hash_node;
 template<typename _Key, typename _Val, typename traits> struct aex_dense_node;
 template<typename _Key, typename _Val, typename traits> struct aex_static_data_node;
@@ -41,7 +41,7 @@ template<typename _Key, typename _Val, typename traits> class aex_const_iterator
 template<typename _Key, typename _Val, typename traits> class aex_reverse_iterator;
 template<typename _Key, typename _Val, typename traits> class aex_const_reverse_iterator;
 
-template<typename _Key, typename _Val, typename traits> struct aex_inner_node_con;
+//template<typename _Key, typename _Val, typename traits> struct aex_inner_node_con;
 template<typename _Key, typename _Val, typename traits> struct aex_hash_node_con;
 template<typename _Key, typename _Val, typename traits> struct aex_dense_node_con;
 template<typename _Key, typename _Val, typename traits> struct aex_data_node_con;

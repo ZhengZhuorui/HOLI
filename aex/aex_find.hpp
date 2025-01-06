@@ -39,6 +39,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
         pos1 = node->prev_item_find(pos - 1);
         std::tie(find_key, res) = hash_table.find(node, pos1);
     }
+    
     AEX_ASSERT(find_key <= key);
     AEX_ASSERT(res != nullptr);
     return res;
@@ -46,23 +47,9 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find(const dense_node_ptr node, const key_type key) const {
-    slot_type pos = 0;
-    //if (node->size > 8) 
-        pos = aex::linear_search_upper_bound(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
-    //else
-    //    pos = std::upper_bound(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
-    //pos = aex::linear_search_upper_bound_avx512(node->key_ptr, node->size, key);
-    //switch (node->slot_size){
-    //    case 8:
-    //        pos = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1;
-    //        break;
-    //    case 16:
-    //        pos = linear_search_upper_bound_avx512x16(node->key_ptr, node->size, key) - 1;
-    //        break;
-    //    case 32:
-    //        pos = linear_search_upper_bound_avx512x32(node->key_ptr, node->size, key) - 1;
-    //        break;
-    //}
+    slot_type pos = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1;
+    //slot_type pos = std::upper_bound(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
+    //AEX_DEBUG_BLOCK({slot_type pos1 = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1; if (pos != pos1) {AEX_ERROR("pos=" << pos << ", pos1=" << pos1 << ", key=" << key); for(slot_type i = 0; i < node->size; ++i) std::cout << node->key_ptr[i] << ", "; std::cout << std::endl;}});
     node_ptr res = node->child_ptr[pos];
     SL(res);
     return res;
@@ -159,16 +146,16 @@ find_leaf_con_start:
     if (restart_count++)
         yield(restart_count);
     node = root;
-    now_version = this->version;
+    now_version = this->version.load();
     SL(node);
     while(node->type != NodeType::LeafNode){
         child = find_con(i_n(node), key);
         SU(node);
         node = child;
-    }
-    if (l_n(node)->version > now_version){
-        SU(node);
-        goto find_leaf_con_start;
+        if (l_n(node)->version > now_version){
+            SU(node);
+            goto find_leaf_con_start;
+        }
     }
     return l_n(node);
 }
@@ -216,7 +203,8 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert(dense_node_ptr node, const key_type key, slot_type &pos) const {
-    pos = aex::linear_search_upper_bound(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
+    //pos = aex::linear_search_upper_bound_avx512x8(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
+    pos = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1;
     DEBUG_CHECK_UNLOCK(node->child_ptr[pos]);
     SL(node->child_ptr[pos]);
     return node->child_ptr[pos];
@@ -288,7 +276,8 @@ find_erase_start:
 
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_erase(const dense_node_ptr node, const key_type key, slot_type &pos, slot_type &next_pos) const {
-    pos = aex::linear_search_upper_bound(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
+    //pos = aex::linear_search_upper_bound_avx512x8(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
+    pos = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1;
     node_ptr res = node->child_ptr[pos];
     next_pos = pos + 1;
     SL(res);

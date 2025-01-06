@@ -192,7 +192,7 @@ struct aex_concurrency_components{
     typedef empty_type<unsigned int>    ref_count_type;
 
     typedef aex_node_base<key_type, value_type, traits>        base_node;
-    typedef aex_inner_node<key_type, value_type, traits>       inner_node;
+    typedef aex_node_base<key_type, value_type, traits>        inner_node;
     typedef aex_hash_node<key_type, value_type, traits>        hash_node;
     typedef aex_dense_node<key_type, value_type, traits>       dense_node;
     typedef aex_static_data_node<key_type, value_type, traits> data_node;
@@ -207,7 +207,8 @@ struct aex_concurrency_components{
     typedef aex_spinlock<traits>    Lock;
     typedef aex_allocator<key_type, value_type, traits> Allocator;
     typedef aex_hash_table<key_type, traits>            HashTable;
-    typedef unsigned long long                          version_type;
+    typedef ULL                                         version_type;
+    typedef std::atomic_uint64_t                        atomic_version_type;
     //typedef empty_type<unsigned long long> version_type;
 };
 
@@ -219,10 +220,10 @@ struct aex_concurrency_components<traits, true>{
     typedef std::atomic_uint8_t ref_count_type;
 
     typedef aex_node_base<key_type, value_type, traits>            base_node;
-    typedef aex_inner_node<key_type, value_type, traits>           inner_node;
+    typedef aex_node_base<key_type, value_type, traits>            inner_node;
     typedef aex_hash_node_con<key_type, value_type, traits>        hash_node;
     typedef aex_dense_node<key_type, value_type, traits>           dense_node;
-    typedef aex_static_data_node<key_type, value_type, traits>   data_node;
+    typedef aex_static_data_node<key_type, value_type, traits>     data_node;
     //typedef aex_hash_data_node<key_type, value_type, traits>       data_node;
 
     typedef base_node*  node_ptr;
@@ -237,8 +238,8 @@ struct aex_concurrency_components<traits, true>{
     // TODO: 
     typedef aex_allocator<key_type, value_type, traits> Allocator;
     typedef aex_hash_table_con<key_type, traits>        HashTable;
-
-    typedef unsigned long long version_type;
+    typedef ULL                                         version_type;
+    typedef std::atomic_uint64_t                             atomic_version_type;
 };
 
 template<typename traits>
@@ -267,7 +268,8 @@ struct aex_default_components{
     typedef typename concurrency_components::HashTable      HashTable;
     typedef aex_hash_table_block<key_type, traits>          HashTableBlock;
     typedef typename concurrency_components::version_type   version_type;
-    typedef gap_array_linear_model_hash_table<key_type, traits> InnerNodeModel;
+    typedef typename concurrency_components::atomic_version_type   atomic_version_type;
+    typedef gap_array_linear_model_hash_table<key_type, traits>    InnerNodeModel;
     typedef linear_model<key_type, traits> DataNodeModel;
 
     typedef aex_bitmap_impl<traits> bitmap_impl;

@@ -30,6 +30,7 @@ public:
     typedef typename components::bitmap_impl    bitmap_impl;
     typedef typename components::HashTable      HashTable;
     typedef typename components::RWLock         RWLock;
+    typedef typename components::version_type   version_type;
 
     typedef typename traits::slot_type slot_type;
     
@@ -69,8 +70,9 @@ public:
         return BITMAP_MEMORY_USED(slot_size) + MAX_INNER_NODE_SIZE();
     }
 
-    inline static ULL DENSE_NODE_MEMORY_USED(ULL slot_size){
-        return KEY_MEMORY_USED(slot_size) + PTR_MEMORY_USED(slot_size) + MAX_INNER_NODE_SIZE();
+    inline static ULL DENSE_NODE_MEMORY_USED(){
+        //return KEY_MEMORY_USED(slot_size) + PTR_MEMORY_USED(slot_size) + MAX_INNER_NODE_SIZE();
+        return MAX_INNER_NODE_SIZE();
     }
 
     inline static hash_node_ptr allocate_hash_node(const slot_type slot_size){
@@ -85,17 +87,25 @@ public:
         return node;
     }
 
-    inline static dense_node_ptr allocate_dense_node(const slot_type slot_size){
-        AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
+    //inline static dense_node_ptr allocate_dense_node(const slot_type slot_size, bool is_parent=false){
+    //    AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
+    //    const dense_node_ptr node = d_n(malloc(MAX_INNER_NODE_SIZE()));
+    //    node->type = NodeType::DenseNode;
+    //    node->node_lock.init();
+    //    node->slot_size = slot_size;
+    //    node->key_ptr = nullptr;
+    //    node->child_ptr = nullptr;
+    //    node->init();
+    //    return node;
+    //}
+    inline static dense_node_ptr allocate_dense_node(bool is_parent=false){
         const dense_node_ptr node = d_n(malloc(MAX_INNER_NODE_SIZE()));
         node->type = NodeType::DenseNode;
         node->node_lock.init();
-        node->slot_size = slot_size;
-        node->key_ptr = nullptr;
-        node->child_ptr = nullptr;
         node->init();
         return node;
     }
+
 };
 
 } // namespace name

@@ -190,9 +190,9 @@ inline _Tp* linear_search_lower_bound(_Tp* first, _Tp* last, const _Tp& key){
 }
 
 template<typename _Tp>
-inline _Tp* linear_search_upper_bound(_Tp* first, _Tp* last, const _Tp& key){
+inline _Tp* linear_search_upper_bound(const _Tp* first, const _Tp* last, const _Tp& key){
     for (; first < last && key >= *first; ++first);
-    return first;
+    return const_cast<_Tp*>(first);
 }
 
 // ========== linear_search_lower_bound_avx512x16 ========== 
@@ -330,7 +330,7 @@ inline int linear_search_upper_bound_avx512x32(const double* first, const int si
 
 template<typename _Tp>
 inline int linear_search_upper_bound_avx512x8(const _Tp* first, const int size, const _Tp x){
-    return std::upper_bound(first, first + size, x) - first;
+    return linear_search_upper_bound(first, first + size, x) - first;
 }
 
 template<>

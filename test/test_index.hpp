@@ -141,6 +141,7 @@ bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, 
         return false;
     }
     AEX_HINT("bulk load finish...");
+    index.print_stats();
 
     for (int i = 0; i < batch; ++i){
         //AEX_PRINT("key=" << query[i]);
@@ -680,7 +681,7 @@ bool test_index_range_query_perf(std::pair<key_type, value_type>* data, long lon
     double OPS = 1.0 * 1e6 * ITER / delta;
     std::cout << std::scientific;
     std::cout << std::setprecision(3);  
-    AEX_SUCCESS("erase use time " << delta << "ms, OPS=" << OPS);
+    AEX_SUCCESS("sum=" << sum << "range_query use time " << delta << "ms, OPS=" << OPS);
     return true;
 }
 

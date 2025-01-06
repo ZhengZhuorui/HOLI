@@ -59,6 +59,7 @@ public:
     typedef typename components::bitmap_impl  bitmap_impl;
     typedef typename components::Lock         Lock;
     typedef typename components::RWLock       RWLock;
+    typedef typename components::atomic_version_type atomic_version_type;
 
     // iterator:
     typedef aex_iterator<_Key, _Val, traits>       iterator;
@@ -111,7 +112,7 @@ public:
 private:
 #endif
 
-    version_type    version;
+    atomic_version_type    version;
     inner_node_ptr  root;
     data_node_ptr   head_leaf;
     aex_stats       m_stats;
@@ -544,10 +545,9 @@ private:
      */
     void construct_tmp_node(dense_node_ptr node, const key_type old_key, const node_ptr old_node, const key_type new_key, const node_ptr new_node);
     void __construct_insert(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type key, const node_ptr child);
-    void insert_collision(hash_node_ptr node, const slot_type pos, const key_type key, const data_node_ptr child);
-    void insert_no_collision(hash_node_ptr node, const slot_type pos, const key_type key, const data_node_ptr child);
+    void insert_collision(   hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
+    void insert_no_collision(hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
     void insert(dense_node_ptr node, const key_type key, const node_ptr child);
-    bool check_insert_SMO(inner_node_ptr node, inner_node_ptr child);
     bool check_upgrade(hash_node_ptr node, const key_type split_key, const slot_type top_pos) const ;
     std::pair<iterator, bool> insert_data_node(data_node_ptr node, data_node_ptr &new_node, const key_type key, const value_type &value);
     void insert_unlock(inner_node_ptr top_node, inner_node_ptr node) const;
@@ -574,30 +574,31 @@ private:
     // split a ordered key array with data array to node array.
     void split_to_static_data_node(const key_type* const key, const value_type* const data, const ULL n, std::vector<key_type> &new_key, std::vector<data_node_ptr> &new_child);
     void cast_to_hash_node(inner_node_ptr node,  const slot_type slot_size);
-    void cast_to_dense_node(inner_node_ptr node, const slot_type slot_size);
+    void cast_to_dense_node(inner_node_ptr node);
 
     void update(hash_node_ptr parent,  const slot_type pos, const slot_type next_pos, const node_ptr old_node, const key_type new_key, const node_ptr new_node);
     /**
      * @brief expand a node slot size
      */
-    void expand(inner_node_ptr node);
     void expand(hash_node_ptr  node);
-    void expand(dense_node_ptr node);
+    bool expand(dense_node_ptr node);
     /**
      * @brief narrow a node slot size
      */
-    void narrow(inner_node_ptr node);
+    //void narrow(inner_node_ptr node);
     void narrow(hash_node_ptr  node);
-    void narrow(dense_node_ptr node);
+    //void narrow(dense_node_ptr node);
     /**
      * @brief place split key of node into corresponding slot of hash node.
      */
-    inner_node_ptr __construct_SMO(const key_type* keys, const node_ptr* childs, const ULL n);
+    //inner_node_ptr __construct_SMO(const key_type* keys, const node_ptr* childs, const ULL n);
     slot_type split(hash_node_ptr node, node_ptr &split_node, const slot_type start_pos, const slot_type end_pos);
     void construct_SMO(hash_node_ptr node, const key_type* keys, node_ptr* childs, const ULL n);
     void get_childs(hash_node_ptr node,  std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
     void get_childs(dense_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
     void get_childs(inner_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
+    void get_childs_recursive(dense_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
+    void clear_childs_recursive(dense_node_ptr node);
     void extend_head_nodes(std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
     void extend_tail_nodes(std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
     bool check_model(const Model &m, const key_type* const keys, const ULL n, const slot_type slot_size) const ;
@@ -622,7 +623,7 @@ private:
     }
 
     inline bool isfull(const dense_node_ptr node) const {
-        return node->size >= node->slot_size;
+        return node->size >= traits::DENSE_NODE_SLOT_SIZE;
     }
 
     /**
@@ -638,7 +639,7 @@ private:
         return 1.0 * node->size < node->slot_size * traits::HASH_NODE_FEW_RATIO / 2 || node->size < traits::MAX_DENSE_NODE_SLOT_SIZE / 2;
     }
     inline bool isfew(const dense_node_ptr node) const {
-        if (node->slot_size == traits::MIN_DATA_NODE_SLOT_SIZE)
+        if (node->slot_size == traits::DATA_NODE_SLOT_SIZE)
             return false;
         return node->size < node->slot_size * traits::DENSE_NODE_FEW_RATIO;
     }
@@ -646,11 +647,11 @@ private:
     // ========== 5. Utility ==========
 
     inline bool isfull(const data_node_ptr node) const {
-        return node->size >= traits::MIN_DATA_NODE_SLOT_SIZE;
+        return node->size >= traits::DATA_NODE_SLOT_SIZE;
     }
 
     inline bool isfew(const data_node_ptr node) const {
-        return node->size < traits::MIN_DATA_NODE_SLOT_SIZE * traits::DATA_NODE_FEW_RATIO;
+        return node->size < traits::DATA_NODE_SLOT_SIZE * traits::DATA_NODE_FEW_RATIO;
     }
 
     inline void clear(hash_node_ptr node){
@@ -662,13 +663,6 @@ private:
         h_n(node)->clear();
     }
 
-    inline void clear(inner_node_ptr node){
-        if (node->type == NodeType::DenseNode)
-            d_n(node)->clear();
-        else
-            clear(h_n(node));
-    }
-
     inline void free_node(node_ptr node){
         AEX_ASSERT(check_lock(node));
         switch (node->type){
@@ -676,14 +670,13 @@ private:
                 #ifdef AEX_DEBUG
                 opt_stats.free_data_node_cnt++;
                 #endif
-                delete node;
+                delete l_n(node);
                 break;
             }
             case NodeType::DenseNode:{
                 #ifdef AEX_DEBUG
                 opt_stats.free_dense_node_cnt++;
                 #endif
-                d_n(node)->clear();
                 free(node);
                 break;
             }

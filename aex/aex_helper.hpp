@@ -19,10 +19,8 @@ void aex_tree<_Key, _Val, traits>::_get_info_stats(const node_ptr node, const un
             break;
         }
         case NodeType::DenseNode:{
-            stats.inner_node_memory_used += Allocator::DENSE_NODE_MEMORY_USED(d_n(node)->slot_size);
+            stats.inner_node_memory_used += Allocator::DENSE_NODE_MEMORY_USED();
             ++stats.dense_node_cnt;
-            if (d_n(node)->size > traits::MIN_DENSE_NODE_SLOT_SIZE)
-                ++stats.try_learn_dense_node_cnt;
             stats.dense_node_childs += d_n(node)->size;
             for (slot_type i = 0; i < d_n(node)->size; ++i){
                 _get_info_stats(d_n(node)->child_ptr[i], depth + 1, stats);

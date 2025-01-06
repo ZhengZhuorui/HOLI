@@ -9,7 +9,6 @@ template<typename _Key,
 struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     typedef _Key                                   key_type;
     typedef _Val                                   value_type;
-    typedef aex_inner_node<_Key, _Val, traits>     inner_node;
     typedef aex_hash_node<_Key, _Val, traits>      parent;
     typedef aex_hash_node_con<_Key, _Val, traits>  self;
     typedef aex_tree<key_type, value_type, traits> base_tree;
@@ -20,6 +19,7 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     typedef typename parent::bitmap_base           bitmap_base;
     typedef typename parent::bitmap_impl           bitmap_impl;
     typedef typename parent::node_ptr              node_ptr;
+    typedef typename parent::inner_node            inner_node;
     typedef typename components::RWLock            RWLock;
     typedef typename components::Lock              Lock;
 

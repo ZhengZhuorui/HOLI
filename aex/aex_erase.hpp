@@ -21,18 +21,17 @@ _erase_start:
         SU(node);
         goto _erase_start;
     }
-    now_version = this->version;
+    now_version = this->version.load();
     
     while (true){
         child = find_erase(i_n(node), key, pos, next_pos);
-        AEX_PRINT("child=" << child << ", pos=" << pos << ", next_pos=" << next_pos << ", slot_size=" << i_n(node)->slot_size);
+        AEX_PRINT("child=" << child << ", pos=" << pos << ", next_pos=" << next_pos);
+        if (now_version < l_n(child)->version){
+            SU(i_n(node), pos - 1, next_pos); SU(child);
+            goto _erase_start;
+        }
         if (child->type == NodeType::LeafNode){
-            AEX_PRINT("1");
-            if (now_version < l_n(child)->version){
-                SU(i_n(node), pos - 1, next_pos); SU(child);
-                goto _erase_start;
-            }
-            
+            AEX_PRINT("1");        
             if (!isfew(l_n(child)) || pos == 0){
                 AEX_PRINT("2");
                 if (!TUL(child)){
@@ -181,11 +180,13 @@ inline void aex_tree<_Key, _Val, traits>::erase(dense_node_ptr node, const slot_
 template<typename _Key, typename _Val, typename traits>
 inline bool aex_tree<_Key, _Val, traits>::check_erase_SMO(node_ptr node){
     AEX_ASSERT(node->type != NodeType::LeafNode);
-    if (isfew(i_n(node))){
-        if (!TUL(node))
-            return false;
-        narrow(i_n(node));
-        DL(node);
+    if (node->type == NodeType::HashNode){
+        if (isfew(h_n(node))){
+            if (!TUL(node))
+                return false;
+            narrow(h_n(node));
+            DL(node);
+        }
     }
     return true;
 }
@@ -196,7 +197,7 @@ inline void aex_tree<_Key, _Val, traits>::merge(data_node_ptr left_node, data_no
     AEX_ASSERT(check_lock(right_node));
     AEX_ASSERT(left_node != right_node);
     AEX_ASSERT(left_node->next == right_node);
-    AEX_ASSERT(left_node->size + right_node->size <= traits::MIN_DATA_NODE_SLOT_SIZE);
+    AEX_ASSERT(left_node->size + right_node->size <= traits::DATA_NODE_SLOT_SIZE);
     #ifdef AEX_DEBUG
     ++this->opt_stats.data_node_merge_cnt;
     #endif

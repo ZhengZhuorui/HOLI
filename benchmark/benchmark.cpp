@@ -1,5 +1,7 @@
 #include <bits/stdc++.h>
-
+#ifdef DEBUG
+#define AEX_DEBUG
+#endif
 //#define AEX_DEBUG
 
 bool file_is_head;

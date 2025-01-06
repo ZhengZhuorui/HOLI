@@ -469,12 +469,20 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 ./unit_test --unit=index --con --key_type=uint64 --function=insert --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./unit_test --unit=index --con --key_type=uint64 --function=insert --num_keys=200000000 --batch=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=20000000 --batch=10000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=100000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --con --function=insert --num_keys=200000000 --batch=100000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
 
 ./unit_test --unit=index --key_type=uint64 --con --function=insert --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+
+./unit_test --unit=index --key_type=uint64 --con --function=insert --num_keys=1000000 --batch=1000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+
+./unit_test --unit=index --key_type=uint64 --con --function=lookup --num_keys=1000000 --batch=10000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+
+./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+
 
 ./unit_test --unit=index --key_type=uint64 --function=insert --num_keys=200000000 --batch=200000000 --input_file=/home/zzr/data/learned_index/books_200M_uint64
 
@@ -541,7 +549,7 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 # test index range query accuracy
 ./unit_test --unit=index --key_type=float64 --function=range_query --num_keys=2000000 --batch=1 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
-./unit_test --unit=index --key_type=float64 --function=range_query --num_keys=20000000 --batch=1000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+./unit_test --unit=index --key_type=float64 --function=range_query --num_keys=20000000 --batch=10000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=float64 --function=range_query --num_keys=200000000 --batch=1000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
 # test index all interface

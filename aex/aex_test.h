@@ -58,6 +58,10 @@ inline bool aex_tree<_Key, _Val, traits>::check_node(data_node_ptr node) const {
 template<typename _Key, typename _Val, typename traits>
 inline bool aex_tree<_Key, _Val, traits>::check_node(dense_node_ptr node) const {
     bool flag = true;
+    if (node->size > traits::DENSE_NODE_SLOT_SIZE){
+        AEX_ERROR("ERROR! dense node size larger than threshold, size=" << node->size);
+        flag = false;
+    }
     if  (node != root && (node->size == 0 || node->size == 1)){
         AEX_ERROR("ERROR! size=" << node->size);
         flag = false;

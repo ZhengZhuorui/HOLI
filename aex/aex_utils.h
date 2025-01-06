@@ -453,7 +453,7 @@ struct operation_stats{
         AEX_SUCCESS("[Operation Stats]: ");
         AEX_IMPORTANT("cast_to_hash_node_cnt="    << cast_to_hash_node_cnt    << ", cast_to_dense_node_cnt="    << cast_to_dense_node_cnt);
         AEX_IMPORTANT("hash_node_expand_cnt="     << hash_node_expand_cnt     << ", hash_node_expand_size="     << hash_node_expand_size);
-        AEX_IMPORTANT("hash_node_narrow_cnt="     << hash_node_expand_cnt     << ", hash_node_narrow_size="     << hash_node_narrow_size);
+        AEX_IMPORTANT("hash_node_narrow_cnt="     << hash_node_narrow_cnt     << ", hash_node_narrow_size="     << hash_node_narrow_size);
         AEX_IMPORTANT("dense_node_expand_cnt="    << dense_node_expand_cnt    << ", dense_node_expand_size="    << dense_node_expand_size);
         AEX_IMPORTANT("dense_node_narrow_cnt="    << dense_node_narrow_cnt    << ", dense_node_narrow_size="    << dense_node_narrow_size);
         AEX_IMPORTANT("inner_node_rebuild_cnt="   << inner_node_rebuild_cnt   << ", inner_node_rebuild_size="   << inner_node_rebuild_size);

@@ -102,7 +102,7 @@ struct aex_default_traits{
 
     static_assert((AllowRWBalance | AllowInsertBalance) == AllowBalance);
 
-    // Allow data node slot size dynamic? (static data node slot size is MIN_DATA_NODE_SLOT_SIZE)
+    // Allow data node slot size dynamic? (static data node slot size is DATA_NODE_SLOT_SIZE)
     // If data node slot size is dynamic(lazy update), it must AllowRWBalance.
     //typedef std::false_type AllowDynamicDataNode;
     static constexpr bool AllowDynamicDataNode = false;
@@ -120,6 +120,7 @@ struct aex_default_traits{
 
     static constexpr slot_type MAX_DENSE_NODE_SLOT_SIZE = 32;
     static constexpr slot_type MIN_DENSE_NODE_SLOT_SIZE = 8;
+    static constexpr slot_type DENSE_NODE_SLOT_SIZE = MIN_DENSE_NODE_SLOT_SIZE;
 
     static constexpr slot_type SLOT_PER_LOCK = 64;
     static constexpr slot_type LOG_SLOT_PER_LOCK = TEMPLATE_LOG<SLOT_PER_LOCK>();

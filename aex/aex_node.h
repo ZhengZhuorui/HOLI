@@ -14,6 +14,7 @@ public:
     typedef typename traits::slot_type slot_type;
     typedef typename base_tree::components      components;
     typedef typename components::size_type      size_type;
+    typedef typename components::version_type   version_type;
     typedef typename components::ref_count_type ref_count_type;
     typedef typename components::inner_node     inner_node;
     typedef typename components::hash_node      hash_node;
@@ -26,9 +27,9 @@ public:
     typedef typename components::RWLock RWLock;
     typedef typename components::Lock   Lock;
 
-    explicit aex_node_base(NodeType _type) :  size(0), type(_type), node_lock(){}
-    aex_node_base(aex_node_base &other_node): size(other_node.size), type(other_node.type), node_lock(){}
-    aex_node_base(aex_node_base &&other_node):size(other_node.size), type(other_node.type), node_lock(){}
+    explicit aex_node_base(version_type _version, NodeType _type) : size(0), type(_type), version(_version), node_lock(){}
+    aex_node_base(aex_node_base &other_node): size(other_node.size), type(other_node.type), version(0), node_lock(){}
+    aex_node_base(aex_node_base &&other_node):size(other_node.size), type(other_node.type), version(0), node_lock(){}
 
     aex_node_base& operator = (aex_node_base &other_node) {
         this->size = other_node.size;
@@ -45,9 +46,11 @@ public:
     // size: the number of child nodes(inner node); the number of data(data node)
     size_type              size;
     NodeType               type;
+    version_type           version;
     mutable RWLock         node_lock;
 };
 
+/*
 template<typename _Key,
         typename _Val,
         typename traits>
@@ -57,24 +60,20 @@ public:
     typedef _Key key_type;
     typedef _Val value_type;
     typedef typename traits::slot_type slot_type;
-
-    aex_inner_node(slot_type _slot_size, NodeType _type) : slot_size(_slot_size){}
+    aex_inner_node() = delete;
     ~aex_inner_node() = default;
     aex_inner_node(self &other) = delete;
     aex_inner_node& operator = (aex_inner_node &other) = delete;
-
-    slot_type slot_size;
-
 };
+*/
 
 template<typename _Key,
         typename _Val,
         typename traits>
-struct aex_hash_node : public aex_inner_node<_Key, _Val, traits>{
+struct aex_hash_node : public aex_node_base<_Key, _Val, traits>{
 public:
     typedef _Key                                   key_type;
     typedef _Val                                   value_type;
-    typedef aex_inner_node<_Key, _Val, traits>     inner_node;
     typedef aex_hash_node<_Key, _Val, traits>      self;
     typedef aex_tree<key_type, value_type, traits> base_tree;
     typedef typename traits::slot_type             slot_type;
@@ -82,6 +81,7 @@ public:
     typedef typename components::InnerNodeModel    Model;
     typedef typename traits::bitmap                bitmap;
     typedef typename traits::bitmap_base           bitmap_base;
+    typedef typename components::inner_node        inner_node;
     typedef typename components::bitmap_impl       bitmap_impl;
     typedef typename components::node_ptr          node_ptr;
     typedef typename components::size_type         size_type;
@@ -231,6 +231,7 @@ public:
     inline slot_type array_lock_shared_until_next_item(const slot_type prev_pos, const slot_type pos) const {return next_item(pos);}
     inline slot_type try_array_lock_shared_until_prev_item(const slot_type pos, bool &restart) const {return prev_item(pos);}
 
+    slot_type    slot_size;
     bitmap       bitmap_ptr;
     Model        model;
     mutable Lock meta_lock;
@@ -239,45 +240,32 @@ public:
 template<typename _Key,
         typename _Val,
         typename traits>
-struct aex_dense_node : public aex_inner_node<_Key, _Val, traits>{
+struct aex_dense_node : public aex_node_base<_Key, _Val, traits>{
 public:
     typedef _Key                                   key_type;
     typedef _Val                                   value_type;
-    typedef aex_inner_node<_Key, _Val, traits>     inner_node;
     typedef aex_dense_node<_Key, _Val, traits>     self;
     typedef typename traits::slot_type             slot_type;
     typedef aex_tree<key_type, value_type, traits> base_tree;
     typedef typename base_tree::components         components;
     typedef typename components::node_ptr          node_ptr;
+    typedef typename components::inner_node_ptr    inner_node_ptr;
 
-    //aex_dense_node(slot_type slot_size):inner_node(slot_size, NodeType::DenseNode), try_learn(false){init();}
-    //~aex_dense_node(){clear();}
     aex_dense_node() = delete;
     ~aex_dense_node() = delete;
     aex_dense_node(aex_dense_node &other) = delete;
     aex_dense_node& operator = (aex_dense_node &other) = delete;
 
-    void clear(){
-        if (key_ptr != nullptr){
-            delete[] key_ptr;
-            key_ptr = nullptr;
-        }
-        if (child_ptr != nullptr){
-            delete[] child_ptr;
-            child_ptr = nullptr;
-        }
-    }
 
     void init(){
-        AEX_ASSERT(this->key_ptr == nullptr);
-        AEX_ASSERT(this->child_ptr == nullptr);
         this->size = 0;
-        key_ptr   = new key_type[this->slot_size]();
-        child_ptr = new node_ptr[this->slot_size]();
+        this->is_parent = false;
+        this->version = 0;
     }
 
-    key_type *key_ptr;
-    node_ptr *child_ptr;
+    key_type key_ptr[traits::DENSE_NODE_SLOT_SIZE];
+    node_ptr child_ptr[traits::DENSE_NODE_SLOT_SIZE];
+    bool is_parent;
 };
 
 
@@ -299,34 +287,34 @@ public:
     typedef data_node* data_node_ptr;
     //typedef typename traits::slot_type slot_type;
 
-    aex_static_data_node(version_type _version) : base_node(NodeType::LeafNode), next(nullptr), version(_version){}
+    aex_static_data_node(version_type _version) : base_node(_version, NodeType::LeafNode), next(nullptr){}
 
     ~aex_static_data_node() {}
 
     aex_static_data_node(aex_static_data_node &other_node) :base_node(other_node){
-        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
-        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
+        std::copy(other_node.key, other_node.key + traits::DATA_NODE_SLOT_SIZE, this->key);
+        std::copy(other_node.data, other_node.data + traits::DATA_NODE_SLOT_SIZE, this->data);
         this->next = other_node.next;
     }
 
     aex_static_data_node(aex_static_data_node &&other_node) :base_node(other_node){
-        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
-        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
+        std::copy(other_node.key, other_node.key + traits::DATA_NODE_SLOT_SIZE, this->key);
+        std::copy(other_node.data, other_node.data + traits::DATA_NODE_SLOT_SIZE, this->data);
         this->next = other_node.next;
     }
 
     aex_static_data_node& operator = (aex_static_data_node &other_node) {
         *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
-        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
-        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
+        std::copy(other_node.key, other_node.key + traits::DATA_NODE_SLOT_SIZE, this->key);
+        std::copy(other_node.data, other_node.data + traits::DATA_NODE_SLOT_SIZE, this->data);
         this->next = other_node.next;
         return *this;
     }
 
     aex_static_data_node& operator = (aex_static_data_node &&other_node) {
         *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
-        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
-        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
+        std::copy(other_node.key, other_node.key + traits::DATA_NODE_SLOT_SIZE, this->key);
+        std::copy(other_node.data, other_node.data + traits::DATA_NODE_SLOT_SIZE, this->data);
         this->next = other_node.next;
         return *this;
     }
@@ -338,7 +326,7 @@ public:
     }
 
     inline void construct(const std::pair<key_type, value_type> *_data, int nums){
-        AEX_ASSERT(nums >= traits::MIN_DATA_NODE_SLOT_SIZE / 2);
+        AEX_ASSERT(nums >= traits::DATA_NODE_SLOT_SIZE / 2);
         std::vector<key_type> _key(nums);
         std::vector<value_type> _value(nums);
         for (int i = 0; i < nums; ++i){
@@ -357,7 +345,7 @@ public:
 
     // insert a item in position
     inline void insert(const key_type x, const value_type &data, const int pos){
-        AEX_ASSERT(this->size < traits::MIN_DATA_NODE_SLOT_SIZE);
+        AEX_ASSERT(this->size < traits::DATA_NODE_SLOT_SIZE);
         std::move_backward(this->key + pos, this->key + this->size, this->key + this->size + 1);
         std::move_backward(this->data + pos, this->data + this->size, this->data + this->size + 1);
         this->key[pos] = x;
@@ -407,155 +395,6 @@ public:
     key_type      key[traits::DATA_NODE_SLOT_SIZE];
     value_type    data[traits::DATA_NODE_SLOT_SIZE];
     data_node_ptr next;
-    version_type  version;
 };
-
-/*
-template<typename _Key,
-        typename _Val,
-        typename traits>
-struct aex_hash_data_node : public aex_node_base<_Key, _Val, traits>{
-public:
-
-    typedef _Key key_type;
-    typedef _Val value_type;
-    typedef aex_tree<key_type, value_type, traits> base_tree;
-    typedef aex_hash_data_node<_Key, _Val, traits> data_node;
-    typedef typename base_tree::components components;
-    typedef typename components::base_node     base_node;
-    typedef typename components::DataNodeModel Model;
-    typedef typename components::version_type  version_type;
-    typedef base_node* node_ptr;
-    typedef data_node* data_node_ptr;
-    //typedef typename traits::slot_type slot_type;
-
-    aex_hash_data_node(version_type _version) : base_node(NodeType::LeafNode), next(nullptr), version(_version){}
-
-    ~aex_hash_data_node() {}
-
-    aex_hash_data_node(aex_hash_data_node &other_node) :base_node(other_node){
-        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
-        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
-        std::copy(other_node.fp, other_node.fp + traits::MIN_DATA_NODE_SLOT_SIZE, this->fp);
-        this->next = other_node.next;
-    }
-
-    aex_hash_data_node(aex_hash_data_node &&other_node) :base_node(other_node){
-        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
-        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
-        std::copy(other_node.fp, other_node.fp + traits::MIN_DATA_NODE_SLOT_SIZE, this->fp);
-        this->next = other_node.next;
-    }
-
-    aex_hash_data_node& operator = (aex_hash_data_node &other_node) {
-        *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
-        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
-        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
-        std::copy(other_node.fp, other_node.fp + traits::MIN_DATA_NODE_SLOT_SIZE, this->fp);
-        this->next = other_node.next;
-        return *this;
-    }
-
-    aex_hash_data_node& operator = (aex_hash_data_node &&other_node) {
-        *static_cast<node_ptr>(this) = static_cast<base_node>(other_node);
-        std::copy(other_node.key, other_node.key + traits::MIN_DATA_NODE_SLOT_SIZE, this->key);
-        std::copy(other_node.data, other_node.data + traits::MIN_DATA_NODE_SLOT_SIZE, this->data);
-        std::copy(other_node.fp, other_node.fp + traits::MIN_DATA_NODE_SLOT_SIZE, this->fp);
-        this->next = other_node.next;
-        return *this;
-    }
-
-    inline static unsigned char get_fingerprint(const key_type key){
-        
-        return (key * traits::K2) % traits::K1;
-    }
-
-    inline void construct(const key_type *_key, const value_type *_data, int nums){
-        std::copy(_key, _key + nums, this->key);
-        std::copy(_data, _data + nums, this->data);
-        for (int i = 0; i < nums; ++i)
-            this->fp[i] = get_fingerprint(_key[i]);
-        this->size = nums;
-    }
-
-    inline void construct(const std::pair<key_type, value_type> *_data, int nums){
-        AEX_ASSERT(nums >= traits::MIN_DATA_NODE_SLOT_SIZE / 2);
-        std::vector<key_type> _key(nums);
-        std::vector<value_type> _value(nums);
-        for (int i = 0; i < nums; ++i){
-            _key[i] = _data[i].first;
-            _value[i] = _data[i].second;
-            fp[i] = get_fingerprint(_key[i]);
-        }
-        this->construct(_key.data(), _value.data(), nums);
-    }
-
-    // insert a item
-    inline int insert(const key_type x, const value_type &data){
-        int pos = this->find_lower_pos(x);
-        insert(x, data, pos);
-        return pos;
-    }
-
-    // insert a item in position
-    inline void insert(const key_type x, const value_type &data, const int pos){
-        AEX_ASSERT(this->size < traits::MIN_DATA_NODE_SLOT_SIZE);
-        std::move_backward(this->key + pos, this->key + this->size, this->key + this->size + 1);
-        std::move_backward(this->data + pos, this->data + this->size, this->data + this->size + 1);
-        std::move_backward(this->fp + pos, this->fp + this->size, this->fp + this->size + 1);
-        this->key[pos] = x;
-        this->data[pos] = data;
-        this->fp[pos] = get_fingerprint(x);
-        this->size++;
-    }
-
-    inline bool erase(const key_type x){
-        int pos = find(x);
-        if (pos >= this->size || key[pos] != x)
-            return false;
-        std::move(this->key + pos + 1, this->key + this->size, this->key + pos);
-        std::move(this->data + pos + 1, this->data + this->size, this->data + pos);
-        std::move(this->fp + pos + 1, this->fp + this->size, this->fp + pos);
-        this->size--;
-        return true;
-    }
-
-    inline int find(const key_type x) const {
-        int res = 0;
-        const unsigned char qfp = get_fingerprint(x);
-        for (int cmp_res = (cmp_eq_epi8(this->fp, qfp) & ((1 << this->size) - 1)); cmp_res; cmp_res -= cmp_res & (-cmp_res)){
-            int i = __builtin_ctz(cmp_res);
-            if (this->key[i] == x)
-                return i;
-        }
-        return res;
-    }
-
-    // if no item greater than or equal x, return slot_size
-    inline int find_lower_pos(const key_type x) const {
-        if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
-            return traits::SearchClass::lower_bound(this->key, this->key + this->size, x, this->key) - this->key;
-        //return aex::linear_search_lower_bound(this->key, this->key + this->size, x) - this->key;
-        return std::lower_bound(this->key, this->key + this->size, x) - this->key;
-        //return std::lower_bound(this->key, this->key + this->size, x) - this->key;
-    }
-
-    inline int find_upper_pos(const key_type x) const {
-        if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
-            return traits::SearchClass::upper_bound(this->key, this->key + this->size, x, this->key) - this->key;
-        return std::upper_bound(this->key, this->key + this->size, x) - this->key;
-    }
-
-    inline bool exists(const key_type x) const {
-        return find(x) < this->size;
-    }
-
-    key_type      key[traits::DATA_NODE_SLOT_SIZE];
-    value_type    data[traits::DATA_NODE_SLOT_SIZE];
-    unsigned char fp[traits::DATA_NODE_SLOT_SIZE];
-    data_node_ptr next;
-    version_type  version;
-};
-*/
 
 }
