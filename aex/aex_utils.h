@@ -139,7 +139,7 @@ static std::mutex log_mutex;
 #endif
 
 inline void yield(int count){
-    if (count>3)
+    if (count>10)
         sched_yield();
     else
         _mm_pause();
