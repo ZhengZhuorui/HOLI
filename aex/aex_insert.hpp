@@ -117,10 +117,7 @@ insert_start:
                         insert_no_collision(h_n(node), split_pos, split_key, new_node);
                     else
                         insert_collision(h_n(node), pos, split_key, new_node);                    
-                    if constexpr (traits::AllowConcurrency){
-                        ++this->version;
-                        old_node->version = new_node->version = this->version.load();
-                    }
+                    add_version(child, new_node);
                     XU(child); SU(node);
                 }
                 else{
@@ -134,10 +131,7 @@ insert_start:
                     }
                     ret = insert_data_node(l_n(child), new_node, key, value);
                     insert(d_n(node), split_key, new_node);
-                    if constexpr (traits::AllowConcurrency){
-                        ++this->version;
-                        old_node->version = new_node->version = this->version.load();
-                    }
+                    add_version(child, new_node);
                     XU(child); XU(node);
                 }
             }
@@ -203,7 +197,7 @@ insert_start:
                             insert_no_collision(h_n(node), split_pos, split_key, new_node);
                         else
                             insert_collision(h_n(node), pos, split_key, new_node);
-                        
+                        add_version(child, new_node);
                         XU(child); SU(node);
                         goto insert_start;
                     }
@@ -220,6 +214,7 @@ insert_start:
                         new_node = Allocator::allocate_dense_node();
                         split(d_n(child), new_node);
                         insert(d_n(node), split_key, new_node);
+                        add_version(child, new_node);
                         XU(child); XU(node);
                         goto insert_start;
                     }
@@ -384,8 +379,6 @@ inline void aex_tree<_Key, _Val, traits>::split(data_node_ptr old_node, data_nod
     std::move(old_node->key  + mid, old_node->key  + old_node->size, new_node->key );
     std::move(old_node->data + mid, old_node->data + old_node->size, new_node->data);
     
-    //if constexpr (std::is_same_v<data_node, aex_hash_data_node<_Key, _Val, traits>>)
-    //    std::move(old_node->fp   + mid, old_node->fp   + old_node->size, new_node->fp);
     new_node->size = old_node->size - mid;
     old_node->size = mid;
 }

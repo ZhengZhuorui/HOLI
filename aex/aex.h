@@ -553,6 +553,12 @@ private:
     void insert_unlock(inner_node_ptr top_node, inner_node_ptr node) const;
     void split(data_node_ptr old_node, data_node_ptr new_node);
     void split(dense_node_ptr old_node, dense_node_ptr new_node);
+    void add_version(node_ptr old_node, node_ptr new_node){
+        if constexpr (traits::AllowConcurrency){
+            ++this->version;
+            old_node->version = new_node->version = this->version.load();
+        }
+    }
 
     // ========== 3. erase ==========
     // below function implemention at 'aex_erase.hpp'
