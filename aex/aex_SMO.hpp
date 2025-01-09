@@ -99,7 +99,6 @@ inline void aex_tree<_Key, _Val, traits>::expand(dense_node_ptr node){
 
 template<typename _Key, typename _Val, typename traits>
 inline bool aex_tree<_Key, _Val, traits>::expand(dense_node_ptr node){
-    //AEX_WARNING("[dense node expand]"); 
     AEX_ASSERT(check_lock(node));
     AEX_ASSERT(node->type == NodeType::DenseNode);
     AEX_ASSERT(node->size == traits::DENSE_NODE_SLOT_SIZE);
@@ -112,6 +111,7 @@ inline bool aex_tree<_Key, _Val, traits>::expand(dense_node_ptr node){
     std::vector<key_type> key_buf;
     std::vector<node_ptr> child_buf;
     get_childs_recursive(node, key_buf, child_buf);
+    //AEX_WARNING("[dense node expand], size=" << key_buf.size()); 
     Model m;
     slot_type slot_size = train(key_buf.data(), key_buf.size(), m);
     if (slot_size == 0)
@@ -130,7 +130,7 @@ inline bool aex_tree<_Key, _Val, traits>::expand(dense_node_ptr node){
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::expand(hash_node_ptr node){
     //AEX_WARNING("[hash node expand], root=" << root << ", node=" << node << ", slot_size=" << node->slot_size); 
-    AEX_DEBUG_BLOCK({if (node->slot_size > 512) AEX_WARNING("[hash node expand], root=" << root << ", node=" << node << ", slot_size=" << node->slot_size); });
+    //AEX_DEBUG_BLOCK({if (node->slot_size > 512) AEX_WARNING("[hash node expand], root=" << root << ", node=" << node << ", slot_size=" << node->slot_size); });
     AEX_ASSERT(node->size > 2);
     AEX_ASSERT(check_lock(node));
     std::vector<key_type> key_buf;
@@ -245,6 +245,7 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
                 //XU(split_node);
             }
             else{
+                AEX_ASSERT(node->is_occupied(prev_pos) == false);
                 if (i - start > 1){
                     const inner_node_ptr new_node = construct(key_buf.data() + start, child_buf.data() + start, i - start);
                     //const inner_node_ptr new_node = __construct_SMO(key_buf.data() + start, child_buf.data() + start, i - start);
@@ -261,6 +262,7 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
         ret = end_pos;
     else{
         AEX_ASSERT(prev_pos < end_pos);
+        AEX_ASSERT(node->is_occupied(prev_pos) == false);
         if (size - start > 1){
             const inner_node_ptr new_node = construct(key_buf.data() + start, child_buf.data() + start, size - start);
             //const inner_node_ptr new_node = __construct_SMO(key_buf.data() + start, child_buf.data() + start, size - start);
@@ -291,6 +293,7 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO(hash_node_ptr node, cons
             if (pos - prev_pos > 1 && childs[i - 1]->type != NodeType::LeafNode && childs[i - 1]->size > 1)
                 next_pos = split(node, childs[i - 1], prev_pos, pos);           
             AEX_ASSERT(prev_pos < next_pos);
+            AEX_ASSERT(node->is_occupied(prev_pos) == false);
             if (i - start > 1){
                 const inner_node_ptr new_node = construct(keys + start, childs + start, i - start);
                 //const inner_node_ptr new_node = __construct_SMO(keys + start, childs + start, i - start);
@@ -302,7 +305,9 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO(hash_node_ptr node, cons
             start = i;
         }
     }
+    AEX_DEBUG_BLOCK({if (pos >= node->slot_size) AEX_PRINT(node->predict(keys[n - 1]) << ", pos=" << pos << ", slot_size=" << node->slot_size);});
     AEX_ASSERT(pos < node->slot_size);
+    AEX_ASSERT(node->is_occupied(pos) == false);
     if (n - start > 1){
         const inner_node_ptr new_node = construct(keys + start, childs + start, n - start);
         //const inner_node_ptr new_node = __construct_SMO(keys + start, childs + start, n - start);
@@ -457,26 +462,29 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
     }
     if (ans > 0){
         m.train(keys, n, ans);
-        ULL cnt = 0, occupied = 1, max_cnt = 0;
+        ULL cnt = 0, occupied = 1;
         slot_type prev_pos = 0;
+        double entropy = log(n), train_entropy = 0;
         for (ULL i = 1; i < n; ++i){
             slot_type pos = std::max(0LL, static_cast<slot_type>(std::min(m.predict(keys[i]), (long double)(ans - 1))));
             if (pos == prev_pos) ++cnt;
             else{
-                max_cnt = std::max(max_cnt, cnt);
+                train_entropy += 1.0 * cnt / n * log(cnt);
                 cnt = 1;
                 ++occupied;
                 prev_pos = pos;
             }
-            if (cnt > n / 2){
-                ans = 0;
-                break;
-            }
         }
-        max_cnt = std::max(cnt, max_cnt);
+        train_entropy += 1.0 * cnt / n * log(cnt);
         //if (occupied < traits::MIN_HASH_NODE_CNT || max_cnt > occupied * 0.5)
-        if (occupied < traits::MIN_HASH_NODE_CNT || max_cnt > n / 4)
+        if (entropy - train_entropy < log(traits::MIN_HASH_NODE_CNT) - 0.1){
+            AEX_PRINT("entrogy=" << entropy << ", train_entropy=" << train_entropy);
             ans = 0;
+        }
+        if (occupied < traits::MIN_HASH_NODE_CNT){
+            AEX_PRINT("occupied=" << occupied << ", ans=" << ans);
+            ans = 0;
+        }
         //else
         //    AEX_PRINT("occupied=" << occupied << ", max_cnt=" << max_cnt);
     }

@@ -189,7 +189,8 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     SU(node, pos);
 
     if (res == nullptr){
-        pos = node->prev_item_con(pos - 1);
+        //pos = node->prev_item_con(pos - 1);
+        pos = node->prev_item_find_con(pos - 1);
         AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) AEX_ASSERT(node->lock_array[pos2slot(pos)].is_lock_shared());});
         std::tie(find_key, res) = hash_table.find(node, pos);
         DEBUG_CHECK_UNLOCK(res);
@@ -310,9 +311,10 @@ inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val,
             SL(child);
         }
         else{
-            slot_type pos = h_n(node)->prev_item_find(h_n(node)->slot_size - 1);
+            slot_type pos = h_n(node)->prev_item_find_con(h_n(node)->slot_size - 1);
             std::tie(key, child) = hash_table.find(node, pos);
             SL(child);
+            AEX_DEBUG_BLOCK({if constexpr (traits::AllowConcurrency) AEX_ASSERT(h_n(node)->lock_array[pos2slot(pos)].is_lock_shared());});
             SU(h_n(node), pos);
         }
         SU(node);

@@ -41,7 +41,7 @@ public:
     ~aex_allocator() = default;
 
 
-    static constexpr ULL MAX_INNER_NODE_SIZE(){return std::max(sizeof(hash_node), sizeof(dense_node));}
+    static constexpr ULL MAX_INNER_NODE_SIZE(){return std::max(sizeof(hash_node), sizeof(dense_node)) + traits::AllowConcurrency * 8;}
 
     // used memory size of key array, align 8 bytes
     inline static ULL KEY_MEMORY_USED(ULL slot_size){

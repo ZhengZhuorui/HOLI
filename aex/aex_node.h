@@ -83,6 +83,7 @@ public:
     typedef typename traits::bitmap                bitmap;
     typedef typename traits::bitmap_base           bitmap_base;
     typedef typename components::inner_node        inner_node;
+    typedef typename components::hash_node         hash_node;
     typedef typename components::bitmap_impl       bitmap_impl;
     typedef typename components::node_ptr          node_ptr;
     typedef typename components::size_type         size_type;
@@ -102,8 +103,12 @@ public:
 
     void clear(){
         if (this->bitmap_ptr != nullptr){
-            if (this->slot_size / 64 + 1 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(self)) / 8))
-                delete[] this->bitmap_ptr;
+            //if constexpr (traits::AllowConcurrency)
+            //    delete[] this->bitmap_ptr;
+            //else{
+                if (this->slot_size / 64 + 1 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(hash_node)) / 8))
+                    delete[] this->bitmap_ptr;
+            //}
             this->bitmap_ptr = nullptr;
         }
     }
@@ -111,12 +116,16 @@ public:
     void init(){
         AEX_ASSERT(this->bitmap_ptr == nullptr);
         this->size = 0;
-        if (this->slot_size / 64 + 1 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(self)) / 8))
-            this->bitmap_ptr = new bitmap_base[this->slot_size / 64 + 1]();
-        else{
-            this->bitmap_ptr = reinterpret_cast<bitmap>(reinterpret_cast<char*>(this) + sizeof(self));
-            memset(this->bitmap_ptr, 0, (this->slot_size / 64 + 1) * sizeof(bitmap_base));
-        }
+        //if constexpr (traits::AllowConcurrency)
+        //    this->bitmap_ptr = new bitmap_base[this->slot_size / 64 + 1]();
+        //else{
+            if (this->slot_size / 64 + 1 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(hash_node)) / 8))
+                this->bitmap_ptr = new bitmap_base[this->slot_size / 64 + 1]();
+            else{
+                this->bitmap_ptr = reinterpret_cast<bitmap>(reinterpret_cast<char*>(this) + sizeof(hash_node));
+                memset(this->bitmap_ptr, 0, (this->slot_size / 64 + 1) * sizeof(bitmap_base));
+            }
+        //}
         this->version = 0;
     }
 
@@ -157,13 +166,6 @@ public:
     //}
 
     inline slot_type prev_item_find(slot_type x) const {
-        // if (x <= 0)
-        //     return 0;
-        // bitmap_base base = (bitmap_ptr[x >> 6]) << (63 - (x & 63));
-        // x -= (base == 0) ? (x & 63) : __builtin_clzll(base);
-        // while (base == 0 && )
-        // return x;
-
         const slot_type y = x - (x & (traits::SLOT_PER_SHORTCUT - 1));
         if (x <= 0)
             return x;
@@ -182,6 +184,8 @@ public:
         x -= __builtin_clzll(*text) - ((*text) == 0);
         return x;
     }
+
+    inline slot_type prev_item_find_con(slot_type x) const {return prev_item_find(x);}
 
     inline slot_type prev_item(slot_type x) const {
         if (x <= 0)
@@ -354,8 +358,8 @@ public:
     // insert a item in position
     inline void insert(const key_type x, const value_type &data, const int pos){
         AEX_ASSERT(this->size < traits::DATA_NODE_SLOT_SIZE);
-        std::move_backward(this->key + pos, this->key + this->size, this->key + this->size + 1);
-        std::move_backward(this->data + pos, this->data + this->size, this->data + this->size + 1);
+        std::copy_backward(this->key + pos, this->key + this->size, this->key + this->size + 1);
+        std::copy_backward(this->data + pos, this->data + this->size, this->data + this->size + 1);
         this->key[pos] = x;
         this->data[pos] = data;
         this->size++;
@@ -365,8 +369,8 @@ public:
         int pos = find_lower_pos(x);
         if (pos >= this->size || key[pos] != x)
             return false;
-        std::move(this->key + pos + 1, this->key + this->size, this->key + pos);
-        std::move(this->data + pos + 1, this->data + this->size, this->data + pos);
+        std::copy(this->key + pos + 1, this->key + this->size, this->key + pos);
+        std::copy(this->data + pos + 1, this->data + this->size, this->data + pos);
         this->size--;
         return true;
     }

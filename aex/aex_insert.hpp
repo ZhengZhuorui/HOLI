@@ -124,6 +124,9 @@ insert_start:
                         }
                         ret = insert_data_node(l_n(child), new_node, key, value);
                         AEX_ASSERT(new_node->key[0] == split_key);
+                        pos = h_n(node)->prev_item_con(pos);
+                        AEX_DEBUG_BLOCK({if constexpr (traits::AllowConcurrency) AEX_ASSERT(h_n(node)->lock_array[pos2slot(pos)].is_lock_shared());});
+                        SU(h_n(node), pos);
                         insert_collision(h_n(node), pos, split_key, new_node);
                     }
                     add_version(child, new_node);
@@ -193,7 +196,6 @@ insert_start:
                             if constexpr (traits::AllowConcurrency){
                                 SL(d_n(child)->child_ptr[traits::DENSE_NODE_SLOT_SIZE - 1]);
                                 tail_leaf = find_tail_leaf(d_n(child)->child_ptr[traits::DENSE_NODE_SLOT_SIZE - 1], now_version);
-                                AEX_ASSERT(tail_leaf != nullptr);
                                 if (tail_leaf == nullptr || !TUL(tail_leaf)){
                                     SU(tail_leaf); XU(child); SU(node);
                                     goto insert_start;
@@ -214,8 +216,12 @@ insert_start:
                             if constexpr (traits::AllowConcurrency)
                                 XU(tail_leaf);
                         }
-                        else 
+                        else {
+                            pos = h_n(node)->prev_item_con(pos);
+                            AEX_DEBUG_BLOCK({if constexpr (traits::AllowConcurrency) AEX_ASSERT(h_n(node)->lock_array[pos2slot(pos)].is_lock_shared());});
+                            SU(h_n(node), pos);
                             insert_collision(h_n(node), pos, split_key, new_node);
+                        }
                         add_version(child, new_node);
                         AEX_ASSERT(new_node->key_ptr[0] == split_key);
                         if (flag){ SL(new_node); XU(child); child = new_node; }
@@ -259,7 +265,7 @@ inline void aex_tree<_Key, _Val, traits>::construct_tmp_node(dense_node_ptr node
         std::swap(node->key_ptr[0],   node->key_ptr[1]);
         std::swap(node->child_ptr[0], node->child_ptr[1]);
     }
-    node->is_parent = ((old_node->type == NodeType::DenseNode) & (new_node->type == NodeType::HashNode) );
+    node->is_parent = ((old_node->type == NodeType::DenseNode) & (new_node->type == NodeType::DenseNode) );
     node->size = 2;
 }
 
