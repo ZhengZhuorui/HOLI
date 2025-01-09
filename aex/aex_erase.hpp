@@ -51,9 +51,14 @@ _erase_start:
                         goto _erase_start;
                     }
                     std::tie(prev_key, prev_node) = hash_table.find(node, h_n(node)->prev_item_find(pos - 1));
-                    prev_child = find_tail_leaf(prev_node);
+                    prev_child = find_tail_leaf(prev_node, now_version);
+                    if (prev_child == nullptr){
+                        SU(child); XU(h_n(node), pos - 1, next_pos);
+                        goto _erase_start;
+                    }
                     if (prev_child->version > now_version){
                         SU(prev_child); SU(child); XU(h_n(node), pos - 1, next_pos);
+                        goto _erase_start;
                     }
                     AEX_ASSERT(prev_child->next == child);
                 }
@@ -63,7 +68,11 @@ _erase_start:
                         goto _erase_start;
                     }
                     prev_node = d_n(node)->child_ptr[pos - 1];
-                    prev_child = find_tail_leaf(prev_node);
+                    prev_child = find_tail_leaf(prev_node, now_version);
+                }
+                if (prev_child == nullptr){
+                    SU(child); XU(i_n(node), pos - 1, next_pos);
+                        goto _erase_start;
                 }
 
                 AEX_ASSERT(prev_child->next == child);

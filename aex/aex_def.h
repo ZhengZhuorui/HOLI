@@ -9,6 +9,7 @@ template<typename _Key, typename _Val, typename traits> struct aex_hash_node;
 template<typename _Key, typename _Val, typename traits> struct aex_dense_node;
 template<typename _Key, typename _Val, typename traits> struct aex_static_data_node;
 template<typename _Key, typename _Val, typename traits> struct aex_hash_data_node;
+template<typename _Key, typename _Val, typename traits> struct aex_test_node;
 
 template<typename _Key, typename traits> class aex_hash_table_block;
 template<typename _Key, typename traits> class aex_hash_table;

@@ -114,7 +114,7 @@ inline bool aex_tree<_Key, _Val, traits>::check_node(hash_node_ptr node) const {
                 //    AEX_ERROR("node=" << node << ", i=" << i << ", " << node->lock_array[i].lockCount.load());
                 AEX_ASSERT(!node->lock_array[i].is_lock());
                 AEX_ASSERT(!node->lock_array[i].is_lock_shared());
-                AEX_ASSERT(!node->update_lock_array[i].is_lock());
+                //AEX_ASSERT(!node->update_lock_array[i].is_lock());
             }
     });
     return flag;

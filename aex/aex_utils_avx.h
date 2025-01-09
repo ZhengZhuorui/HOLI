@@ -360,4 +360,28 @@ inline int linear_search_upper_bound_avx512x8(const double* first, const int siz
     return __builtin_popcount(mask);
 }
 
+template<typename _Tp>
+inline void move_avxx4(_Tp* src, _Tp* dst){
+    if constexpr(sizeof(_Tp) == 8 && std::is_trivial_v<_Tp>){
+        __m256i src_vec = _mm256_loadu_si256((__m256i*)src);
+        _mm256_storeu_si256((__m256i*)dst, src_vec);
+    }
+    else{
+        std::move(src, src + 4, dst);
+    }
+}
+
+template<typename _Tp>
+inline void move_avxx8(_Tp* src, _Tp* dst){
+    if constexpr(sizeof(_Tp) == 8 && std::is_trivial_v<_Tp>){
+        __m512i src_vec = _mm512_loadu_si512(src);
+        _mm512_storeu_si512(dst, src_vec);
+    }
+    else{
+        std::move(src, src + 8, dst);
+    }
+}
+
+
+
 }

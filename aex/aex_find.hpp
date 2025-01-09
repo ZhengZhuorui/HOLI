@@ -172,6 +172,7 @@ inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val,
 
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert(hash_node_ptr node, const key_type key, slot_type &pos) const {
+    AEX_ASSERT(check_lock_shared(node));
     pos = node->predict(key);
     key_type find_key;
     node_ptr res = nullptr;
@@ -203,6 +204,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert(dense_node_ptr node, const key_type key, slot_type &pos) const {
+    AEX_ASSERT(check_lock_shared(node));
     //pos = aex::linear_search_upper_bound_avx512x8(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
     pos = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1;
     DEBUG_CHECK_UNLOCK(node->child_ptr[pos]);
@@ -294,23 +296,31 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_tail_leaf(node_ptr node) const {
+inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_tail_leaf(node_ptr node, version_type now_version) const {
     AEX_ASSERT(check_lock_shared(node));
     key_type key;
     node_ptr child;
+    if (now_version < node->version){
+        SU(node);
+        return nullptr;
+    }
     while (node->type != NodeType::LeafNode){
         if (node->type == NodeType::DenseNode){
             child = d_n(node)->child_ptr[d_n(node)->size - 1];
             SL(child);
         }
         else{
-            SL(h_n(node), h_n(node)->slot_size - 1);
-            std::tie(key, child) = hash_table.find(node, h_n(node)->prev_item_find(h_n(node)->slot_size - 1));
-            SU(h_n(node), h_n(node)->slot_size - 1);
+            slot_type pos = h_n(node)->prev_item_find(h_n(node)->slot_size - 1);
+            std::tie(key, child) = hash_table.find(node, pos);
             SL(child);
+            SU(h_n(node), pos);
         }
         SU(node);
         node = child;
+        if (now_version < node->version){
+            SU(node);
+            return nullptr;
+        }
     }
     return l_n(node);
 }

@@ -519,7 +519,7 @@ private:
     node_ptr find_erase(hash_node_ptr  node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
     node_ptr find_erase(dense_node_ptr node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
 
-    data_node_ptr find_tail_leaf(node_ptr node) const ;
+    data_node_ptr find_tail_leaf(node_ptr node, version_type version) const ;
     inline key_type node_zero_key(const inner_node_ptr node) const {
         return (node->type == NodeType::DenseNode) ? (d_n(node)->key_ptr[0]) : (hash_table.find(node, 0).first);
     }
@@ -548,7 +548,6 @@ private:
     void insert_collision(   hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
     void insert_no_collision(hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
     void insert(dense_node_ptr node, const key_type key, const node_ptr child);
-    bool check_upgrade(hash_node_ptr node, const key_type split_key, const slot_type top_pos) const ;
     std::pair<iterator, bool> insert_data_node(data_node_ptr node, data_node_ptr &new_node, const key_type key, const value_type &value);
     void insert_unlock(inner_node_ptr top_node, inner_node_ptr node) const;
     void split(data_node_ptr old_node, data_node_ptr new_node);
@@ -720,6 +719,7 @@ private:
         if (node->type == NodeType::HashNode) XU(h_n(node), l_pos, r_pos);
         else XU(node);
     }
+    //inline bool TUL(hash_node_ptr node, slot_type pos) const { if constexpr(traits::AllowConcurrency){ AEX_ASSERT(check_lock_shared(node)); return node->lock_array[pos2slot(pos)].try_upgrade_lock();} else return true; }
     inline void UL(node_ptr  node) const { AEX_ASSERT(check_lock_shared(node)); node->node_lock.upgrade_lock(); }
     inline void DL(node_ptr  node) const { AEX_ASSERT(check_lock(node)); AEX_ASSERT(check_unlock_shared(node)); node->node_lock.downgrade_lock(); }
     inline bool TSL(node_ptr node) const { return node->node_lock.try_lock_shared(); }

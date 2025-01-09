@@ -306,6 +306,7 @@ inline void aex_tree<_Key, _Val, traits>::construct_hash_node(hash_node_ptr node
         pos = node->predict(keys[i]);
         if (pos != prev_pos){
             //AEX_PRINT("i=" << i << ", pos=" << pos << ", prev_pos=" << prev_pos << ", size=" << i - start << ", keys[start]=" << keys[start]);
+            //AEX_DEBUG_BLOCK({if (prev_pos == 113847) {AEX_ERROR("i=" << i << ", pos=" << pos << ", prev_pos=" << prev_pos << ", size=" << i - start << ", keys[start]=" << keys[start]);exit(0);}});
             if (i - start > 1){
                 new_node = this->construct(keys + start, childs + start, i - start);
                 __construct_insert(node, prev_pos, pos, keys[start], new_node);

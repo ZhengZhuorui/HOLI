@@ -27,9 +27,9 @@ public:
     typedef typename components::RWLock RWLock;
     typedef typename components::Lock   Lock;
 
-    explicit aex_node_base(version_type _version, NodeType _type) : size(0), type(_type), version(_version), node_lock(){}
-    aex_node_base(aex_node_base &other_node): size(other_node.size), type(other_node.type), version(0), node_lock(){}
-    aex_node_base(aex_node_base &&other_node):size(other_node.size), type(other_node.type), version(0), node_lock(){}
+    explicit aex_node_base(version_type _version, NodeType _type) : size(0), type(_type), node_lock(), version(_version){}
+    aex_node_base(aex_node_base &other_node): size(other_node.size), type(other_node.type), node_lock(), version(0){}
+    aex_node_base(aex_node_base &&other_node):size(other_node.size), type(other_node.type), node_lock(), version(0){}
 
     aex_node_base& operator = (aex_node_base &other_node) {
         this->size = other_node.size;
@@ -46,8 +46,8 @@ public:
     // size: the number of child nodes(inner node); the number of data(data node)
     size_type              size;
     NodeType               type;
-    version_type           version;
     mutable RWLock         node_lock;
+    version_type           version;
 };
 
 /*
@@ -78,6 +78,7 @@ public:
     typedef aex_tree<key_type, value_type, traits> base_tree;
     typedef typename traits::slot_type             slot_type;
     typedef typename base_tree::components         components;
+    typedef typename components::Allocator         Allocator;
     typedef typename components::InnerNodeModel    Model;
     typedef typename traits::bitmap                bitmap;
     typedef typename traits::bitmap_base           bitmap_base;
@@ -101,7 +102,8 @@ public:
 
     void clear(){
         if (this->bitmap_ptr != nullptr){
-            delete[] this->bitmap_ptr;
+            if (this->slot_size / 64 + 1 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(self)) / 8))
+                delete[] this->bitmap_ptr;
             this->bitmap_ptr = nullptr;
         }
     }
@@ -109,7 +111,13 @@ public:
     void init(){
         AEX_ASSERT(this->bitmap_ptr == nullptr);
         this->size = 0;
-        this->bitmap_ptr = new bitmap_base[this->slot_size / sizeof(bitmap_base) + 1]();
+        if (this->slot_size / 64 + 1 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(self)) / 8))
+            this->bitmap_ptr = new bitmap_base[this->slot_size / 64 + 1]();
+        else{
+            this->bitmap_ptr = reinterpret_cast<bitmap>(reinterpret_cast<char*>(this) + sizeof(self));
+            memset(this->bitmap_ptr, 0, (this->slot_size / 64 + 1) * sizeof(bitmap_base));
+        }
+        this->version = 0;
     }
 
     inline slot_type predict(const key_type key) const {
@@ -121,9 +129,9 @@ public:
         return bitmap_impl::at(this->bitmap_ptr, x);
     }
 
-    inline bool is_occupied_con(const slot_type x) const {
-        return bitmap_impl::at(this->bitmap_ptr, x);
-    }
+    //inline bool is_occupied_con(const slot_type x) const {
+    //    return bitmap_impl::at(this->bitmap_ptr, x);
+    //}
 
     inline void set_one(const slot_type x) {
         bitmap_impl::set_one(this->bitmap_ptr, x);
@@ -231,9 +239,9 @@ public:
     inline slot_type array_lock_shared_until_next_item(const slot_type prev_pos, const slot_type pos) const {return next_item(pos);}
     inline slot_type try_array_lock_shared_until_prev_item(const slot_type pos, bool &restart) const {return prev_item(pos);}
 
-    slot_type    slot_size;
     bitmap       bitmap_ptr;
     Model        model;
+    slot_type    slot_size;
     mutable Lock meta_lock;
 };
 

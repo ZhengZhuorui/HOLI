@@ -466,7 +466,6 @@ public:
 
     struct linear_arguments{
         long double slope, start;
-        //int offset;
     }args;
 
 };

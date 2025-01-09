@@ -49,19 +49,19 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         this->update_lock_array = new Lock[this->slot_size / traits::SLOT_PER_LOCK + 1]();
     }
 
-    inline bool is_occupied_con(const slot_type x) const {
-        this->lock_array[pos2slot(x)].lock_shared();
-        bool res = bitmap_impl::at(this->bitmap_ptr, x);
-        this->lock_array[pos2slot(x)].unlock_shared();
-        return res;
-    }
+    //inline bool is_occupied_con(const slot_type x) const {
+    //    this->lock_array[pos2slot(x)].lock_shared();
+    //    bool res = bitmap_impl::at(this->bitmap_ptr, x);
+    //    this->lock_array[pos2slot(x)].unlock_shared();
+    //    return res;
+    //}
 
     inline void set_one(const slot_type x) {
         this->update_lock_array[pos2slot(x)].lock();
         bitmap_impl::set_one(this->bitmap_ptr, x);
         this->update_lock_array[pos2slot(x)].unlock();
     }
-
+//
     inline void set_zero(const slot_type x) {
         this->update_lock_array[pos2slot(x)].lock();
         bitmap_impl::set_zero(this->bitmap_ptr, x);

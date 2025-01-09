@@ -30,6 +30,7 @@ public:
     typedef typename components::bitmap_impl    bitmap_impl;
     typedef typename components::HashTable      HashTable;
     typedef typename components::RWLock         RWLock;
+    typedef typename components::Lock           Lock;
     typedef typename components::version_type   version_type;
 
     typedef typename traits::slot_type slot_type;
@@ -77,6 +78,8 @@ public:
 
     inline static hash_node_ptr allocate_hash_node(const slot_type slot_size){
         AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
+        //AEX_WARNING(sizeof(aex_hash_node<key_type, value_type, traits>) << ", " << sizeof(aex_hash_node_con<key_type, value_type, traits>) << ", " << MAX_INNER_NODE_SIZE() << ", " << sizeof(base_node) << ", " << sizeof(InnerNodeModel) << ", " << sizeof(bitmap) << ", " << sizeof(slot_type) << ", " << sizeof(Lock));
+        //exit(0);
         const hash_node_ptr node = h_n(malloc(MAX_INNER_NODE_SIZE()));
         node->type = NodeType::HashNode;
         node->node_lock.init();

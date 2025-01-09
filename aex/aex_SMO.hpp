@@ -129,7 +129,8 @@ inline bool aex_tree<_Key, _Val, traits>::expand(dense_node_ptr node){
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::expand(hash_node_ptr node){
-    AEX_WARNING("[hash node expand], root=" << root << ", node=" << node << ", slot_size=" << node->slot_size); 
+    //AEX_WARNING("[hash node expand], root=" << root << ", node=" << node << ", slot_size=" << node->slot_size); 
+    AEX_DEBUG_BLOCK({if (node->slot_size > 512) AEX_WARNING("[hash node expand], root=" << root << ", node=" << node << ", slot_size=" << node->slot_size); });
     AEX_ASSERT(node->size > 2);
     AEX_ASSERT(check_lock(node));
     std::vector<key_type> key_buf;
@@ -190,44 +191,6 @@ inline void aex_tree<_Key, _Val, traits>::narrow(hash_node_ptr node){
     }
     AEX_ASSERT(check_node(i_n(node)));
 }
-
-/*
-template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val, traits>::__construct_SMO(const key_type* keys, const node_ptr* childs, const ULL n){
-    std::vector<key_type> key_buf;
-    std::vector<node_ptr> child_buf;
-    int dense_node_cnt = 0;
-    for (ULL i = 0; i < n; ++i){
-        XL(childs[i]); XU(childs[i]);
-        // just confirm no other thread read childs[i - 1]
-        if (childs[i]->type == NodeType::HashNode){
-            return construct(keys, childs, n);
-        }
-        else if (childs[i]->type == NodeType::DenseNode)
-            ++dense_node_cnt;
-    }
-
-    if (dense_node_cnt > 0){
-        for (ULL i = 0; i < n; ++i){
-            if (childs[i]->type == NodeType::DenseNode){
-                for (size_type j = 0; j < childs[i]->size; ++j){
-                    key_buf.emplace_back(d_n(childs[i])->key_ptr[j]);
-                    child_buf.emplace_back(d_n(childs[i])->child_ptr[j]);
-                }
-                XL(childs[i]); // just require lock before free
-                free_node(childs[i]);
-            }
-            else{
-                key_buf.emplace_back(keys[i]);
-                child_buf.emplace_back(childs[i]);
-            }
-        }
-        return construct(key_buf.data(), child_buf.data(), n);
-    }
-    else
-        return construct(keys, childs, n);
-}
-*/
 
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, traits>::split(hash_node_ptr node, node_ptr &split_node, const slot_type start_pos, const slot_type end_pos){
@@ -323,7 +286,8 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO(hash_node_ptr node, cons
             next_pos = pos;
             XL(childs[i - 1]); XU(childs[i - 1]);
             // just confirm no other thread  read childs[i - 1]
-
+            //AEX_DEBUG_BLOCK({if (prev_pos == 113842) {AEX_ERROR("i=" << i << ", pos=" << pos << ", prev_pos=" << prev_pos << ", size=" << i - start << ", keys[start]=" << keys[start]);exit(0);}});
+            //AEX_DEBUG_BLOCK({if (prev_pos == 113847) {AEX_ERROR("i=" << i << ", pos=" << pos << ", prev_pos=" << prev_pos << ", size=" << i - start << ", keys[start]=" << keys[start]);exit(0);}});
             if (pos - prev_pos > 1 && childs[i - 1]->type != NodeType::LeafNode && childs[i - 1]->size > 1)
                 next_pos = split(node, childs[i - 1], prev_pos, pos);           
             AEX_ASSERT(prev_pos < next_pos);
