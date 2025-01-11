@@ -47,6 +47,7 @@ inline bool aex_tree<_Key, _Val, traits>::check_node(data_node_ptr node) const {
     //    AEX_ERROR("ERROR! size=0");
     //    flag = false;
     //}
+    if constexpr (!traits::AllowUnsorted)
     for (slot_type i = 0; i < node->size - 1; ++i)
     if (node->key[i] > node->key[i + 1]){
         AEX_ERROR("ERROR! key[" << i << "]=" << node->key[i] << ", key[i+1]=" << node->key[i + 1] << ", size=" << node->size);

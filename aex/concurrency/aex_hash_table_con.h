@@ -24,16 +24,16 @@ public:
         lock_array = new RWLock[this->slot_size]();
     }
 
-    explicit aex_hash_table_con(int _slot_size):HashTableBase(_slot_size){
+    explicit aex_hash_table_con(int _slot_size):HashTableBase(_slot_size), con_stats(){
         AEX_ASSERT((this->slot_size & (-this->slot_size)) == this->slot_size);
         lock_array = new RWLock[this->slot_size]();
     }
 
-    aex_hash_table_con(self &other_table):HashTableBase(other_table){
+    aex_hash_table_con(self &other_table):HashTableBase(other_table),  con_stats(){
         lock_array = new RWLock[this->slot_size]();
     }
 
-    aex_hash_table_con(self &&other_table):HashTableBase(std::move(other_table)){
+    aex_hash_table_con(self &&other_table):HashTableBase(std::move(other_table)), con_stats(){
         this->lock_array = other_table.lock_array;
         other_table.lock_array = nullptr;
     }
@@ -84,11 +84,15 @@ public:
     inline void insert(const node_ptr parent, const slot_type pos, const key_type key, const node_ptr child){
         hash_type hash_key;
         int restart_count = 0;
+        AEX_DEBUG_BLOCK({--con_stats.insert_restart_cnt;});
 insert_start:
+        AEX_DEBUG_BLOCK({++con_stats.insert_restart_cnt;});
         if (restart_count++)
             yield(restart_count);
+        AEX_LOCK_SL_WAIT_CNT(lock);
         lock.lock_shared();
         if (this->isfull()){
+            AEX_LOCK_XL_WAIT_CNT(lock);
             if (!lock.try_upgrade_lock()){
                 lock.unlock_shared();
                 goto insert_start;
@@ -97,6 +101,7 @@ insert_start:
             lock.downgrade_lock();
         }
         hash_key = this->get_hash_key(parent, pos);
+        AEX_LOCK_XL_WAIT_CNT(lock_array[hash_key]);
         lock_array[hash_key].lock();
         this->table_[hash_key].insert(parent, pos, key, child);
         lock_array[hash_key].unlock();
@@ -108,8 +113,10 @@ insert_start:
      * @brief return the (node->key[pos], node->child[pos])
      */
     inline std::pair<key_type, node_ptr> find(const node_ptr node, const slot_type pos) const {
+        AEX_LOCK_SL_WAIT_CNT(lock);
         lock.lock_shared();
         const hash_type hash_key = this->get_hash_key(node, pos);
+        AEX_LOCK_SL_WAIT_CNT(lock_array[hash_key]);
         lock_array[hash_key].lock_shared();
         auto ret = this->table_[hash_key].find(node, pos);
         lock_array[hash_key].unlock_shared();
@@ -152,8 +159,10 @@ insert_start:
     }
 
     inline void update(const node_ptr parent, const slot_type pos, const key_type update_key, const node_ptr update_node){
+        AEX_LOCK_SL_WAIT_CNT(lock);
         lock.lock_shared();
         const hash_type hash_key = this->get_hash_key(parent, pos);
+        AEX_LOCK_XL_WAIT_CNT(lock_array[hash_key]);
         lock_array[hash_key].lock();
         this->table_[hash_key].update(parent, pos, update_key, update_node);
         lock_array[hash_key].unlock();
@@ -175,6 +184,11 @@ insert_start:
         lock_array[hash_key].unlock();
         lock.unlock_shared();
         return res;
+    }
+
+    inline void print_stats() const {
+        this->HashTableBase::print_stats();
+        this->con_stats.print_stats();
     }
 
     /*
@@ -203,6 +217,7 @@ insert_start:
 
     mutable RWLock* lock_array;
     mutable RWLock lock;
+    mutable concurrency_stats con_stats;
 };
 
 }

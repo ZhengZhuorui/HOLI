@@ -68,6 +68,7 @@ template<typename _Key,
         bool _AllowMultiKey=false,
         typename _SearchClass=void,
         bool _AllowConcurrency=false,
+        bool _AllowUnsorted=false,
         int _LOG_ERROR_BOUND=4,
         int _MAX_MODEL_ARGS=8,
         bool _AllowBalance=false>
@@ -99,6 +100,7 @@ struct aex_default_traits{
 
     static constexpr bool AllowExtend = true;
     static constexpr bool AllowRebuild = false;
+    static constexpr bool AllowUnsorted = _AllowUnsorted;
 
     static_assert((AllowRWBalance | AllowInsertBalance) == AllowBalance);
 

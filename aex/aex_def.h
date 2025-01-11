@@ -18,13 +18,15 @@ template<typename _Key, typename traits> class aex_hash_table_con;
 template<typename _Tp, bool _> struct aex_node_spinlock;
 
 template<typename _Key, 
-        typename _Val, 
-        bool AllowMultiKey, 
-        typename SearchClass, 
-        bool AllowConcurrency,
-        int _ERROR_BOUND,
+        typename _Val,
+        bool _AllowMultiKey,
+        typename _SearchClass,
+        bool _AllowConcurrency,
+        bool _AllowUnsorted,
+        int _LOG_ERROR_BOUND,
         int _MAX_MODEL_ARGS,
-        bool _AllowBalance> struct aex_default_traits;
+        bool _AllowBalance>
+struct aex_default_traits;
 
 template<typename _Tp, typename traits> class linear_model;
 template<typename _Tp, typename traits> class gap_array_linear_model;

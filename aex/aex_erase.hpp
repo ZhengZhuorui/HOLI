@@ -76,7 +76,7 @@ _erase_start:
                 }
 
                 AEX_ASSERT(prev_child->next == child);
-                if (prev_child->size + child->size - l_n(child)->exists(key) <= traits::DATA_NODE_SLOT_SIZE){
+                if (prev_child->size + child->size - l_n(child)->find(key) <= traits::DATA_NODE_SLOT_SIZE){
                     if (!TUL(prev_child)){
                         SU(child); XU(i_n(node), pos - 1, next_pos);
                         goto _erase_start;

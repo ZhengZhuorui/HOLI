@@ -8,9 +8,10 @@
 #define AEX_DEBUG_THREAD
 #endif
 
-#ifndef AEX_DEBUG
-#define AEX_DEBUG
+#ifndef AEX_DEBUG_ASSERT
+#define AEX_DEBUG_ASSERT
 #endif
+
 //using namespace aex;
 #include "aex/aex.h"
 using namespace aex;

@@ -23,8 +23,9 @@ void aex_query_bench(vector<pair<key_type, value_type> > &data, vector<key_type>
 
     for (size_t T = 0; T < times; ++T){
         for (auto &x : query){
-            const auto iter = index.find(x);
-            sum += iter.data();
+            value_type y;
+            index.find(x, y);
+            sum += y;
         }
     }
     t2 = std::chrono::high_resolution_clock::now();

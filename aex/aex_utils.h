@@ -93,11 +93,7 @@ static std::mutex log_mutex;
 
 #define AEX_FORMAT(FORMAT, ...) do{ printf("File: %s:%d, Function: %s, output: ", __FILE__, __LINE__, __FUNCTION__); printf(FORMAT, ##__VA_ARGS__); printf("\n"); fflush(stdout);} while(0);
 
-#define AEX_ASSERT(x) do { assert(x); } while(0)
-
 #define AEX_PRINT_ELEMENT(x) do { AEX_PRINT(##x << "=" << x); } while(0)
-
-#define AEX_DEBUG_BLOCK(x) do { x } while(0)
 
 #else
 
@@ -107,10 +103,18 @@ static std::mutex log_mutex;
 
 #define AEX_FORMAT(FORMAT, ...) 
 
-#define AEX_ASSERT(x) 
-
 #define AEX_PRINT_ELEMENT(x) 
 
+#define AEX_DEBUG_BLOCK(x)
+
+#endif
+
+#ifdef AEX_DEBUG_ASSERT
+#define AEX_ASSERT(x) do { assert(x); } while(0)
+#define AEX_DEBUG_BLOCK(x) do { x } while(0)
+
+#else
+#define AEX_ASSERT(x)
 #define AEX_DEBUG_BLOCK(x)
 
 #endif
@@ -138,6 +142,19 @@ static std::mutex log_mutex;
 #define DEBUG_CHECK_UNLOCK_SHARED(node)
 #endif
 
+#define n_n(node) static_cast<node_ptr>(node)
+#define i_n(node) static_cast<inner_node_ptr>(node)
+#define h_n(node) static_cast<hash_node_ptr>(node)
+#define d_n(node) static_cast<dense_node_ptr>(node)
+#define l_n(node) static_cast<data_node_ptr>(node)
+
+#define AEX_SL_WAIT_CNT(node)            AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (check_lock(node)) ++con_stats.SL_wait_cnt;});
+#define AEX_XL_WAIT_CNT(node)            AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (check_lock(node)) ++con_stats.XL_wait_cnt;});
+#define AEX_LOCK_SL_WAIT_CNT(lock)       AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (lock.is_lock())   ++con_stats.SL_wait_cnt;});
+#define AEX_LOCK_XL_WAIT_CNT(lock)       AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (lock.is_lock())   ++con_stats.XL_wait_cnt;});
+#define AEX_ARRAY_SL_WAIT_CNT(node, pos) AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (h_n(node)->lock_array[pos2slot(pos)].is_lock()) ++con_stats.array_SL_wait_cnt;});
+#define AEX_ARRAY_XL_WAIT_CNT(node, pos) AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (h_n(node)->lock_array[pos2slot(pos)].is_lock()) ++con_stats.array_XL_wait_cnt;});
+
 inline void yield(int count){
     if (count>10)
         sched_yield();
@@ -150,12 +167,6 @@ enum class NodeType{
     DenseNode,
     HashNode,
 };
-
-#define n_n(node) static_cast<node_ptr>(node)
-#define i_n(node) static_cast<inner_node_ptr>(node)
-#define h_n(node) static_cast<hash_node_ptr>(node)
-#define d_n(node) static_cast<dense_node_ptr>(node)
-#define l_n(node) static_cast<data_node_ptr>(node)
 
 inline std::string to_string(NodeType type){
     switch (type){
@@ -462,6 +473,24 @@ struct operation_stats{
         AEX_IMPORTANT("model_train_cnt="          << model_train_cnt          << ", model_train_size="          << model_train_size);
         AEX_IMPORTANT("allocate_data_node_cnt="   << allocate_data_node_cnt   << ", allocate_dense_node_cnt="   << allocate_dense_node_cnt << ", allocate_hash_node_cnt=" << allocate_hash_node_cnt);
         AEX_IMPORTANT("free_data_node_cnt="       << free_data_node_cnt       << ", free_dense_node_cnt="       << free_dense_node_cnt  << ", free_hash_node_cnt=" << free_hash_node_cnt);
+    }
+};
+struct concurrency_stats{
+    std::atomic<LL> insert_restart_cnt, find_restart_cnt, SL_wait_cnt, XL_wait_cnt, array_SL_wait_cnt, array_XL_wait_cnt;
+    concurrency_stats(){
+        insert_restart_cnt = 0;
+        find_restart_cnt = 0;
+        SL_wait_cnt = 0; 
+        XL_wait_cnt = 0;
+        array_SL_wait_cnt = 0;
+        array_XL_wait_cnt = 0;
+    }
+
+    void print_stats() const {
+        AEX_SUCCESS("[Concurrency Operation Stats]: ");
+        AEX_IMPORTANT("insert_restart_cnt=" << insert_restart_cnt.load() << ", find_insert_cnt=" << find_restart_cnt.load());
+        AEX_IMPORTANT("SL_wait_cnt="   << SL_wait_cnt.load()  << ", XL_wait_cnt=" << XL_wait_cnt.load());
+        AEX_IMPORTANT("array_SL_wait_cnt="   << array_SL_wait_cnt.load()  << ", array_XL_wait_cnt=" << array_XL_wait_cnt.load());
     }
 };
 

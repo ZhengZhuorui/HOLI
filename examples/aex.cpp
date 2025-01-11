@@ -17,7 +17,7 @@ int main(){
     }
     std::sort(values, values + num_keys, [&](auto &x, auto &y)->bool{return x.first < y.first ;});
 
-    aex::aex_tree<KEY_TYPE, PAYLOAD_TYPE> index;
+    aex::aex_tree<KEY_TYPE, PAYLOAD_TYPE, aex::aex_default_traits<KEY_TYPE, PAYLOAD_TYPE, false, void, false, false>> index;
     index.bulk_load(values, num_keys);
     
     for (int i = num_keys; i < 2 * num_keys; ++i){
@@ -32,7 +32,7 @@ int main(){
         assert(index[random_values[i]] == i);
     }
     assert(index.find(3*num_keys) == index.end());
-
-    aex::aex_tree<KEY_TYPE, PAYLOAD_TYPE>::iterator it = index.lower_bound(150);
+    //std::pair<KEY_TYPE, PAYLOAD_TYPE> it;
+    auto it = index.lower_bound(150);
     std::cout << it.key() << " " << it.data() << endl;
 }

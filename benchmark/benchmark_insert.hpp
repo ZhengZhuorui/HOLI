@@ -27,7 +27,7 @@ void aex_insert_bench(vector<pair<key_type, value_type> > &data, vector<pair<key
         index.bulk_load(data.data(), data.size());
         t1 = std::chrono::high_resolution_clock::now();
         for (size_t i = 0; i < insert_data.size(); ++i){
-            index.insert_con(insert_data[i]);
+            index.insert(insert_data[i]);
         }
         //for (const auto& x : insert_data){
         //    index.insert(x);

@@ -7,18 +7,23 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     slot_type pos = node->predict(key), pos1 = -1;
     key_type find_key;
     node_ptr res = nullptr;
+    AEX_ARRAY_SL_WAIT_CNT(node, pos);
     SL(node, pos);
     if (node->is_occupied(pos) || (pos & (traits::SLOT_PER_SHORTCUT - 1)) == 0){
         std::tie(find_key, res) = hash_table.find(node, pos);
-        if (find_key <= key)
+        if (find_key <= key){
+            AEX_SL_WAIT_CNT(res);
             SL(res);
+        }
     }
     SU(node, pos);
 
     if (res == nullptr || find_key > key){
         //SL(node, pos - 1);
+        AEX_ARRAY_SL_WAIT_CNT(node, pos);
         pos1 = node->prev_item_find_con(pos - 1);
         std::tie(find_key, res) = hash_table.find(node, pos1);
+        AEX_ARRAY_SL_WAIT_CNT(node, pos);
         SL(res);
         SU(node, pos1);
     }
@@ -30,7 +35,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find(const hash_node_ptr node, const key_type key) const {
     AEX_ASSERT(node->is_occupied(0));
-    slot_type pos = node->predict(key), pos1 = -1;
+    slot_type pos = node->predict(key), pos1;
     key_type find_key;
     node_ptr res = nullptr;
     if (node->is_occupied(pos) || (pos & (traits::SLOT_PER_SHORTCUT - 1)) == 0)
@@ -51,6 +56,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     //slot_type pos = std::upper_bound(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
     //AEX_DEBUG_BLOCK({slot_type pos1 = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1; if (pos != pos1) {AEX_ERROR("pos=" << pos << ", pos1=" << pos1 << ", key=" << key); for(slot_type i = 0; i < node->size; ++i) std::cout << node->key_ptr[i] << ", "; std::cout << std::endl;}});
     node_ptr res = node->child_ptr[pos];
+    AEX_SL_WAIT_CNT(res);
     SL(res);
     return res;
 }
@@ -75,9 +81,11 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::range_query(const key_type lower_key, const key_type upper_key, std::vector<std::pair<key_type, value_type>>& answer) const {
-    if constexpr(traits::AllowConcurrency){
+    if constexpr(traits::AllowConcurrency || traits::AllowUnsorted){
         answer.clear();
         data_node_ptr inode = find_leaf_con(lower_key);
+        if constexpr(traits::AllowUnsorted)
+            if (!inode->is_sorted) inode->sort();
         int pos = inode->find_lower_pos(lower_key);
             
         while (inode != nullptr){
@@ -92,13 +100,14 @@ inline void aex_tree<_Key, _Val, traits>::range_query(const key_type lower_key, 
             SL(inode->next);
             SU(inode);
             inode = inode->next;
+            if constexpr(traits::AllowUnsorted)
+                if (!inode->is_sorted) inode->sort();
             pos = 0;
         }
     }
     else{
         //const_iterator iter = this->find_iterator(lower_key);
         const_iterator iter = this->lower_bound(lower_key);
-        
         while(iter.key() <= upper_key){
             //AEX_PRINT("node=" << iter._M_node << ", offset=" << iter.offset << ", size=" << iter._M_node->size << ", next_node=" << iter._M_node->next << ", key=" << iter.key() << ", data=" << iter.data());
             answer.emplace_back(iter.key(), iter.data());
@@ -109,9 +118,11 @@ inline void aex_tree<_Key, _Val, traits>::range_query(const key_type lower_key, 
 
 template<typename _Key, typename _Val, typename traits>
 inline size_t aex_tree<_Key, _Val, traits>::range_query_len(std::pair<key_type, value_type>* results, const key_type lower_key, const size_t key_num) const {
-    if constexpr(traits::AllowConcurrency){
+    if constexpr(traits::AllowConcurrency || traits::AllowUnsorted){
         data_node_ptr inode = find_leaf_con(lower_key);
         int pos = inode->find_lower_pos(lower_key);
+        if constexpr(traits::AllowUnsorted)
+            if (!inode->is_sorted) inode->sort();
         size_t cnt = 0;
         while (inode != nullptr){
             for (; cnt < key_num && pos < inode->size; ++pos, ++cnt){
@@ -125,6 +136,8 @@ inline size_t aex_tree<_Key, _Val, traits>::range_query_len(std::pair<key_type, 
             SL(inode->next);
             SU(inode);
             inode = inode->next;
+            if constexpr(traits::AllowUnsorted)
+                if (!inode->is_sorted) inode->sort();
             pos = 0;
         }
     }
@@ -142,11 +155,14 @@ inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val,
     node_ptr node, child;
     version_type now_version;
     int restart_count = 0;
+    AEX_DEBUG_BLOCK({--con_stats.find_restart_cnt;});
 find_leaf_con_start:
     if (restart_count++)
         yield(restart_count);
+    AEX_DEBUG_BLOCK({++con_stats.find_restart_cnt;});   
     node = root;
     now_version = this->version.load();
+    AEX_SL_WAIT_CNT(node);
     SL(node);
     while(node->type != NodeType::LeafNode){
         child = find_con(i_n(node), key);
@@ -176,24 +192,27 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     pos = node->predict(key);
     key_type find_key;
     node_ptr res = nullptr;
+    AEX_ARRAY_SL_WAIT_CNT(node, pos);
     SL(node, pos);
     if (node->is_occupied(pos)){
         std::tie(find_key, res) = hash_table.find(node, pos);
         AEX_ASSERT(res != nullptr);
-        DEBUG_CHECK_UNLOCK(res);
         if (find_key > key)
             res = nullptr;
-        else
+        else{
+            AEX_SL_WAIT_CNT(res);
             SL(res);
+        }
     }
     SU(node, pos);
 
     if (res == nullptr){
         //pos = node->prev_item_con(pos - 1);
+        AEX_ARRAY_SL_WAIT_CNT(node, pos);
         pos = node->prev_item_find_con(pos - 1);
         AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) AEX_ASSERT(node->lock_array[pos2slot(pos)].is_lock_shared());});
         std::tie(find_key, res) = hash_table.find(node, pos);
-        DEBUG_CHECK_UNLOCK(res);
+        AEX_SL_WAIT_CNT(res);
         SL(res);
         SU(node, pos);
         AEX_ASSERT(find_key <= key);
@@ -209,6 +228,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     //pos = aex::linear_search_upper_bound_avx512x8(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
     pos = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1;
     DEBUG_CHECK_UNLOCK(node->child_ptr[pos]);
+    AEX_SL_WAIT_CNT(node->child_ptr[pos]);
     SL(node->child_ptr[pos]);
     return node->child_ptr[pos];
 }
@@ -298,29 +318,30 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_tail_leaf(node_ptr node, version_type now_version) const {
-    AEX_ASSERT(check_lock_shared(node));
+    AEX_ASSERT(check_lock(node));
     key_type key;
     node_ptr child;
     if (now_version < node->version){
-        SU(node);
+        XU(node);
         return nullptr;
     }
     while (node->type != NodeType::LeafNode){
         if (node->type == NodeType::DenseNode){
             child = d_n(node)->child_ptr[d_n(node)->size - 1];
-            SL(child);
+            XL(child);
         }
         else{
             slot_type pos = h_n(node)->prev_item_find_con(h_n(node)->slot_size - 1);
             std::tie(key, child) = hash_table.find(node, pos);
-            SL(child);
+            AEX_SL_WAIT_CNT(child);
+            XL(child);
             AEX_DEBUG_BLOCK({if constexpr (traits::AllowConcurrency) AEX_ASSERT(h_n(node)->lock_array[pos2slot(pos)].is_lock_shared());});
             SU(h_n(node), pos);
         }
-        SU(node);
+        XU(node);
         node = child;
         if (now_version < node->version){
-            SU(node);
+            XU(node);
             return nullptr;
         }
     }

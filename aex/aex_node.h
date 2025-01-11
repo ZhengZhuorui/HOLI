@@ -27,7 +27,7 @@ public:
     typedef typename components::RWLock RWLock;
     typedef typename components::Lock   Lock;
 
-    explicit aex_node_base(version_type _version, NodeType _type) : size(0), type(_type), node_lock(), version(_version){}
+    explicit aex_node_base(version_type _version, NodeType _type) : size(0), type(_type),   node_lock(), version(_version){}
     aex_node_base(aex_node_base &other_node): size(other_node.size), type(other_node.type), node_lock(), version(0){}
     aex_node_base(aex_node_base &&other_node):size(other_node.size), type(other_node.type), node_lock(), version(0){}
 
@@ -299,7 +299,7 @@ public:
     typedef data_node* data_node_ptr;
     //typedef typename traits::slot_type slot_type;
 
-    aex_static_data_node(version_type _version) : base_node(_version, NodeType::LeafNode), next(nullptr){}
+    aex_static_data_node(version_type _version) : base_node(_version, NodeType::LeafNode), next(nullptr), is_sorted(true){}
 
     ~aex_static_data_node() {}
 
@@ -348,24 +348,53 @@ public:
         this->construct(_key.data(), _value.data(), nums);
     }
 
+    inline void sort(){
+        static_assert(traits::AllowUnsorted, "need unsorted mode");
+        int start = 1;
+        for (; start < this->size && key[start - 1] < key[start]; ++start);
+        for (int i = start; i < this->size; ++i){
+            key_type _key = key[i];
+            value_type _data = std::move(data[i]);
+            int j = i - 1;
+            for (; j >= 0 && key[j] > _key; --j){
+                key[j + 1] = key[j];
+                data[j + 1] = std::move(data[j]);
+            }
+            key[j + 1] = _key;
+            data[j + 1] = std::move(_data);
+        }
+        is_sorted = true;
+    }
+
     // insert a item
-    inline int insert(const key_type x, const value_type &data){
-        int pos = this->find_lower_pos(x);
-        insert(x, data, pos);
-        return pos;
+    inline void insert(const key_type x, const value_type &value){
+        if constexpr (traits::AllowUnsorted){
+            key[this->size] = x;
+            data[this->size] = value;
+            this->size++;
+            is_sorted = false;
+        }
+        else{
+            int pos = this->find_lower_pos(x);
+            insert(x, value, pos);
+        }
     }
 
     // insert a item in position
-    inline void insert(const key_type x, const value_type &data, const int pos){
+    inline void insert(const key_type x, const value_type &value, const int pos){
         AEX_ASSERT(this->size < traits::DATA_NODE_SLOT_SIZE);
+        AEX_ASSERT(is_sorted == true);
         std::copy_backward(this->key + pos, this->key + this->size, this->key + this->size + 1);
         std::copy_backward(this->data + pos, this->data + this->size, this->data + this->size + 1);
         this->key[pos] = x;
-        this->data[pos] = data;
+        this->data[pos] = value;
         this->size++;
     }
 
     inline bool erase(const key_type x){
+        if constexpr (traits::AllowUnsorted)
+            if (!this->is_sorted) this->sort();
+
         int pos = find_lower_pos(x);
         if (pos >= this->size || key[pos] != x)
             return false;
@@ -376,7 +405,14 @@ public:
     }
 
     inline int find(const key_type x) const {
-        int pos = find_lower_pos(x);
+        int pos;
+        if constexpr (sizeof(key_type) == 8){
+            pos = cmp_eq_epi64x16(this->key, x);
+        }
+        else{
+            //pos = find_lower_pos(x);
+            pos = std::find(this->key, this->key + this->size, x) - this->key;
+        }
         if (pos >= this->size || this->key[pos] != x)
             return this->size;
         return pos;
@@ -400,13 +436,10 @@ public:
         return std::upper_bound(this->key, this->key + this->size, x) - this->key;
     }
 
-    inline bool exists(const key_type x) const {
-        return find(x) < this->size;
-    }
-
     key_type      key[traits::DATA_NODE_SLOT_SIZE];
     value_type    data[traits::DATA_NODE_SLOT_SIZE];
     data_node_ptr next;
+    bool is_sorted;
 };
 
 }

@@ -37,7 +37,7 @@ int main(){
     for (int i = 0; i < thread_num; ++i){
         threads[i] = std::thread([](auto index, auto *start, auto* end){
             for (auto j = start; j < end; ++j)
-                index->insert_con(*j);
+                index->insert(*j);
         }, &index, values + insert_start[i], values + insert_start[i + 1]);
     }
     for (int i = 0; i < thread_num; ++i)

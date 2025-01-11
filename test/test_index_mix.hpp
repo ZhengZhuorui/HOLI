@@ -37,7 +37,7 @@ bool test_index_mix_perf(std::pair<key_type, value_type>* data, long long n, lon
                     break;
                 }
                 case OperationType::Insert:{
-                    index.insert_con(insert_data[i].first, insert_data[i].second);
+                    index.insert(insert_data[i].first, insert_data[i].second);
                 }
                 default:
                     break;
@@ -51,14 +51,20 @@ bool test_index_mix_perf(std::pair<key_type, value_type>* data, long long n, lon
         size_t i = 0;
         //AEX_PRINT("slot_size=" << index.begin()._M_node->slot_size);
         std::sort(data, data + n);
-        for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
-            if (data[i].first != iter.key()){
-                AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << data[i].first);
-                return false;
-            }
-            if (data[i].second != iter.data()){
-                AEX_ERROR("data error, data[" << i << "]=" << iter.data() <<", real data=" << data[i].second);
-                return false;
+        for (auto node = index.head_leaf; node != nullptr; node = node->next){
+            if constexpr (traits::AllowUnsorted)
+                if (!node->is_sorted) node->sort();
+            for (int j = 0; j < node->size; ++j, ++i){
+                if (data[i].first != node->key[j]){
+                    AEX_ERROR("key error, key[" << i << "]=" << node->key[j] <<", real key=" << data[i].first << ", gap=" << node->key[j] - data[i].first);
+                    //auto _ = std::lower_bound(data, data + n, std::make_pair(iter.key(), iter.data())) - data;
+                    //AEX_ERROR("iter_key position=" << _ << ", now position=" << i);
+                    return false;
+                }
+                if (data[i].second != node->data[j]){
+                    AEX_ERROR("data error, data[" << i << "]=" << node->data[j] <<", real data=" << data[i].second);
+                    return false;
+                }
             }
         }
     }
@@ -82,7 +88,7 @@ bool test_index_mix_perf(std::pair<key_type, value_type>* data, long long n, lon
                     break;
                 }
                 case OperationType::Insert:{
-                    index.insert_con(insert_data[i].first, insert_data[i].second);
+                    index.insert(insert_data[i].first, insert_data[i].second);
                     break;
                 }
                 default:
@@ -157,7 +163,7 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
                 //AEX_PRINT("i=" << i << "Insert:");
                 index_data.emplace_back(insert_data[insert_cnt]);
                 typename tree::iterator iter;
-                bool _ = index.insert_con(insert_data[insert_cnt].first, insert_data[insert_cnt].second);
+                bool _ = index.insert(insert_data[insert_cnt].first, insert_data[insert_cnt].second);
                 if (_ == false){
                     AEX_ERROR("i=" << i << ", insert error, insert_key=" << insert_data[insert_cnt].first);
                     return false;

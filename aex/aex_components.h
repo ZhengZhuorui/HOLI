@@ -83,8 +83,10 @@ struct aex_rw_spinlock<traits, true>{
     bool try_lock_shared(){
         unsigned short expected = lockCount.load() & (~1);
         unsigned short result   = expected + 0b10;
-        if (!lockCount.compare_exchange_strong(expected, result)) 
+        if (!lockCount.compare_exchange_strong(expected, result)) {
+            _mm_pause();
             return false;
+        }
         return true;
     }
 
@@ -106,8 +108,10 @@ struct aex_rw_spinlock<traits, true>{
     bool try_lock(){
         unsigned short expected = lockCount.load() & (~1);
         unsigned short result   = expected | 1;
-        if (!lockCount.compare_exchange_strong(expected, result)) 
+        if (!lockCount.compare_exchange_strong(expected, result)) {
+            _mm_pause();
             return false;
+        }
         while (lockCount.load() >= 0b10);
         return true;
     }
@@ -125,8 +129,10 @@ struct aex_rw_spinlock<traits, true>{
     bool try_upgrade_lock(){
         unsigned short expected = lockCount.load() & (~1);
         unsigned short result   = expected - 1;
-        if (!lockCount.compare_exchange_strong(expected, result)) 
+        if (!lockCount.compare_exchange_strong(expected, result)) {
+            _mm_pause();
             return false;
+        }
         while (lockCount.load() >= 0b10);
         return true;
     }
@@ -150,6 +156,89 @@ struct aex_rw_spinlock<traits, true>{
     inline bool is_lock_shared() const {return lockCount.load() >= 0b10;}
     std::atomic<unsigned short> lockCount;
 };
+
+
+
+// optimistic lock implementation is based on https://github.com/wangziqi2016/index-microbench/blob/master/BTreeOLC/BTreeOLC_child_layout.h
+struct OptLock {
+    std::atomic<uint64_t> typeVersionLockObsolete{0b100};
+
+    OptLock() = default;
+    OptLock(const OptLock& other) {
+      typeVersionLockObsolete = 0b100;
+    }
+
+    uint64_t get_version_number()
+    {
+      return typeVersionLockObsolete.load();
+    }
+
+    bool isLocked(uint64_t version) {
+      return ((version & 0b10) == 0b10);
+    }
+
+    bool isLocked() {
+      return ((typeVersionLockObsolete.load() & 0b10) == 0b10);
+    }
+
+    void writeLockOrRestart(bool &needRestart) {
+      uint64_t version;
+      version = readLockOrRestart(needRestart);
+      if (needRestart) return;
+
+      upgradeToWriteLockOrRestart(version, needRestart);
+    }
+
+    void upgradeToWriteLockOrRestart(uint64_t &version, bool &needRestart) {
+      if (typeVersionLockObsolete.compare_exchange_strong(version, version + 0b10)) {
+        version = version + 0b10;
+      } else {
+        _mm_pause();
+        needRestart = true;
+      }
+    }
+
+    void writeUnlock() {
+      typeVersionLockObsolete.fetch_add(0b10);
+    }
+
+
+    void checkOrRestart(uint64_t startRead, bool &needRestart) const {
+      readUnlockOrRestart(startRead, needRestart);
+    }
+
+    uint64_t readLockOrRestart(bool &needRestart) {
+      uint64_t version;
+      version = typeVersionLockObsolete.load();
+      if (isLocked(version) || isObsolete(version)) {
+        _mm_pause();
+        needRestart = true;
+      }
+      return version;
+    }
+
+    void readUnlockOrRestart(uint64_t startRead, bool &needRestart) const {
+      needRestart = (startRead != typeVersionLockObsolete.load());
+    }
+
+    void writeUnlockObsolete() {
+      typeVersionLockObsolete.fetch_add(0b11);
+    }
+
+    void labelObsolete() {
+      typeVersionLockObsolete.store((typeVersionLockObsolete.load() | 1));
+    }
+
+    bool isObsolete(uint64_t version) {
+      return (version & 1) == 1;
+    }
+
+    bool isObsolete() {
+      return (typeVersionLockObsolete.load() & 1) == 1;
+    }
+
+};
+
 
 template<typename T>
 struct empty_type{
@@ -182,6 +271,7 @@ struct no_atomic_type{
     inline self& operator--(){x--;return *this;}
     T x;
 };
+
 
 
 template<typename traits, bool _ = traits::AllowConcurrency>

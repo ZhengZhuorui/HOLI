@@ -103,6 +103,7 @@ public:
         auto if_stats = get_info_stats();
         if_stats.print_stats();
         opt_stats.print_stats();
+        con_stats.print_stats();
         hash_table.print_stats();
     }
 
@@ -117,7 +118,8 @@ private:
     data_node_ptr   head_leaf;
     aex_stats       m_stats;
     HashTable       hash_table;
-    operation_stats opt_stats;
+    mutable operation_stats opt_stats;
+    mutable concurrency_stats con_stats;
 
 public:
     aex_tree();
@@ -149,8 +151,11 @@ public:
     inline value_type& operator[](const key_type key){
         //static_assert(std::is_arithmetic<_Key>::value, "key types must be numeric.");
         static_assert(traits::AllowConcurrency == false, "The operator not support concurrency");
-        iterator iter = insert(std::pair<key_type, value_type>(key, value_type())).first;
-        return iter.data();
+        insert(std::pair<key_type, value_type>(key, value_type()));
+        data_node_ptr node = find_leaf(key);
+        int pos = node->find(key);
+        AEX_ASSERT(pos < node->size);
+        return node->data[pos];
     }
 
     inline void clear(){
@@ -161,22 +166,24 @@ public:
      * @brief insert kv_pair into index
      * @warning the interface not support concurrency
      */
-    inline std::pair<iterator, bool> insert(const std::pair<key_type, value_type> &x){
-        static_assert(traits::AllowConcurrency == false, "The operator not support concurrency");
-        return insert(x.first, x.second);
-    }
+    //inline std::pair<iterator, bool> insert(const std::pair<key_type, value_type> &x){
+    //    static_assert(traits::AllowConcurrency == false, "The operator not support concurrency");
+    //    return insert(x.first, x.second);
+    //}
     /**
      * @brief insert kv_pair into index
      * @details the interface support concurrency
      */
-    inline bool insert_con(const std::pair<key_type, value_type> &x){
-        return insert(x.first, x.second).second;
-    }
-    inline bool insert_con(const key_type key, const value_type &value){
-        return insert(key, value).second;
+    inline bool insert(const std::pair<key_type, value_type> &x){
+        return insert(x.first, x.second);
     }
 
-    std::pair<iterator, bool> insert(const key_type key, const value_type &value);
+    inline bool insert_con(const key_type key, const value_type &value){
+        return insert(key, value);
+    }
+
+    //std::pair<iterator, bool> insert(const key_type key, const value_type &value);
+    bool insert(const key_type key, const value_type &value);
 
     /**
      * @brief find the iterator of the key
@@ -184,6 +191,7 @@ public:
      */
     inline const_iterator find(const key_type x) const {
         static_assert(traits::AllowConcurrency == false, "The operator not support concurrency");
+        static_assert(!traits::AllowUnsorted, "The mode is not support data node unsorted");
         data_node_ptr node = find_leaf(x);
         int pos = node->find(x);
         if (pos == node->size)
@@ -197,6 +205,7 @@ public:
      */
     inline iterator find(const key_type x){
         static_assert(traits::AllowConcurrency == false, "The operator not support concurrency");
+        static_assert(!traits::AllowUnsorted, "The mode is not support data node unsorted");
         data_node_ptr node = find_leaf(x);
         int pos = node->find(x);
         if (pos == node->size)
@@ -211,7 +220,7 @@ public:
     inline bool find(const key_type x, value_type &y){
         bool ret = false;
         data_node_ptr node = find_leaf(x);
-        slot_type pos = node->find(x);
+        int pos = node->find(x);
         if (pos < node->size){
             y = node->data[pos];
             ret = true;
@@ -242,8 +251,8 @@ public:
             node = find_leaf(x);
         }
 
-        slot_type pos = node->find_lower_pos(x);
-        if (pos < node->size && node->key[pos] == x){
+        slot_type pos = node->find(x);
+        if (pos < node->size){
             node->data[pos] = y;
             ret = true;
         }
@@ -274,8 +283,9 @@ public:
      * @brief find the minimum key larger than or equal to x
      * @details the interface support concurrency
      */
-    inline bool lower_bound(const key_type x, const std::pair<key_type, value_type> &res){
+    inline bool lower_bound(const key_type x, std::pair<key_type, value_type> &res){
         data_node_ptr node = this->find_leaf(x);
+        if (!node->is_sorted) node->sort();
         slot_type pos = node->find_lower_pos(x);
         if (pos >= node->size && node->next == nullptr){
             SU(node);
@@ -286,6 +296,7 @@ public:
             SL(next_node);
             SU(node);
             node = next_node;
+            if (!node->is_sorted) node->sort();
             pos = node->find_lower_pos(x);
         }
         res = std::make_pair(node->key[pos], node->data[pos]);
@@ -298,6 +309,7 @@ public:
      * @warning the interface not support concurrency
      */
     inline iterator lower_bound(const key_type x){
+        AEX_ASSERT(traits::AllowUnsorted == false);
         data_node_ptr node = this->find_leaf(x);
         slot_type pos = node->find_lower_pos(x);
         if (pos >= (LL)node->size){
@@ -312,6 +324,7 @@ public:
     }
 
     inline const_iterator lower_bound(const key_type x) const {
+        AEX_ASSERT(traits::AllowUnsorted == false);
         data_node_ptr node = this->find_leaf(x);
         slot_type pos = node->find_lower_pos(x);
         if (pos >= (LL)node->size){
@@ -330,6 +343,7 @@ public:
      * @warning the interface not support concurrency
      */
     inline iterator upper_bound(const key_type x){
+        AEX_ASSERT(traits::AllowUnsorted == false);
         data_node_ptr node = this->find_leaf(x);
         slot_type pos = node->find_lower_pos(x);
         if (pos < node->size && node->key[pos] <= x)
@@ -346,6 +360,7 @@ public:
     }
 
     inline const_iterator upper_bound(const key_type x)const {
+        AEX_ASSERT(traits::AllowUnsorted == false);
         data_node_ptr node = this->find_leaf(x);
         slot_type pos = node->find_lower_pos(x);
         if (pos < node->size && node->key[pos] <= x)
@@ -367,6 +382,7 @@ public:
      */
     inline bool upper_bound(const key_type x, const std::pair<key_type, value_type> &res){
         data_node_ptr node = this->find_leaf(x);
+        if (!node->is_sorted) node->sort();
         slot_type pos = node->find_upper_pos(x);
         if (pos >= node->size && node->next == nullptr){
             SU(node);
@@ -377,6 +393,7 @@ public:
             SL(next_node);
             SU(node);
             node = next_node;
+            if (!node->is_sorted) node->sort();
             pos = node->find_upper_pos(x);
         }
         res = std::make_pair(node->key[pos], node->child[pos]);
@@ -429,21 +446,25 @@ public:
      * @warning the interface not support concurrency
      */
     inline iterator begin() {
+        static_assert(!traits::AllowUnsorted, "The mode is not support data node unsorted");
         data_node_ptr p = head_leaf;
         while (p != nullptr && p->size == 0)
             p = p->next;
         return iterator(p, 0);
     }
     inline const_iterator begin() const {
+        static_assert(!traits::AllowUnsorted, "The mode is not support data node unsorted");
         data_node_ptr p = head_leaf;
         while (p != nullptr && p->size == 0)
             p = p->next;
         return const_iterator(p, 0);
     }
     inline iterator end() {
+        static_assert(!traits::AllowUnsorted, "The mode is not support data node unsorted");
         return iterator(nullptr, 0);
     }
     inline const_iterator end() const {
+        static_assert(!traits::AllowUnsorted, "The mode is not support data node unsorted");
         return const_iterator(nullptr, 0);
     }
 
@@ -548,7 +569,7 @@ private:
     void insert_collision(   hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
     void insert_no_collision(hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
     void insert(dense_node_ptr node, const key_type key, const node_ptr child);
-    std::pair<iterator, bool> insert_data_node(data_node_ptr node, data_node_ptr &new_node, const key_type key, const value_type &value);
+    void insert_data_node(data_node_ptr node, data_node_ptr &new_node, const key_type key, const value_type &value);
     void insert_unlock(inner_node_ptr top_node, inner_node_ptr node) const;
     void split(data_node_ptr old_node, data_node_ptr new_node);
     void split(dense_node_ptr old_node, dense_node_ptr new_node);

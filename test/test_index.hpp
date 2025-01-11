@@ -7,7 +7,7 @@ bool test_index(std::pair<K, V>* data, size_t n){
     // insert
     for (size_t i = 0; i < n; ++i)
         //mp.insert_con(std::make_pair(data[i].first, data[i].second));
-        mp.insert_con(data[i].first, data[i].second);
+        mp.insert(data[i].first, data[i].second);
     
     // find
     int M = std::min(n, (size_t)100);
@@ -40,8 +40,9 @@ bool test_index(std::pair<K, V>* data, size_t n){
         // find
         for (int i = 0; i < M; ++i){
             size_t x = rand() % n;
-            auto y = mp.find(data[x].first);
-            if (y.data() != data[x].second){
+            V y;
+            bool z = mp.find(data[x].first, y);
+            if (!z || y != data[x].second){
                 printf("Error!");
             }
         }
@@ -77,27 +78,34 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
         index.print_stats();
         size_t i = 0;
         //AEX_PRINT("slot_size=" << index.begin()._M_node->slot_size);
-        for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
-            if (data[i].first != iter.key()){
-                AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << data[i].first);
-                return false;
-            }
-            if (data[i].second != iter.data()){
-                AEX_ERROR("data error, data[" << i << "]=" << iter.data() <<", real data=" << data[i].second);
-                return false;
+        for (auto node = index.head_leaf; node != nullptr; node = node->next){
+            if constexpr (traits::AllowUnsorted)
+                if (!node->is_sorted) node->sort();
+            for (int j = 0; j < node->size; ++j, ++i){
+                if (data[i].first != node->key[j]){
+                    AEX_ERROR("key error, key[" << i << "]=" << node->key[j] <<", real key=" << data[i].first << ", gap=" << node->key[j] - data[i].first);
+                    //auto _ = std::lower_bound(data, data + n, std::make_pair(iter.key(), iter.data())) - data;
+                    //AEX_ERROR("iter_key position=" << _ << ", now position=" << i);
+                    return false;
+                }
+                if (data[i].second != node->data[j]){
+                    AEX_ERROR("data error, data[" << i << "]=" << node->data[j] <<", real data=" << data[i].second);
+                    return false;
+                }
             }
         }
 
         for (long long i = 0; i < n; ++i){
             //AEX_PRINT("key[" << i << "]=" << data[i].first);
             auto x = data[i];
-            auto y = index.find(x.first);
-            if (y == index.end()){
+            value_type y;
+            bool z = index.find(x.first, y);
+            if (!z){
                 AEX_ERROR("query no exists! i=" << i << "key=" << x.first);
                 return false;
             }
-            if (y.key() != x.first || y.data() != x.second){
-                AEX_ERROR("query error! query key=" << x.first << ", data=" << x.second << ", get key=" << y.key() << ", data=" << y.data());
+            if (y != x.second){
+                AEX_ERROR("query error! query key=" << x.first << ", data=" << x.second << ", get data=" << y);
                 return false;
             }
         }
@@ -255,7 +263,7 @@ bool test_index_delta_lookup_perf(std::pair<key_type, value_type>* data, long lo
             //std::cout << "i=" << i << std::endl;
             AEX_PRINT("i=" << i);
         typename tree::iterator iter;
-        bool inserted = index.insert_con(data[i]);
+        bool inserted = index.insert(data[i]);
         if (!inserted){
             AEX_ERROR("insert failed!");
             return false;
@@ -294,16 +302,20 @@ bool test_index_delta_lookup_perf(std::pair<key_type, value_type>* data, long lo
         }
         index.print_stats();
         size_t i = 0;
-        for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
-            if (data[i].first != iter.key()){
-                AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << data[i].first << ", gap=" << iter.key() - data[i].first);
-                auto _ = std::lower_bound(data, data + n, std::make_pair(iter.key(), iter.data())) - data;
-                AEX_ERROR("iter_key position=" << _ << ", now position=" << i);
-                return false;
-            }
-            if (data[i].second != iter.data()){
-                AEX_ERROR("data error, data[" << i << "]=" << iter.data() <<", real data=" << data[i].second);
-                return false;
+        for (auto node = index.head_leaf; node != nullptr; node = node->next){
+            if constexpr (traits::AllowUnsorted)
+                if (!node->is_sorted) node->sort();
+            for (int j = 0; j < node->size; ++j, ++i){
+                if (data[i].first != node->key[j]){
+                    AEX_ERROR("key error, key[" << i << "]=" << node->key[j] <<", real key=" << data[i].first << ", gap=" << node->key[j] - data[i].first);
+                    //auto _ = std::lower_bound(data, data + n, std::make_pair(iter.key(), iter.data())) - data;
+                    //AEX_ERROR("iter_key position=" << _ << ", now position=" << i);
+                    return false;
+                }
+                if (data[i].second != node->data[j]){
+                    AEX_ERROR("data error, data[" << i << "]=" << node->data[j] <<", real data=" << data[i].second);
+                    return false;
+                }
             }
         }
     }
@@ -372,7 +384,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
         if (i % 1000000 == 0)
             AEX_PRINT("i=" << i << ", key=" << insert_data[i].first);
         typename tree::iterator iter;
-        bool inserted = index.insert_con(insert_data[i]);
+        bool inserted = index.insert(insert_data[i]);
         if (inserted == false){
             AEX_ERROR("insert failed!");
             return false;
@@ -417,16 +429,20 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
         }
         index.print_stats();
         size_t i = 0;
-        for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
-            if (data[i].first != iter.key()){
-                AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << data[i].first << ", gap=" << iter.key() - data[i].first);
-                auto _ = std::lower_bound(data, data + n, std::make_pair(iter.key(), iter.data())) - data;
-                AEX_ERROR("iter_key position=" << _ << ", now position=" << i);
-                return false;
-            }
-            if (data[i].second != iter.data()){
-                AEX_ERROR("data error, data[" << i << "]=" << iter.data() <<", real data=" << data[i].second);
-                return false;
+        for (auto node = index.head_leaf; node != nullptr; node = node->next){
+            if constexpr (traits::AllowUnsorted)
+                if (!node->is_sorted) node->sort();
+            for (int j = 0; j < node->size; ++j, ++i){
+                if (data[i].first != node->key[j]){
+                    AEX_ERROR("key error, key[" << i << "]=" << node->key[j] <<", real key=" << data[i].first << ", gap=" << node->key[j] - data[i].first);
+                    //auto _ = std::lower_bound(data, data + n, std::make_pair(iter.key(), iter.data())) - data;
+                    //AEX_ERROR("iter_key position=" << _ << ", now position=" << i);
+                    return false;
+                }
+                if (data[i].second != node->data[j]){
+                    AEX_ERROR("data error, data[" << i << "]=" << node->data[j] <<", real data=" << data[i].second);
+                    return false;
+                }
             }
         }
     }
@@ -440,7 +456,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
         //aex_tree<key_type, value_type, traits>::debug_level |= 1;
         t1 = std::chrono::high_resolution_clock::now();
         for (long long i = 0; i < batch; ++i)
-            index.insert_con(insert_data[i]);
+            index.insert(insert_data[i]);
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
@@ -475,7 +491,7 @@ bool test_index_insert_hotspot_perf(std::pair<key_type, value_type>* data, long 
         if (i % 1000000 == 0)
             std::cout << "i=" << i << std::endl;
         typename tree::iterator iter;
-        bool inserted = index.insert_con(insert_data[i]);
+        bool inserted = index.insert(insert_data[i]);
         if (inserted == false){
             AEX_ERROR("insert failed!");
             return false;
@@ -517,16 +533,20 @@ bool test_index_insert_hotspot_perf(std::pair<key_type, value_type>* data, long 
         }
         index.print_stats();
         size_t i = 0;
-        for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
-            if (data[i].first != iter.key()){
-                AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << data[i].first << ", gap=" << iter.key() - data[i].first);
-                auto _ = std::lower_bound(data, data + n, std::make_pair(iter.key(), iter.data())) - data;
-                AEX_ERROR("iter_key position=" << _ << ", now position=" << i);
-                return false;
-            }
-            if (data[i].second != iter.data()){
-                AEX_ERROR("data error, data[" << i << "]=" << iter.data() <<", real data=" << data[i].second);
-                return false;
+        for (auto node = index.head_leaf; node != nullptr; node = node->next){
+            if constexpr (traits::AllowUnsorted)
+                if (!node->is_sorted) node->sort();
+            for (int j = 0; j < node->size; ++j, ++i){
+                if (data[i].first != node->key[j]){
+                    AEX_ERROR("key error, key[" << i << "]=" << node->key[j] <<", real key=" << data[i].first << ", gap=" << node->key[j] - data[i].first);
+                    //auto _ = std::lower_bound(data, data + n, std::make_pair(iter.key(), iter.data())) - data;
+                    //AEX_ERROR("iter_key position=" << _ << ", now position=" << i);
+                    return false;
+                }
+                if (data[i].second != node->data[j]){
+                    AEX_ERROR("data error, data[" << i << "]=" << node->data[j] <<", real data=" << data[i].second);
+                    return false;
+                }
             }
         }
     }
@@ -539,7 +559,7 @@ bool test_index_insert_hotspot_perf(std::pair<key_type, value_type>* data, long 
         index = index_bak;
         t1 = std::chrono::high_resolution_clock::now();
         for (long long i = 0; i < batch; ++i)
-            index.insert_con(insert_data[i]);
+            index.insert(insert_data[i]);
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }
@@ -584,14 +604,20 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
         index.print_stats();
 
         size_t i = 0;
-        for (auto iter = index.begin(); iter != index.end(); ++iter, ++i){
-            if (left_data[i].first != iter.key()){
-                AEX_ERROR("key error, key[" << i << "]=" << iter.key() <<", real key=" << left_data[i].first);
-                return false;
-            }
-            if (left_data[i].second != iter.data()){
-                AEX_ERROR("data error, data[" << i << "]=" << iter.data() <<", real data=" << left_data[i].second);
-                return false;
+        for (auto node = index.head_leaf; node != nullptr; node = node->next){
+            if constexpr (traits::AllowUnsorted)
+                if (!node->is_sorted) node->sort();
+            for (int j = 0; j < node->size; ++j, ++i){
+                if (data[i].first != node->key[j]){
+                    AEX_ERROR("key error, key[" << i << "]=" << node->key[j] <<", real key=" << data[i].first << ", gap=" << node->key[j] - data[i].first);
+                    //auto _ = std::lower_bound(data, data + n, std::make_pair(iter.key(), iter.data())) - data;
+                    //AEX_ERROR("iter_key position=" << _ << ", now position=" << i);
+                    return false;
+                }
+                if (data[i].second != node->data[j]){
+                    AEX_ERROR("data error, data[" << i << "]=" << node->data[j] <<", real data=" << data[i].second);
+                    return false;
+                }
             }
         }
         for (auto &x : left_data){

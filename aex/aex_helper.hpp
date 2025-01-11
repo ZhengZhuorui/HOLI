@@ -55,14 +55,16 @@ info_stats aex_tree<_Key, _Val, traits>::get_info_stats() const {
     stats.hash_table_memory_used = hash_table.memory_used();
     [[maybe_unused]]key_type prev_key = std::numeric_limits<key_type>::lowest();
     long long cnt = 0;
-    for (auto it = this->begin(); it != this->end(); ++it){
-        AEX_ASSERT(it.key() >= prev_key);
-        prev_key = it.key();
-        ++cnt;
+    if constexpr(!traits::AllowUnsorted){
+        for (auto it = this->begin(); it != this->end(); ++it){
+            AEX_ASSERT(it.key() >= prev_key);
+            prev_key = it.key();
+            ++cnt;
+        }
+        AEX_ASSERT(cnt == this->m_stats.size.load());
     }
     //if (cnt != this->m_stats.size.load())
     //    AEX_PRINT("cnt=" << cnt << ", size=" << this->m_stats.size.load());
-    AEX_ASSERT(cnt == this->m_stats.size.load());
     cnt = 0;
     _get_info_stats(this->root, 0, stats);
     for (data_node_ptr inode = this->head_leaf; inode != nullptr; inode = inode->next)
