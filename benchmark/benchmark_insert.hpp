@@ -1,7 +1,7 @@
 #pragma once
 #include <bits/stdc++.h>
 
-#include "aex/aex.h"
+#include "aex.h"
 #include "stx/btree_map.h"
 //#include "alex_map.h"
 #include "pgm_index.hpp"

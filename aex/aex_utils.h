@@ -156,7 +156,7 @@ static std::mutex log_mutex;
 #define AEX_ARRAY_XL_WAIT_CNT(node, pos) AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (h_n(node)->lock_array[pos2slot(pos)].is_lock()) ++con_stats.array_XL_wait_cnt;});
 
 inline void yield(int count){
-    if (count>10)
+    if (count>5)
         sched_yield();
     else
         _mm_pause();
@@ -502,10 +502,10 @@ struct info_stats{
     ULL tot_depth, size;
     unsigned int max_depth;
     ULL level_node[16];
-    ULL memory_used, inner_node_memory_used, hash_table_memory_used, data_node_memory_used;
+    ULL memory_used, hash_node_memory_used, dense_node_memory_used, hash_table_memory_used, data_node_memory_used;
     void print_stats() const {
         AEX_SUCCESS("[Infomation Stats]: ");
-        AEX_HINT("memory used=" << 1.0 * memory_used / 1024 / 1024 << " (MB), inner node memory used=" << 1.0 * inner_node_memory_used / 1024 / 1024 << "(MB), hash table memory used=" << 1.0 * hash_table_memory_used / 1024 / 1024 << " (MB), data node memory used=" << 1.0 * data_node_memory_used / 1024 / 1024 << "(MB)");
+        AEX_HINT("memory used=" << 1.0 * memory_used / 1024 / 1024 << " (MB), hash node memory used=" << 1.0 * hash_node_memory_used / 1024 / 1024 << " (MB), dense node memory used=" << 1.0 * dense_node_memory_used / 1024 / 1024 << "(MB), hash table memory used=" << 1.0 * hash_table_memory_used / 1024 / 1024 << " (MB), data node memory used=" << 1.0 * data_node_memory_used / 1024 / 1024 << "(MB)");
         AEX_HINT("tot_cnt=" << hash_node_cnt + dense_node_cnt + data_node_cnt);
         //AEX_HINT("hash_node_cnt=" << hash_node_cnt << ", dense_node_cnt=" << dense_node_cnt << ", try_learn_dense_node_cnt" << try_learn_dense_node_cnt << ", data_node_cnt=" << data_node_cnt);
         AEX_HINT("hash_node_cnt=" << hash_node_cnt << ", dense_node_cnt=" << dense_node_cnt << ", data_node_cnt=" << data_node_cnt);

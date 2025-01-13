@@ -1,5 +1,5 @@
 #include <bits/stdc++.h>
-#include "aex/aex_utils.h"
+#include "aex_utils.h"
 #include "test/test.h"
 
 using namespace std::chrono;

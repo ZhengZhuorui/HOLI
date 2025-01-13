@@ -2,7 +2,7 @@
 #include <vector>
 #include <utility>
 
-#include "aex/aex.h"
+#include "aex.h"
 #include "pgm_index.hpp"
 #include "pgm_index_dynamic.hpp"
 #pragma GCC diagnostic push

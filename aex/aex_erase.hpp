@@ -1,5 +1,5 @@
 #pragma once
-#include "aex/aex.h"
+#include "aex.h"
 
 namespace aex{
 
@@ -12,8 +12,9 @@ inline bool aex_tree<_Key, _Val, traits>::_erase(const key_type key){
     int restart_count = 0;
 
 _erase_start:
-    if (restart_count++)
+    if (restart_count > 0)
         yield(restart_count);
+    restart_count++;
     node = root;
     SL(node);
     AEX_ASSERT(check_lock_shared(root));

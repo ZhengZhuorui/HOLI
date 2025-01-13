@@ -2,7 +2,7 @@
 #include <type_traits>
 #include <atomic>
 
-#include "aex/aex_utils.h"
+#include "aex_utils.h"
 
 namespace aex{
 
@@ -26,6 +26,7 @@ struct aex_spinlock<traits, true>{
     inline void lock() {
         bool expected = false;
         while (!writeLock.compare_exchange_weak(expected, true)) {
+            _mm_pause();
             expected = false;
         }
     }
@@ -70,6 +71,7 @@ struct aex_rw_spinlock<traits, true>{
         unsigned short expected = lockCount.load() & (~1);
         unsigned short result   = expected + 0b10;
         while (!lockCount.compare_exchange_weak(expected, result)) {
+            _mm_pause();
             expected = lockCount.load() & (~1);
             result   = expected + 0b10;
         }
@@ -94,6 +96,7 @@ struct aex_rw_spinlock<traits, true>{
         unsigned short expected = lockCount.load() & (~1);
         unsigned short result   = expected | 1;
         while (!lockCount.compare_exchange_weak(expected, result)) {
+            _mm_pause();
             expected = lockCount.load() & (~1);
             result   = expected | 1;
         }
@@ -160,7 +163,64 @@ struct aex_rw_spinlock<traits, true>{
 
 
 // optimistic lock implementation is based on https://github.com/wangziqi2016/index-microbench/blob/master/BTreeOLC/BTreeOLC_child_layout.h
+
+template<typename traits, bool _ = traits::AllowConcurrency>
 struct OptLock {
+
+    OptLock() = default;
+    OptLock(const OptLock& other) {}
+
+    uint64_t get_version_number(){return 0;}
+
+    bool isLocked(uint64_t version) {return false;}
+
+    bool isLocked() { return false; }
+
+    void writeLockOrRestart(bool &needRestart) {}
+
+    void upgradeToWriteLockOrRestart(uint64_t &version, bool &needRestart) {}
+
+    void writeUnlock() {}
+
+    void checkOrRestart(uint64_t startRead, bool &needRestart) const {
+      readUnlockOrRestart(startRead, needRestart);
+    }
+
+    uint64_t readLockOrRestart(bool &needRestart) {
+      uint64_t version;
+      version = typeVersionLockObsolete.load();
+      if (isLocked(version) || isObsolete(version)) {
+        _mm_pause();
+        needRestart = true;
+      }
+      return version;
+    }
+
+    void readUnlockOrRestart(uint64_t startRead, bool &needRestart) const {
+      needRestart = (startRead != typeVersionLockObsolete.load());
+    }
+
+    void writeUnlockObsolete() {
+      typeVersionLockObsolete.fetch_add(0b11);
+    }
+
+    void labelObsolete() {
+      typeVersionLockObsolete.store((typeVersionLockObsolete.load() | 1));
+    }
+
+    bool isObsolete(uint64_t version) {
+      return (version & 1) == 1;
+    }
+
+    bool isObsolete() {
+      return (typeVersionLockObsolete.load() & 1) == 1;
+    }
+
+};
+
+
+template<>
+struct OptLock<traits, true> {
     std::atomic<uint64_t> typeVersionLockObsolete{0b100};
 
     OptLock() = default;
@@ -293,7 +353,8 @@ struct aex_concurrency_components{
     typedef dense_node* dense_node_ptr;
     typedef data_node* data_node_ptr;    
     
-    typedef aex_rw_spinlock<traits> RWLock;
+    //typedef aex_rw_spinlock<traits> RWLock;
+    typedef OptLock<traits>
     typedef aex_spinlock<traits>    Lock;
     typedef aex_allocator<key_type, value_type, traits> Allocator;
     typedef aex_hash_table<key_type, traits>            HashTable;

@@ -13,12 +13,12 @@
 #endif
 
 //using namespace aex;
-#include "aex/aex.h"
+#include "aex.h"
 using namespace aex;
 #include "benchmark/generate_dataset.h"
 #include "test/test.h"
 #include "benchmark/utils.h"
-#include "aex/aex_traits.h"
+#include "aex_traits.h"
 
 typedef long long LL;
 typedef unsigned long long ULL;

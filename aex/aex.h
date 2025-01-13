@@ -14,19 +14,20 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 
-#include "aex/aex_utils.h"
-#include "aex/aex_utils_avx.h"
-#include "aex/aex_def.h"
-#include "aex/aex_traits.h"
-#include "aex/aex_components.h"
-#include "aex/aex_hash_table.h"
-#include "aex/aex_model.h"
-#include "aex/aex_model_avx.h"
-#include "aex/aex_node.h"
-#include "aex/aex_allocator.h"
-#include "aex/aex_iterator.h"
-#include "aex/concurrency/aex_node_con.h"
-#include "aex/concurrency/aex_hash_table_con.h"
+#include "aex_utils.h"
+#include "aex_utils_avx.h"
+#include "aex_def.h"
+#include "aex_traits.h"
+#include "aex_components.h"
+#include "aex_hash_table.h"
+#include "aex_model.h"
+#include "aex_model_avx.h"
+#include "aex_node.h"
+#include "aex_allocator.h"
+#include "aex_iterator.h"
+#include "concurrency/aex_node_con.h"
+#include "concurrency/aex_hash_table_con.h"
+//#include "concurrency/aex_concurrency.h"
 
 
 namespace aex{
@@ -174,16 +175,31 @@ public:
      * @brief insert kv_pair into index
      * @details the interface support concurrency
      */
-    inline bool insert(const std::pair<key_type, value_type> &x){
-        return insert(x.first, x.second);
+    inline bool insert(const std::pair<key_type, value_type> x){
+        if constexpr(!traits::AllowConcurrency)
+            return _insert(x.first, x.second);
+        else{
+            if constexpr (!traits::DebugMode)
+                return _insert_con(x.first, x.second);
+            else 
+                return _insert_con_debug_test(x.first, x.second);
+        }
     }
 
-    inline bool insert_con(const key_type key, const value_type &value){
-        return insert(key, value);
+    inline bool insert(const key_type key, const value_type value){
+        if constexpr(!traits::AllowConcurrency)
+            return _insert(key, value);
+        else{
+            if constexpr (!traits::DebugMode)
+                return _insert_con(key, value);
+            else 
+                return _insert_con_debug_test(key, value);
+        }
     }
 
     //std::pair<iterator, bool> insert(const key_type key, const value_type &value);
-    bool insert(const key_type key, const value_type &value);
+    bool _insert(const key_type key, const value_type &value);
+    bool _insert_con(const key_type key, const value_type &value);
 
     /**
      * @brief find the iterator of the key
@@ -756,16 +772,26 @@ private:
     bool check_node(data_node_ptr  node) const ;
     bool check_node(dense_node_ptr node) const ;
     bool check_node(hash_node_ptr  node) const ;
+
+    bool check_insert_root(inner_node_ptr node);
+    bool check_insert_data_node(hash_node_ptr &top_node, inner_node_ptr &node, node_ptr &child, slot_type pos, const key_type key, const value_type &value);
+    bool check_insert_SMO(hash_node_ptr &top_node, inner_node_ptr &node, node_ptr &child, slot_type &pos, const key_type key, version_type now_version);
+    bool _insert_con_debug(const key_type key, const value_type &value);
+    std::vector<std::pair<key_type, value_type>> test_vec[10240];
+    //OptLock test_lock[10240];
+    RWLock test_lock[10240];
+    bool _insert_con_debug_test(const key_type key, const value_type value);
+
 };
 }
 
-#include "aex/aex_init.hpp"
-#include "aex/aex_find.hpp"
-#include "aex/aex_insert.hpp"
-#include "aex/aex_erase.hpp"
-#include "aex/aex_SMO.hpp"
-#include "aex/aex_helper.hpp"
-#include "aex/aex_test.h"
+#include "aex_init.hpp"
+#include "aex_find.hpp"
+#include "aex_insert.hpp"
+#include "aex_erase.hpp"
+#include "aex_SMO.hpp"
+#include "aex_helper.hpp"
+#include "aex_test.h"
 
 #undef n_n
 #undef i_n

@@ -2,7 +2,7 @@
 #include <bits/stdc++.h>
 #include "benchmark/zipf.h"
 #include "benchmark/utils.h"
-#include "aex/aex_utils.h"
+#include "aex_utils.h"
 
 template<typename T,
         typename Distribution,

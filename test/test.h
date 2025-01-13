@@ -1,6 +1,6 @@
 #pragma once
 #include <bits/stdc++.h>
-#include "aex/aex.h"
+#include "aex.h"
 
 #include "benchmark/generate_dataset.h"
 

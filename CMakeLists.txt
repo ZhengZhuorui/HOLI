@@ -16,6 +16,7 @@ set(CMAKE_CXX_FLAGS "-Wall -fopenmp -ffast-math -fmax-errors=3 -march=native -mf
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
+
 #set(CMAKE_CXX_FLAGS "-g -Wall -march=native -fopenmp -fmax-errors=3 -std=c++17")
 #
 #if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -28,6 +29,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 #message(STATUS "FLAGS:" ${CMAKE_CXX_FLAGS})
 
 include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/aex)
 
 #add_executable(example ${CMAKE_SOURCE_DIR}/examples/aex.cpp)
 #add_executable(example_con ${CMAKE_SOURCE_DIR}/examples/aex_con.cpp)

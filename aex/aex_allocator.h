@@ -1,6 +1,6 @@
 #pragma once
 
-#include "aex/aex_def.h"
+#include "aex_def.h"
 
 namespace aex
 {
@@ -68,7 +68,7 @@ public:
     }
 
     inline static ULL HASH_NODE_MEMORY_USED(ULL slot_size){
-        return BITMAP_MEMORY_USED(slot_size) + MAX_INNER_NODE_SIZE();
+        return (slot_size / 64 + 1 > (slot_type)((MAX_INNER_NODE_SIZE() - sizeof(hash_node)) / 8)) * BITMAP_MEMORY_USED(slot_size) + MAX_INNER_NODE_SIZE();
     }
 
     inline static ULL DENSE_NODE_MEMORY_USED(){

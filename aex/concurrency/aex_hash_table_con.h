@@ -1,6 +1,6 @@
 #pragma once
-#include "aex/aex_utils.h"
-#include "aex/aex_hash_table.h"
+#include "../aex_utils.h"
+#include "../aex_hash_table.h"
 
 namespace aex{
 
@@ -87,8 +87,9 @@ public:
         AEX_DEBUG_BLOCK({--con_stats.insert_restart_cnt;});
 insert_start:
         AEX_DEBUG_BLOCK({++con_stats.insert_restart_cnt;});
-        if (restart_count++)
+        if (restart_count > 0)
             yield(restart_count);
+        restart_count++;
         AEX_LOCK_SL_WAIT_CNT(lock);
         lock.lock_shared();
         if (this->isfull()){

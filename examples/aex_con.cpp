@@ -1,5 +1,5 @@
 #include <bits/stdc++.h>
-#include "aex/aex.h"
+#include "aex.h"
 using namespace std;
 typedef long long KEY_TYPE;
 typedef long long PAYLOAD_TYPE;

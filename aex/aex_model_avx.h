@@ -1,5 +1,5 @@
 #pragma once
-#include "aex/aex_model.h"
+#include "aex_model.h"
 
 namespace aex{
 template<typename _Tp,

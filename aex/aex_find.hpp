@@ -52,7 +52,8 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find(const dense_node_ptr node, const key_type key) const {
-    slot_type pos = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1;
+    //slot_type pos = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1;
+    slot_type pos = linear_search_upper_bound_avx512<traits::DENSE_NODE_SLOT_SIZE>(node->key_ptr, node->size, key) - 1;
     //slot_type pos = std::upper_bound(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
     //AEX_DEBUG_BLOCK({slot_type pos1 = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1; if (pos != pos1) {AEX_ERROR("pos=" << pos << ", pos1=" << pos1 << ", key=" << key); for(slot_type i = 0; i < node->size; ++i) std::cout << node->key_ptr[i] << ", "; std::cout << std::endl;}});
     node_ptr res = node->child_ptr[pos];
@@ -81,14 +82,20 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::range_query(const key_type lower_key, const key_type upper_key, std::vector<std::pair<key_type, value_type>>& answer) const {
-    if constexpr(traits::AllowConcurrency || traits::AllowUnsorted){
+    //if constexpr(traits::AllowConcurrency || traits::AllowUnsorted){
         answer.clear();
         data_node_ptr inode = find_leaf_con(lower_key);
         if constexpr(traits::AllowUnsorted)
             if (!inode->is_sorted) inode->sort();
         int pos = inode->find_lower_pos(lower_key);
-            
         while (inode != nullptr){
+            if constexpr(sizeof(key_type) == 8 && sizeof(value_type) == 8){
+                for (; pos + 8 <= inode->size && inode->key[pos + 7] <= upper_key; pos += 8){
+                    ULL _size = answer.size();
+                    answer.resize(_size + 8);
+                    pack_pair_avxx8(inode->key + pos, inode->data + pos, answer.data() + _size);
+                }
+            }
             for (; pos < inode->size && inode->key[pos] <= upper_key; ++pos){
                 AEX_ASSERT(inode->key[pos] >= lower_key);
                 answer.emplace_back(inode->key[pos], inode->data[pos]);
@@ -104,27 +111,50 @@ inline void aex_tree<_Key, _Val, traits>::range_query(const key_type lower_key, 
                 if (!inode->is_sorted) inode->sort();
             pos = 0;
         }
-    }
-    else{
-        //const_iterator iter = this->find_iterator(lower_key);
-        const_iterator iter = this->lower_bound(lower_key);
-        while(iter.key() <= upper_key){
-            //AEX_PRINT("node=" << iter._M_node << ", offset=" << iter.offset << ", size=" << iter._M_node->size << ", next_node=" << iter._M_node->next << ", key=" << iter.key() << ", data=" << iter.data());
-            answer.emplace_back(iter.key(), iter.data());
-            ++iter;
+    //}
+    /*else{
+        data_node_ptr inode = find_leaf_con(lower_key);
+        if constexpr(traits::AllowUnsorted)
+            if (!inode->is_sorted) inode->sort();
+        int pos = inode->find_lower_pos(lower_key);
+        size_t cnt = 0;
+        while (inode != nullptr){
+            if constexpr(sizeof(key_type) == 8 && sizeof(value_type) == 8){
+                    for (; pos + 8 <= node->size && inode->key[pos + 7] <= upper_key; cnt += std::min(8, inode->size - pos), pos += 8){
+                        ULL _size = answer.size();
+                        answer.resize(_size + 8);
+                        move_pair_avxx8(inode->key + pos, inode->data + pos, answer.data() + _size);
+                    }
+            }
+            for (; cnt < key_num && pos < inode->size; ++pos, ++cnt){
+                AEX_ASSERT(inode->key[pos] >= lower_key);
+                results[cnt++] = std::make_pair(inode->key[pos], inode->data[pos]);
+            }
+            if (inode->next == nullptr || pos < inode->size) {
+                break;
+            }
+            inode = inode->next;
+            if constexpr(traits::AllowUnsorted)
+                if (!inode->is_sorted) inode->sort();
+            pos = 0;
         }
-    }
+    }*/
 }
 
 template<typename _Key, typename _Val, typename traits>
 inline size_t aex_tree<_Key, _Val, traits>::range_query_len(std::pair<key_type, value_type>* results, const key_type lower_key, const size_t key_num) const {
-    if constexpr(traits::AllowConcurrency || traits::AllowUnsorted){
-        data_node_ptr inode = find_leaf_con(lower_key);
-        int pos = inode->find_lower_pos(lower_key);
+    //if constexpr(traits::AllowConcurrency || traits::AllowUnsorted){
+        data_node_ptr inode = find_leaf(lower_key);
         if constexpr(traits::AllowUnsorted)
-            if (!inode->is_sorted) inode->sort();
+                if (!inode->is_sorted) inode->sort();
+        int pos = inode->find_lower_pos(lower_key);
         size_t cnt = 0;
         while (inode != nullptr){
+            if constexpr(sizeof(key_type) == 8 && sizeof(value_type) == 8){
+                for (; cnt + 8 <= key_num && pos + 8 <= traits::DATA_NODE_SLOT_SIZE && pos <= inode->size; cnt += std::min((size_type)8, inode->size - pos), pos += 8){
+                    pack_pair_avxx8(inode->key + pos, inode->data + pos, results + cnt);
+                }
+            }
             for (; cnt < key_num && pos < inode->size; ++pos, ++cnt){
                 AEX_ASSERT(inode->key[pos] >= lower_key);
                 results[cnt++] = std::make_pair(inode->key[pos], inode->data[pos]);
@@ -140,14 +170,40 @@ inline size_t aex_tree<_Key, _Val, traits>::range_query_len(std::pair<key_type, 
                 if (!inode->is_sorted) inode->sort();
             pos = 0;
         }
-    }
+        return cnt;
+    //}
+    /*
     else{
-        const_iterator iter = this->lower_bound(lower_key);
+        //const_iterator iter = this->lower_bound(lower_key);
+        //size_t cnt = 0;
+        //for (; iter != end() && cnt < key_num; ++iter)
+        //    results[cnt++] = std::make_pair(iter.key(), iter.data());
+        //return cnt;
+        data_node_ptr inode = find_leaf_con(lower_key);
+        int pos = inode->find_lower_pos(lower_key);
         size_t cnt = 0;
-        for (; iter != end() && cnt < key_num; ++iter)
-            results[cnt++] = std::make_pair(iter.key(), iter.data());
+        while (inode != nullptr){
+            if constexpr(traits::AllowUnsorted)
+                if (!inode->is_sorted) inode->sort();
+            if constexpr(sizeof(key_type) == 8 && sizeof(value_type) == 8){
+                for (; cnt + 8 <= key_num && pos + 8 <= traits::DATA_NODE_SLOT_SIZE && pos <= inode->size; cnt += std::min(8, inode->size - pos), pos += 8)
+                    move_pair_avxx8(inode->key + pos, inode->data + pos, results + cnt);
+            }
+            for (; cnt < key_num && pos < inode->size; ++pos, ++cnt){
+                AEX_ASSERT(inode->key[pos] >= lower_key);
+                results[cnt++] = std::make_pair(inode->key[pos], inode->data[pos]);
+            }
+            if (inode->next == nullptr || pos < inode->size || cnt == key_num) {
+                return cnt;
+            }
+            inode = inode->next;
+            if constexpr(traits::AllowUnsorted)
+                if (!inode->is_sorted) inode->sort();
+            pos = 0;
+        }
         return cnt;
     }
+    */
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -157,8 +213,9 @@ inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val,
     int restart_count = 0;
     AEX_DEBUG_BLOCK({--con_stats.find_restart_cnt;});
 find_leaf_con_start:
-    if (restart_count++)
+    if (restart_count > 0)
         yield(restart_count);
+    restart_count++;
     AEX_DEBUG_BLOCK({++con_stats.find_restart_cnt;});   
     node = root;
     now_version = this->version.load();
@@ -226,7 +283,8 @@ template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert(dense_node_ptr node, const key_type key, slot_type &pos) const {
     AEX_ASSERT(check_lock_shared(node));
     //pos = aex::linear_search_upper_bound_avx512x8(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
-    pos = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1;
+    //pos = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1;
+    pos = linear_search_upper_bound_avx512<traits::DENSE_NODE_SLOT_SIZE>(node->key_ptr, node->size, key) - 1;
     DEBUG_CHECK_UNLOCK(node->child_ptr[pos]);
     AEX_SL_WAIT_CNT(node->child_ptr[pos]);
     SL(node->child_ptr[pos]);
@@ -246,8 +304,9 @@ template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_erase(hash_node_ptr node, const key_type key, slot_type &pos, slot_type &next_pos) const {
     int restart_count = 0;
 find_erase_start:
-    if (restart_count++)
+    if (restart_count > 0)
         yield(restart_count);
+    restart_count++;
     bool restart = false;
     pos = node->predict(key);
     key_type find_key;
@@ -300,7 +359,7 @@ find_erase_start:
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_erase(const dense_node_ptr node, const key_type key, slot_type &pos, slot_type &next_pos) const {
     //pos = aex::linear_search_upper_bound_avx512x8(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
-    pos = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1;
+    pos = linear_search_upper_bound_avx512<traits::DENSE_NODE_SLOT_SIZE>(node->key_ptr, node->size, key) - 1;
     node_ptr res = node->child_ptr[pos];
     next_pos = pos + 1;
     SL(res);

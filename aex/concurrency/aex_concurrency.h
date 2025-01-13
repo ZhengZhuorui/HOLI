@@ -1,6 +1,3 @@
-#ifndef __SALI_CC_H__
-#define __SALI_CC_H__
-
 #pragma once
 
 #include <atomic>
@@ -101,5 +98,3 @@ namespace AEX {
   // typedef tbb::spin_mutex Alex_strict_mutex;
   // typedef Alex_strict_mutex::scoped_lock Alex_strict_lock;
 }
-
-#endif

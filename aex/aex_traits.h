@@ -102,6 +102,8 @@ struct aex_default_traits{
     static constexpr bool AllowRebuild = false;
     static constexpr bool AllowUnsorted = _AllowUnsorted;
 
+    static constexpr bool DebugMode = false;
+
     static_assert((AllowRWBalance | AllowInsertBalance) == AllowBalance);
 
     // Allow data node slot size dynamic? (static data node slot size is DATA_NODE_SLOT_SIZE)
@@ -121,7 +123,7 @@ struct aex_default_traits{
     static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1LL << 56;
 
     static constexpr slot_type MAX_DENSE_NODE_SLOT_SIZE = 32;
-    static constexpr slot_type MIN_DENSE_NODE_SLOT_SIZE = 8;
+    static constexpr slot_type MIN_DENSE_NODE_SLOT_SIZE = 16;
     static constexpr slot_type DENSE_NODE_SLOT_SIZE = MIN_DENSE_NODE_SLOT_SIZE;
 
     static constexpr slot_type SLOT_PER_LOCK = 64;

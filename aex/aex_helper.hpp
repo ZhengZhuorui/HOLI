@@ -19,7 +19,7 @@ void aex_tree<_Key, _Val, traits>::_get_info_stats(const node_ptr node, const un
             break;
         }
         case NodeType::DenseNode:{
-            stats.inner_node_memory_used += Allocator::DENSE_NODE_MEMORY_USED();
+            stats.dense_node_memory_used += Allocator::DENSE_NODE_MEMORY_USED();
             ++stats.dense_node_cnt;
             stats.dense_node_childs += d_n(node)->size;
             for (slot_type i = 0; i < d_n(node)->size; ++i){
@@ -31,7 +31,7 @@ void aex_tree<_Key, _Val, traits>::_get_info_stats(const node_ptr node, const un
             key_type key;
             node_ptr child;
             //AEX_PRINT(Allocator::HASH_NODE_MEMORY_USED(h_n(node)->slot_size));
-            stats.inner_node_memory_used += Allocator::HASH_NODE_MEMORY_USED(h_n(node)->slot_size);
+            stats.hash_node_memory_used += Allocator::HASH_NODE_MEMORY_USED(h_n(node)->slot_size);
             ++stats.hash_node_cnt;
             stats.hash_node_childs += h_n(node)->size;
             for(slot_type i = 0; i < h_n(node)->slot_size; i = h_n(node)->next_item(i + 1)){
@@ -74,7 +74,7 @@ info_stats aex_tree<_Key, _Val, traits>::get_info_stats() const {
     }
     //AEX_DEBUG_BLOCK({if ((LL)stats.hash_node_childs != hash_table.size.load()) AEX_PRINT((LL)stats.hash_node_childs << ", " << hash_table.size.load());});
     //AEX_ASSERT((LL)stats.hash_node_childs == hash_table.size.load());
-    stats.memory_used = stats.hash_table_memory_used + stats.data_node_memory_used + stats.inner_node_memory_used;
+    stats.memory_used = stats.hash_table_memory_used + stats.data_node_memory_used + stats.hash_node_memory_used + stats.dense_node_memory_used;
 
     return stats;
 }

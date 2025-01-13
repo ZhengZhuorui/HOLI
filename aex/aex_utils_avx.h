@@ -404,6 +404,16 @@ inline int linear_search_upper_bound_avx512x8(const double* first, const int siz
     return __builtin_popcount(mask);
 }
 
+template<int K, typename _Tp>
+inline int linear_search_upper_bound_avx512(const _Tp* first, const int size, const _Tp x){
+    if constexpr (K == 8)
+        return linear_search_upper_bound_avx512x8(first, size, x);
+    else if constexpr (K == 16)
+        return linear_search_upper_bound_avx512x16(first, size, x);
+    else if constexpr (K == 32)
+        return linear_search_upper_bound_avx512x32(first, size, x);
+}
+
 template<typename _Tp>
 inline void move_avxx4(_Tp* src, _Tp* dst){
     if constexpr(sizeof(_Tp) == 8 && std::is_trivial_v<_Tp>){
@@ -426,6 +436,24 @@ inline void move_avxx8(_Tp* src, _Tp* dst){
     }
 }
 
-
+template<int K, typename _Tp>
+inline void move_avx(_Tp* src, _Tp* dst){
+    if constexpr (K == 4)
+        move_avxx4(src, dst);
+    else if constexpr (K == 8)
+        move_avxx8(src, dst);
+}
+template<typename key_type, typename value_type>
+void pack_pair_avxx8(key_type *key, value_type *value, std::pair<key_type, value_type>* results){
+    __m512i v0 = _mm512_loadu_si512(key);
+    __m512i v1 = _mm512_loadu_si512(value);
+    __m512i index0 = _mm512_set_epi64(0b1011, 0b0011, 0b1010, 0b0010, 0b1001, 0b0001, 0b1000, 0b0000);
+    __m512i index1 = _mm512_set_epi64(0b1111, 0b0111, 0b1110, 0b0110, 0b1101, 0b0101, 0b1100, 0b0100);
+    __m512i result0 = _mm512_permutex2var_epi64(v0, index0, v1);
+    __m512i result1 = _mm512_permutex2var_epi64(v0, index1, v1);
+    _mm512_storeu_epi64(results, result0);
+    _mm512_storeu_epi64(results + 4, result1);
+}
 
 }
+

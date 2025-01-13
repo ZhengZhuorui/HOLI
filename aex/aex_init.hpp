@@ -1,5 +1,5 @@
 #pragma once
-//#include "aex/aex.h"
+//#include "aex.h"
 
 namespace aex{
 
@@ -55,6 +55,7 @@ inline void aex_tree<_Key, _Val, traits>::init(){
     this->opt_stats = operation_stats();
     this->root = nullptr;
     this->head_leaf = nullptr;
+
 }
 
 template<typename _Key, typename _Val, typename traits>
