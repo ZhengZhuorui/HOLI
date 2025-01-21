@@ -16,6 +16,16 @@ set(CMAKE_CXX_FLAGS "-Wall -fopenmp -ffast-math -fmax-errors=3 -march=native -mf
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
+set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} "/home/zzr/lib/lib")
+
+find_path(TBB_INCLUDE_DIR tbb)
+find_library(Tbblib          tbb)
+find_library(Tbbbind         tbbbind_2_0)
+find_library(Tbbmalloc       tbbmalloc)
+find_library(Tbbmalloc_proxy tbbmalloc_proxy)
+
+set(Tbbpack ${Tbblib} ${Tbbbind} ${Tbbmalloc} ${Tbbmalloc_proxy})
+message(${Tbbmalloc})
 
 #set(CMAKE_CXX_FLAGS "-g -Wall -march=native -fopenmp -fmax-errors=3 -std=c++17")
 #
@@ -30,6 +40,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/aex)
+include_directories(${TBB_INCLUDE_DIR})
 
 #add_executable(example ${CMAKE_SOURCE_DIR}/examples/aex.cpp)
 #add_executable(example_con ${CMAKE_SOURCE_DIR}/examples/aex_con.cpp)
@@ -57,14 +68,30 @@ set(BENCHMARK_DIR ${CMAKE_SOURCE_DIR}/benchmark)
 file(GLOB_RECURSE BENCHMARK_SRC ${CMAKE_SOURCE_DIR}/benchmark/benchmark_*.cpp ${CMAKE_SOURCE_DIR}/benchmark/benchmark.cpp)
 find_library(JemallocLib jemalloc)
 add_executable(benchmark ${BENCHMARK_SRC})
-target_link_libraries(benchmark PRIVATE ${JemallocLib})
+#target_link_libraries(benchmark PUBLIC ${JemallocLib} ${Tbbpack})
 
 # generate dataset
 add_executable(generate_dataset ${BENCHMARK_DIR}/generate_dataset.cpp)
+#target_link_libraries(generate_dataset PUBLIC ${JemallocLib} ${Tbbpack})
 
 # test
 set(TEST_DIR ${CMAKE_SOURCE_DIR}/test)
-# file(GLOB_RECURSE TEST_SRC ${TEST_DIR}/*.cpp)
 add_executable(unit_test ${TEST_DIR}/test.cpp)
+#target_link_libraries(unit_test PUBLIC ${JemallocLib} ${Tbbpack})
+
 add_executable(demo examples/aex.cpp)
+#target_link_libraries(demo PUBLIC ${JemallocLib} ${Tbbpack})
+
 add_executable(demo_con examples/aex_con.cpp)
+#target_link_libraries(demo_con PUBLIC ${JemallocLib} ${Tbbpack})
+#target_link_libraries(benchmark PUBLIC  ${Tbbpack})
+#target_link_libraries(generate_dataset PUBLIC ${Tbbpack})
+#target_link_libraries(unit_test PUBLIC ${Tbbpack})
+#target_link_libraries(demo PUBLIC ${Tbbpack})
+#target_link_libraries(demo_con PUBLIC ${Tbbpack})
+
+#target_link_libraries(benchmark PUBLIC        ${Tbblib} ${Tbbbind} ${Tbbmalloc} ${Tbbmalloc_proxy})
+#target_link_libraries(generate_dataset PUBLIC ${Tbblib} ${Tbbbind} ${Tbbmalloc} ${Tbbmalloc_proxy})
+#target_link_libraries(unit_test PUBLIC        ${Tbblib} ${Tbbbind} ${Tbbmalloc} ${Tbbmalloc_proxy})
+#target_link_libraries(demo PUBLIC             ${Tbblib} ${Tbbbind} ${Tbbmalloc} ${Tbbmalloc_proxy})
+#target_link_libraries(demo_con PUBLIC         ${Tbblib} ${Tbbbind} ${Tbbmalloc} ${Tbbmalloc_proxy})

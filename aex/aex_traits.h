@@ -68,7 +68,6 @@ template<typename _Key,
         bool _AllowMultiKey=false,
         typename _SearchClass=void,
         bool _AllowConcurrency=false,
-        bool _AllowUnsorted=false,
         int _LOG_ERROR_BOUND=4,
         int _MAX_MODEL_ARGS=8,
         bool _AllowBalance=false>
@@ -100,9 +99,9 @@ struct aex_default_traits{
 
     static constexpr bool AllowExtend = true;
     static constexpr bool AllowRebuild = false;
-    static constexpr bool AllowUnsorted = _AllowUnsorted;
+    static constexpr bool AllowErase = false;
 
-    static constexpr bool DebugMode = false;
+    static constexpr bool DebugMode = true;
 
     static_assert((AllowRWBalance | AllowInsertBalance) == AllowBalance);
 
@@ -122,9 +121,9 @@ struct aex_default_traits{
 
     static constexpr slot_type MAX_INNER_NODE_SLOT_SIZE = 1LL << 56;
 
-    static constexpr slot_type MAX_DENSE_NODE_SLOT_SIZE = 32;
-    static constexpr slot_type MIN_DENSE_NODE_SLOT_SIZE = 16;
-    static constexpr slot_type DENSE_NODE_SLOT_SIZE = MIN_DENSE_NODE_SLOT_SIZE;
+    static constexpr int MAX_DENSE_NODE_SLOT_SIZE = 32;
+    static constexpr int MIN_DENSE_NODE_SLOT_SIZE = 16;
+    static constexpr int DENSE_NODE_SLOT_SIZE = MIN_DENSE_NODE_SLOT_SIZE;
 
     static constexpr slot_type SLOT_PER_LOCK = 64;
     static constexpr slot_type LOG_SLOT_PER_LOCK = TEMPLATE_LOG<SLOT_PER_LOCK>();
@@ -150,6 +149,8 @@ struct aex_default_traits{
     static constexpr int   LOG_DATA_NODE_FULL_RATIO  = 0;
     static constexpr int   MIN_DATA_NODE_SLOT_SIZE   = 16;
     static constexpr int   DATA_NODE_SLOT_SIZE       = MIN_DATA_NODE_SLOT_SIZE;
+    static constexpr int   LARGE_HASH_NODE_SLOT_SIZE = 65536;
+    static constexpr int   SIZE_ARRAY_SIZE           = 32;
 
     static constexpr float HASH_NODE_FULL_RATIO      = 1.0 / 8;
     static constexpr float HASH_NODE_FEW_RATIO       = 1.0 / 32;
@@ -164,6 +165,9 @@ struct aex_default_traits{
 
     static constexpr float MIN_REBUILD_RATIO = 1.0;
     static constexpr int MAX_DEPTH = 15;
+
+    static constexpr int SIZE_BLOCK_CNT = 32;
+    static constexpr int MIN_ADD_CNT = 8;
 
     // ========== old version ==========
     static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type) + sizeof(void*)));

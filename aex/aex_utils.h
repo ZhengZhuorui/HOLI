@@ -131,15 +131,13 @@ static std::mutex log_mutex;
 
 
 #ifdef AEX_DEBUG_THREAD
+#define AEX_THREAD_DEBUG_BLOCK(x)       do { x } while(0)
 #define DEBUG_CHECK_LOCK(node)          AEX_ASSERT(check_lock(node));
 #define DEBUG_CHECK_UNLOCK(node)        AEX_ASSERT(check_unlock(node));
-#define DEBUG_CHECK_LOCK_SHARED(node)   AEX_ASSERT(check_lock_shared(node));
-#define DEBUG_CHECK_UNLOCK_SHARED(node) AEX_ASSERT(check_unlock_shared(node));
 #else
+#define AEX_THREAD_DEBUG_BLOCK(x)
 #define DEBUG_CHECK_LOCK(node)
 #define DEBUG_CHECK_UNLOCK(node)
-#define DEBUG_CHECK_LOCK_SHARED(node)
-#define DEBUG_CHECK_UNLOCK_SHARED(node)
 #endif
 
 #define n_n(node) static_cast<node_ptr>(node)
@@ -147,13 +145,9 @@ static std::mutex log_mutex;
 #define h_n(node) static_cast<hash_node_ptr>(node)
 #define d_n(node) static_cast<dense_node_ptr>(node)
 #define l_n(node) static_cast<data_node_ptr>(node)
-
-#define AEX_SL_WAIT_CNT(node)            AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (check_lock(node)) ++con_stats.SL_wait_cnt;});
-#define AEX_XL_WAIT_CNT(node)            AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (check_lock(node)) ++con_stats.XL_wait_cnt;});
-#define AEX_LOCK_SL_WAIT_CNT(lock)       AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (lock.is_lock())   ++con_stats.SL_wait_cnt;});
-#define AEX_LOCK_XL_WAIT_CNT(lock)       AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (lock.is_lock())   ++con_stats.XL_wait_cnt;});
-#define AEX_ARRAY_SL_WAIT_CNT(node, pos) AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (h_n(node)->lock_array[pos2slot(pos)].is_lock()) ++con_stats.array_SL_wait_cnt;});
-#define AEX_ARRAY_XL_WAIT_CNT(node, pos) AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (h_n(node)->lock_array[pos2slot(pos)].is_lock()) ++con_stats.array_XL_wait_cnt;});
+#define r_h_n(node) reinterpret_cast<hash_node_ptr>(node)
+#define r_d_n(node) reinterpret_cast<dense_node_ptr>(node)
+#define r_l_n(node) reinterpret_cast<data_node_ptr>(node)
 
 inline void yield(int count){
     if (count>5)
@@ -198,6 +192,12 @@ template<typename _Tp>
 inline constexpr _Tp pos2slot(const _Tp pos) {
     return pos >> 6;
 }
+
+template<typename _Tp, int K>
+union data_align_copy{
+    unsigned char data[K];
+    _Tp pointer;
+};
 
 //template<typename _Tp>
 //inline _Tp pos2slot(const _Tp pos) {
@@ -255,6 +255,7 @@ inline int lowbit_loop_unroll(int k){
     return lowbit_loop_unroll<x-1>(k >> 1);
 }
 
+//template<typename traits, bool _ = traits::AllowConcurrecny>
 template<typename traits>
 class aex_bitmap_impl{
 public:

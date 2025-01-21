@@ -79,8 +79,7 @@ bool test_index_bulk_load_perf(std::pair<key_type, value_type>* data, long long 
         size_t i = 0;
         //AEX_PRINT("slot_size=" << index.begin()._M_node->slot_size);
         for (auto node = index.head_leaf; node != nullptr; node = node->next){
-            if constexpr (traits::AllowUnsorted)
-                if (!node->is_sorted) node->sort();
+
             for (int j = 0; j < node->size; ++j, ++i){
                 if (data[i].first != node->key[j]){
                     AEX_ERROR("key error, key[" << i << "]=" << node->key[j] <<", real key=" << data[i].first << ", gap=" << node->key[j] - data[i].first);
@@ -303,8 +302,7 @@ bool test_index_delta_lookup_perf(std::pair<key_type, value_type>* data, long lo
         index.print_stats();
         size_t i = 0;
         for (auto node = index.head_leaf; node != nullptr; node = node->next){
-            if constexpr (traits::AllowUnsorted)
-                if (!node->is_sorted) node->sort();
+
             for (int j = 0; j < node->size; ++j, ++i){
                 if (data[i].first != node->key[j]){
                     AEX_ERROR("key error, key[" << i << "]=" << node->key[j] <<", real key=" << data[i].first << ", gap=" << node->key[j] - data[i].first);
@@ -430,8 +428,7 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
         index.print_stats();
         size_t i = 0;
         for (auto node = index.head_leaf; node != nullptr; node = node->next){
-            if constexpr (traits::AllowUnsorted)
-                if (!node->is_sorted) node->sort();
+
             for (int j = 0; j < node->size; ++j, ++i){
                 if (data[i].first != node->key[j]){
                     AEX_ERROR("key error, key[" << i << "]=" << node->key[j] <<", real key=" << data[i].first << ", gap=" << node->key[j] - data[i].first);
@@ -534,8 +531,7 @@ bool test_index_insert_hotspot_perf(std::pair<key_type, value_type>* data, long 
         index.print_stats();
         size_t i = 0;
         for (auto node = index.head_leaf; node != nullptr; node = node->next){
-            if constexpr (traits::AllowUnsorted)
-                if (!node->is_sorted) node->sort();
+
             for (int j = 0; j < node->size; ++j, ++i){
                 if (data[i].first != node->key[j]){
                     AEX_ERROR("key error, key[" << i << "]=" << node->key[j] <<", real key=" << data[i].first << ", gap=" << node->key[j] - data[i].first);
@@ -605,8 +601,6 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
 
         size_t i = 0;
         for (auto node = index.head_leaf; node != nullptr; node = node->next){
-            if constexpr (traits::AllowUnsorted)
-                if (!node->is_sorted) node->sort();
             for (int j = 0; j < node->size; ++j, ++i){
                 if (data[i].first != node->key[j]){
                     AEX_ERROR("key error, key[" << i << "]=" << node->key[j] <<", real key=" << data[i].first << ", gap=" << node->key[j] - data[i].first);

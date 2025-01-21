@@ -22,84 +22,125 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     typedef typename parent::inner_node            inner_node;
     typedef typename components::RWLock            RWLock;
     typedef typename components::Lock              Lock;
+    typedef typename components::version_type      version_type;
+    typedef typename components::atomic_version_type      atomic_version_type;
+    typedef typename components::size_type         size_type;
 
     //typedef components::pos2slot pos2slot;
     //using components::pos2slot;
 
     //aex_hash_node_con(slot_type slot_size):parent(slot_size){init();}
     //~aex_hash_node_con(){clear();}   
-    aex_hash_node_con() = delete;
-    ~aex_hash_node_con() = delete;
-    aex_hash_node_con(aex_hash_node_con &other) = delete;
-    aex_hash_node_con& operator = (aex_hash_node_con &other) = delete;
+    aex_hash_node_con():parent(){};
+    ~aex_hash_node_con(){};
+    aex_hash_node_con(aex_hash_node_con &other){
+        memcpy(this, &other, sizeof(self));
+    }
+    aex_hash_node_con& operator = (aex_hash_node_con &other){
+        memcpy(this, &other, sizeof(self));
+        return *this;
+    }
 
     void clear(){
-        this->parent::clear();
-        if (this->lock_array != nullptr){
-            delete[] this->lock_array;
-            delete[] this->update_lock_array;
-            this->lock_array = nullptr;
-            this->update_lock_array = nullptr;
+        if (this->bitmap_ptr != nullptr){
+            delete[] this->bitmap_ptr;
+            this->bitmap_ptr = nullptr;
+        }
+        if (this->version_array != nullptr){
+            delete[] this->version_array;
+            this->version_array = nullptr;
         }
     }
 
     void init(){
-        this->parent::init();
-        this->lock_array = new RWLock[this->slot_size / traits::SLOT_PER_LOCK + 1]();
-        this->update_lock_array = new Lock[this->slot_size / traits::SLOT_PER_LOCK + 1]();
+        this->size = 0;
+        AEX_PRINT("slot_size=" << this->slot_size << ", slot=" << this->slot_size / traits::SLOT_PER_LOCK + 1);
+        this->bitmap_ptr = new bitmap_base[this->slot_size / traits::SLOT_PER_LOCK + 1]();
+        this->version_array = new atomic_version_type[this->slot_size / traits::SLOT_PER_LOCK + 1]();
     }
-
-    //inline bool is_occupied_con(const slot_type x) const {
-    //    this->lock_array[pos2slot(x)].lock_shared();
-    //    bool res = bitmap_impl::at(this->bitmap_ptr, x);
-    //    this->lock_array[pos2slot(x)].unlock_shared();
-    //    return res;
-    //}
 
     inline void set_one(const slot_type x) {
-        this->update_lock_array[pos2slot(x)].lock();
-        bitmap_impl::set_one(this->bitmap_ptr, x);
-        this->update_lock_array[pos2slot(x)].unlock();
-    }
-//
-    inline void set_zero(const slot_type x) {
-        this->update_lock_array[pos2slot(x)].lock();
-        bitmap_impl::set_zero(this->bitmap_ptr, x);
-        this->update_lock_array[pos2slot(x)].unlock();
+        __sync_fetch_and_or(this->bitmap_ptr + pos2slot(x), 1ULL << (x & 63));
     }
 
-    inline slot_type prev_item_con(slot_type x) const {
+    inline void set_zero(const slot_type x) {
+        __sync_fetch_and_and(this->bitmap_ptr + pos2slot(x), ~(1ULL << (x & 63)));
+    }
+
+    inline void add_size(){
+        //if (this->slot_size >= traits::BLOCK_SIZE * traits:: / traits::HASH_NODE_FULL_RATIO){
+        //if (this->slot_size * traits::HASH_NODE_FULL_RATIO / traits::BLOCK_SIZE >= 1){
+        if (this->slot_size * traits::HASH_NODE_FULL_RATIO >= traits::SIZE_BLOCK_CNT * traits::MIN_ADD_CNT){
+            size_type min_add_cnt = this->slot_size * traits::HASH_NODE_FULL_RATIO / traits::SIZE_BLOCK_CNT;
+            if (rand() % min_add_cnt == 0){
+                __sync_fetch_and_add(&this->size, min_add_cnt);
+            }
+        }
+        else{
+            __sync_fetch_and_add(&this->size, 1);
+        }
+    }
+    inline void sub_size(){
+        if (this->slot_size * traits::HASH_NODE_FULL_RATIO >= traits::SIZE_BLOCK_CNT * traits::MIN_ADD_CNT){
+            size_type min_add_cnt = this->slot_size * traits::HASH_NODE_FULL_RATIO / traits::SIZE_BLOCK_CNT;
+            if (rand() % min_add_cnt == 0){
+                __sync_fetch_and_sub(&this->size, min_add_cnt);
+            }
+        }
+        else{
+            __sync_fetch_and_sub(&this->size, 1);
+        }
+    }
+
+
+    inline void arrayCheckOrRestart(const slot_type start, const slot_type end, const version_type tot_version, bool &need_restart) const {
+        version_type version = 0;
+        for (slot_type i = pos2slot(start); i < pos2slot(end); ++i)
+            version += version_array[i].load();
+        if (version != tot_version)
+            need_restart = true;
+    }
+    inline void arrayCheckOrRestart(const slot_type pos, const version_type version, bool &need_restart) const{
+        if (version != version_array[pos2slot(pos)])
+            need_restart = true;
+    }
+
+    inline void versionUpdate(const slot_type pos){
+        ++version_array[pos2slot(pos)];
+    }
+
+    inline slot_type prev_item_con(slot_type x, version_type &version) const {
         if (x <= 0){
-            lock_array[0].lock_shared();
             return x;
         }
-        lock_array[pos2slot(x)].lock_shared();
+        if (pos2slot(x) != pos2slot(x + 1))
+            version += version_array[pos2slot(x)].load();
         bitmap text = this->bitmap_ptr + (x >> 6);
         const bitmap_base base = (*text) << (63 - (x & 63));
         if (base != 0)
             return x - __builtin_clzll(base);
         x -= (x & 63) + 1;
         --text;
-        lock_array[pos2slot(x) + 1].unlock_shared();
-        lock_array[pos2slot(x)].lock_shared();
+        version += version_array[pos2slot(x)].load();
         while ((*text) == 0){
             --text;
             x -= 64;
-            lock_array[pos2slot(x) + 1].unlock_shared();
-            lock_array[pos2slot(x)].lock_shared();
+            version += version_array[pos2slot(x)].load();
         }
         x -= __builtin_clzll(*text);
         return x;
     }
 
     
-    inline slot_type prev_item_find_con(slot_type x) const {
+    inline slot_type prev_item_find_con(slot_type x, version_type &version) const {
+        if constexpr (!traits::AllowErase)
+            return this->parent::prev_item_find(x);
         if (x <= 0){
-            lock_array[0].lock_shared();
             return x;
         }
         const slot_type y = x - (x & (traits::SLOT_PER_SHORTCUT - 1));
-        lock_array[pos2slot(x)].lock_shared();
+        if (pos2slot(x) != pos2slot(x + 1))
+        version += version_array[pos2slot(x)].load();
         bitmap text = this->bitmap_ptr + (x >> 6);
         const bitmap_base base = (*text) << (63 - (x & 63));
         if (base != 0)
@@ -108,44 +149,41 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         if (x < y)
             return y;
         --text;
-        lock_array[pos2slot(x) + 1].unlock_shared();
-        lock_array[pos2slot(x)].lock_shared();
+        version += version_array[pos2slot(x)].load();
         while (x - 64 > y && (*text) == 0){    
             --text;
             x -= 64;
-            lock_array[pos2slot(x) + 1].unlock_shared();
-            lock_array[pos2slot(x)].lock_shared();
+            version += version_array[pos2slot(x)].load();
         }
         x -= __builtin_clzll(*text) - ((*text) == 0);
         return x;
     } 
     
 
-    inline slot_type next_item_con(slot_type x) const {
+    inline slot_type next_item_con(slot_type x, version_type &version) const {
+        if (pos2slot(x) != pos2slot(x - 1))
+            version += version_array[pos2slot(x)].load();
         if (x >= this->slot_size){
-            lock_array[pos2slot(this->slot_size)].lock_shared();
             return this->slot_size;
         }
-        lock_array[pos2slot(x)].lock_shared();
         bitmap text = this->bitmap_ptr + (x >> 6);
         const bitmap_base base = (*text) >> (x & 63);
         if (base != 0)
             return x + __builtin_ctzll(base);
         x += 64 - (x & 63);
         ++text;
+        version += version_array[pos2slot(x)].load();
         while (x < this->slot_size && (*text) == 0){
-            lock_array[pos2slot(x) - 1].unlock_shared();
-            lock_array[pos2slot(x)].lock_shared();
             ++text;
             x += 64;
+            version += version_array[pos2slot(x)].load();
         }
-        lock_array[pos2slot(x) - 1].unlock_shared();
-        lock_array[pos2slot(x)].lock_shared();
         if (x < this->slot_size)
             x += __builtin_ctzll((*text));
         return x;
     }
-    
+
+    /*
     void array_lock(slot_type l_pos, slot_type r_pos) const {
         if (l_pos > r_pos)
             return;
@@ -263,10 +301,11 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
                     lock_array[i].unlock_shared();
             }
         return x;
-    }
+    }*/
 
-    mutable RWLock* lock_array;
-    mutable Lock*   update_lock_array;
+    atomic_version_type *version_array;
+    //static thread_local 
+    //mutable RWLock* lock_array;
 };
 
 //template<typename _Key,

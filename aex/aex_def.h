@@ -11,6 +11,15 @@ template<typename _Key, typename _Val, typename traits> struct aex_static_data_n
 template<typename _Key, typename _Val, typename traits> struct aex_hash_data_node;
 template<typename _Key, typename _Val, typename traits> struct aex_test_node;
 
+//template<typename traits, bool _> struct aex_spinlock;
+//template<typename traits, bool _> struct aex_rw_lock;
+//template<typename traits, bool _> struct OptLock;
+
+
+template<typename traits> class  aex_EpochBasedMemoryReclamationStrategy;
+template<typename traits> class  aex_EpochGuard;
+template<typename traits> struct MemoryReclaimUnit;
+
 template<typename _Key, typename traits> class aex_hash_table_block;
 template<typename _Key, typename traits> class aex_hash_table;
 template<typename _Key, typename traits> class aex_hash_table_con;
@@ -22,7 +31,6 @@ template<typename _Key,
         bool _AllowMultiKey,
         typename _SearchClass,
         bool _AllowConcurrency,
-        bool _AllowUnsorted,
         int _LOG_ERROR_BOUND,
         int _MAX_MODEL_ARGS,
         bool _AllowBalance>
@@ -48,6 +56,8 @@ template<typename _Key, typename _Val, typename traits> class aex_const_reverse_
 template<typename _Key, typename _Val, typename traits> struct aex_hash_node_con;
 template<typename _Key, typename _Val, typename traits> struct aex_dense_node_con;
 template<typename _Key, typename _Val, typename traits> struct aex_data_node_con;
+
+template<typename traits> struct aex_default_components;
 
 
 }

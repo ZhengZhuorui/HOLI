@@ -6,8 +6,6 @@ void aex_tree<_Key, _Val, traits>::_get_info_stats(const node_ptr node, const un
     ++stats.level_node[depth];
     if (!check_unlock(node))
         AEX_ERROR("node is lock!, node=" << node << ", type=" << to_string(node->type));
-    if (!check_unlock_shared(node))
-        AEX_ERROR("node is lock shared!, node=" << node << ", type=" << to_string(node->type));
     if (!check_node(node))
         AEX_ERROR("node exists error!, node=" << node << ", type=" << to_string(node->type));
     switch (node->type){
@@ -35,10 +33,10 @@ void aex_tree<_Key, _Val, traits>::_get_info_stats(const node_ptr node, const un
             ++stats.hash_node_cnt;
             stats.hash_node_childs += h_n(node)->size;
             for(slot_type i = 0; i < h_n(node)->slot_size; i = h_n(node)->next_item(i + 1)){
-                std::tie(key, child) = hash_table.find(node, i);
+                std::tie(key, child) = hash_table.find(h_n(node), i);
             }
             for(slot_type i = 0; i < h_n(node)->slot_size; i = h_n(node)->next_item(i + 1)){
-                std::tie(key, child) = hash_table.find(node, i);
+                std::tie(key, child) = hash_table.find(h_n(node), i);
                 _get_info_stats(child, depth + 1, stats);
             }
             break;
@@ -55,16 +53,11 @@ info_stats aex_tree<_Key, _Val, traits>::get_info_stats() const {
     stats.hash_table_memory_used = hash_table.memory_used();
     [[maybe_unused]]key_type prev_key = std::numeric_limits<key_type>::lowest();
     long long cnt = 0;
-    if constexpr(!traits::AllowUnsorted){
-        for (auto it = this->begin(); it != this->end(); ++it){
-            AEX_ASSERT(it.key() >= prev_key);
-            prev_key = it.key();
-            ++cnt;
-        }
-        AEX_ASSERT(cnt == this->m_stats.size.load());
+    for (auto it = this->begin(); it != this->end(); ++it){
+        AEX_ASSERT(it.key() >= prev_key);
+        prev_key = it.key();
+        ++cnt;
     }
-    //if (cnt != this->m_stats.size.load())
-    //    AEX_PRINT("cnt=" << cnt << ", size=" << this->m_stats.size.load());
     cnt = 0;
     _get_info_stats(this->root, 0, stats);
     for (data_node_ptr inode = this->head_leaf; inode != nullptr; inode = inode->next)

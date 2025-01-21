@@ -27,27 +27,25 @@ public:
     typedef typename components::RWLock RWLock;
     typedef typename components::Lock   Lock;
 
-    explicit aex_node_base(version_type _version, NodeType _type) : size(0), type(_type),   node_lock(), version(_version){}
-    aex_node_base(aex_node_base &other_node): size(other_node.size), type(other_node.type), node_lock(), version(0){}
-    aex_node_base(aex_node_base &&other_node):size(other_node.size), type(other_node.type), node_lock(), version(0){}
+    explicit aex_node_base(NodeType _type) :  type(_type), size(0), node_lock(){}//, version(_version){}
+    aex_node_base(aex_node_base &other_node): type(other_node.type), size(0), node_lock(){}//, version(0){}
+    aex_node_base(aex_node_base &&other_node):type(other_node.type), size(0), node_lock(){}//, version(0){}
 
     aex_node_base& operator = (aex_node_base &other_node) {
-        this->size = other_node.size;
         this->type = other_node.type;
         return *this;
     }
 
     aex_node_base& operator = (aex_node_base &&other_node) {
-        this->size = other_node.size;
         this->type = other_node.type;
         return *this;
     }
 
     // size: the number of child nodes(inner node); the number of data(data node)
-    size_type              size;
     NodeType               type;
-    mutable RWLock         node_lock;
-    version_type           version;
+    size_type              size;
+    RWLock                 node_lock;
+    //version_type           version;
 };
 
 /*
@@ -82,12 +80,15 @@ public:
     typedef typename components::InnerNodeModel    Model;
     typedef typename traits::bitmap                bitmap;
     typedef typename traits::bitmap_base           bitmap_base;
+    typedef typename components::base_node         base_node;
     typedef typename components::inner_node        inner_node;
     typedef typename components::hash_node         hash_node;
     typedef typename components::bitmap_impl       bitmap_impl;
     typedef typename components::node_ptr          node_ptr;
     typedef typename components::size_type         size_type;
     typedef typename components::Lock              Lock;
+    typedef typename components::ID_type           ID_type;
+    typedef typename components::version_type      version_type;
 
     //aex_hash_node(slot_type slot_size):inner_node(slot_size, NodeType::HashNode), bitmap_ptr(nullptr){
     //    init();
@@ -96,37 +97,33 @@ public:
     //~aex_hash_node(){
     //    clear();
     //}   
-    aex_hash_node() = delete;
-    ~aex_hash_node() = delete;
-    aex_hash_node(aex_hash_node &other) = delete;
-    aex_hash_node& operator = (aex_hash_node &other) = delete;
+    aex_hash_node():base_node(NodeType::HashNode){};
+    ~aex_hash_node(){};
+    aex_hash_node(aex_hash_node &other){
+        memcpy(this, &other, sizeof(self));
+    }
+
+    aex_hash_node& operator = (aex_hash_node &other){
+        memcpy(this, &other, sizeof(self));
+        return *this;
+    }
 
     void clear(){
         if (this->bitmap_ptr != nullptr){
-            //if constexpr (traits::AllowConcurrency)
-            //    delete[] this->bitmap_ptr;
-            //else{
-                if (this->slot_size / 64 + 1 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(hash_node)) / 8))
-                    delete[] this->bitmap_ptr;
-            //}
+            if (this->slot_size / 64 + 1 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(hash_node)) / 8))
+                delete[] this->bitmap_ptr;
             this->bitmap_ptr = nullptr;
         }
     }
 
     void init(){
-        AEX_ASSERT(this->bitmap_ptr == nullptr);
         this->size = 0;
-        //if constexpr (traits::AllowConcurrency)
-        //    this->bitmap_ptr = new bitmap_base[this->slot_size / 64 + 1]();
-        //else{
-            if (this->slot_size / 64 + 1 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(hash_node)) / 8))
-                this->bitmap_ptr = new bitmap_base[this->slot_size / 64 + 1]();
-            else{
-                this->bitmap_ptr = reinterpret_cast<bitmap>(reinterpret_cast<char*>(this) + sizeof(hash_node));
-                memset(this->bitmap_ptr, 0, (this->slot_size / 64 + 1) * sizeof(bitmap_base));
-            }
-        //}
-        this->version = 0;
+        if (this->slot_size / 64 + 1 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(hash_node)) / 8))
+            this->bitmap_ptr = new bitmap_base[this->slot_size / 64 + 1]();
+        else{
+            this->bitmap_ptr = reinterpret_cast<bitmap>(reinterpret_cast<char*>(this) + sizeof(hash_node));
+            memset(this->bitmap_ptr, 0, (this->slot_size / 64 + 1) * sizeof(bitmap_base));
+        }
     }
 
     inline slot_type predict(const key_type key) const {
@@ -144,6 +141,7 @@ public:
 
     inline void set_one(const slot_type x) {
         bitmap_impl::set_one(this->bitmap_ptr, x);
+        
     }
 
     inline void set_zero(const slot_type x) {
@@ -185,7 +183,7 @@ public:
         return x;
     }
 
-    inline slot_type prev_item_find_con(slot_type x) const {return prev_item_find(x);}
+    inline slot_type prev_item_find_con(slot_type x, version_type &version) const {return prev_item_find(x);}
 
     inline slot_type prev_item(slot_type x) const {
         if (x <= 0)
@@ -231,8 +229,15 @@ public:
         return x;        
     }
 
-    inline slot_type prev_item_con(slot_type x) const {return prev_item(x); }
-    inline slot_type next_item_con(slot_type x) const {return next_item(x); }
+    inline slot_type prev_item_con(slot_type x, version_type &version) const {return prev_item(x); }
+    inline slot_type next_item_con(slot_type x, version_type &version) const {return next_item(x); }
+
+    inline void add_size(){
+        ++this->size;
+    }
+    inline void sub_size(){
+        --this->size;
+    }
     
     inline void array_lock(const slot_type l_pos, const slot_type r_pos) const {}
     inline void array_unlock(const slot_type l_pos, const slot_type r_pos) const {}
@@ -242,11 +247,14 @@ public:
     inline void array_downgrade_lock(const slot_type l_pos, const slot_type r_pos) const {}
     inline slot_type array_lock_shared_until_next_item(const slot_type prev_pos, const slot_type pos) const {return next_item(pos);}
     inline slot_type try_array_lock_shared_until_prev_item(const slot_type pos, bool &restart) const {return prev_item(pos);}
+    inline void versionUpdate(const slot_type x){}
+    inline void arrayCheckOrRestart(const slot_type start, const slot_type end, const version_type tot_version, bool &need_restart) const {}
+    inline void arrayCheckOrRestart(const slot_type pos, const version_type version, bool &need_restart) const{}
 
     bitmap       bitmap_ptr;
     Model        model;
     slot_type    slot_size;
-    mutable Lock meta_lock;
+    ID_type      id;
 };
 
 template<typename _Key,
@@ -268,11 +276,9 @@ public:
     aex_dense_node(aex_dense_node &other) = delete;
     aex_dense_node& operator = (aex_dense_node &other) = delete;
 
-
     void init(){
         this->size = 0;
         this->is_parent = false;
-        this->version = 0;
     }
 
     key_type key_ptr[traits::DENSE_NODE_SLOT_SIZE];
@@ -299,7 +305,7 @@ public:
     typedef data_node* data_node_ptr;
     //typedef typename traits::slot_type slot_type;
 
-    aex_static_data_node(version_type _version) : base_node(_version, NodeType::LeafNode), next(nullptr), is_sorted(true){}
+    aex_static_data_node() : base_node(NodeType::LeafNode), next(nullptr){}//, is_sorted(true){}
 
     ~aex_static_data_node() {}
 
@@ -348,42 +354,16 @@ public:
         this->construct(_key.data(), _value.data(), nums);
     }
 
-    inline void sort(){
-        static_assert(traits::AllowUnsorted, "need unsorted mode");
-        int start = 1;
-        for (; start < this->size && key[start - 1] < key[start]; ++start);
-        for (int i = start; i < this->size; ++i){
-            key_type _key = key[i];
-            value_type _data = std::move(data[i]);
-            int j = i - 1;
-            for (; j >= 0 && key[j] > _key; --j){
-                key[j + 1] = key[j];
-                data[j + 1] = std::move(data[j]);
-            }
-            key[j + 1] = _key;
-            data[j + 1] = std::move(_data);
-        }
-        is_sorted = true;
-    }
 
     // insert a item
     inline void insert(const key_type x, const value_type &value){
-        if constexpr (traits::AllowUnsorted){
-            key[this->size] = x;
-            data[this->size] = value;
-            this->size++;
-            is_sorted = false;
-        }
-        else{
-            int pos = this->find_lower_pos(x);
-            insert(x, value, pos);
-        }
+        int pos = this->find_lower_pos(x);
+        insert(x, value, pos);
     }
 
     // insert a item in position
     inline void insert(const key_type x, const value_type &value, const int pos){
         AEX_ASSERT(this->size < traits::DATA_NODE_SLOT_SIZE);
-        AEX_ASSERT(is_sorted == true);
         std::copy_backward(this->key + pos, this->key + this->size, this->key + this->size + 1);
         std::copy_backward(this->data + pos, this->data + this->size, this->data + this->size + 1);
         this->key[pos] = x;
@@ -392,8 +372,6 @@ public:
     }
 
     inline bool erase(const key_type x){
-        if constexpr (traits::AllowUnsorted)
-            if (!this->is_sorted) this->sort();
 
         int pos = find_lower_pos(x);
         if (pos >= this->size || key[pos] != x)
@@ -411,7 +389,8 @@ public:
         }
         else{
             //pos = find_lower_pos(x);
-            pos = std::find(this->key, this->key + this->size, x) - this->key;
+            int _size = std::min((int)this->size, traits::DATA_NODE_SLOT_SIZE);
+            pos = std::find(this->key, this->key + _size, x) - this->key;
         }
         if (pos >= this->size || this->key[pos] != x)
             return this->size;
@@ -435,11 +414,10 @@ public:
             return traits::SearchClass::upper_bound(this->key, this->key + this->size, x, this->key) - this->key;
         return std::upper_bound(this->key, this->key + this->size, x) - this->key;
     }
-
     key_type      key[traits::DATA_NODE_SLOT_SIZE];
     value_type    data[traits::DATA_NODE_SLOT_SIZE];
     data_node_ptr next;
-    bool is_sorted;
+    //bool is_sorted;
 };
 
 }

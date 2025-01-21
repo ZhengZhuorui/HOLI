@@ -20,7 +20,7 @@ void construct_data_node_array(key_type* key, size_t num_keys, typename aex_tree
     for (size_t i = 0; i < num_keys; ++i){
         //child_buf[i] = static_cast<node_ptr>(tree.allocator.allocate_data_node());
         //child_buf[i] = reinterpret_cast<node_ptr>(new data_node(tree.version));
-        child_buf[i] = new data_node(0);
+        child_buf[i] = new data_node();
         child_buf[i]->key[0] = key[i];
         child_buf[i]->size = 1;
     }

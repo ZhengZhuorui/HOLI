@@ -3,302 +3,9 @@
 #include <atomic>
 
 #include "aex_utils.h"
+#include "concurrency/aex_concurrency.h"
 
 namespace aex{
-
-template<typename traits, bool _ = traits::AllowConcurrency>
-struct aex_spinlock{
-    aex_spinlock(){}
-    ~aex_spinlock(){}
-    void init(){}
-    inline void lock(){}
-    inline void unlock(){}
-    inline bool is_lock(){return true;}
-    //inline bool is_lock(){return false;}
-};
-
-template<typename traits>
-struct aex_spinlock<traits, true>{
-    typedef aex_spinlock<traits, true> self;
-    aex_spinlock() : writeLock(false) {}
-    void init(){writeLock=false;}
-    ~aex_spinlock(){}
-    inline void lock() {
-        bool expected = false;
-        while (!writeLock.compare_exchange_weak(expected, true)) {
-            _mm_pause();
-            expected = false;
-        }
-    }
-    inline void unlock() {
-        writeLock.store(false);
-    }
-    inline bool is_lock(){return writeLock.load();}
-    //inline bool is_lock(){return false;}
-
-    std::atomic<bool> writeLock;
-};
-
-template<typename traits, bool _ = traits::AllowConcurrency>
-struct aex_rw_spinlock{
-    aex_rw_spinlock(){}
-    void init(){}
-    inline void lock() const {}
-    inline void unlock() const {}
-    inline void lock_shared() const {}
-    inline void unlock_shared() const {}
-    inline void upgrade_lock() const {}
-    inline void downgrade_lock() const {}
-    inline bool try_lock() const {return true;}
-    inline bool try_lock_shared() const {return true;}
-    inline bool try_upgrade_lock() const {return true;}
-    inline bool try_upgrade_lock_without_read() const {return true;}
-    inline bool is_lock() const {return false;}
-    inline bool is_lock_shared() const {return false;}
-};
-
-template<typename traits>
-struct aex_rw_spinlock<traits, true>{
-    typedef aex_rw_spinlock<traits, true> self;
-    aex_rw_spinlock() : lockCount(0) {}
-    void init(){lockCount = 0;}
-    aex_rw_spinlock(const self &x) = delete;
-    aex_rw_spinlock(const self &&x) = delete;
-    ~aex_rw_spinlock(){}
-    self& operator = (const self &x) = delete;
-    self& operator = (const self &&x) = delete;
-    void lock_shared() {
-        unsigned short expected = lockCount.load() & (~1);
-        unsigned short result   = expected + 0b10;
-        while (!lockCount.compare_exchange_weak(expected, result)) {
-            _mm_pause();
-            expected = lockCount.load() & (~1);
-            result   = expected + 0b10;
-        }
-    }
-
-    void unlock_shared() {
-        AEX_ASSERT(is_lock_shared());
-        lockCount.fetch_sub(0b10);
-    }
-    
-    bool try_lock_shared(){
-        unsigned short expected = lockCount.load() & (~1);
-        unsigned short result   = expected + 0b10;
-        if (!lockCount.compare_exchange_strong(expected, result)) {
-            _mm_pause();
-            return false;
-        }
-        return true;
-    }
-
-    void lock() {
-        unsigned short expected = lockCount.load() & (~1);
-        unsigned short result   = expected | 1;
-        while (!lockCount.compare_exchange_weak(expected, result)) {
-            _mm_pause();
-            expected = lockCount.load() & (~1);
-            result   = expected | 1;
-        }
-        while (lockCount.load() >= 0b10);
-    }
-
-    void unlock() {
-        AEX_ASSERT(is_lock());
-        lockCount.fetch_sub(1);
-    }
-
-    bool try_lock(){
-        unsigned short expected = lockCount.load() & (~1);
-        unsigned short result   = expected | 1;
-        if (!lockCount.compare_exchange_strong(expected, result)) {
-            _mm_pause();
-            return false;
-        }
-        while (lockCount.load() >= 0b10);
-        return true;
-    }
-
-    bool try_upgrade_lock_without_read(){
-        //unsigned int expected = lockCount.load() & (~1);
-        //unsigned int result   = expected - 1;
-        unsigned short expected = 0b10;
-        unsigned short result   = 0b1;
-        if (!lockCount.compare_exchange_strong(expected, result)) 
-            return false;
-        return true;
-    }
-    
-    bool try_upgrade_lock(){
-        unsigned short expected = lockCount.load() & (~1);
-        unsigned short result   = expected - 1;
-        if (!lockCount.compare_exchange_strong(expected, result)) {
-            _mm_pause();
-            return false;
-        }
-        while (lockCount.load() >= 0b10);
-        return true;
-    }
-
-    // unused. may deadlock
-    [[deprecated]] void upgrade_lock(){
-        unsigned short expected = 0b10;
-        unsigned short result   = 0b1;
-        while (!lockCount.compare_exchange_weak(expected, result)) {
-            expected = lockCount.load() & (~1);
-            result   = expected - 1;
-        }
-    }
-
-    void downgrade_lock(){
-        AEX_ASSERT(is_lock());
-        lockCount.fetch_add(1);
-    }
-
-    inline bool is_lock() const {return (lockCount.load() & 1) == 1;}
-    inline bool is_lock_shared() const {return lockCount.load() >= 0b10;}
-    std::atomic<unsigned short> lockCount;
-};
-
-
-
-// optimistic lock implementation is based on https://github.com/wangziqi2016/index-microbench/blob/master/BTreeOLC/BTreeOLC_child_layout.h
-
-template<typename traits, bool _ = traits::AllowConcurrency>
-struct OptLock {
-
-    OptLock() = default;
-    OptLock(const OptLock& other) {}
-
-    uint64_t get_version_number(){return 0;}
-
-    bool isLocked(uint64_t version) {return false;}
-
-    bool isLocked() { return false; }
-
-    void writeLockOrRestart(bool &needRestart) {}
-
-    void upgradeToWriteLockOrRestart(uint64_t &version, bool &needRestart) {}
-
-    void writeUnlock() {}
-
-    void checkOrRestart(uint64_t startRead, bool &needRestart) const {
-      readUnlockOrRestart(startRead, needRestart);
-    }
-
-    uint64_t readLockOrRestart(bool &needRestart) {
-      uint64_t version;
-      version = typeVersionLockObsolete.load();
-      if (isLocked(version) || isObsolete(version)) {
-        _mm_pause();
-        needRestart = true;
-      }
-      return version;
-    }
-
-    void readUnlockOrRestart(uint64_t startRead, bool &needRestart) const {
-      needRestart = (startRead != typeVersionLockObsolete.load());
-    }
-
-    void writeUnlockObsolete() {
-      typeVersionLockObsolete.fetch_add(0b11);
-    }
-
-    void labelObsolete() {
-      typeVersionLockObsolete.store((typeVersionLockObsolete.load() | 1));
-    }
-
-    bool isObsolete(uint64_t version) {
-      return (version & 1) == 1;
-    }
-
-    bool isObsolete() {
-      return (typeVersionLockObsolete.load() & 1) == 1;
-    }
-
-};
-
-
-template<>
-struct OptLock<traits, true> {
-    std::atomic<uint64_t> typeVersionLockObsolete{0b100};
-
-    OptLock() = default;
-    OptLock(const OptLock& other) {
-      typeVersionLockObsolete = 0b100;
-    }
-
-    uint64_t get_version_number()
-    {
-      return typeVersionLockObsolete.load();
-    }
-
-    bool isLocked(uint64_t version) {
-      return ((version & 0b10) == 0b10);
-    }
-
-    bool isLocked() {
-      return ((typeVersionLockObsolete.load() & 0b10) == 0b10);
-    }
-
-    void writeLockOrRestart(bool &needRestart) {
-      uint64_t version;
-      version = readLockOrRestart(needRestart);
-      if (needRestart) return;
-
-      upgradeToWriteLockOrRestart(version, needRestart);
-    }
-
-    void upgradeToWriteLockOrRestart(uint64_t &version, bool &needRestart) {
-      if (typeVersionLockObsolete.compare_exchange_strong(version, version + 0b10)) {
-        version = version + 0b10;
-      } else {
-        _mm_pause();
-        needRestart = true;
-      }
-    }
-
-    void writeUnlock() {
-      typeVersionLockObsolete.fetch_add(0b10);
-    }
-
-
-    void checkOrRestart(uint64_t startRead, bool &needRestart) const {
-      readUnlockOrRestart(startRead, needRestart);
-    }
-
-    uint64_t readLockOrRestart(bool &needRestart) {
-      uint64_t version;
-      version = typeVersionLockObsolete.load();
-      if (isLocked(version) || isObsolete(version)) {
-        _mm_pause();
-        needRestart = true;
-      }
-      return version;
-    }
-
-    void readUnlockOrRestart(uint64_t startRead, bool &needRestart) const {
-      needRestart = (startRead != typeVersionLockObsolete.load());
-    }
-
-    void writeUnlockObsolete() {
-      typeVersionLockObsolete.fetch_add(0b11);
-    }
-
-    void labelObsolete() {
-      typeVersionLockObsolete.store((typeVersionLockObsolete.load() | 1));
-    }
-
-    bool isObsolete(uint64_t version) {
-      return (version & 1) == 1;
-    }
-
-    bool isObsolete() {
-      return (typeVersionLockObsolete.load() & 1) == 1;
-    }
-
-};
-
 
 template<typename T>
 struct empty_type{
@@ -354,12 +61,15 @@ struct aex_concurrency_components{
     typedef data_node* data_node_ptr;    
     
     //typedef aex_rw_spinlock<traits> RWLock;
-    typedef OptLock<traits>
+    typedef OptLock<traits>         RWLock;
+    //typedef OptLock<traits>
     typedef aex_spinlock<traits>    Lock;
     typedef aex_allocator<key_type, value_type, traits> Allocator;
     typedef aex_hash_table<key_type, traits>            HashTable;
     typedef ULL                                         version_type;
-    typedef std::atomic_uint64_t                        atomic_version_type;
+    typedef std::atomic<version_type>                   atomic_version_type;
+    typedef ULL                                         ID_type;
+    typedef no_atomic_type<ID_type>                        atomic_ID_type;
     //typedef empty_type<unsigned long long> version_type;
 };
 
@@ -384,13 +94,17 @@ struct aex_concurrency_components<traits, true>{
     typedef data_node*  data_node_ptr;    
     //typedef std::atomic<base_node*> atomicPtr;
 
-    typedef aex_rw_spinlock<traits> RWLock;
+    //typedef aex_rw_spinlock<traits> RWLock;
+    typedef OptLock<traits>         RWLock;
     typedef aex_spinlock<traits>    Lock;
     // TODO: 
     typedef aex_allocator<key_type, value_type, traits> Allocator;
     typedef aex_hash_table_con<key_type, traits>        HashTable;
-    typedef ULL                                         version_type;
-    typedef std::atomic_uint64_t                             atomic_version_type;
+    typedef uint64_t                                         version_type;
+    typedef std::atomic<version_type>                  atomic_version_type;
+    typedef ULL                                         ID_type;
+    typedef std::atomic<ID_type>                        atomic_ID_type;
+    
 };
 
 template<typename traits>
@@ -398,9 +112,11 @@ struct aex_default_components{
     typedef typename traits::key_type   key_type;
     typedef typename traits::value_type value_type;
     typedef typename traits::slot_type  slot_type;
-    typedef LL size_type;
     typedef aex_concurrency_components<traits> concurrency_components;
     
+    typedef aex_tree<key_type, value_type, traits>          Index;
+
+    typedef LL size_type;
     typedef typename concurrency_components::atomic_size_type      atomic_size_type;
     typedef typename concurrency_components::ref_count_type ref_count_type;
     typedef typename concurrency_components::Lock           Lock;
@@ -420,8 +136,14 @@ struct aex_default_components{
     typedef aex_hash_table_block<key_type, traits>          HashTableBlock;
     typedef typename concurrency_components::version_type   version_type;
     typedef typename concurrency_components::atomic_version_type   atomic_version_type;
+    typedef typename concurrency_components::ID_type        ID_type;
+    typedef typename concurrency_components::atomic_ID_type atomic_ID_type;
     typedef gap_array_linear_model_hash_table<key_type, traits>    InnerNodeModel;
     typedef linear_model<key_type, traits> DataNodeModel;
+    typedef MemoryReclaimUnit<traits> MRUnit;
+    typedef aex_ThreadSpecificEpochBasedReclamationInformation<traits> ThreadSpecificEpochBasedReclamationInformation;
+    typedef aex_EpochBasedMemoryReclamationStrategy<traits>  EpochBasedMemoryReclamationStrategy;
+    typedef aex_EpochGuard<traits>                           EpochGuard;
 
     typedef aex_bitmap_impl<traits> bitmap_impl;
 

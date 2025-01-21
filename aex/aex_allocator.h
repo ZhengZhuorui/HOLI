@@ -32,6 +32,7 @@ public:
     typedef typename components::RWLock         RWLock;
     typedef typename components::Lock           Lock;
     typedef typename components::version_type   version_type;
+    typedef typename components::ID_type        ID_type;
 
     typedef typename traits::slot_type slot_type;
     
@@ -76,16 +77,15 @@ public:
         return MAX_INNER_NODE_SIZE();
     }
 
-    inline static hash_node_ptr allocate_hash_node(const slot_type slot_size){
+    inline static hash_node_ptr allocate_hash_node(const slot_type slot_size, const ID_type id){
         AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
         //AEX_WARNING(sizeof(aex_hash_node<key_type, value_type, traits>) << ", " << sizeof(aex_hash_node_con<key_type, value_type, traits>) << ", " << MAX_INNER_NODE_SIZE() << ", " << sizeof(base_node) << ", " << sizeof(InnerNodeModel) << ", " << sizeof(bitmap) << ", " << sizeof(slot_type) << ", " << sizeof(Lock));
         //exit(0);
         const hash_node_ptr node = h_n(malloc(MAX_INNER_NODE_SIZE()));
         node->type = NodeType::HashNode;
         node->node_lock.init();
-        node->meta_lock.init();
         node->slot_size = slot_size;
-        node->bitmap_ptr = nullptr;
+        node->id = id;
         node->init();
         return node;
     }

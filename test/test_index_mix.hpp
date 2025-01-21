@@ -52,8 +52,7 @@ bool test_index_mix_perf(std::pair<key_type, value_type>* data, long long n, lon
         //AEX_PRINT("slot_size=" << index.begin()._M_node->slot_size);
         std::sort(data, data + n);
         for (auto node = index.head_leaf; node != nullptr; node = node->next){
-            if constexpr (traits::AllowUnsorted)
-                if (!node->is_sorted) node->sort();
+
             for (int j = 0; j < node->size; ++j, ++i){
                 if (data[i].first != node->key[j]){
                     AEX_ERROR("key error, key[" << i << "]=" << node->key[j] <<", real key=" << data[i].first << ", gap=" << node->key[j] - data[i].first);

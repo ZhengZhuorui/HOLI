@@ -436,8 +436,30 @@ inline void move_avxx8(_Tp* src, _Tp* dst){
     }
 }
 
+template<int K>
+inline void move_avx512(char *src, char* dst){
+    static_assert(K % 64 == 0, "must 512bit size");
+    if constexpr (K == 64){
+        __m512i src_vec = _mm512_loadu_si512(src);
+        _mm512_storeu_si512(dst, src_vec);
+    }
+    else if constexpr (K == 128){
+        __m512i v0 = _mm512_loadu_si512(src);
+        __m512i v1 = _mm512_loadu_si512(src + 64);
+        _mm512_storeu_si512(dst, v0);
+        _mm512_storeu_si512(dst + 64, v1);
+    }
+    else{
+        for (int i = 0; i < K; i += 64){
+            __m512i src_vec = _mm512_loadu_si512(src);
+            _mm512_storeu_si512(dst, src_vec);
+        }
+    }
+}
+
 template<int K, typename _Tp>
 inline void move_avx(_Tp* src, _Tp* dst){
+    static_assert(K == 4 || K == 8, "move_avx support 4 or 8 now");
     if constexpr (K == 4)
         move_avxx4(src, dst);
     else if constexpr (K == 8)
@@ -454,6 +476,19 @@ void pack_pair_avxx8(key_type *key, value_type *value, std::pair<key_type, value
     _mm512_storeu_epi64(results, result0);
     _mm512_storeu_epi64(results + 4, result1);
 }
+
+long long avx_sum_32(long long *x, int size){
+    __m512i res = _mm512_set1_epi64(0);
+    for (int i = 0; i < size; i += 8){
+        __m512i v0 = _mm512_loadu_epi64(x + i);
+        res = _mm512_add_epi64(res, v0);
+    }
+    long long result = _mm512_reduce_add_epi64(res);
+    return result;
+}
+
+//typename<typename _Tp>
+//v
 
 }
 
