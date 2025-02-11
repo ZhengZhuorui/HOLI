@@ -104,6 +104,7 @@ private:
     void freeForEpoch(uint32_t epoch) {
         std::vector < MRUnit > &previousFreeList =
             mFreeLists[epoch];
+        AEX_WARNING("memory reclaim");
 
         for (MRUnit unit: previousFreeList) {
             switch (unit.type){

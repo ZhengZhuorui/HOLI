@@ -22,6 +22,7 @@ template<typename traits> struct MemoryReclaimUnit;
 
 template<typename _Key, typename traits> class aex_hash_table_block;
 template<typename _Key, typename traits> class aex_hash_table;
+template<typename _Key, typename traits> class aex_hash_table_block_con;
 template<typename _Key, typename traits> class aex_hash_table_con;
 
 template<typename _Tp, bool _> struct aex_node_spinlock;

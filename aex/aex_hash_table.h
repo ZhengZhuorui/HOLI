@@ -62,8 +62,8 @@ struct aex_hash_table_block{
     typedef aex_hash_table_block_unit_V<_Key, traits> Unit_V;
 
     Unit          unit_array[traits::HASH_TABLE_BLOCK_SIZE];
-    int           size;
     self*         next;
+    int           size;
 
     aex_hash_table_block():size(0), next(nullptr){}
 
@@ -200,9 +200,7 @@ public:
         other_table.table_ = nullptr;
     }
 
-    ~aex_hash_table(){
-        this->free_hash_table();
-    }
+    ~aex_hash_table(){}
 
     self& operator = (self &other_table){
         AEX_ASSERT(this->slot_size == other_table.slot_size);
@@ -277,8 +275,8 @@ public:
 
     inline void clear(){
         slot_size = traits::MIN_HASH_TABLE_SIZE;
-        //this->free_hash_table_helper();
         this->free_hash_table();
+        this->size = 0;
         table_ = new HashTableBlock[slot_size]();
         real_slot_size = get_real_slot_size(slot_size);
     }

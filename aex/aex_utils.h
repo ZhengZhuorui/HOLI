@@ -131,11 +131,15 @@ static std::mutex log_mutex;
 
 
 #ifdef AEX_DEBUG_THREAD
-#define AEX_THREAD_DEBUG_BLOCK(x)       do { x } while(0)
-#define DEBUG_CHECK_LOCK(node)          AEX_ASSERT(check_lock(node));
-#define DEBUG_CHECK_UNLOCK(node)        AEX_ASSERT(check_unlock(node));
+#define AEX_SGL_ASSERT(x)        AEX_ASSERT(x)
+#define AEX_MUL_DEBUG_BLOCK(x)   AEX_DEBUG_BLOCK({ if constexpr (traits::AllowConcurrency) do { x } while(0);})
+#define AEX_SGL_DEBUG_BLOCK(x)   AEX_DEBUG_BLOCK({ if constexpr (!traits::AllowConcurrency) do { x } while(0);})
+#define DEBUG_CHECK_LOCK(node)   AEX_ASSERT(check_lock(node));
+#define DEBUG_CHECK_UNLOCK(node) AEX_ASSERT(check_unlock(node));
 #else
-#define AEX_THREAD_DEBUG_BLOCK(x)
+#define AEX_SGL_ASSERT(x)
+#define AEX_MUL_DEBUG_BLOCK(x)
+#define AEX_SGL_DEBUG_BLOCK(x)
 #define DEBUG_CHECK_LOCK(node)
 #define DEBUG_CHECK_UNLOCK(node)
 #endif
@@ -149,8 +153,11 @@ static std::mutex log_mutex;
 #define r_d_n(node) reinterpret_cast<dense_node_ptr>(node)
 #define r_l_n(node) reinterpret_cast<data_node_ptr>(node)
 
+#define likely(x) __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+
 inline void yield(int count){
-    if (count>5)
+    if (count>3)
         sched_yield();
     else
         _mm_pause();

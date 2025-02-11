@@ -65,6 +65,7 @@ struct aex_concurrency_components{
     //typedef OptLock<traits>
     typedef aex_spinlock<traits>    Lock;
     typedef aex_allocator<key_type, value_type, traits> Allocator;
+    typedef aex_hash_table_block<key_type, traits>      HashTableBlock;
     typedef aex_hash_table<key_type, traits>            HashTable;
     typedef ULL                                         version_type;
     typedef std::atomic<version_type>                   atomic_version_type;
@@ -99,7 +100,9 @@ struct aex_concurrency_components<traits, true>{
     typedef aex_spinlock<traits>    Lock;
     // TODO: 
     typedef aex_allocator<key_type, value_type, traits> Allocator;
+    typedef aex_hash_table_block_con<key_type, traits>      HashTableBlock;
     typedef aex_hash_table_con<key_type, traits>        HashTable;
+    //typedef aex_hash_table<key_type, traits>        HashTable;
     typedef uint64_t                                         version_type;
     typedef std::atomic<version_type>                  atomic_version_type;
     typedef ULL                                         ID_type;
@@ -132,8 +135,8 @@ struct aex_default_components{
     typedef typename concurrency_components::dense_node_ptr dense_node_ptr;
     typedef typename concurrency_components::data_node_ptr  data_node_ptr;    
     typedef typename concurrency_components::Allocator      Allocator;
+    typedef typename concurrecny_components::HashTableBlock HashTableBlock;
     typedef typename concurrency_components::HashTable      HashTable;
-    typedef aex_hash_table_block<key_type, traits>          HashTableBlock;
     typedef typename concurrency_components::version_type   version_type;
     typedef typename concurrency_components::atomic_version_type   atomic_version_type;
     typedef typename concurrency_components::ID_type        ID_type;

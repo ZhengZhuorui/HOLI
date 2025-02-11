@@ -24,8 +24,8 @@ find_library(Tbblib          tbb)
 # find_library(Tbbmalloc       tbbmalloc)
 # find_library(Tbbmalloc_proxy tbbmalloc_proxy)
 
-set(Tbbpack ${Tbblib} ${Tbbbind} ${Tbbmalloc} ${Tbbmalloc_proxy})
-message(${Tbbmalloc})
+#set(Tbbpack ${Tbblib} ${Tbbbind} ${Tbbmalloc} ${Tbbmalloc_proxy})
+#message(${Tbbmalloc})
 
 #set(CMAKE_CXX_FLAGS "-g -Wall -march=native -fopenmp -fmax-errors=3 -std=c++17")
 #

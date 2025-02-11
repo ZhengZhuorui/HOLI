@@ -415,29 +415,19 @@ inline int linear_search_upper_bound_avx512(const _Tp* first, const int size, co
 }
 
 template<typename _Tp>
-inline void move_avxx4(_Tp* src, _Tp* dst){
-    if constexpr(sizeof(_Tp) == 8 && std::is_trivial_v<_Tp>){
-        __m256i src_vec = _mm256_loadu_si256((__m256i*)src);
-        _mm256_storeu_si256((__m256i*)dst, src_vec);
-    }
-    else{
-        std::move(src, src + 4, dst);
-    }
+inline void move_avx256(_Tp* src, _Tp* dst){
+    __m256i src_vec = _mm256_loadu_si256((__m256i*)src);
+    _mm256_storeu_si256((__m256i*)dst, src_vec);
 }
 
 template<typename _Tp>
-inline void move_avxx8(_Tp* src, _Tp* dst){
-    if constexpr(sizeof(_Tp) == 8 && std::is_trivial_v<_Tp>){
-        __m512i src_vec = _mm512_loadu_si512(src);
-        _mm512_storeu_si512(dst, src_vec);
-    }
-    else{
-        std::move(src, src + 8, dst);
-    }
+inline void move_avx512(_Tp* src, _Tp* dst){
+    __m512i src_vec = _mm512_loadu_si512(src);
+    _mm512_storeu_si512(dst, src_vec);
 }
 
 template<int K>
-inline void move_avx512(char *src, char* dst){
+inline void memmove_avx512(char *src, char* dst){
     static_assert(K % 64 == 0, "must 512bit size");
     if constexpr (K == 64){
         __m512i src_vec = _mm512_loadu_si512(src);
@@ -458,12 +448,14 @@ inline void move_avx512(char *src, char* dst){
 }
 
 template<int K, typename _Tp>
-inline void move_avx(_Tp* src, _Tp* dst){
+inline void move_item_avx(_Tp* src, _Tp* dst){
     static_assert(K == 4 || K == 8, "move_avx support 4 or 8 now");
-    if constexpr (K == 4)
-        move_avxx4(src, dst);
-    else if constexpr (K == 8)
-        move_avxx8(src, dst);
+    if constexpr (K % 8 == 0){
+        move_avx512(src, dst);
+    }
+    else if constexpr (K % 4 == 0){
+        move_avx256(src, dst);
+    }
 }
 template<typename key_type, typename value_type>
 void pack_pair_avxx8(key_type *key, value_type *value, std::pair<key_type, value_type>* results){
@@ -487,8 +479,6 @@ long long avx_sum_32(long long *x, int size){
     return result;
 }
 
-//typename<typename _Tp>
-//v
 
 }
 

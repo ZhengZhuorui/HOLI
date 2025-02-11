@@ -34,10 +34,16 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     aex_hash_node_con():parent(){};
     ~aex_hash_node_con(){};
     aex_hash_node_con(aex_hash_node_con &other){
-        memcpy(this, &other, sizeof(self));
+        //memcpy(this, &other, sizeof(self));
+        AEX_ASSERT(sizeof(aex_hash_node_con) == 96);
+        move_avx512((char*)(&other), (char*)(this));
+        move_avx256((char*)(&other) + 64, (char*)(this) + 64);
     }
     aex_hash_node_con& operator = (aex_hash_node_con &other){
-        memcpy(this, &other, sizeof(self));
+        //memcpy(this, &other, sizeof(self));
+        AEX_ASSERT(sizeof(aex_hash_node_con) == 96);
+        move_avx512((char*)(&other), (char*)(this));
+        move_avx256((char*)(&other) + 64, (char*)(this) + 64);
         return *this;
     }
 
@@ -54,7 +60,6 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
 
     void init(){
         this->size = 0;
-        AEX_PRINT("slot_size=" << this->slot_size << ", slot=" << this->slot_size / traits::SLOT_PER_LOCK + 1);
         this->bitmap_ptr = new bitmap_base[this->slot_size / traits::SLOT_PER_LOCK + 1]();
         this->version_array = new atomic_version_type[this->slot_size / traits::SLOT_PER_LOCK + 1]();
     }
@@ -95,7 +100,7 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
 
     inline void arrayCheckOrRestart(const slot_type start, const slot_type end, const version_type tot_version, bool &need_restart) const {
         version_type version = 0;
-        for (slot_type i = pos2slot(start); i < pos2slot(end); ++i)
+        for (slot_type i = pos2slot(start); i <= pos2slot(end); ++i)
             version += version_array[i].load();
         if (version != tot_version)
             need_restart = true;
@@ -133,8 +138,6 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
 
     
     inline slot_type prev_item_find_con(slot_type x, version_type &version) const {
-        if constexpr (!traits::AllowErase)
-            return this->parent::prev_item_find(x);
         if (x <= 0){
             return x;
         }

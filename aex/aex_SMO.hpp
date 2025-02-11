@@ -8,10 +8,7 @@ void aex_tree<_Key, _Val, traits>::split_to_static_data_node(const key_type* con
     AEX_ASSERT(traits::AllowDynamicDataNode == false);
     new_key.clear();
     new_child.clear();
-    if constexpr(traits::AllowConcurrency)
-        AEX_WARNING("lock_array[0].version=" << hash_table.lock_array[0].typeVersionLockObsolete);
     for (ULL i = 0; i < n; i += traits::DATA_NODE_SLOT_SIZE){
-
         #ifdef AEX_DEBUG
         //opt_stats.allocate_data_node_cnt++;
         #endif
@@ -19,15 +16,7 @@ void aex_tree<_Key, _Val, traits>::split_to_static_data_node(const key_type* con
         ULL size = std::min(static_cast<ULL>(traits::DATA_NODE_SLOT_SIZE), n - i);
         new_node->construct(key + i, data + i, size);
         new_key.emplace_back(key[i]);
-        new_child.emplace_back(new_node);
-        if constexpr(traits::AllowConcurrency)
-        if (hash_table.lock_array[0].typeVersionLockObsolete == 1){
-
-            AEX_PRINT("i=" << i << ", hash_table.lock_array=" << (void*)hash_table.lock_array << ", new_node=" << (void*)new_node);
-            AEX_PRINT("new_key.data()=" << new_key.data() << ", new_child.data()=" << new_child.data());
-            exit(0);
-        }
-        
+        new_child.emplace_back(new_node);        
     }
 }
 

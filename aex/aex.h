@@ -150,6 +150,7 @@ public:
     ~aex_tree();
 
     inline aex_tree& operator = (aex_tree &_index){
+        EpochGuard guard(this);
         this->_clear();
         data_node_ptr _tail_leaf;
         this->root = i_n(this->construct(_index, _index.root, _tail_leaf));
@@ -252,7 +253,7 @@ public:
      */
     inline bool find(const key_type x, value_type &y){
         if constexpr (traits::AllowConcurrency)
-            find_con(x, y);
+            return find_con(x, y);
         bool ret = false;
         data_node_ptr node = find_leaf(x);
         int pos = node->find(x);
@@ -280,15 +281,32 @@ public:
      * @details the interface support concurrency
      */
     inline bool update(const key_type x, value_type &y){
+        if constexpr (traits::AllowConcurrency)
+            return update_con(x, y);
+        bool ret = false;
+        data_node_ptr node = find_leaf(x);
+        slot_type pos = node->find(x);
+        if (pos < node->size){
+            node->data[pos] = y;
+            ret = true;
+        }
+        return ret;
+    }
+
+    inline bool update_con(const key_type x, value_type &y){
         bool ret = false;
         data_node_ptr node;
+        version_type node_version;
+        int restart_count = 0;
     update_restart:
-        node = find_leaf(x);
-        while (!TUL(node)){
-            SU(node);
-            node = find_leaf(x);
+        AEX_SGL_ASSERT(restart_count == 0);
+        if (restart_count > 0){
+            yield(restart_count);
         }
-
+        bool need_restart = 0;
+        node = find_leaf_con(x, node_version);        
+        node->node_lock.upgradeToWriteLockOrRestart(node_version, need_restart);
+        if (need_restart) goto update_restart;
         slot_type pos = node->find(x);
         if (pos < node->size){
             node->data[pos] = y;
@@ -892,5 +910,7 @@ private:
 #undef l_n
 #undef ULL
 #undef LL
+#undef likely
+#undef unlikely
 
 #pragma GCC diagnostic pop

@@ -89,10 +89,11 @@ inline bool aex_tree<_Key, _Val, traits>::check_node(hash_node_ptr node) const {
         ++cnt;
         his_key = key;
     }
+    AEX_SGL_DEBUG_BLOCK(
     if (cnt != node->size){
         AEX_ERROR("cnt != node->size. cnt=" << cnt << ", node->size=" << node->size);
         flag = false;
-    }
+    });
 
     return flag;
 }

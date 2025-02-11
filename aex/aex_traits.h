@@ -166,8 +166,8 @@ struct aex_default_traits{
     static constexpr float MIN_REBUILD_RATIO = 1.0;
     static constexpr int MAX_DEPTH = 15;
 
-    static constexpr int SIZE_BLOCK_CNT = 32;
-    static constexpr int MIN_ADD_CNT = 8;
+    static constexpr int SIZE_BLOCK_CNT = 64;
+    static constexpr int MIN_ADD_CNT = 4;
 
     // ========== old version ==========
     static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type) + sizeof(void*)));

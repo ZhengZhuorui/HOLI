@@ -63,7 +63,7 @@ inline void aex_tree<_Key, _Val, traits>::range_query(const key_type lower_key, 
 
 template<typename _Key, typename _Val, typename traits>
 inline size_t aex_tree<_Key, _Val, traits>::range_query_len(std::pair<key_type, value_type>* results, const key_type lower_key, const size_t key_num) const {
-    if constexpr (traits::AllowConcurrrency){
+    if constexpr (traits::AllowConcurrency){
         return range_query_len_con(results, lower_key, key_num);
     }
     AEX_ASSERT(!traits::AllowConcurrency);

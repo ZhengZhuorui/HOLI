@@ -13,13 +13,10 @@ inline bool aex_tree<_Key, _Val, traits>::_insert_con(const key_type key, const 
     node_ptr child;
     slot_type pos, split_pos;
     version_type node_version, child_version, top_node_version, tail_version;
-    //unsigned char node_copy_data[128], top_node_copy_data[128];
-    //static_assert(sizeof(hash_node) < 128, "hash node mush lower than 128");
-    //hash_node &node_copy = ()
     hash_node node_copy, top_node_copy;
     int restart_count = 0;
-
 insert_start:
+    AEX_SGL_ASSERT(restart_count == 0);
     if (restart_count > 0){
         yield(restart_count);
     }
@@ -78,7 +75,6 @@ insert_start:
             if (node->type == NodeType::HashNode){
                 top_node = h_n(node);
                 top_node_version = node_version;
-                top_node_copy = *top_node;
             }
         }
         if (child->type == NodeType::LeafNode){
@@ -93,6 +89,7 @@ insert_start:
                 child->node_lock.checkOrRestart(child_version, need_restart);
                 if (need_restart) goto insert_start;
                 if (top_node != nullptr && top_node != node){
+                    top_node_copy = *h_n(top_node);
                     top_node->node_lock.checkOrRestart(top_node_version, need_restart); //check_lock_shared(top_node)
                     if (need_restart) goto insert_start;
                     split_pos = top_node_copy.predict(split_key);
@@ -118,16 +115,16 @@ insert_start:
                     if (need_restart) goto insert_start;
                     node->node_lock.checkOrRestart(node_version, need_restart); // check_lock_shared(node)
                     if (need_restart) goto insert_start;
-                    if (!node_copy.is_occupied(split_pos) && split_pos < node_copy.slot_size){
-                        insert_data_node(l_n(child), new_node, key, value);
+                    split(l_n(child), new_node);
+                    if (split_pos < node_copy.slot_size && !node_copy.is_occupied(split_pos)){
                         insert_no_collision(&node_copy, split_pos, split_key, new_node);
                     }
                     else{
+                        AEX_ASSERT(top_flag == false);
                         if (top_flag){ XU(child); goto insert_start; }
-                        insert_data_node(l_n(child), new_node, key, value);
+                        pos = node_copy.prev_item(pos);
                         insert_collision(&node_copy, pos, split_key, new_node);
                     }
-                    
                     node->node_lock.readUnlockOrRestart(node_version, need_restart); // SU(node)
                     if (need_restart){
                         XU(child);
@@ -135,6 +132,10 @@ insert_start:
                         goto insert_start;
                     }
                     complete(l_n(child), new_node);
+                    if (key < new_node->key[0])
+                        l_n(child)->insert(key, value);
+                    else
+                        new_node->insert(key, value);
                     XU(child); XU(new_node);
                 }
                 else{
@@ -142,9 +143,13 @@ insert_start:
                     if (need_restart) goto insert_start;
                     child->node_lock.upgradeToWriteLockOrRestart(child_version, need_restart); // UL(child)
                     if (need_restart) goto insert_start;
-                    insert_data_node(l_n(child), new_node, key, value);
+                    split(l_n(child), new_node);
                     insert(d_n(node), split_key, new_node);
                     complete(l_n(child), new_node);
+                    if (key < new_node->key[0])
+                        l_n(child)->insert(key, value);
+                    else
+                        new_node->insert(key, value);
                     XU(node); XU(child); XU(new_node);
                 }
             }
@@ -182,10 +187,11 @@ insert_start:
                     flag = (key >= split_key);
                     top_flag = false;
                     if (top_node != nullptr && top_node != node){
+                        top_node_copy = *h_n(top_node);
                         top_node->node_lock.checkOrRestart(top_node_version, need_restart); // check_lock_shared(top_node)
                         if (need_restart) goto insert_start;
                         split_pos = top_node_copy.predict(split_key);
-                        if (!top_node_copy.is_occupied(split_pos) && split_pos < top_node_copy.slot_size){
+                        if (split_pos < top_node_copy.slot_size && !top_node_copy.is_occupied(split_pos)){
                             top_flag = true;
                             node = top_node;
                             node_version = top_node_version;
@@ -205,16 +211,17 @@ insert_start:
                         }
                         child->node_lock.upgradeToWriteLockOrRestart(child_version, need_restart); // UL(child)
                         if (need_restart) goto insert_start;
-                        if (!node_copy.is_occupied(split_pos) && split_pos < node_copy.slot_size){
+                        split(d_n(child), new_node);
+                        if (split_pos < node_copy.slot_size && !node_copy.is_occupied(split_pos)){
                             tail_leaf = find_tail_leaf(d_n(child)->child_ptr[traits::DENSE_NODE_SLOT_SIZE - 1], tail_version);
                             if (tail_leaf == nullptr){ XU(child); goto insert_start; }
                             tail_leaf->node_lock.upgradeToWriteLockOrRestart(tail_version, need_restart); // UL(tail_leaf)
                             if (need_restart) goto insert_start;
-                            split(d_n(child), new_node);
                             insert_no_collision(&node_copy, split_pos, split_key, new_node);
                         }
                         else {
-                            split(d_n(child), new_node);
+                            AEX_ASSERT(top_flag == false);
+                            pos = node_copy.prev_item(pos);
                             insert_collision(&node_copy, pos, split_key, new_node);
                         }
                         node->node_lock.readUnlockOrRestart(node_version, need_restart);
@@ -249,7 +256,7 @@ insert_start:
                         insert(d_n(node), split_key, new_node);
                         complete(d_n(child), new_node);
                         AEX_ASSERT(new_node->key_ptr[0] == split_key);
-                        XU(node); XU(child); XU(new_node); 
+                        XU(node);
                         if (flag){
                             XU(child);
                             child_version = new_node->node_lock.downgradeLock();
