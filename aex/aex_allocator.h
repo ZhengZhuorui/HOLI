@@ -77,7 +77,17 @@ public:
         return MAX_INNER_NODE_SIZE();
     }
 
-    inline static hash_node_ptr allocate_hash_node(const slot_type slot_size, const ID_type id){
+    inline data_node_ptr allocate_data_node(){
+        if constexpr (!traits::)
+        int block_id = rand() % traits::MEMORY_POOL;
+        
+        int restart  = 0;
+        allocate_data_node_start:
+        
+
+    }
+
+    inline hash_node_ptr allocate_hash_node(const slot_type slot_size, const ID_type id){
         AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
         //AEX_WARNING(sizeof(aex_hash_node<key_type, value_type, traits>) << ", " << sizeof(aex_hash_node_con<key_type, value_type, traits>) << ", " << MAX_INNER_NODE_SIZE() << ", " << sizeof(base_node) << ", " << sizeof(InnerNodeModel) << ", " << sizeof(bitmap) << ", " << sizeof(slot_type) << ", " << sizeof(Lock));
         //exit(0);
@@ -101,13 +111,21 @@ public:
     //    node->init();
     //    return node;
     //}
-    inline static dense_node_ptr allocate_dense_node(bool is_parent=false){
+    inline dense_node_ptr allocate_dense_node(bool is_parent=false){
         const dense_node_ptr node = d_n(malloc(MAX_INNER_NODE_SIZE()));
         node->type = NodeType::DenseNode;
         node->node_lock.init();
         node->init();
         return node;
     }
+private:
+    //data_node_ptr data_node_pool[traits::HASH_NODE_BLOCK_SIZE * traits::MEMORY_POOL];
+    std::vector<data_node*> ;
+    std::vector<char*> ;
+    std::vector<int* > data_node_pool_size, 
+    int data_node_pool_size[traits::MEMORY_POOL];
+    int inner_node_pool_size[traits::MEMORY_POOL];
+    RWLock data_node_pool_lock[traits::MEMORY_POOL], inner_node_pool_lock[traits::MEMORY_POOL];
 
 };
 

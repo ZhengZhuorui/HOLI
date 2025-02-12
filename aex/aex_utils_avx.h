@@ -183,6 +183,7 @@ inline int cmp_eq_epi8_32(const unsigned char* x, const char y){
     return mask;
 }
 
+
 template<typename _Tp>
 inline int cmp_eq_epi64x16(const _Tp* x, const _Tp y){
     __m512i q = _mm512_set1_epi64(y);
@@ -278,6 +279,107 @@ inline int linear_search_lower_bound_avx512x16(const double *first, const int si
     return __builtin_popcount(mask);
 }
 
+// ========== linear_search_upper_bound_avx512x32 ========== 
+
+template<typename _Tp>
+inline int linear_search_lower_bound_avx512x32(const _Tp* first, const int size, const _Tp x){
+    return std::lower_bound(first, first + size, x) - first;
+}
+
+template<>
+inline int linear_search_lower_bound_avx512x32(const unsigned long long* first, const int size, const unsigned long long x){
+    __m512i key = _mm512_set1_epi64(x);
+    __m512i v0 = _mm512_loadu_si512(first);
+    __m512i v1 = _mm512_loadu_si512(first + 8);
+    __m512i v2 = _mm512_loadu_si512(first + 16);
+    __m512i v3 = _mm512_loadu_si512(first + 24);
+    __mmask8 cmp0 = _mm512_cmpgt_epu64_mask(key, v0);
+    __mmask8 cmp1 = _mm512_cmpgt_epu64_mask(key, v1);
+    __mmask8 cmp2 = _mm512_cmpgt_epu64_mask(key, v2);
+    __mmask8 cmp3 = _mm512_cmpgt_epu64_mask(key, v3);
+    unsigned int mask = (((unsigned int)cmp3 << 24) | ((unsigned int)cmp2 << 16) | ((unsigned int)cmp1 << 8) | (unsigned int)cmp0) & ((1 << size) - 1);
+    return __builtin_popcount(mask);
+}
+
+template<>
+inline int linear_search_lower_bound_avx512x32(const long long* first, const int size, const long long x){
+    __m512i key = _mm512_set1_epi64(x);
+    __m512i v0 = _mm512_loadu_si512((__m512i*)(first));
+    __m512i v1 = _mm512_loadu_si512((__m512i*)(first + 8));
+    __m512i v2 = _mm512_loadu_si512((__m512i*)(first + 16));
+    __m512i v3 = _mm512_loadu_si512((__m512i*)(first + 24));
+    __mmask8 cmp0 = _mm512_cmpgt_epi64_mask(key, v0);
+    __mmask8 cmp1 = _mm512_cmpgt_epi64_mask(key, v1);
+    __mmask8 cmp2 = _mm512_cmpgt_epi64_mask(key, v2);
+    __mmask8 cmp3 = _mm512_cmpgt_epi64_mask(key, v3);
+    unsigned int mask = (((unsigned int)cmp3 << 24) | ((unsigned int)cmp2 << 16) | ((unsigned int)cmp1 << 8) | (unsigned int)cmp0) & ((1 << size) - 1);
+    return __builtin_popcount(mask);
+}
+
+template<>
+inline int linear_search_lower_bound_avx512x32(const double* first, const int size, const double x){
+    __m512d key = _mm512_set1_pd(x);
+    __m512d v0 = _mm512_loadu_pd(first);
+    __m512d v1 = _mm512_loadu_pd(first + 8);
+    __m512d v2 = _mm512_loadu_pd(first + 16);
+    __m512d v3 = _mm512_loadu_pd(first + 24);
+    __mmask8 cmp0 = _mm512_cmp_pd_mask(key, v0, _CMP_GT_OQ);
+    __mmask8 cmp1 = _mm512_cmp_pd_mask(key, v1, _CMP_GT_OQ);
+    __mmask8 cmp2 = _mm512_cmp_pd_mask(key, v2, _CMP_GT_OQ);
+    __mmask8 cmp3 = _mm512_cmp_pd_mask(key, v3, _CMP_GT_OQ);
+    unsigned int mask = (((unsigned int)cmp3 << 24) | ((unsigned int)cmp2 << 16) | ((unsigned int)cmp1 << 8) | (unsigned int)cmp0) & ((1 << size) - 1);
+    return __builtin_popcount(mask);
+}
+
+// ========== linear_search_lower_bound_avx512x8 ========== 
+
+template<typename _Tp>
+inline int linear_search_lower_bound_avx512x8(const _Tp* first, const int size, const _Tp x){
+    return linear_search_lower_bound(first, first + size, x) - first;
+}
+
+template<>
+inline int linear_search_lower_bound_avx512x8(const unsigned long long* first, const int size, const unsigned long long x){
+    __m512i key = _mm512_set1_epi64(x);
+    __m512i v0 = _mm512_loadu_si512((__m512i*)(first));
+    __mmask8 cmp0 = _mm512_cmpgt_epu64_mask(key, v0);
+    unsigned int mask = ((unsigned int)cmp0) & ((1 << size) - 1);
+    return __builtin_popcount(mask);
+}
+
+template<>
+inline int linear_search_lower_bound_avx512x8(const long long* first, const int size, const long long x){
+    __m512i key = _mm512_set1_epi64(x);
+    __m512i v0 = _mm512_loadu_si512((__m512i*)(first));
+    __mmask8 cmp0 = _mm512_cmpgt_epi64_mask(key, v0);
+    unsigned int mask = ((unsigned int)cmp0) & ((1 << size) - 1);
+    return __builtin_popcount(mask);
+}
+
+template<>
+inline int linear_search_lower_bound_avx512x8(const double* first, const int size, const double x){
+    __m512d key = _mm512_set1_pd(x);
+    __m512d v0 = _mm512_loadu_pd(first);
+    __mmask8 cmp0 = _mm512_cmp_pd_mask(key, v0, _CMP_GT_OQ);
+    unsigned int mask = ((unsigned int)cmp0) & ((1 << size) - 1);
+    return __builtin_popcount(mask);
+}
+
+template<int K, typename _Tp>
+inline int linear_search_lower_bound_avx512(const _Tp* first, const int size, const _Tp x){
+    if constexpr (K == 8)
+        return linear_search_lower_bound_avx512x8(first, size, x);
+    else if constexpr (K == 16)
+        return linear_search_lower_bound_avx512x16(first, size, x);
+    else if constexpr (K == 32)
+        return linear_search_lower_bound_avx512x32(first, size, x);
+    else{
+        AEX_ASSERT(0 == 1);
+    }
+}
+
+
+
 // ========== linear_search_upper_bound_avx512x16 ========== 
 
 template<typename _Tp>
@@ -318,6 +420,8 @@ inline int linear_search_upper_bound_avx512x16(const double *first, const int si
     return __builtin_popcount(mask);
 }
 
+
+
 // ========== linear_search_upper_bound_avx512x32 ========== 
 
 template<typename _Tp>
@@ -336,7 +440,7 @@ inline int linear_search_upper_bound_avx512x32(const unsigned long long* first, 
     __mmask8 cmp1 = _mm512_cmpge_epu64_mask(key, v1);
     __mmask8 cmp2 = _mm512_cmpge_epu64_mask(key, v2);
     __mmask8 cmp3 = _mm512_cmpge_epu64_mask(key, v3);
-    unsigned int mask = (((unsigned int)cmp3 << 16) | ((unsigned int)cmp2 << 16) | ((unsigned int)cmp1 << 8) | (unsigned int)cmp0) & ((1 << size) - 1);
+    unsigned int mask = (((unsigned int)cmp3 << 24) | ((unsigned int)cmp2 << 16) | ((unsigned int)cmp1 << 8) | (unsigned int)cmp0) & ((1 << size) - 1);
     return __builtin_popcount(mask);
 }
 
@@ -351,7 +455,7 @@ inline int linear_search_upper_bound_avx512x32(const long long* first, const int
     __mmask8 cmp1 = _mm512_cmpge_epi64_mask(key, v1);
     __mmask8 cmp2 = _mm512_cmpge_epi64_mask(key, v2);
     __mmask8 cmp3 = _mm512_cmpge_epi64_mask(key, v3);
-    unsigned int mask = (((unsigned int)cmp3 << 16) | ((unsigned int)cmp2 << 16) | ((unsigned int)cmp1 << 8) | (unsigned int)cmp0) & ((1 << size) - 1);
+    unsigned int mask = (((unsigned int)cmp3 << 24) | ((unsigned int)cmp2 << 16) | ((unsigned int)cmp1 << 8) | (unsigned int)cmp0) & ((1 << size) - 1);
     return __builtin_popcount(mask);
 }
 
@@ -366,7 +470,7 @@ inline int linear_search_upper_bound_avx512x32(const double* first, const int si
     __mmask8 cmp1 = _mm512_cmp_pd_mask(key, v1, _CMP_GE_OQ);
     __mmask8 cmp2 = _mm512_cmp_pd_mask(key, v2, _CMP_GE_OQ);
     __mmask8 cmp3 = _mm512_cmp_pd_mask(key, v3, _CMP_GE_OQ);
-    unsigned int mask = (((unsigned int)cmp3 << 16) | ((unsigned int)cmp2 << 16) | ((unsigned int)cmp1 << 8) | (unsigned int)cmp0) & ((1 << size) - 1);
+    unsigned int mask = (((unsigned int)cmp3 << 24) | ((unsigned int)cmp2 << 16) | ((unsigned int)cmp1 << 8) | (unsigned int)cmp0) & ((1 << size) - 1);
     return __builtin_popcount(mask);
 }
 
@@ -412,6 +516,9 @@ inline int linear_search_upper_bound_avx512(const _Tp* first, const int size, co
         return linear_search_upper_bound_avx512x16(first, size, x);
     else if constexpr (K == 32)
         return linear_search_upper_bound_avx512x32(first, size, x);
+    else{
+        AEX_ASSERT(0 == 1);
+    }
 }
 
 template<typename _Tp>
@@ -449,14 +556,22 @@ inline void memmove_avx512(char *src, char* dst){
 
 template<int K, typename _Tp>
 inline void move_item_avx(_Tp* src, _Tp* dst){
-    static_assert(K == 4 || K == 8, "move_avx support 4 or 8 now");
-    if constexpr (K % 8 == 0){
+    static_assert(K == 4 || K == 8 || K == 16, "move_avx support 4 or 8 or 16 now");
+    if constexpr (K == 8){
         move_avx512(src, dst);
     }
-    else if constexpr (K % 4 == 0){
+    else if constexpr (K == 4){
         move_avx256(src, dst);
     }
+    else if constexpr (K == 16){
+        move_avx512(src, dst);
+        move_avx512(src + 8, dst + 8);
+    }
+    else{
+        AEX_ASSERT(0 == 1);
+    }
 }
+
 template<typename key_type, typename value_type>
 void pack_pair_avxx8(key_type *key, value_type *value, std::pair<key_type, value_type>* results){
     __m512i v0 = _mm512_loadu_si512(key);

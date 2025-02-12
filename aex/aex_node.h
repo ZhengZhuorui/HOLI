@@ -372,7 +372,6 @@ public:
     }
 
     inline bool erase(const key_type x){
-
         int pos = find_lower_pos(x);
         if (pos >= this->size || key[pos] != x)
             return false;
@@ -384,13 +383,13 @@ public:
 
     inline int find(const key_type x) const {
         int pos;
-        if constexpr (sizeof(key_type) == 8){
+        if constexpr (sizeof(key_type) == 8 && traits::DATA_NODE_SLOT_SIZE == 16){
             pos = cmp_eq_epi64x16(this->key, x);
         }
         else{
             //pos = find_lower_pos(x);
             int _size = std::min((int)this->size, traits::DATA_NODE_SLOT_SIZE);
-            pos = std::find(this->key, this->key + _size, x) - this->key;
+            pos = std::lower_bound(this->key, this->key + _size, x) - this->key;
         }
         if (pos >= this->size || this->key[pos] != x)
             return this->size;
@@ -405,14 +404,15 @@ public:
         //if constexpr (std::is_same_v<key_type, ULL>)
         //    return std::lower_bound(this->key, this->key + this->size, x) - this->key;
         //else
-        return aex::linear_search_lower_bound_avx512x16(this->key, (int)this->size, x);
+        return aex::linear_search_lower_bound_avx512<traits::DATA_NODE_SLOT_SIZE, key_type>(this->key, (int)this->size, x);
         //return std::lower_bound(this->key, this->key + this->size, x) - this->key;
     }
 
     inline int find_upper_pos(const key_type x) const {
         if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
             return traits::SearchClass::upper_bound(this->key, this->key + this->size, x, this->key) - this->key;
-        return std::upper_bound(this->key, this->key + this->size, x) - this->key;
+        //return std::upper_bound(this->key, this->key + this->size, x) - this->key;
+        return aex::linear_search_upper_bound_avx512<traits::DATA_NODE_SLOT_SIZE, key_type>(this->key, (int)this->size, x);
     }
     key_type      key[traits::DATA_NODE_SLOT_SIZE];
     value_type    data[traits::DATA_NODE_SLOT_SIZE];

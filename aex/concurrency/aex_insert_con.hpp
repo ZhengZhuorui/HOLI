@@ -17,9 +17,8 @@ inline bool aex_tree<_Key, _Val, traits>::_insert_con(const key_type key, const 
     int restart_count = 0;
 insert_start:
     AEX_SGL_ASSERT(restart_count == 0);
-    if (restart_count > 0){
+    if (restart_count > 0)
         yield(restart_count);
-    }
     ++restart_count;
     bool need_restart = false;
     top_node = nullptr;

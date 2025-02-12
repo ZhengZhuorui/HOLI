@@ -60,10 +60,12 @@ struct aex_hash_table_block{
     typedef aex_hash_table_block_unit<_Key, traits> Unit;
     typedef aex_hash_table_block_unit_K<_Key, traits> Unit_K;
     typedef aex_hash_table_block_unit_V<_Key, traits> Unit_V;
+    typedef typename components::RWLock RWLock;
 
     Unit          unit_array[traits::HASH_TABLE_BLOCK_SIZE];
-    self*         next;
     int           size;
+    RWLock        lock;
+    self*         next;
 
     aex_hash_table_block():size(0), next(nullptr){}
 
@@ -249,6 +251,7 @@ public:
     }
 
     inline void print_stats() const {
+        AEX_HINT("Block size=" << sizeof(HashTableBlock));
         AEX_HINT("[HashTable Stats]: size=" << size << ", slot_size=" << slot_size);
         long long cnt = 0;
         for (slot_type i = 0; i < this->slot_size; ++i){

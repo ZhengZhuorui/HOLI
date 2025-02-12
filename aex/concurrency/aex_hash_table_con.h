@@ -4,13 +4,13 @@
 
 namespace aex{
 
-template<typename _Key,
-        typename traits>
-struct aex_hash_table_block_con : public aex_hash_table_block{
-    typedef aex_default_components<traits>         components;
-    typedef typename components::RWLock            RWLock;
-    RWLock lock;
-};
+//template<typename _Key,
+//        typename traits>
+//struct aex_hash_table_block_con : public aex_hash_table_block{
+//    typedef aex_default_components<traits>         components;
+//    typedef typename components::RWLock            RWLock;
+//    RWLock lock;
+//};
 
 template<typename _Key,
         typename traits>
@@ -39,56 +39,32 @@ public:
     explicit aex_hash_table_con(int _slot_size):HashTableBase(_slot_size){
         AEX_SUCCESS("hash table construct");
         AEX_ASSERT((this->slot_size & (-this->slot_size)) == this->slot_size);
-        lock_array = new RWLock[this->slot_size]();
     }
 
     aex_hash_table_con(self &other_table):HashTableBase(other_table){
         AEX_SUCCESS("hash table construct");
-        lock_array = new RWLock[this->slot_size]();
     }
 
     aex_hash_table_con(self &&other_table):HashTableBase(std::move(other_table)){
         AEX_SUCCESS("hash table construct");
-        this->lock_array = other_table.lock_array;
-        other_table.lock_array = nullptr;
     }
 
     ~aex_hash_table_con(){}
 
-    void free_hash_table(){
-        AEX_PRINT("free_hash_table");
-        //this->HashTableBase::free_hash_table();
-        for (slot_type i = 0; i < this->slot_size; ++i){
-            for (HashTableBlock *b = this->table_[i].next, *t; b != nullptr; ){
-                t = b;
-                b = b->next;
-                delete t;
-            }
-        }
-        delete[] this->table_;
-        this->table_ = nullptr;
-
-        //AEX_ASSERT(this->lock_array != nullptr);
-        //delete[] this->lock_array;
-        //this->lock_array = nullptr;
-    }
+    //void free_hash_table(){
+    //    AEX_PRINT("free_hash_table");
+    //    this->HashTableBase::free_hash_table();
+    //}
 
     self& operator=(self &other){
         AEX_SUCCESS("hash table copy");
         *static_cast<HashTableBase*>(this) = static_cast<HashTableBase>(other);
-        AEX_ASSERT(this->lock_array != nullptr);
-        delete[] lock_array;
-        this->lock_array = new RWLock[this->slot_size]();
         return *this;
     }
 
     self& operator=(self &&other){
         AEX_SUCCESS("hash table move");
-        AEX_ASSERT(this->lock_array != nullptr);
         *static_cast<HashTableBase*>(this) = std::move(static_cast<HashTableBase>(other));
-        delete[] lock_array;
-        lock_array = other.lock_array;
-        other.lock_array = nullptr;
         return *this;
     }
 
@@ -98,14 +74,11 @@ public:
 
 
     inline void clear(){
-        AEX_WARNING("clear, lock_array=" << (void*)this->lock_array);
         this->free_hash_table();
         this->slot_size = traits::MIN_HASH_TABLE_SIZE;
         this->size = 0;
         this->table_ = new HashTableBlock[traits::MIN_HASH_TABLE_SIZE]();
         this->real_slot_size = this->get_real_slot_size(traits::MIN_HASH_TABLE_SIZE);
-        this->lock_array = new RWLock[traits::MIN_HASH_TABLE_SIZE]();
-        AEX_PRINT("lock_array=" << (void*)this->lock_array);
     }
     
     inline void rescale(const slot_type _slot_size){
@@ -131,7 +104,6 @@ public:
         this->slot_size = _slot_size;
         this->real_slot_size = new_real_slot_size;
         this->table_ = new_hash_table;
-        this->lock_array = new RWLock[_slot_size]();
     }
 
     //inline void narrow(){ rescale(this->slot_size >> 1); }
@@ -143,7 +115,6 @@ public:
 
     inline void insert(const hash_node_ptr parent, const slot_type pos, const key_type key, const node_ptr child){
         hash_type hash_key;
-        //HashTable table_copy;
         HashTableBlock* block;
         int restart_count = 0;
 insert_start:
@@ -160,18 +131,14 @@ insert_start:
             table_version = lock.downgradeLock();
             if (need_restart) goto insert_start;
         }
-        hash_key = table_copy.get_hash_key(parent->id, pos);
+        hash_key = this->get_hash_key(parent->id, pos);
         block = this->table_ + hash_key;
         lock.checkOrRestart(table_version, need_restart);
         if (need_restart) goto insert_start;
         block->lock.writeLockOrRestart(need_restart);
         if (need_restart) goto insert_start;
-        //table_copy.table_[hash_key].insert(parent->id, pos, key, child);
         block->insert(parent->id, pos, key, child);
-        block->writeUnlock();
-        //AEX_ASSERT(table_copy.table_[hash_key].size <= 16);
-        //AEX_PRINT("hash key=" << hash_key << ", size=" << table_copy.table_[hash_key].size);
-        //table_copy.lock_array[hash_key].writeUnlock();
+        block->lock.writeUnlock();
         lock.readUnlockOrRestart(table_version, need_restart);
         if (need_restart) goto insert_start;
         add_size();
@@ -204,20 +171,23 @@ find_start:
     inline void erase(const hash_node_ptr node, const slot_type pos){
         int restart_count = 0;
         hash_type hash_key;
-        HashTable table_copy;
+        HashTableBlock* block;
     erase_start:
         if (restart_count > 0)
             yield(restart_count);
         restart_count++;
         bool need_restart = false;
+
         version_type table_version = lock.readLockOrRestart(need_restart);
         if (need_restart) goto erase_start;
-        memcpy(&table_copy, this, sizeof(HashTable));
+
+        hash_key = this->get_hash_key(node->id, pos);
+        block = this->table_ + hash_key;
+
         lock.checkOrRestart(table_version, need_restart);
         if (need_restart) goto erase_start;
 
-        hash_key = table_copy.get_hash_key(node->id, pos);
-        table_copy.lock_array[hash_key].writeLockOrRestart(need_restart);
+        block->lock.writeLockOrRestart(need_restart);
         if (need_restart) goto erase_start;
 //        if (this->isfew()){
 //            if (!lock.try_upgrade_lock()){
@@ -227,8 +197,8 @@ find_start:
 //            narrow();
 //            lock.downgrade_lock();
 //        }
-        table_copy.table_[hash_key].erase(node->id, pos);
-        table_copy.lock_array[hash_key].writeUnlock();
+        block->erase(node->id, pos);
+        block->lock.writeUnlock();
         lock.readUnlockOrRestart(table_version, need_restart);
         if (need_restart) goto erase_start;
         sub_size();
@@ -236,7 +206,7 @@ find_start:
 
     inline void update(const hash_node_ptr parent, const slot_type pos, const key_type update_key, const node_ptr update_node){
         int restart_count = 0;
-        HashTable table_copy;
+        HashTableBlock* block;
     update_start:
         if (restart_count > 0)
             yield(restart_count);
@@ -244,21 +214,20 @@ find_start:
         bool need_restart = false;
         version_type table_version = lock.readLockOrRestart(need_restart);
         if (need_restart) goto update_start;
-        memcpy(&table_copy, this, sizeof(HashTable));
+        hash_type hash_key = this->get_hash_key(parent->id, pos);
+        block = this->table_ + hash_key;
         lock.checkOrRestart(table_version, need_restart);
         if (need_restart) goto update_start;
-        hash_type hash_key = table_copy.get_hash_key(parent->id, pos);
-        table_copy.lock_array[hash_key].writeLockOrRestart(need_restart);
-        if (need_restart) goto update_start;
-        table_copy.table_[hash_key].update(parent->id, pos, update_key, update_node);
-        table_copy.lock_array[hash_key].writeUnlock();
+        block->lock.writeLockOrRestart(need_restart);
+        block->update(parent->id, pos, update_key, update_node);
+        block->lock.writeUnlock();
         lock.readUnlockOrRestart(table_version, need_restart);
         if (need_restart) goto update_start;
     }
 
     inline bool compare_and_swap(const hash_node_ptr parent, const slot_type pos, const node_ptr ori_node, const key_type update_key, const node_ptr update_node){
         int restart_count = 0;
-        HashTable table_copy;
+        HashTableBlock* block;
     compare_and_swap_start:
         if (restart_count > 0)
             yield(restart_count);
@@ -266,22 +235,23 @@ find_start:
         bool need_restart = false;
         version_type table_version = lock.readLockOrRestart(need_restart);
         if (need_restart) goto compare_and_swap_start;
-        memcpy(&table_copy, this, sizeof(HashTable));
+        bool res = false;
+        hash_type hash_key = this->get_hash_key(parent->id, pos);
+        block = this->table_ + hash_key;
+
         lock.checkOrRestart(table_version, need_restart);
         if (need_restart) goto compare_and_swap_start;
 
-        bool res = false;
-        hash_type hash_key = table_copy.get_hash_key(parent->id, pos);
-        table_copy.lock_array[hash_key].writeLockOrRestart(need_restart);
+        block->lock.writeLockOrRestart(need_restart);
         if (need_restart) goto compare_and_swap_start;
         key_type find_key;
         node_ptr find_node;
-        std::tie(find_key, find_node) = table_copy.table_[hash_key].find(parent->id, pos);
+        std::tie(find_key, find_node) = block->find(parent->id, pos);
         if (find_node == ori_node){
-            table_copy.table_[hash_key].update(parent->id, pos, update_key, update_node);
+            block->update(parent->id, pos, update_key, update_node);
             res = true;
         }
-        table_copy.lock_array[hash_key].writeUnlock();
+        block->lock.writeUnlock();
         lock.readUnlockOrRestart(table_version, need_restart);
         if (need_restart) goto compare_and_swap_start;
         return res;
@@ -289,7 +259,6 @@ find_start:
 
     inline void print_stats() const {
         this->HashTableBase::print_stats();
-        //this->con_stats.print_stats();
     }
 
     inline void add_size() {
@@ -322,17 +291,8 @@ find_start:
         }
     }
 
-    //mutable RWLock* lock_array;
     mutable RWLock lock;
     EpochBasedMemoryReclamationStrategy *ebr;
 };
-
-//template<typename _Key,
-//        typename traits>
-//union hash_table_copy{
-//    type
-//    char data[64];
-//    
-//};
 
 }
