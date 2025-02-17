@@ -144,7 +144,7 @@ find_leaf_con_start:
     int count = 0;
     while (l_n(node)->key[std::max((int)(node->size - 1), 0)] < key){
         data_node_ptr next_node = l_n(node)->next;
-        if (next_node != nullptr && next_node->key[0] < key){
+        if (next_node != nullptr && next_node->min_key < key){
             ++count;
             child_version = next_node->node_lock.readLockOrRestart(need_restart);
             node->node_lock.readUnlockOrRestart(node_version, need_restart);
@@ -382,12 +382,10 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 */
 
 template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_tail_leaf(node_ptr node, version_type &tail_version) const {
+inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_tail_leaf(node_ptr node) {
     AEX_ASSERT(check_lock(node));
-    key_type key;
     node_ptr child;
-    version_type node_version, child_version, array_version;
-    hash_node node_copy;
+    node_ptr tail_node = node;
     int restart_count = 0;
 find_tail_leaf_start:
     AEX_SGL_ASSERT(restart_count == 0);
@@ -395,36 +393,18 @@ find_tail_leaf_start:
         yield(restart_count);
     restart_count++;
     bool need_restart = false;
-    node_version = node->node_lock.readLockOrRestart(need_restart); // SL(node)
-    if (need_restart) goto find_tail_leaf_start;
-    while (node->type != NodeType::LeafNode){
-        if (node->type == NodeType::DenseNode){
-            slot_type pos = std::min(traits::DENSE_NODE_SLOT_SIZE - 1, (int)node->size - 1);
-            child = d_n(node)->child_ptr[pos];
-            node->node_lock.checkOrRestart(node_version, need_restart); // check child exists
-            if (need_restart) goto find_tail_leaf_start;
-            child_version = child->node_lock.readLockOrRestart(need_restart); // SL(child)
-        }
-        else{
-            node_copy = *h_n(node);
-            node->node_lock.checkOrRestart(node_version, need_restart);
-            if (need_restart) goto find_tail_leaf_start;
-            slot_type pos = node_copy.prev_item_find_con(node_copy.slot_size - 1, array_version);
-            std::tie(key, child) = hash_table.find(h_n(node), pos);
-            if (child != nullptr)
-                child_version = child->node_lock.readLockOrRestart(need_restart); // SL(child)
-            if (need_restart) goto find_tail_leaf_start;    
-            h_n(node)->arrayCheckOrRestart(pos, node_copy.slot_size - 1, array_version, need_restart); // SU(node, pos)
-            if (need_restart) goto find_tail_leaf_start;
-            AEX_ASSERT(child != nullptr);
-        }
-        node->node_lock.readUnlockOrRestart(node_version, need_restart); // SU(node)
-        if (need_restart) goto find_tail_leaf_start;
-        node = child;
-        node_version = child_version;
+    while (tail_node->type != NodeType::LeafNode){
+        if (tail_node->type == NodeType::DenseNode)
+            child = d_n(tail_node)->child_ptr[tail_node->size - 1];
+        else
+            child = h_n(tail_node)->tail_node;
+        TXL(child, need_restart);
+        if (need_restart) goto find_tail_leaf_start;        
+        if (tail_node != node)
+            XU(tail_node);
+        tail_node = child;
     }
-    tail_version = node_version;
-    return l_n(node);
+    return l_n(tail_node);
 }
 
 }

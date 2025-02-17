@@ -4,13 +4,112 @@
 
 namespace aex{
 
-//template<typename _Key,
-//        typename traits>
-//struct aex_hash_table_block_con : public aex_hash_table_block{
-//    typedef aex_default_components<traits>         components;
-//    typedef typename components::RWLock            RWLock;
-//    RWLock lock;
-//};
+
+template<typename _Key,
+        typename traits>
+struct alignas(64) aex_hash_table_block_con{
+    typedef aex_default_components<traits> components;
+    typedef typename components::base_node base_node;
+    typedef base_node* node_ptr;
+    typedef typename traits::slot_type slot_type;
+    typedef typename traits::key_type key_type;
+    typedef typename components::ID_type ID_type;
+    typedef aex_hash_table_block_con<_Key, traits> self;
+    typedef aex_hash_table_block_unit<_Key, traits> Unit;
+    typedef aex_hash_table_block_unit_K<_Key, traits> Unit_K;
+    typedef aex_hash_table_block_unit_V<_Key, traits> Unit_V;
+    typedef typename components::RWLock RWLock;
+
+    Unit          unit_array[traits::HASH_TABLE_BLOCK_SIZE];
+    RWLock        lock;
+    int           size;
+    self*         next;
+
+    aex_hash_table_block_con():size(0), next(nullptr){}
+
+    self& operator=(self &other){
+        for (self* b = this, *ob = &other; ob != nullptr; b = b->next, ob = ob->next){
+            b->size = ob->size;
+            memcpy(unit_array, ob->unit_array, sizeof(Unit) * traits::HASH_TABLE_BLOCK_SIZE);
+            if (ob->next != nullptr){
+                b->next = new self();
+            }
+        }
+    }
+
+    inline std::pair<key_type, node_ptr> find(const ID_type id, const slot_type _pos) {
+        for (self* b = this; b != nullptr; b = b->next){
+            for (int i = 0; i < b->size; ++i)
+            if (b->unit_array[i].pos == _pos && b->unit_array[i].id == id)
+                return std::make_pair(b->unit_array[i].key, b->unit_array[i].child);
+        }
+
+        return std::make_pair(0, nullptr);
+    }
+
+    inline bool exists(const ID_type id, const slot_type _pos) {
+        for (self* b = this; b != nullptr; b = b->next){
+            for (int i = 0; i < b->size; ++i)
+            if (b->unit_array[i].pos == _pos && b->unit_array[i].id == id)
+                return true;
+        }
+        return false;
+    }
+
+    inline void insert(const ID_type id, const slot_type _pos, const key_type x, const node_ptr y){
+        self* insert_block = this;
+        if (this->size == traits::HASH_TABLE_BLOCK_SIZE){
+            if (this->next == nullptr){
+                this->next = new self();
+            }
+            else if (this->next->size == traits::HASH_TABLE_BLOCK_SIZE){
+                self* new_block = new self();
+                new_block->next = this->next;
+                this->next = new_block;
+            }
+            insert_block = this->next;
+        }
+        {
+            int& _size = insert_block->size;
+            insert_block->unit_array[_size].pos    = _pos;
+            insert_block->unit_array[_size].id     = id;
+            insert_block->unit_array[_size].key    = x;
+            insert_block->unit_array[_size].child  = y;
+            ++insert_block->size;
+        }
+    }
+
+    inline void erase(const ID_type id, const slot_type _pos){
+        self* erase_block = this;
+        self* tail = (erase_block->next == nullptr) ? this : this->next;
+        for(self* erase_block = this; erase_block != nullptr; erase_block = erase_block->next){
+            for (int i = 0; i < erase_block->size; ++i)
+                if (erase_block->unit_array[i].pos == _pos && erase_block->unit_array[i].id == id){
+                    erase_block->unit_array[i]  = tail->unit_array[tail->size - 1];
+                    --tail->size;
+                    if (tail != this && tail->size == 0){
+                        this->next = tail->next;
+                        delete tail;
+                    }
+                    return;
+                }
+        }
+        AEX_ASSERT(0 == 1);
+    }
+
+    void update(const ID_type id, const slot_type _pos, const key_type update_key, const node_ptr update_node){
+        for (self *b = this; b != nullptr; b = b->next){
+            for (int i = 0; i < b->size; ++i)
+                if (b->unit_array[i].pos == _pos && b->unit_array[i].id == id){
+                    b->unit_array[i].key   = update_key;
+                    b->unit_array[i].child = update_node;
+                    return;
+                }
+        }
+        AEX_ASSERT(0 == 1);
+    }
+};
+
 
 template<typename _Key,
         typename traits>
@@ -72,6 +171,11 @@ public:
         return this->HashTableBase::memory_used() + this->slot_size * sizeof(RWLock);
     }
 
+    //inline ULL get_randint(ULL x) const {
+    //    static thread_local std::minstd_rand generator(time(0));
+    //    std::uniform_int_distribution<ULL> dist(1, x);
+    //    return dist(generator);
+    //}
 
     inline void clear(){
         this->free_hash_table();
@@ -98,6 +202,7 @@ public:
                 }
             }
         }
+        AEX_WARNING("real_size=" << this->size);
         HashTable* hash_table_copy = new HashTable();
         memcpy(hash_table_copy, this, sizeof(HashTable));
         this->ebr->scheduleForDeletion(MRUnit(MemoryReclaimType::HashTable, hash_table_copy));
@@ -141,7 +246,8 @@ insert_start:
         block->lock.writeUnlock();
         lock.readUnlockOrRestart(table_version, need_restart);
         if (need_restart) goto insert_start;
-        add_size();
+        //add_size(utils_get_hash_key<traits::K6, traits::K7>(parent->id, pos) % traits::MAX_INT);
+        add_size((ULL)(parent->id) * traits::K1 + pos);
     }
 
     /**
@@ -201,7 +307,7 @@ find_start:
         block->lock.writeUnlock();
         lock.readUnlockOrRestart(table_version, need_restart);
         if (need_restart) goto erase_start;
-        sub_size();
+        sub_size((ULL)(node->id) * traits::K1 + pos);
     }
 
     inline void update(const hash_node_ptr parent, const slot_type pos, const key_type update_key, const node_ptr update_node){
@@ -261,30 +367,29 @@ find_start:
         this->HashTableBase::print_stats();
     }
 
-    inline void add_size() {
-        //if (this->slot_size * traits::HASH_TABLE_BLOCK_SIZE * traits::HASH_TABLE_FULL_RATIO / traits::BLOCK_SIZE >= 4){
-        size_type min_add_cnt = this->slot_size * traits::HASH_TABLE_BLOCK_SIZE * traits::HASH_TABLE_FULL_RATIO / traits::SIZE_BLOCK_CNT;
-        if (rand() % min_add_cnt == 0)
-            __sync_fetch_and_add(&(this->size), min_add_cnt);
-        /*
+    inline void add_size(hash_type hash_key) {
         if (this->slot_size * traits::HASH_TABLE_BLOCK_SIZE * traits::HASH_TABLE_FULL_RATIO >= traits::SIZE_BLOCK_CNT * traits::MIN_ADD_CNT){
             size_type min_add_cnt = this->slot_size * traits::HASH_TABLE_BLOCK_SIZE * traits::HASH_TABLE_FULL_RATIO / traits::SIZE_BLOCK_CNT;
-            if (rand() % min_add_cnt == 0){
+            //std::uniform_int_distribution<size_type> distribution(1, min_add_cnt);
+            //size_type r = distribution(generator);
+            //if (hash_key % min_add_cnt == min_add_cnt / 3)
+            //if (utils_get_hash_key(hash_key, min_add_cnt) == 1)
+            if (get_randint(min_add_cnt) == 1)
                 __sync_fetch_and_add(&(this->size), min_add_cnt);
-            }
         }
         else{
             __sync_fetch_and_add(&(this->size), 1);
         }
-        */
+        
     }
 
-    inline void sub_size() {
+    inline void sub_size(hash_type hash_key) {
         if (this->slot_size * traits::HASH_TABLE_BLOCK_SIZE * traits::HASH_TABLE_FULL_RATIO >= traits::SIZE_BLOCK_CNT * traits::MIN_ADD_CNT){
             size_type min_add_cnt = this->slot_size * traits::HASH_TABLE_BLOCK_SIZE * traits::HASH_TABLE_FULL_RATIO / traits::SIZE_BLOCK_CNT;
-            if (rand() % min_add_cnt == 0){
+            //if (hash_key % min_add_cnt == 0){
+            //if (utils_get_hash_key(hash_key, min_add_cnt) == 1)
+            if (get_randint(min_add_cnt) == 1)
                 __sync_fetch_and_sub(&this->size, min_add_cnt);
-            }
         }
         else{
             __sync_fetch_and_sub(&this->size, 1);
@@ -293,6 +398,7 @@ find_start:
 
     mutable RWLock lock;
     EpochBasedMemoryReclamationStrategy *ebr;
+
 };
 
 }

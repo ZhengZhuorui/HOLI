@@ -80,6 +80,10 @@ if [ $mode == "run" ]; then
     fi
     cd build
     make -j 5
+    if [[ $? -ne 0 ]]; then
+        color_echo $RED_FONT "compile error"
+        exit
+    fi
     shift
     arg=$@
     echo $1

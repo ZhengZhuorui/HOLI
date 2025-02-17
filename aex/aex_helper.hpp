@@ -54,6 +54,7 @@ info_stats aex_tree<_Key, _Val, traits>::get_info_stats() const {
     [[maybe_unused]]key_type prev_key = std::numeric_limits<key_type>::lowest();
     long long cnt = 0;
     for (auto it = this->begin(); it != this->end(); ++it){
+        AEX_DEBUG_BLOCK({if (it.key() < prev_key) AEX_PRINT("cnt=" << cnt << ", it.key()=" << it.key() << ", prev_key=" << prev_key << ", it.offset=" << it.offset);});
         AEX_ASSERT(it.key() >= prev_key);
         prev_key = it.key();
         ++cnt;

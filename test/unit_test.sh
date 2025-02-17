@@ -341,6 +341,9 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 ./unit_test --unit=SMO --key_type=float64 --function=node_rescale --num_keys=1024 --ratio=2.0 --level=2 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=SMO --key_type=float64 --function=node_rescale --num_keys=1024 --ratio=0.5 --level=2 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
+# =================================================================================================
+# test hash table performance
+./unit_test --unit=hash_table --key_type=uint64 --con --thread_num=16 --num_keys=10000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 
 # =================================================================================================
 # test index construction accuracy and performance

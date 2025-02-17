@@ -1,7 +1,7 @@
 #pragma once
 #include <bits/stdc++.h>
 #include "aex.h"
-
+#include "omp.h"
 #include "benchmark/generate_dataset.h"
 
 enum OperationType{
@@ -18,8 +18,6 @@ void construct_data_node_array(key_type* key, size_t num_keys, typename aex_tree
     [[maybe_unused]]typedef typename aex_tree<key_type, value_type, traits>::data_node_ptr data_node_ptr;
 
     for (size_t i = 0; i < num_keys; ++i){
-        //child_buf[i] = static_cast<node_ptr>(tree.allocator.allocate_data_node());
-        //child_buf[i] = reinterpret_cast<node_ptr>(new data_node(tree.version));
         child_buf[i] = new data_node();
         child_buf[i]->key[0] = key[i];
         child_buf[i]->size = 1;
@@ -33,9 +31,9 @@ void construct_data_node_array(key_type* key, size_t num_keys, typename aex_tree
 #include "test/test_SMO_split.hpp"
 #include "test/test_SMO_rescale.hpp"
 
-
 #include "test/test_index.hpp"
 #include "test/test_index_mix.hpp"
+#include "test/test_hash_table.hpp"
 
 // muthi thread
 #include "test/test_lock.hpp"

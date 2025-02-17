@@ -7,7 +7,6 @@ template<typename _Key, typename _Val, typename traits>
 inline bool aex_tree<_Key, _Val, traits>::_erase(const key_type key){
     node_ptr node, child;
     slot_type pos, next_pos;
-    version_type tail_version;
     bool ret;
     node = root;
     check_erase_SMO(node);
@@ -25,18 +24,20 @@ inline bool aex_tree<_Key, _Val, traits>::_erase(const key_type key){
                 data_node_ptr prev_child;
                 if (node->type == NodeType::HashNode){
                     std::tie(prev_key, prev_node) = hash_table.find(h_n(node), h_n(node)->prev_item_find(pos - 1));
-                    prev_child = find_tail_leaf(prev_node, tail_version);
+                    prev_child = find_tail_leaf(prev_node);
                 }
                 else{
                     prev_node = d_n(node)->child_ptr[pos - 1];
-                    prev_child = find_tail_leaf(prev_node, tail_version);
+                    prev_child = find_tail_leaf(prev_node);
                 }
 
                 AEX_ASSERT(prev_child->next == child);
                 if (prev_child->size + child->size - l_n(child)->find(key) <= traits::DATA_NODE_SLOT_SIZE){
                     ret = l_n(child)->erase(key);
-                    if (node->type == NodeType::HashNode)
+                    if (node->type == NodeType::HashNode){
                         erase(h_n(node), pos, next_pos, child);
+                        if (h_n(node)->tail_node == child) h_n(node)->tail_node = tail_node(h_n(node));
+                    }
                     else
                         erase(d_n(node), pos);
                     merge(prev_child, l_n(child));
@@ -56,6 +57,7 @@ inline bool aex_tree<_Key, _Val, traits>::_erase(const key_type key){
                 std::tie(child_key, _) = hash_table.find(h_n(node), pos);
                 AEX_ASSERT(_ == child);
                 update(h_n(node), pos, next_pos, child, child_key, d_n(child)->child_ptr[0]);
+                if (h_n(node)->tail_node == child) h_n(node)->tail_node = tail_node(h_n(node));
             }
             else{
                 d_n(node)->child_ptr[pos] = d_n(child)->child_ptr[0];
@@ -86,7 +88,7 @@ inline void aex_tree<_Key, _Val, traits>::erase(hash_node_ptr node, const slot_t
         //if (!hash_table.update(node, j, prev_key, prev_node))
         //    break;
     }
-    node->sub_size();
+    --node->size;
 }
 
 template<typename _Key, typename _Val, typename traits>

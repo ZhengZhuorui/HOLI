@@ -289,4 +289,5 @@ struct OptLock<traits, true> {
   // typedef Alex_rw_mutex::scoped_lock Alex_rw_lock;
   // typedef tbb::spin_mutex Alex_strict_mutex;
   // typedef Alex_strict_mutex::scoped_lock Alex_strict_lock;
+
 }

@@ -287,6 +287,10 @@ auto dataset = flags["dataset"];
             return test_index_total_perf<T, T, default_traits>(data.data(), num_keys, read_nums, write_nums, erase_nums);
         }
     }
+    else if (unit == "hash_table"){
+        long long thread_num = stoll(flags["thread_num"]);
+        return test_hash_table_perf<T, default_traits>(bin_data.data(), num_keys, thread_num);
+    }
     //else if (unit == "con_index"){
     //    auto func = flags["function"];
     //    if (func == "tot"){

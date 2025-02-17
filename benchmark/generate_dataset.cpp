@@ -11,7 +11,7 @@ bool utils(std::map<std::string, std::string> flags){
     if (generate_prime){
         long long key = stoll(flags["key"]);
         std::cout << "Max Prime < " << key << std::endl;
-        for (int i = key; i >= 0; --i)
+        for (long long i = key; i >= 0; --i)
             if (aex::is_prime(i)){
                 std::cout << "prime=" << i << std::endl;
                 break;

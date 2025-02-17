@@ -27,7 +27,9 @@ inline bool aex_tree<_Key, _Val, traits>::_insert(const key_type key, const valu
     while (true){
         child = find_insert(node, key, pos);
         //AEX_PRINT("node=" << node << ", node->type=" << to_string(node->type) << ", key=" << key << ", pos=" << pos << ", node->size=" << node->size << ", child->type=" << to_string(child->type) << ", child=" << child << ", child->size=" << child->size);
-        tail = (node->type == NodeType::HashNode) ? (last_node(h_n(node)) == child) : (pos == d_n(node)->size - 1);
+        // TODO: record hash node tail node
+        //tail = (node->type == NodeType::HashNode) ? (tail_node(h_n(node)) == child) : (pos == d_n(node)->size - 1);
+        tail = (node->type == NodeType::HashNode) ? (h_n(node)->tail_node == child) : (pos == d_n(node)->size - 1);
         if constexpr (traits::AllowRebuild)
             if ((tail || pos == 0) && (child->type != NodeType::LeafNode && node->type == NodeType::HashNode && child->size >= node->size * traits::MIN_REBUILD_RATIO)){
                 //AEX_PRINT("node=" << node << ", key=" << key << ", pos=" << pos << ", node->size=" << node->size << ", slot_size=" << node->slot_size << ", child->type=" << to_string(child->type) << ", child=" << child << ", child->size=" << child->size)
@@ -41,9 +43,18 @@ inline bool aex_tree<_Key, _Val, traits>::_insert(const key_type key, const valu
         }
         if (child->type == NodeType::LeafNode){
             AEX_DEBUG_BLOCK({if (l_n(child)->next != nullptr)if (l_n(child)->next->key[0] < key){
-                AEX_ERROR("key=" << key << ", " << l_n(child)->key[child->size - 1] << ", " << l_n(child)->next->key[0]);
+                AEX_ERROR("key=" << key << ", " << l_n(child)->key[0] << ", " << l_n(child)->key[child->size - 1] << ", " << l_n(child)->next->key[0]);
                 AEX_ERROR("node->type=" << to_string(node->type));
                 AEX_PRINT("node=" << node << ", node->type=" << to_string(node->type) << ", key=" << key << ", pos=" << pos << ", node->size=" << node->size << ", child->type=" << to_string(child->type) << ", child=" << child << ", child->size=" << child->size);
+                if (node->type == NodeType::HashNode){
+                    bool is_occ = h_n(node)->is_occupied(h_n(node)->predict(key));
+                    AEX_PRINT("pos1=" << h_n(node)->predict(key) << ", pos2=" << h_n(node)->predict(l_n(child)->key[0]) << ", pos3=" << h_n(node)->predict(l_n(child)->next->key[0]) << ", is_occupied=" << is_occ);
+                    if (is_occ){
+                        key_type find_key; node_ptr _;
+                        std::tie(find_key, _) = hash_table.find(h_n(node), h_n(node)->predict(key));
+                        AEX_PRINT(find_key << ", " << _ << ", " << l_n(child)->next);
+                    }
+                }
                 AEX_ASSERT(0 == 1);
             }});
             if (!traits::AllowMultiKey && l_n(child)->find(key) > child->size)
@@ -74,6 +85,9 @@ inline bool aex_tree<_Key, _Val, traits>::_insert(const key_type key, const valu
                         pos = h_n(node)->prev_item(pos);
                         insert_collision(h_n(node), pos, split_key, new_node);
                     }
+                    if (h_n(node)->tail_node == child)
+                        h_n(node)->tail_node = tail_node(h_n(node));
+
                 }
                 else{
                     insert_data_node(l_n(child), new_node, key, value);
@@ -116,20 +130,24 @@ inline bool aex_tree<_Key, _Val, traits>::_insert(const key_type key, const valu
                     dense_node_ptr new_node;
                     if (node->type == NodeType::HashNode){
                         if (!top_flag) split_pos = h_n(node)->predict(split_key);  
-                        new_node = Allocator::allocate_dense_node();
+                        new_node = allocator.allocate_dense_node();
                         split(d_n(child), new_node);
-                        if (top_flag || (split_pos < h_n(node)->slot_size && !h_n(node)->is_occupied(split_pos)))
+                        if (top_flag || (split_pos < h_n(node)->slot_size && !h_n(node)->is_occupied(split_pos))){
                             insert_no_collision(h_n(node), split_pos, split_key, new_node);
+                        }
                         else{
                             pos = h_n(node)->prev_item(pos);
                             insert_collision(h_n(node), pos, split_key, new_node);
+                            if (!flag) top_node = nullptr;
                         }
+                        if (h_n(node)->tail_node == child)
+                            h_n(node)->tail_node = tail_node(h_n(node));
                         AEX_ASSERT(new_node->key_ptr[0] == split_key);
                         if (flag) child = new_node; 
                     }
                     else{
                         AEX_ASSERT(node->type == NodeType::DenseNode);
-                        new_node = Allocator::allocate_dense_node();
+                        new_node = allocator.allocate_dense_node();
                         split(d_n(child), new_node);
                         insert(d_n(node), split_key, new_node);
                         AEX_ASSERT(new_node->key_ptr[0] == split_key);
@@ -184,7 +202,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_collision(hash_node_ptr node, c
     #ifdef AEX_DEBUG
     opt_stats.allocate_dense_node_cnt++;
     #endif
-    dense_node_ptr new_node = Allocator::allocate_dense_node();
+    dense_node_ptr new_node = allocator.allocate_dense_node();
     key_type prev_key;
     node_ptr prev_child;
     std::tie(prev_key, prev_child) = hash_table.find(node, pos);
@@ -192,12 +210,9 @@ inline void aex_tree<_Key, _Val, traits>::insert_collision(hash_node_ptr node, c
     construct_tmp_node(new_node, prev_key, prev_child, key, child);
     AEX_ASSERT(prev_child->type == child->type);
     hash_table.update(node, pos, new_node->key_ptr[0], new_node);
-    node->versionUpdate(pos);
     slot_type next_pos = node->next_item(pos + 1);
-    for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORTCUT){
+    for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORTCUT)
         hash_table.update(node, i, new_node->key_ptr[0], new_node);
-        node->versionUpdate(i);
-    }
 }
 
 
@@ -209,15 +224,12 @@ inline void aex_tree<_Key, _Val, traits>::insert_no_collision(hash_node_ptr node
         hash_table.update(node, pos, key, child);
     else
         hash_table.insert(node, pos, key, child);
-    node->versionUpdate(pos);
     slot_type next_pos = node->next_item(pos + 1);
     AEX_ASSERT(pos < next_pos);
-    for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORTCUT){
+    for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORTCUT)
         hash_table.update(node, i, key, child);
-        node->versionUpdate(i);
-    }
     node->set_one(pos);
-    node->add_size();
+    ++node->size;
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -279,6 +291,8 @@ inline void aex_tree<_Key, _Val, traits>::split(data_node_ptr old_node, data_nod
         old_node->next = new_node;        
         old_node->size = new_node->size = traits::DATA_NODE_SLOT_SIZE / 2;
     }
+    else
+        new_node->min_key = new_node->key[0];
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -302,8 +316,8 @@ inline void aex_tree<_Key, _Val, traits>::split(dense_node_ptr old_node, dense_n
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::split_root(dense_node_ptr node){
-    dense_node_ptr new_node_0 = Allocator::allocate_dense_node();
-    dense_node_ptr new_node_1 = Allocator::allocate_dense_node();
+    dense_node_ptr new_node_0 = allocator.allocate_dense_node();
+    dense_node_ptr new_node_1 = allocator.allocate_dense_node();
     move_item_avx<traits::DENSE_NODE_SLOT_SIZE / 2>(d_n(node)->key_ptr, d_n(new_node_0)->key_ptr);
     move_item_avx<traits::DENSE_NODE_SLOT_SIZE / 2>(d_n(node)->child_ptr, d_n(new_node_0)->child_ptr);
     move_item_avx<traits::DENSE_NODE_SLOT_SIZE / 2>(d_n(node)->key_ptr + traits::DENSE_NODE_SLOT_SIZE / 2, d_n(new_node_1)->key_ptr);

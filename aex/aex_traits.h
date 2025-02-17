@@ -101,6 +101,8 @@ struct aex_default_traits{
     static constexpr bool AllowRebuild = false;
     static constexpr bool AllowErase = false;
 
+    static constexpr bool AllowMemoryPool = false;
+
     static constexpr bool DebugMode = true;
 
     static_assert((AllowRWBalance | AllowInsertBalance) == AllowBalance);
@@ -135,11 +137,15 @@ struct aex_default_traits{
     static constexpr slot_type MAX_HASH_NODE_SLOT_SIZE = MAX_INNER_NODE_SLOT_SIZE;
     static constexpr slot_type HASH_NODE_MAX_GAP_SLOT = 8;
     static constexpr slot_type HASH_NODE_MAX_GAP = HASH_NODE_MAX_GAP_SLOT * SLOT_PER_SHORTCUT;
+    
     static constexpr hash_type K1 = 999999937;
     static constexpr hash_type K2 = 1099999997;
     static constexpr hash_type K3 = 699999953;
     static constexpr hash_type K4 = 799999999;
     static constexpr hash_type K5 = 899999963;
+    static constexpr hash_type K6 = 1000000000000000003;
+    static constexpr hash_type K7 = 576460752303423433;
+    static constexpr hash_type MAX_INT = (1LL << 32) - 1;
 
     static constexpr int HASH_TABLE_BLOCK_SIZE = 16;
 
@@ -151,6 +157,7 @@ struct aex_default_traits{
     static constexpr int   DATA_NODE_SLOT_SIZE       = MIN_DATA_NODE_SLOT_SIZE;
     static constexpr int   LARGE_HASH_NODE_SLOT_SIZE = 65536;
     static constexpr int   SIZE_ARRAY_SIZE           = 32;
+    static constexpr float INIT_DATA_NODE_DENSITY    = 1.0;
 
     static constexpr float HASH_NODE_FULL_RATIO      = 1.0 / 8;
     static constexpr float HASH_NODE_FEW_RATIO       = 1.0 / 32;
@@ -163,11 +170,14 @@ struct aex_default_traits{
     static constexpr float HASH_TABLE_FULL_RATIO            = 0.75;
     static constexpr unsigned long long MIN_HASH_TABLE_SIZE = 16;
 
+
     static constexpr float MIN_REBUILD_RATIO = 1.0;
     static constexpr int MAX_DEPTH = 15;
 
     static constexpr int SIZE_BLOCK_CNT = 64;
     static constexpr int MIN_ADD_CNT = 4;
+
+    static constexpr int MEMORY_POOL = 1024;
 
     // ========== old version ==========
     static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type) + sizeof(void*)));
@@ -185,7 +195,6 @@ struct aex_default_traits{
     static constexpr int BINEARY_SEARCH_SIZE = 32;
     static constexpr int NODE_MUTEX_SLOT_SIZE = 64;
     static constexpr float MAX_ALLOW_ERROR = 0.5 / log(2);
-    static constexpr bool debug = true;
     static constexpr int MAX_SEGMENT_NUM = _MAX_MODEL_ARGS;
     static constexpr unsigned long long INNER_NODE_MAX_DIFFERENT_VALUE = 0x10000000000000ULL;
     static constexpr ULL BINSEARCH_THRESHOLD = 256;

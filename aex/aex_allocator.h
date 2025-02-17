@@ -38,8 +38,40 @@ public:
     
     typedef typename traits::bitmap_base bitmap_base;
     typedef typename traits::bitmap bitmap;
-    aex_allocator() = default;
-    ~aex_allocator() = default;
+
+    aex_allocator(){
+        //if constexpr (traits::AllowConcurrency && traits::AllowMemoryPool){
+        //    for (int i = 0; i < traits::MEMORY_POOL; ++i){
+        //        data_node* pool_back = new data_node[traits::HASH_TABLE_BLOCK_SIZE];
+        //        for (int i = 0; i < traits::HASH_TABLE_BLOCK_SIZE; ++i)
+        //            data_node_pool[i].push_back(pool_back + i);
+        //        //data_node_pool_his[i].push_back(pool_back);
+        //    }
+        //    for (int i = 0; i < traits::MEMORY_POOL; ++i){
+        //        char* pool_back = malloc(MAX_INNER_NODE_SIZE() * traits::HASH_TABLE_BLOCK_SIZE);
+        //        for (int i = 0; i < traits::HASH_TABLE_BLOCK_SIZE; ++i)
+        //            inner_node_pool[i].push_back(pool_back + i * MAX_INNER_NODE_SIZE());
+        //        //inner_node_pool_his[i].push_back(pool_back);
+        //    }
+        //}
+    }
+
+    ~aex_allocator(){
+        /*if constexpr (traits::AllowConcurrency && traits::AllowMemoryPool){
+            for (int i = 0; i < traits::MEMORY_POOL; ++i)
+                while (!data_node_pool_his.empty()){
+                    for (int i = 0; i < data_node_pool_his.size(); ++i)
+                        delete[] data_node_pool_his[i];
+                }
+
+            for (int i = 0; i < traits::MEMORY_POOL; ++i)
+                while (!inner_node_pool_his.empty()){
+                    for (int i = 0; i < inner_node_pool_his.size(); ++i)
+                        free(inner_node_pool_his[i]);
+                }
+            
+        }*/
+    }
 
 
     static constexpr ULL MAX_INNER_NODE_SIZE(){return std::max(sizeof(hash_node), sizeof(dense_node)) + traits::AllowConcurrency * 8;}
@@ -77,56 +109,31 @@ public:
         return MAX_INNER_NODE_SIZE();
     }
 
-    inline data_node_ptr allocate_data_node(){
-        if constexpr (!traits::)
-        int block_id = rand() % traits::MEMORY_POOL;
-        
-        int restart  = 0;
-        allocate_data_node_start:
-        
-
-    }
-
     inline hash_node_ptr allocate_hash_node(const slot_type slot_size, const ID_type id){
         AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
         //AEX_WARNING(sizeof(aex_hash_node<key_type, value_type, traits>) << ", " << sizeof(aex_hash_node_con<key_type, value_type, traits>) << ", " << MAX_INNER_NODE_SIZE() << ", " << sizeof(base_node) << ", " << sizeof(InnerNodeModel) << ", " << sizeof(bitmap) << ", " << sizeof(slot_type) << ", " << sizeof(Lock));
         //exit(0);
         const hash_node_ptr node = h_n(malloc(MAX_INNER_NODE_SIZE()));
+        //const hash_node_ptr node = h_n(allocate_inner_node());
+        //const hash_node_ptr node = reinterpret_cast<hash_node_ptr>(allocate_inner_node());
         node->type = NodeType::HashNode;
         node->node_lock.init();
+        node->meta_lock.init();
         node->slot_size = slot_size;
         node->id = id;
         node->init();
         return node;
     }
 
-    //inline static dense_node_ptr allocate_dense_node(const slot_type slot_size, bool is_parent=false){
-    //    AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
-    //    const dense_node_ptr node = d_n(malloc(MAX_INNER_NODE_SIZE()));
-    //    node->type = NodeType::DenseNode;
-    //    node->node_lock.init();
-    //    node->slot_size = slot_size;
-    //    node->key_ptr = nullptr;
-    //    node->child_ptr = nullptr;
-    //    node->init();
-    //    return node;
-    //}
     inline dense_node_ptr allocate_dense_node(bool is_parent=false){
         const dense_node_ptr node = d_n(malloc(MAX_INNER_NODE_SIZE()));
+        //const dense_node_ptr node = reinterpret_cast<dense_node_ptr>(allocate_inner_node());
         node->type = NodeType::DenseNode;
         node->node_lock.init();
         node->init();
         return node;
     }
 private:
-    //data_node_ptr data_node_pool[traits::HASH_NODE_BLOCK_SIZE * traits::MEMORY_POOL];
-    std::vector<data_node*> ;
-    std::vector<char*> ;
-    std::vector<int* > data_node_pool_size, 
-    int data_node_pool_size[traits::MEMORY_POOL];
-    int inner_node_pool_size[traits::MEMORY_POOL];
-    RWLock data_node_pool_lock[traits::MEMORY_POOL], inner_node_pool_lock[traits::MEMORY_POOL];
-
 };
 
 } // namespace name

@@ -258,7 +258,7 @@ bool test_index_delta_lookup_perf(std::pair<key_type, value_type>* data, long lo
     vector<value_type> answer;
     generate_query(data, n, query, answer, batch);
     for (long long i = 0; i < n; ++i){
-        if (i % 1000000 == 0)
+        //if (i % 1000000 == 0)
             //std::cout << "i=" << i << std::endl;
             AEX_PRINT("i=" << i);
         typename tree::iterator iter;
@@ -586,7 +586,7 @@ bool test_index_erase_perf(std::pair<key_type, value_type>* data, long long n, l
     index.print_stats();
     AEX_SUCCESS("bulk load finish...");
     for (long long i = 0; i < batch; ++i){
-        //if (i % 1000000 == 0)
+        if (i % 1000000 == 0)
             AEX_PRINT("i=" << i << ", key=" << erase_key[i]);
         index.erase(erase_key[i]);
     }

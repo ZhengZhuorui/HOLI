@@ -11,6 +11,7 @@
 #include <immintrin.h>
 #include <sched.h>
 #include <mutex>
+#include <random>
 namespace aex{
 
 #if !defined(forceinline)
@@ -153,6 +154,7 @@ static std::mutex log_mutex;
 #define r_d_n(node) reinterpret_cast<dense_node_ptr>(node)
 #define r_l_n(node) reinterpret_cast<data_node_ptr>(node)
 
+//#define CACHELINE_SIZE 64
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
@@ -452,6 +454,29 @@ inline bool is_prime(LL x){
     }
     return true;
 }
+
+inline ULL utils_get_hash_key(ULL x, ULL M){
+    double A = 0.6180339887;
+    double product = x * A;
+    double fractional = product - static_cast<int>(product);
+    return static_cast<ULL>(M * fractional);
+}
+
+template<ULL K1>
+inline ULL utils_get_hash_key(ULL x, ULL y, ULL M){
+    return utils_get_hash_key(x * K1 + y, M);
+}
+
+inline ULL get_randint(ULL x){
+    static thread_local std::minstd_rand generator(time(0));
+    std::uniform_int_distribution<ULL> dist(1, x);
+    return dist(generator);
+}
+
+//template<ULL K1, ULL K2, ULL K3>
+//ULL get_hash_key(ULL x, ULL y, ULL z){
+//    return x * K1 + y * K2 + z * K3;
+//}
 
 struct operation_stats{
     //operation_stats():hash_node_rebuild_cnt(0),  cast_to_hash_node_cnt(0),  hash_node_expand_cnt(0),  hash_node_narrow_cnt(0),

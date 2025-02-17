@@ -85,8 +85,8 @@ struct aex_concurrency_components<traits, true>{
     typedef aex_node_base<key_type, value_type, traits>            inner_node;
     typedef aex_hash_node_con<key_type, value_type, traits>        hash_node;
     typedef aex_dense_node<key_type, value_type, traits>           dense_node;
-    typedef aex_static_data_node<key_type, value_type, traits>     data_node;
-    //typedef aex_hash_data_node<key_type, value_type, traits>       data_node;
+    //typedef aex_data_node_con<key_type, value_type, traits>        data_node;
+    typedef aex_static_data_node<key_type, value_type, traits>        data_node;
 
     typedef base_node*  node_ptr;
     typedef inner_node* inner_node_ptr;
@@ -100,8 +100,8 @@ struct aex_concurrency_components<traits, true>{
     typedef aex_spinlock<traits>    Lock;
     // TODO: 
     typedef aex_allocator<key_type, value_type, traits> Allocator;
-    //typedef aex_hash_table_block_con<key_type, traits>      HashTableBlock;
-    typedef aex_hash_table_block<key_type, traits>      HashTableBlock;
+    typedef aex_hash_table_block_con<key_type, traits>      HashTableBlock;
+    //typedef aex_hash_table_block<key_type, traits>      HashTableBlock;
     typedef aex_hash_table_con<key_type, traits>        HashTable;
     //typedef aex_hash_table<key_type, traits>        HashTable;
     typedef uint64_t                                         version_type;

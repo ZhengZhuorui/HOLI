@@ -64,7 +64,6 @@ struct aex_hash_table_block{
 
     Unit          unit_array[traits::HASH_TABLE_BLOCK_SIZE];
     int           size;
-    RWLock        lock;
     self*         next;
 
     aex_hash_table_block():size(0), next(nullptr){}

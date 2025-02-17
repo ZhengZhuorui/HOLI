@@ -10,6 +10,7 @@
 #include <utility>
 #include <queue>
 #include <algorithm>
+#include <random>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
@@ -138,6 +139,7 @@ private:
 
 public:
     HashTable       hash_table;
+    Allocator       allocator;
     EpochBasedMemoryReclamationStrategy *ebr;
 
 
@@ -312,7 +314,7 @@ public:
             node->data[pos] = y;
             ret = true;
         }
-        XU(node);
+        XUNH(node);
         return ret;
     }
 
@@ -560,6 +562,7 @@ public:
     }
 
     inline void free_node(node_ptr node){
+        
         AEX_ASSERT(check_lock(node));
         switch (node->type){
             case NodeType::LeafNode:{
@@ -643,7 +646,7 @@ private:
     node_ptr find_erase(hash_node_ptr  node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
     node_ptr find_erase(dense_node_ptr node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
 
-    data_node_ptr find_tail_leaf(node_ptr node, version_type &tail_version) const ;
+    data_node_ptr find_tail_leaf(node_ptr node) ;
     inline key_type node_zero_key(const inner_node_ptr node) const {
         return (node->type == NodeType::DenseNode) ? (d_n(node)->key_ptr[0]) : (hash_table.find(h_n(node), 0).first);
     }
@@ -653,7 +656,7 @@ private:
     inline key_type node_last_key(const inner_node_ptr node) const {
         return (node->type == NodeType::DenseNode) ? (d_n(node)->key_ptr[node->size - 1]) : (hash_table.find(h_n(node), h_n(node)->next_item(h_n(node)->slot_size - 1)).first);
     }
-    inline node_ptr last_node(const hash_node_ptr node) const{
+    inline node_ptr tail_node(const hash_node_ptr node) const{
         key_type last_key;
         node_ptr last_node;
         std::tie(last_key, last_node) = hash_table.find(node, node->prev_item_find(node->slot_size - 1));
@@ -667,7 +670,7 @@ private:
      */
     void construct_tmp_node(dense_node_ptr node, const key_type old_key, const node_ptr old_node, const key_type new_key, const node_ptr new_node);
     void __construct_insert(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type key, const node_ptr child);
-    void insert_collision(   hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
+    void insert_collision(hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
     void insert_no_collision(hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
     void insert(dense_node_ptr node, const key_type key, const node_ptr child);
     void insert_data_node(data_node_ptr node, data_node_ptr new_node, const key_type key, const value_type &value);
@@ -676,6 +679,7 @@ private:
     void split(dense_node_ptr old_node, dense_node_ptr new_node);
     void split_root(dense_node_ptr root); 
 
+    inline void update_meta(hash_node_ptr node, const node_ptr child, const size_type add_cnt, const version_type &node_version, bool &need_restart);
     inline void complete(data_node_ptr old_node, data_node_ptr new_node){
         if constexpr (traits::AllowConcurrency){
             new_node->next = old_node->next;
@@ -683,7 +687,6 @@ private:
             old_node->size = new_node->size = traits::DATA_NODE_SLOT_SIZE / 2;
         }
     }
-
     inline void complete(dense_node_ptr old_node, dense_node_ptr new_node){
         old_node->size = new_node->size = traits::DENSE_NODE_SLOT_SIZE / 2;
     }
@@ -790,7 +793,6 @@ private:
 
     inline void clear_helper(hash_node_ptr node){
         AEX_ASSERT(check_lock(node));
-        XU(node);
         if constexpr (traits::AllowConcurrency){
             hash_node_ptr node_copy = new hash_node();
             memcpy(node_copy, node, sizeof(hash_node));
@@ -839,45 +841,18 @@ private:
     // XL: lock                 XU: unlock
     // UL: upgrade_lock(SL->XL) DL: downgrade_lock(XL->SL)
 
-    inline void XL(node_ptr node){ 
-        int restart_count = 0;
-    XL_start:
-        if (restart_count > 0)
-            yield(restart_count);
-        ++restart_count;
-        bool need_restart = false;
-        node->node_lock.writeLockOrRestart(need_restart); 
-        if (need_restart)
-            goto XL_start;
-    }
-    inline void XU(node_ptr node){ node->node_lock.writeUnlock(); }
+    inline void XL(node_ptr node);
+    inline void TXL(hash_node_ptr node, bool &need_restart);
+    inline void TXL(node_ptr node, bool &need_restart);
+    inline void TUL(hash_node_ptr node, version_type &node_version, bool &need_restart);
+    inline void TUL(node_ptr node, version_type &node_version, bool &need_restart);
+    inline void DL(hash_node_ptr node, version_type &node_version);
+    inline void DL(dense_node_ptr node, version_type &node_version);
+    inline void DL(node_ptr node, version_type &node_version);
+    inline void XU(hash_node_ptr node);
+    inline void XU(node_ptr node);
+    inline void XUNH(node_ptr node);
 
-    /*
-    inline void SL(node_ptr  node) const { if constexpr(traits::AllowConcurrency) node->node_lock.lock_shared(); }
-    inline void SL(hash_node_ptr node, const slot_type pos) const { if constexpr(traits::AllowConcurrency && traits::AllowErase) {AEX_ASSERT(check_lock_shared(node)); node->lock_array[pos2slot(pos)].lock_shared(); }}
-    inline void SU(node_ptr  node) const { if constexpr(traits::AllowConcurrency) { AEX_ASSERT(check_lock_shared(node)); node->node_lock.unlock_shared();} }
-    inline void SU(hash_node_ptr node, slot_type l_pos, slot_type r_pos) const { AEX_ASSERT(check_lock_shared(node)); node->array_unlock_shared(l_pos, r_pos); SU(node); }
-    inline void SU(hash_node_ptr node, const slot_type pos) const { if constexpr(traits::AllowConcurrency && traits::AllowErase) {AEX_ASSERT(check_lock_shared(node)); AEX_ASSERT(node->lock_array[pos2slot(pos)].is_lock_shared()); node->lock_array[pos2slot(pos)].unlock_shared(); } }
-    inline void SU(inner_node_ptr node, slot_type l_pos, slot_type r_pos) const {
-        if (node->type == NodeType::HashNode) SU(h_n(node), l_pos, r_pos);
-        else SU(node);
-    }
-    inline void XL(node_ptr  node) const { if constexpr(traits::AllowConcurrency) node->node_lock.lock(); }
-    inline void XU(node_ptr  node) const { if constexpr(traits::AllowConcurrency) { AEX_ASSERT(check_lock(node)); AEX_ASSERT(check_unlock_shared(node)); node->node_lock.unlock(); } }
-    //inline void XL(hash_node_ptr node, slot_type pos) const { if constexpr(traits::AllowConcurrency) {AEX_ASSERT(check_lock_shared(node)); node->lock_array[pos2slot(pos)].lock(); } }
-    //inline void XU(hash_node_ptr node, slot_type pos) const { if constexpr(traits::AllowConcurrency) {AEX_ASSERT(check_lock_shared(node)); AEX_ASSERT(node->lock_array[pos2slot(pos)].is_lock()); node->lock_array[pos2slot(pos)].unlock(); } }
-    inline void XU(hash_node_ptr node, slot_type l_pos, slot_type r_pos) const { AEX_ASSERT(check_lock_shared(node)); node->array_unlock(l_pos, r_pos); SU(node); }
-    inline void XU(inner_node_ptr node, slot_type l_pos, slot_type r_pos) const {
-        if (node->type == NodeType::HashNode) XU(h_n(node), l_pos, r_pos);
-        else XU(node);
-    }
-    //inline bool TUL(hash_node_ptr node, slot_type pos) const { if constexpr(traits::AllowConcurrency){ AEX_ASSERT(check_lock_shared(node)); return node->lock_array[pos2slot(pos)].try_upgrade_lock();} else return true; }
-    inline void UL(node_ptr  node) const { AEX_ASSERT(check_lock_shared(node)); node->node_lock.upgrade_lock(); }
-    inline void DL(node_ptr  node) const { AEX_ASSERT(check_lock(node)); AEX_ASSERT(check_unlock_shared(node)); node->node_lock.downgrade_lock(); }
-    inline bool TSL(node_ptr node) const { return node->node_lock.try_lock_shared(); }
-    inline bool TXL(node_ptr node) const { return node->node_lock.try_lock();        }
-    inline bool TUL(node_ptr node) const { AEX_ASSERT(check_lock_shared(node)); return node->node_lock.try_upgrade_lock(); }
-    */
 
     // ========== 7. test ==========
     bool check_lock(node_ptr node) const;
@@ -886,6 +861,7 @@ private:
     bool check_node(data_node_ptr  node) const ;
     bool check_node(dense_node_ptr node) const ;
     bool check_node(hash_node_ptr  node) const ;
+
 
 };
 }
@@ -898,6 +874,7 @@ private:
 #include "aex_helper.hpp"
 #include "aex_test.h"
 
+#include "concurrency/aex_con.hpp"
 #include "concurrency/aex_find_con.hpp"
 #include "concurrency/aex_insert_con.hpp"
 #include "concurrency/aex_erase_con.hpp"
@@ -910,6 +887,7 @@ private:
 #undef l_n
 #undef ULL
 #undef LL
+//#undef CACHELINE_SIZE
 #undef likely
 #undef unlikely
 

@@ -7,11 +7,12 @@ bool test_bitmap(long long n, long long batch){
     typedef typename aex_tree<_Tp, _Tp, traits>::hash_node hash_node;
     typedef typename aex_tree<_Tp, _Tp, traits>::hash_node_ptr hash_node_ptr;
     typedef typename aex_tree<_Tp, _Tp, traits>::Allocator Allocator;
+    Allocator allocator;
     srand(time(0));
     unsigned char* x = new unsigned char[n];
     for (int i = 0; i < n; ++i) 
         x[i] = (rand() % 32) == 0;
-    hash_node_ptr node = Allocator::allocate_hash_node(n);
+    hash_node_ptr node = allocator.allocate_hash_node(n);
     for (slot_type i = 0; i = n; ++i)
         if (x[i])
             bitmap_impl::set_one(node->bitmap_ptr, i);

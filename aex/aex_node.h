@@ -27,9 +27,9 @@ public:
     typedef typename components::RWLock RWLock;
     typedef typename components::Lock   Lock;
 
-    explicit aex_node_base(NodeType _type) :  type(_type), size(0), node_lock(){}//, version(_version){}
-    aex_node_base(aex_node_base &other_node): type(other_node.type), size(0), node_lock(){}//, version(0){}
-    aex_node_base(aex_node_base &&other_node):type(other_node.type), size(0), node_lock(){}//, version(0){}
+    explicit aex_node_base(NodeType _type) :  type(_type)          , node_lock(), meta_lock(), size(0){}//, version(_version){}
+    aex_node_base(aex_node_base &other_node): type(other_node.type), node_lock(), meta_lock(), size(0){}//, version(0){}
+    aex_node_base(aex_node_base &&other_node):type(other_node.type), node_lock(), meta_lock(), size(0){}//, version(0){}
 
     aex_node_base& operator = (aex_node_base &other_node) {
         this->type = other_node.type;
@@ -43,9 +43,8 @@ public:
 
     // size: the number of child nodes(inner node); the number of data(data node)
     NodeType               type;
+    RWLock                 node_lock, meta_lock;
     size_type              size;
-    RWLock                 node_lock;
-    //version_type           version;
 };
 
 /*
@@ -80,6 +79,7 @@ public:
     typedef typename components::InnerNodeModel    Model;
     typedef typename traits::bitmap                bitmap;
     typedef typename traits::bitmap_base           bitmap_base;
+    typedef typename traits::hash_type             hash_type;
     typedef typename components::base_node         base_node;
     typedef typename components::inner_node        inner_node;
     typedef typename components::hash_node         hash_node;
@@ -108,9 +108,9 @@ public:
         return *this;
     }
 
-    void clear(){
+    inline void clear(){
         if (this->bitmap_ptr != nullptr){
-            if (this->slot_size / 64 + 1 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(hash_node)) / 8))
+            if (this->slot_size / 64 + 3 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(hash_node)) / 8))
                 delete[] this->bitmap_ptr;
             this->bitmap_ptr = nullptr;
         }
@@ -118,7 +118,7 @@ public:
 
     void init(){
         this->size = 0;
-        if (this->slot_size / 64 + 1 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(hash_node)) / 8))
+        if (this->slot_size / 64 + 3 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(hash_node)) / 8))
             this->bitmap_ptr = new bitmap_base[this->slot_size / 64 + 1]();
         else{
             this->bitmap_ptr = reinterpret_cast<bitmap>(reinterpret_cast<char*>(this) + sizeof(hash_node));
@@ -203,14 +203,6 @@ public:
         return x;
     }
 
-    //inline slot_type next_item_find(slot_type x) const {
-    //    if (x >= slot_size)
-    //        return x;
-    //    bitmap_base base = (bitmap_ptr[x >> 6]) >> (x & 63);
-    //    x += (base == 0) ? (64 - (x & 63)) : __builtin_ctzll(base);
-    //    return x & (~63);
-    //}
-
     inline slot_type next_item(slot_type x) const {
         if (x >= this->slot_size)
             return this->slot_size;
@@ -231,13 +223,6 @@ public:
 
     inline slot_type prev_item_con(slot_type x, version_type &version) const {return prev_item(x); }
     inline slot_type next_item_con(slot_type x, version_type &version) const {return next_item(x); }
-
-    inline void add_size(){
-        ++this->size;
-    }
-    inline void sub_size(){
-        --this->size;
-    }
     
     inline void array_lock(const slot_type l_pos, const slot_type r_pos) const {}
     inline void array_unlock(const slot_type l_pos, const slot_type r_pos) const {}
@@ -255,6 +240,7 @@ public:
     Model        model;
     slot_type    slot_size;
     ID_type      id;
+    node_ptr     tail_node;
 };
 
 template<typename _Key,
@@ -292,20 +278,25 @@ template<typename _Key,
         typename traits>
 struct aex_static_data_node : public aex_node_base<_Key, _Val, traits>{
 public:
-
     typedef _Key key_type;
     typedef _Val value_type;
     typedef aex_tree<key_type, value_type, traits> base_tree;
-    typedef aex_static_data_node<_Key, _Val, traits> data_node;
     typedef typename base_tree::components components;
     typedef typename components::base_node     base_node;
     typedef typename components::DataNodeModel Model;
     typedef typename components::version_type  version_type;
+    typedef typename components::data_node     data_node;
     typedef base_node* node_ptr;
     typedef data_node* data_node_ptr;
     //typedef typename traits::slot_type slot_type;
 
     aex_static_data_node() : base_node(NodeType::LeafNode), next(nullptr){}//, is_sorted(true){}
+
+    void init(){
+        AEX_ASSERT(this->type == NodeType::LeafNode);
+        this->next = nullptr;
+        this->size = 0;
+    }
 
     ~aex_static_data_node() {}
 
@@ -417,6 +408,7 @@ public:
     key_type      key[traits::DATA_NODE_SLOT_SIZE];
     value_type    data[traits::DATA_NODE_SLOT_SIZE];
     data_node_ptr next;
+    key_type min_key;
     //bool is_sorted;
 };
 

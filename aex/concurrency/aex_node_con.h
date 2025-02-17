@@ -3,6 +3,7 @@
 #include "../aex_node.h"
 namespace aex{
 
+// bitmap is used as updatable memory in aex_hash_node_con
 template<typename _Key,
         typename _Val,
         typename traits>
@@ -13,6 +14,7 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     typedef aex_hash_node_con<_Key, _Val, traits>  self;
     typedef aex_tree<key_type, value_type, traits> base_tree;
     typedef typename base_tree::components         components;
+    typedef typename traits::hash_type             hash_type;
     typedef typename parent::slot_type             slot_type;
     typedef typename parent::Model                 Model;
     typedef typename parent::bitmap                bitmap;
@@ -34,16 +36,17 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     aex_hash_node_con():parent(){};
     ~aex_hash_node_con(){};
     aex_hash_node_con(aex_hash_node_con &other){
-        //memcpy(this, &other, sizeof(self));
-        AEX_ASSERT(sizeof(aex_hash_node_con) == 96);
-        move_avx512((char*)(&other), (char*)(this));
-        move_avx256((char*)(&other) + 64, (char*)(this) + 64);
+        memcpy(this, &other, sizeof(self));
+        //AEX_ASSERT(sizeof(aex_hash_node_con) == 96);
+        //move_avx512((char*)(&other), (char*)(this));
+        //move_avx256((char*)(&other) + 64, (char*)(this) + 64);
     }
     aex_hash_node_con& operator = (aex_hash_node_con &other){
-        //memcpy(this, &other, sizeof(self));
-        AEX_ASSERT(sizeof(aex_hash_node_con) == 96);
-        move_avx512((char*)(&other), (char*)(this));
-        move_avx256((char*)(&other) + 64, (char*)(this) + 64);
+        memcpy(this, &other, sizeof(self));
+        //this->bitmap_ptr = other.bitmap_ptr;
+        //this->model = other.model;
+        //this->slot_size = other.slot_size;
+        //this->id = other.id;
         return *this;
     }
 
@@ -52,16 +55,11 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
             delete[] this->bitmap_ptr;
             this->bitmap_ptr = nullptr;
         }
-        if (this->version_array != nullptr){
-            delete[] this->version_array;
-            this->version_array = nullptr;
-        }
     }
 
     void init(){
         this->size = 0;
         this->bitmap_ptr = new bitmap_base[this->slot_size / traits::SLOT_PER_LOCK + 1]();
-        this->version_array = new atomic_version_type[this->slot_size / traits::SLOT_PER_LOCK + 1]();
     }
 
     inline void set_one(const slot_type x) {
@@ -72,32 +70,32 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         __sync_fetch_and_and(this->bitmap_ptr + pos2slot(x), ~(1ULL << (x & 63)));
     }
 
-    inline void add_size(){
-        //if (this->slot_size >= traits::BLOCK_SIZE * traits:: / traits::HASH_NODE_FULL_RATIO){
-        //if (this->slot_size * traits::HASH_NODE_FULL_RATIO / traits::BLOCK_SIZE >= 1){
+    inline size_type add_size_rand(){
         if (this->slot_size * traits::HASH_NODE_FULL_RATIO >= traits::SIZE_BLOCK_CNT * traits::MIN_ADD_CNT){
             size_type min_add_cnt = this->slot_size * traits::HASH_NODE_FULL_RATIO / traits::SIZE_BLOCK_CNT;
-            if (rand() % min_add_cnt == 0){
-                __sync_fetch_and_add(&this->size, min_add_cnt);
-            }
+            if (get_randint(min_add_cnt) == 1)
+                return min_add_cnt;
+            else
+                return 0;
         }
         else{
-            __sync_fetch_and_add(&this->size, 1);
+            return 1;
         }
     }
-    inline void sub_size(){
+    inline size_type sub_size_rand(){
         if (this->slot_size * traits::HASH_NODE_FULL_RATIO >= traits::SIZE_BLOCK_CNT * traits::MIN_ADD_CNT){
             size_type min_add_cnt = this->slot_size * traits::HASH_NODE_FULL_RATIO / traits::SIZE_BLOCK_CNT;
-            if (rand() % min_add_cnt == 0){
-                __sync_fetch_and_sub(&this->size, min_add_cnt);
-            }
+            if (get_randint(min_add_cnt) == 1)
+                return min_add_cnt;
+            else
+                return 0;
         }
         else{
-            __sync_fetch_and_sub(&this->size, 1);
+            return 1;
         }
     }
 
-
+    /*
     inline void arrayCheckOrRestart(const slot_type start, const slot_type end, const version_type tot_version, bool &need_restart) const {
         version_type version = 0;
         for (slot_type i = pos2slot(start); i <= pos2slot(end); ++i)
@@ -186,7 +184,7 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         return x;
     }
 
-    /*
+    
     void array_lock(slot_type l_pos, slot_type r_pos) const {
         if (l_pos > r_pos)
             return;
@@ -306,17 +304,55 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         return x;
     }*/
 
-    atomic_version_type *version_array;
-    //static thread_local 
+    //atomic_version_type *version_array;
     //mutable RWLock* lock_array;
 };
 
-//template<typename _Key,
-//        typename _Val,
-//        typename traits>
-//struct aex_data_node_con : public aex_static_data_node<_Key, _Val, traits>{
-//    version_type version;
-//    aex_data_node_con() :aex_static_data_node(), version(0){
-//};
+template<typename _Key,
+        typename _Val,
+        typename traits>
+struct aex_data_node_con : public aex_static_data_node<_Key, _Val, traits>{
+    typedef _Key key_type;
+    typedef _Val value_type;
+    typedef aex_tree<key_type, value_type, traits> base_tree;
+    typedef typename base_tree::components components;
+    typedef typename components::base_node     base_node;
+
+    typedef aex_static_data_node<_Key, _Val, traits> base_data_node;
+
+    aex_data_node_con() : base_data_node(){}
+    
+    aex_data_node_con(aex_data_node_con &other_node) : base_data_node(other_node){
+        this->min_key = other_node.min_key;
+    }
+
+    aex_data_node_con(aex_data_node_con &&other_node) :base_data_node(other_node){
+        this->min_key = other_node.min_key;
+    }
+
+    aex_data_node_con& operator = (aex_data_node_con &other_node) {
+        *static_cast<base_data_node*>(this) = static_cast<base_data_node>(other_node);
+        this->min_key = other_node.min_key;
+        return *this;
+    }
+
+    aex_data_node_con& operator = (aex_data_node_con &&other_node) {
+        *static_cast<base_data_node*>(this) = static_cast<base_data_node>(other_node);
+        this->min_key = other_node.min_key;
+        return *this;
+    }
+
+    inline void construct(const key_type *_key, const value_type *_data, int nums){
+        this->base_data_node::construct(_key, _data, nums);
+        this->min_key = _key[0];
+    }
+
+    inline void construct(const std::pair<key_type, value_type> *_data, int nums){
+        this->base_data_node::construct(_data, nums);
+        this->min_key = _data[0].first;
+    }
+
+    key_type min_key;
+};
 
 }

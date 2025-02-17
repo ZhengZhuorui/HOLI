@@ -8,12 +8,15 @@ void aex_tree<_Key, _Val, traits>::split_to_static_data_node(const key_type* con
     AEX_ASSERT(traits::AllowDynamicDataNode == false);
     new_key.clear();
     new_child.clear();
-    for (ULL i = 0; i < n; i += traits::DATA_NODE_SLOT_SIZE){
+    const int data_node_size = traits::DATA_NODE_SLOT_SIZE * traits::INIT_DATA_NODE_DENSITY;
+    //for (ULL i = 0; i < n; i += traits::DATA_NODE_SLOT_SIZE){
+    for (ULL i = 0; i < n; i += data_node_size){
         #ifdef AEX_DEBUG
         //opt_stats.allocate_data_node_cnt++;
         #endif
         data_node_ptr new_node = new data_node();
-        ULL size = std::min(static_cast<ULL>(traits::DATA_NODE_SLOT_SIZE), n - i);
+        //ULL size = std::min(static_cast<ULL>(traits::DATA_NODE_SLOT_SIZE), n - i);
+        ULL size = std::min(static_cast<ULL>(data_node_size), n - i);
         new_node->construct(key + i, data + i, size);
         new_key.emplace_back(key[i]);
         new_child.emplace_back(new_node);        
@@ -35,6 +38,8 @@ inline void aex_tree<_Key, _Val, traits>::cast_to_hash_node(inner_node_ptr node,
     cast_node->bitmap_ptr = nullptr;
     cast_node->id = this->get_node_id();
     cast_node->init();
+    if constexpr(traits::AllowConcurrency)
+        cast_node->meta_lock.typeVersionLockObsolete.store(0b110);
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -97,10 +102,12 @@ inline bool aex_tree<_Key, _Val, traits>::expand(dense_node_ptr node){
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::expand(hash_node_ptr node){
+    AEX_WARNING("[hash node expand] begin");
     //AEX_WARNING("[hash node expand], root=" << root << ", node=" << node << ", slot_size=" << node->slot_size); 
     //AEX_DEBUG_BLOCK({if (node->slot_size > 512) AEX_WARNING("[hash node expand], root=" << root << ", node=" << node << ", slot_size=" << node->slot_size); });
     AEX_ASSERT(node->size > 2);
     AEX_ASSERT(check_lock(node));
+    AEX_DEBUG_BLOCK({if (node == this->root) AEX_WARNING("node->slot_size=" << node->slot_size << ", node->size=" << node->size); });
     std::vector<key_type> key_buf;
     std::vector<node_ptr> child_buf;
     get_childs(node, key_buf, child_buf);
@@ -119,6 +126,7 @@ inline void aex_tree<_Key, _Val, traits>::expand(hash_node_ptr node){
     opt_stats.hash_node_expand_size += child_buf.size();
     #endif
     AEX_ASSERT(check_node(i_n(node)));
+    AEX_WARNING("[hash node expand] end");
 }
 
 /*
@@ -175,16 +183,20 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
     std::vector<node_ptr> child_buf(0);
     slot_type prev_pos, pos, start = 0, ret = end_pos;
 
+    XL(split_node);
     if (split_node->type == NodeType::HashNode){
         std::tie(key, child) = hash_table.find(h_n(split_node), h_n(split_node)->prev_item_find(h_n(split_node)->slot_size - 1));
-        if (node->predict(key) == start_pos)
+        if (node->predict(key) == start_pos){
+            XU(h_n(split_node));
             return end_pos;
+        }
     }
     else{
-        if (node->predict(d_n(split_node)->key_ptr[split_node->size - 1]) == start_pos)
+        if (node->predict(d_n(split_node)->key_ptr[split_node->size - 1]) == start_pos){
+            XUNH(split_node);
             return end_pos;
+        }
     }
-    XL(split_node);
     get_childs(i_n(split_node), key_buf, child_buf);
     #ifdef AEX_DEBUG
     ++opt_stats.inner_node_split_cnt;
@@ -253,16 +265,12 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO(hash_node_ptr node, cons
         pos = node->predict(keys[i]);
         if (prev_pos != pos){
             next_pos = pos;
-            // just confirm no other thread  read childs[i - 1]
-            //AEX_DEBUG_BLOCK({if (prev_pos == 113842) {AEX_ERROR("i=" << i << ", pos=" << pos << ", prev_pos=" << prev_pos << ", size=" << i - start << ", keys[start]=" << keys[start]);exit(0);}});
-            //AEX_DEBUG_BLOCK({if (prev_pos == 113847) {AEX_ERROR("i=" << i << ", pos=" << pos << ", prev_pos=" << prev_pos << ", size=" << i - start << ", keys[start]=" << keys[start]);exit(0);}});
             if (pos - prev_pos > 1 && childs[i - 1]->type != NodeType::LeafNode && childs[i - 1]->size > 1)
-                next_pos = split(node, childs[i - 1], prev_pos, pos);           
+                next_pos = split(node, childs[i - 1], prev_pos, pos);  
             AEX_ASSERT(prev_pos < next_pos);
             AEX_ASSERT(node->is_occupied(prev_pos) == false);
             if (i - start > 1){
                 const inner_node_ptr new_node = construct(keys + start, childs + start, i - start);
-                //const inner_node_ptr new_node = __construct_SMO(keys + start, childs + start, i - start);
                 __construct_insert(node, prev_pos, next_pos, keys[start], new_node);
             }
             else
@@ -280,7 +288,12 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO(hash_node_ptr node, cons
     }
     else
         __construct_insert(node, pos, node->slot_size, keys[start], childs[start]);
-    AEX_DEBUG_BLOCK({for (ULL i = 0; i < n; ++i) AEX_ASSERT(check_unlock(childs[i]));});
+    AEX_DEBUG_BLOCK({for (ULL i = 0; i < n; ++i){
+        if (!check_unlock(childs[i]))
+            AEX_PRINT("i=" << i << ", childs=" << childs[i] << ", type=" << to_string(childs[i]->type));
+        AEX_ASSERT(check_unlock(childs[i]));
+    }});
+    node->tail_node = tail_node(node);
     _mm_mfence();
 }
 
@@ -467,8 +480,8 @@ inline void aex_tree<_Key, _Val, traits>::rebuild(inner_node_ptr node){
     std::vector<key_type> key_buf, tmp_key_buf;
     std::vector<node_ptr> child_buf, tmp_child_buf;
     get_childs(node, tmp_key_buf, tmp_child_buf);
-    AEX_ASSERT((slot_type)tmp_key_buf.size() == node->size);
-    for (slot_type i = 0; i < node->size; ++i){
+    //AEX_ASSERT((slot_type)tmp_key_buf.size() == node->size);
+    for (slot_type i = 0; i < tmp_key_buf.size(); ++i){
         XL(tmp_child_buf[i]);
         if (tmp_child_buf[i]->type != NodeType::LeafNode){
             get_childs(i_n(tmp_child_buf[i]), key_buf, child_buf);
@@ -520,7 +533,8 @@ inline bool aex_tree<_Key, _Val, traits>::check_extend_tail(const key_type first
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::extend(const inner_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf) {
-    AEX_ASSERT(node->size == (slot_type)key_buf.size());
+    //AEX_ASSERT(node->size == (slot_type)key_buf.size());
+    AEX_DEBUG_BLOCK({if constexpr (!traits::AllowConcurrency) AEX_ASSERT(node->size == (slot_type)key_buf.size());});
     std::vector<key_type> tmp_key;
     std::vector<node_ptr> tmp_child;
     //if (node->size <= 2) 
