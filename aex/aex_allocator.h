@@ -16,6 +16,7 @@ public:
     typedef aex_allocator<_Key, _Val, traits>   self;
     typedef aex_tree<_Key, _Val, traits>        base_tree;
     typedef typename base_tree::components      components;
+    //typedef aex_default_components<traits>         components;
     typedef typename components::base_node      base_node;
     typedef typename components::node_ptr       node_ptr;
     typedef typename components::inner_node     inner_node;

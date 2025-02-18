@@ -184,17 +184,18 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
     slot_type prev_pos, pos, start = 0, ret = end_pos;
 
     XL(split_node);
+    if (split_node->size == 1){
+        XU(split_node); return end_pos;
+    }
     if (split_node->type == NodeType::HashNode){
         std::tie(key, child) = hash_table.find(h_n(split_node), h_n(split_node)->prev_item_find(h_n(split_node)->slot_size - 1));
         if (node->predict(key) == start_pos){
-            XU(h_n(split_node));
-            return end_pos;
+            XU(h_n(split_node));return end_pos;
         }
     }
     else{
         if (node->predict(d_n(split_node)->key_ptr[split_node->size - 1]) == start_pos){
-            XUNH(split_node);
-            return end_pos;
+            XUNH(split_node); return end_pos;
         }
     }
     get_childs(i_n(split_node), key_buf, child_buf);
@@ -265,8 +266,10 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO(hash_node_ptr node, cons
         pos = node->predict(keys[i]);
         if (prev_pos != pos){
             next_pos = pos;
-            if (pos - prev_pos > 1 && childs[i - 1]->type != NodeType::LeafNode && childs[i - 1]->size > 1)
-                next_pos = split(node, childs[i - 1], prev_pos, pos);  
+            if (pos - prev_pos > 1 && childs[i - 1]->type != NodeType::LeafNode){
+                if (childs[i - 1]->size > 1)
+                    next_pos = split(node, childs[i - 1], prev_pos, pos);
+            }
             AEX_ASSERT(prev_pos < next_pos);
             AEX_ASSERT(node->is_occupied(prev_pos) == false);
             if (i - start > 1){
@@ -294,6 +297,8 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO(hash_node_ptr node, cons
         AEX_ASSERT(check_unlock(childs[i]));
     }});
     node->tail_node = tail_node(node);
+    //for (int i = 0; i < n; ++i)
+    //    XU(childs[i]);
     _mm_mfence();
 }
 

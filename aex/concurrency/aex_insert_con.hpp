@@ -57,7 +57,7 @@ insert_start:
         node->node_lock.checkOrRestart(node_version, need_restart);
         if (need_restart) goto insert_start;
         
-        AEX_PRINT("node=" << node << ", node->type=" << to_string(node->type) << ", key=" << key << ", pos=" << pos << ", node->size=" << node->size << ", child->type=" << to_string(child->type) << ", child=" << child << ", child->size=" << child->size);
+        //AEX_PRINT("node=" << node << ", node->type=" << to_string(node->type) << ", key=" << key << ", pos=" << pos << ", node->size=" << node->size << ", child->type=" << to_string(child->type) << ", child=" << child << ", child->size=" << child->size);
         //tail = (node->type == NodeType::HashNode) ? (tail_node(h_n(node)) == child) : (pos == d_n(node)->size - 1);
         tail = (node->type == NodeType::HashNode) ? (node_copy.tail_node == child) : (pos == d_n(node)->size - 1);
         if constexpr (traits::AllowRebuild){
@@ -84,13 +84,20 @@ insert_start:
                 if (next_node != nullptr && next_node->min_key <= key)
                     goto insert_start;
             }
-            if (!traits::AllowMultiKey && l_n(child)->find(key) > child->size){
+            
+            
+            if constexpr (!traits::AllowMultiKey){
+                slot_type pos = l_n(child)->find(key);
+                bool ret_flag = true;
+                if (pos < child->size && l_n(child)->key[pos] == key) 
+                    ret_flag = false;                    
                 child->node_lock.readUnlockOrRestart(child_version, need_restart); // SU(child)
                 if (need_restart) goto insert_start;
-                return false;
+                if (!ret_flag)
+                    return false;
             }
-            //AEX_PRINT("child->size=" << child->size << ", isfull=" << isfull(l_n(child)));
-            AEX_PRINT("child->size=" << child->size);
+            
+
             if (isfull(l_n(child))){
                 top_flag = false;
                 split_key = l_n(child)->key[traits::DATA_NODE_SLOT_SIZE / 2];
@@ -168,16 +175,17 @@ insert_start:
                 }
             }
             else{
+                //AEX_ASSERT(isfull(l_n(child)));
+                //AEX_PRINT("isfull=" << isfull(l_n(child)));
                 child->node_lock.upgradeToWriteLockOrRestart(child_version, need_restart); // UL(child)
                 if (need_restart) goto insert_start; 
                 l_n(child)->insert(key, value);
-                AEX_PRINT("child->size=" << child->size);
                 XUNH(child);
             }
             return true;
         }
         
-        if (isfull(child)){
+        if (isfull(i_n(child))){
             if (child->type == NodeType::HashNode){
                 TUL(h_n(node), node_version, need_restart);  // UL(child)
                 if (need_restart) goto insert_start; 

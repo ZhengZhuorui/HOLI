@@ -49,20 +49,19 @@ struct aex_concurrency_components{
     typedef empty_type<unsigned int>    ref_count_type;
 
     typedef aex_node_base<key_type, value_type, traits>        base_node;
-    typedef aex_node_base<key_type, value_type, traits>        inner_node;
+    typedef aex_inner_node<key_type, value_type, traits>       inner_node;
     typedef aex_hash_node<key_type, value_type, traits>        hash_node;
     typedef aex_dense_node<key_type, value_type, traits>       dense_node;
     typedef aex_static_data_node<key_type, value_type, traits> data_node;
-    //typedef aex_hash_data_node<key_type, value_type, traits>   data_node;
-    typedef base_node* node_ptr;
+    //typedef aex_data_node_con<key_type, value_type, traits> data_node;
+    typedef base_node*  node_ptr;
     typedef inner_node* inner_node_ptr;
-    typedef hash_node* hash_node_ptr;
+    typedef hash_node*  hash_node_ptr;
     typedef dense_node* dense_node_ptr;
-    typedef data_node* data_node_ptr;    
+    typedef data_node*  data_node_ptr;    
     
     //typedef aex_rw_spinlock<traits> RWLock;
     typedef OptLock<traits>         RWLock;
-    //typedef OptLock<traits>
     typedef aex_spinlock<traits>    Lock;
     typedef aex_allocator<key_type, value_type, traits> Allocator;
     typedef aex_hash_table_block<key_type, traits>      HashTableBlock;
@@ -70,7 +69,7 @@ struct aex_concurrency_components{
     typedef ULL                                         version_type;
     typedef std::atomic<version_type>                   atomic_version_type;
     typedef ULL                                         ID_type;
-    typedef no_atomic_type<ID_type>                        atomic_ID_type;
+    typedef no_atomic_type<ID_type>                     atomic_ID_type;
     //typedef empty_type<unsigned long long> version_type;
 };
 
@@ -82,11 +81,11 @@ struct aex_concurrency_components<traits, true>{
     typedef std::atomic_uint8_t ref_count_type;
 
     typedef aex_node_base<key_type, value_type, traits>            base_node;
-    typedef aex_node_base<key_type, value_type, traits>            inner_node;
+    typedef aex_inner_node<key_type, value_type, traits>           inner_node;
     typedef aex_hash_node_con<key_type, value_type, traits>        hash_node;
     typedef aex_dense_node<key_type, value_type, traits>           dense_node;
-    //typedef aex_data_node_con<key_type, value_type, traits>        data_node;
-    typedef aex_static_data_node<key_type, value_type, traits>        data_node;
+    typedef aex_data_node_con<key_type, value_type, traits>        data_node;
+    //typedef aex_static_data_node<key_type, value_type, traits>        data_node;
 
     typedef base_node*  node_ptr;
     typedef inner_node* inner_node_ptr;
@@ -100,12 +99,12 @@ struct aex_concurrency_components<traits, true>{
     typedef aex_spinlock<traits>    Lock;
     // TODO: 
     typedef aex_allocator<key_type, value_type, traits> Allocator;
-    typedef aex_hash_table_block_con<key_type, traits>      HashTableBlock;
+    typedef aex_hash_table_block_con<key_type, traits>  HashTableBlock;
     //typedef aex_hash_table_block<key_type, traits>      HashTableBlock;
     typedef aex_hash_table_con<key_type, traits>        HashTable;
     //typedef aex_hash_table<key_type, traits>        HashTable;
-    typedef uint64_t                                         version_type;
-    typedef std::atomic<version_type>                  atomic_version_type;
+    typedef uint64_t                                    version_type;
+    typedef std::atomic<version_type>                   atomic_version_type;
     typedef ULL                                         ID_type;
     typedef std::atomic<ID_type>                        atomic_ID_type;
     
@@ -122,32 +121,32 @@ struct aex_default_components{
 
     typedef LL size_type;
     typedef typename concurrency_components::atomic_size_type      atomic_size_type;
-    typedef typename concurrency_components::ref_count_type ref_count_type;
-    typedef typename concurrency_components::Lock           Lock;
-    typedef typename concurrency_components::RWLock         RWLock;
-    typedef typename concurrency_components::base_node      base_node;
-    typedef typename concurrency_components::inner_node     inner_node;
-    typedef typename concurrency_components::hash_node      hash_node;
-    typedef typename concurrency_components::dense_node     dense_node;    
-    typedef typename concurrency_components::data_node      data_node;
-    typedef typename concurrency_components::node_ptr       node_ptr;
-    typedef typename concurrency_components::inner_node_ptr inner_node_ptr;
-    typedef typename concurrency_components::hash_node_ptr  hash_node_ptr;
-    typedef typename concurrency_components::dense_node_ptr dense_node_ptr;
-    typedef typename concurrency_components::data_node_ptr  data_node_ptr;    
-    typedef typename concurrency_components::Allocator      Allocator;
-    typedef typename concurrency_components::HashTableBlock HashTableBlock;
-    typedef typename concurrency_components::HashTable      HashTable;
-    typedef typename concurrency_components::version_type   version_type;
+    typedef typename concurrency_components::ref_count_type        ref_count_type;
+    typedef typename concurrency_components::Lock                  Lock;
+    typedef typename concurrency_components::RWLock                RWLock;
+    typedef typename concurrency_components::base_node             base_node;
+    typedef typename concurrency_components::inner_node            inner_node;
+    typedef typename concurrency_components::hash_node             hash_node;
+    typedef typename concurrency_components::dense_node            dense_node;    
+    typedef typename concurrency_components::data_node             data_node;
+    typedef typename concurrency_components::node_ptr              node_ptr;
+    typedef typename concurrency_components::inner_node_ptr        inner_node_ptr;
+    typedef typename concurrency_components::hash_node_ptr         hash_node_ptr;
+    typedef typename concurrency_components::dense_node_ptr        dense_node_ptr;
+    typedef typename concurrency_components::data_node_ptr         data_node_ptr;    
+    typedef typename concurrency_components::Allocator             Allocator;
+    typedef typename concurrency_components::HashTableBlock        HashTableBlock;
+    typedef typename concurrency_components::HashTable             HashTable;
+    typedef typename concurrency_components::version_type          version_type;
     typedef typename concurrency_components::atomic_version_type   atomic_version_type;
-    typedef typename concurrency_components::ID_type        ID_type;
-    typedef typename concurrency_components::atomic_ID_type atomic_ID_type;
+    typedef typename concurrency_components::ID_type               ID_type;
+    typedef typename concurrency_components::atomic_ID_type        atomic_ID_type;
     typedef gap_array_linear_model_hash_table<key_type, traits>    InnerNodeModel;
     typedef linear_model<key_type, traits> DataNodeModel;
-    typedef MemoryReclaimUnit<traits> MRUnit;
+    typedef MemoryReclaimUnit<traits>      MRUnit;
     typedef aex_ThreadSpecificEpochBasedReclamationInformation<traits> ThreadSpecificEpochBasedReclamationInformation;
-    typedef aex_EpochBasedMemoryReclamationStrategy<traits>  EpochBasedMemoryReclamationStrategy;
-    typedef aex_EpochGuard<traits>                           EpochGuard;
+    typedef aex_EpochBasedMemoryReclamationStrategy<traits>            EpochBasedMemoryReclamationStrategy;
+    typedef aex_EpochGuard<traits>                                     EpochGuard;
 
     typedef aex_bitmap_impl<traits> bitmap_impl;
 

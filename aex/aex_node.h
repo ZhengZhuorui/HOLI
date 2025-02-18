@@ -24,12 +24,12 @@ public:
     typedef typename components::hash_node_ptr  hash_node_ptr;
     typedef typename components::dense_node_ptr dense_node_ptr;
     typedef typename components::data_node_ptr  data_node_ptr;
-    typedef typename components::RWLock RWLock;
-    typedef typename components::Lock   Lock;
+    typedef typename components::RWLock         RWLock;
+    typedef typename components::Lock           Lock;
 
-    explicit aex_node_base(NodeType _type) :  type(_type)          , node_lock(), meta_lock(), size(0){}//, version(_version){}
-    aex_node_base(aex_node_base &other_node): type(other_node.type), node_lock(), meta_lock(), size(0){}//, version(0){}
-    aex_node_base(aex_node_base &&other_node):type(other_node.type), node_lock(), meta_lock(), size(0){}//, version(0){}
+    explicit aex_node_base(NodeType _type) :  type(_type)          , node_lock(), size(0){}//, version(_version){}
+    aex_node_base(aex_node_base &other_node): type(other_node.type), node_lock(), size(0){}//, version(0){}
+    aex_node_base(aex_node_base &&other_node):type(other_node.type), node_lock(), size(0){}//, version(0){}
 
     aex_node_base& operator = (aex_node_base &other_node) {
         this->type = other_node.type;
@@ -43,11 +43,12 @@ public:
 
     // size: the number of child nodes(inner node); the number of data(data node)
     NodeType               type;
-    RWLock                 node_lock, meta_lock;
+    RWLock                 node_lock;
+    //RWLock                 meta_lock;
     size_type              size;
 };
 
-/*
+
 template<typename _Key,
         typename _Val,
         typename traits>
@@ -56,18 +57,24 @@ public:
     typedef aex_inner_node<_Key, _Val, traits> self;
     typedef _Key key_type;
     typedef _Val value_type;
-    typedef typename traits::slot_type slot_type;
-    aex_inner_node() = delete;
+    typedef typename traits::slot_type             slot_type;
+    typedef aex_tree<key_type, value_type, traits> base_tree;
+    typedef typename base_tree::components         components;
+    typedef typename components::base_node         base_node;
+    typedef typename components::RWLock            RWLock;
+    aex_inner_node(NodeType _type):base_node(_type), meta_lock(){}
     ~aex_inner_node() = default;
     aex_inner_node(self &other) = delete;
     aex_inner_node& operator = (aex_inner_node &other) = delete;
+
+    RWLock meta_lock;
 };
-*/
+
 
 template<typename _Key,
         typename _Val,
         typename traits>
-struct aex_hash_node : public aex_node_base<_Key, _Val, traits>{
+struct aex_hash_node : public aex_inner_node<_Key, _Val, traits>{
 public:
     typedef _Key                                   key_type;
     typedef _Val                                   value_type;
@@ -75,6 +82,7 @@ public:
     typedef aex_tree<key_type, value_type, traits> base_tree;
     typedef typename traits::slot_type             slot_type;
     typedef typename base_tree::components         components;
+    //typedef aex_default_components<traits>     components;
     typedef typename components::Allocator         Allocator;
     typedef typename components::InnerNodeModel    Model;
     typedef typename traits::bitmap                bitmap;
@@ -97,7 +105,7 @@ public:
     //~aex_hash_node(){
     //    clear();
     //}   
-    aex_hash_node():base_node(NodeType::HashNode){};
+    aex_hash_node():inner_node(NodeType::HashNode){};
     ~aex_hash_node(){};
     aex_hash_node(aex_hash_node &other){
         memcpy(this, &other, sizeof(self));
@@ -246,7 +254,7 @@ public:
 template<typename _Key,
         typename _Val,
         typename traits>
-struct aex_dense_node : public aex_node_base<_Key, _Val, traits>{
+struct aex_dense_node : public aex_inner_node<_Key, _Val, traits>{
 public:
     typedef _Key                                   key_type;
     typedef _Val                                   value_type;
@@ -254,6 +262,7 @@ public:
     typedef typename traits::slot_type             slot_type;
     typedef aex_tree<key_type, value_type, traits> base_tree;
     typedef typename base_tree::components         components;
+    //typedef aex_default_components<traits>     components;
     typedef typename components::node_ptr          node_ptr;
     typedef typename components::inner_node_ptr    inner_node_ptr;
 
@@ -272,7 +281,6 @@ public:
     bool is_parent;
 };
 
-
 template<typename _Key,
         typename _Val,
         typename traits>
@@ -282,6 +290,7 @@ public:
     typedef _Val value_type;
     typedef aex_tree<key_type, value_type, traits> base_tree;
     typedef typename base_tree::components components;
+    //typedef aex_default_components<traits>     components;
     typedef typename components::base_node     base_node;
     typedef typename components::DataNodeModel Model;
     typedef typename components::version_type  version_type;
@@ -408,8 +417,6 @@ public:
     key_type      key[traits::DATA_NODE_SLOT_SIZE];
     value_type    data[traits::DATA_NODE_SLOT_SIZE];
     data_node_ptr next;
-    key_type min_key;
-    //bool is_sorted;
 };
 
 }

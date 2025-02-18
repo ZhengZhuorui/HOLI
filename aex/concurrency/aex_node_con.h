@@ -14,6 +14,7 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     typedef aex_hash_node_con<_Key, _Val, traits>  self;
     typedef aex_tree<key_type, value_type, traits> base_tree;
     typedef typename base_tree::components         components;
+    //typedef aex_default_components<traits>         components;
     typedef typename traits::hash_type             hash_type;
     typedef typename parent::slot_type             slot_type;
     typedef typename parent::Model                 Model;
@@ -312,11 +313,12 @@ template<typename _Key,
         typename _Val,
         typename traits>
 struct aex_data_node_con : public aex_static_data_node<_Key, _Val, traits>{
+public:
     typedef _Key key_type;
     typedef _Val value_type;
     typedef aex_tree<key_type, value_type, traits> base_tree;
     typedef typename base_tree::components components;
-    typedef typename components::base_node     base_node;
+    typedef typename components::base_node base_node;
 
     typedef aex_static_data_node<_Key, _Val, traits> base_data_node;
 
@@ -351,8 +353,8 @@ struct aex_data_node_con : public aex_static_data_node<_Key, _Val, traits>{
         this->base_data_node::construct(_data, nums);
         this->min_key = _data[0].first;
     }
-
     key_type min_key;
 };
+
 
 }

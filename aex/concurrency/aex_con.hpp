@@ -10,14 +10,14 @@ XL_start:
     ++restart_count;
     bool need_restart = false;
     if (node->type == NodeType::HashNode){
-        node->meta_lock.writeLockOrRestart(need_restart); 
+        h_n(node)->meta_lock.writeLockOrRestart(need_restart); 
         if (need_restart) goto XL_start;
     }
     
     node->node_lock.writeLockOrRestart(need_restart); 
     if (need_restart){
         if (node->type == NodeType::HashNode)
-            node->meta_lock.writeUnlock();
+            h_n(node)->meta_lock.writeUnlock();
         goto XL_start;
     }
 }
@@ -76,7 +76,7 @@ template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::DL(node_ptr node, version_type &node_version){
     if constexpr (traits::AllowConcurrency){
         node_version = node->node_lock.downgradeLock();
-        if (node->type == NodeType::HashNode) node->meta_lock.writeUnlock();
+        if (node->type == NodeType::HashNode) h_n(node)->meta_lock.writeUnlock();
     }
 }
 
@@ -84,7 +84,7 @@ template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::XU(hash_node_ptr node){
     if constexpr (traits::AllowConcurrency){
         node->node_lock.writeUnlock();
-        node->meta_lock.writeUnlock();
+        h_n(node)->meta_lock.writeUnlock();
     }
 }
 
@@ -92,7 +92,7 @@ template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::XU(node_ptr node){
     if constexpr (traits::AllowConcurrency){
         node->node_lock.writeUnlock();
-        if (node->type == NodeType::HashNode) node->meta_lock.writeUnlock();
+        if (node->type == NodeType::HashNode) h_n(node)->meta_lock.writeUnlock();
     }
 }
 

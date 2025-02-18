@@ -749,6 +749,7 @@ private:
      * @brief check a node need to expand
      */
     inline bool isfull(const inner_node_ptr node) const {
+        AEX_ASSERT(node->type != NodeType::LeafNode);
         if (node->type == NodeType::HashNode)
             return isfull(h_n(node));
         else

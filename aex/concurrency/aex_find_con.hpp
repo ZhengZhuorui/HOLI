@@ -145,6 +145,7 @@ find_leaf_con_start:
     while (l_n(node)->key[std::max((int)(node->size - 1), 0)] < key){
         data_node_ptr next_node = l_n(node)->next;
         if (next_node != nullptr && next_node->min_key < key){
+        //if (next_node != nullptr && next_node->key[0] < key){
             ++count;
             child_version = next_node->node_lock.readLockOrRestart(need_restart);
             node->node_lock.readUnlockOrRestart(node_version, need_restart);

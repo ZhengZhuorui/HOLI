@@ -57,9 +57,13 @@ inline bool aex_tree<_Key, _Val, traits>::_insert(const key_type key, const valu
                 }
                 AEX_ASSERT(0 == 1);
             }});
-            if (!traits::AllowMultiKey && l_n(child)->find(key) > child->size)
-                return false;
             
+            if constexpr (!traits::AllowMultiKey){
+                slot_type pos = l_n(child)->find(key);
+                if (pos < child->size && l_n(child)->key[pos] == key) 
+                    return false;
+            }
+
             if (isfull(l_n(child))){
                 top_flag = false;
                 split_key = l_n(child)->key[traits::DATA_NODE_SLOT_SIZE / 2];
@@ -100,7 +104,7 @@ inline bool aex_tree<_Key, _Val, traits>::_insert(const key_type key, const valu
             return true;
         }
         
-        if (isfull(child)){
+        if (isfull(i_n(child))){
             if (child->type == NodeType::HashNode){
                 expand(h_n(child));
             }
@@ -305,8 +309,6 @@ inline void aex_tree<_Key, _Val, traits>::split(dense_node_ptr old_node, dense_n
     #endif
     //std::move(old_node->key_ptr   + traits::DENSE_NODE_SLOT_SIZE / 2, old_node->key_ptr   + traits::DENSE_NODE_SLOT_SIZE, new_node->key_ptr  );
     //std::move(old_node->child_ptr + traits::DENSE_NODE_SLOT_SIZE / 2, old_node->child_ptr + traits::DENSE_NODE_SLOT_SIZE, new_node->child_ptr);
-    //move_avxx4(old_node->key_ptr   + traits::DENSE_NODE_SLOT_SIZE / 2, new_node->key_ptr);
-    //move_avxx4(old_node->child_ptr + traits::DENSE_NODE_SLOT_SIZE / 2, new_node->child_ptr);
     move_item_avx<traits::DENSE_NODE_SLOT_SIZE / 2>(old_node->key_ptr   + traits::DENSE_NODE_SLOT_SIZE / 2, new_node->key_ptr);
     move_item_avx<traits::DENSE_NODE_SLOT_SIZE / 2>(old_node->child_ptr + traits::DENSE_NODE_SLOT_SIZE / 2, new_node->child_ptr);
     if constexpr (!traits::AllowConcurrency){
