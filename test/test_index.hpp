@@ -452,8 +452,9 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
         index = index_bak;
         //aex_tree<key_type, value_type, traits>::debug_level |= 1;
         t1 = std::chrono::high_resolution_clock::now();
-        for (long long i = 0; i < batch; ++i)
+        for (long long i = 0; i < batch; ++i){
             index.insert(insert_data[i]);
+        }
         t2 = std::chrono::high_resolution_clock::now();
         delta += duration_cast<microseconds>(t2 - t1).count();
     }

@@ -74,6 +74,11 @@ inline bool aex_tree<_Key, _Val, traits>::check_node(hash_node_ptr node) const {
     }
     key_type his_key = std::numeric_limits<key_type>::lowest();
     slot_type cnt = 0;
+    if constexpr (traits::AllowConcurrency){
+        for (slot_type i = 0; i < node->slot_size / traits::SLOT_PER_LOCK; ++i){
+            AEX_ASSERT(node->lock_array[i].isLocked() == false);
+        }
+    }
     for(slot_type i = 0; i < node->slot_size; i = node->next_item(i + 1)){
         key_type key;
         node_ptr child;

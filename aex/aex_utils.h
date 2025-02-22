@@ -158,7 +158,7 @@ static std::mutex log_mutex;
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
-inline void yield(int count){
+inline void _yield(int count){
     if (count>3)
         sched_yield();
     else
@@ -468,7 +468,7 @@ inline ULL utils_get_hash_key(ULL x, ULL y, ULL M){
 }
 
 inline ULL get_randint(ULL x){
-    static thread_local std::minstd_rand generator(time(0));
+    static thread_local std::minstd_rand generator(0);
     std::uniform_int_distribution<ULL> dist(1, x);
     return dist(generator);
 }

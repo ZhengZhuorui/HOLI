@@ -102,7 +102,6 @@ inline bool aex_tree<_Key, _Val, traits>::expand(dense_node_ptr node){
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::expand(hash_node_ptr node){
-    AEX_WARNING("[hash node expand] begin");
     //AEX_WARNING("[hash node expand], root=" << root << ", node=" << node << ", slot_size=" << node->slot_size); 
     //AEX_DEBUG_BLOCK({if (node->slot_size > 512) AEX_WARNING("[hash node expand], root=" << root << ", node=" << node << ", slot_size=" << node->slot_size); });
     AEX_ASSERT(node->size > 2);
@@ -111,6 +110,7 @@ inline void aex_tree<_Key, _Val, traits>::expand(hash_node_ptr node){
     std::vector<key_type> key_buf;
     std::vector<node_ptr> child_buf;
     get_childs(node, key_buf, child_buf);
+    AEX_DEBUG_BLOCK({if (node == this->root) AEX_WARNING("real_size=" << child_buf.size()); });
     if constexpr (traits::AllowExtend)
         extend(node, key_buf, child_buf);
     //construct(i_n(node), key_buf.data(), child_buf.data(), key_buf.size());
@@ -126,7 +126,6 @@ inline void aex_tree<_Key, _Val, traits>::expand(hash_node_ptr node){
     opt_stats.hash_node_expand_size += child_buf.size();
     #endif
     AEX_ASSERT(check_node(i_n(node)));
-    AEX_WARNING("[hash node expand] end");
 }
 
 /*
@@ -291,36 +290,15 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO(hash_node_ptr node, cons
     }
     else
         __construct_insert(node, pos, node->slot_size, keys[start], childs[start]);
-    AEX_DEBUG_BLOCK({for (ULL i = 0; i < n; ++i){
-        if (!check_unlock(childs[i]))
-            AEX_PRINT("i=" << i << ", childs=" << childs[i] << ", type=" << to_string(childs[i]->type));
-        AEX_ASSERT(check_unlock(childs[i]));
-    }});
+    //AEX_DEBUG_BLOCK({for (ULL i = 0; i < n; ++i){
+    //    if (!check_unlock(childs[i]))
+    //        AEX_PRINT("i=" << i << ", childs=" << childs[i] << ", type=" << to_string(childs[i]->type));
+    //    AEX_ASSERT(check_unlock(childs[i]));
+    //}});
     node->tail_node = tail_node(node);
     //for (int i = 0; i < n; ++i)
     //    XU(childs[i]);
     _mm_mfence();
-}
-
-template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::get_childs(hash_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf){
-    key_type key;
-    node_ptr child;
-    AEX_ASSERT(check_lock(node));
-    for (slot_type i = 0; i < node->slot_size; i = node->next_item(i + 1)){
-        std::tie(key, child) = hash_table.find(node, i);
-        key_buf.emplace_back(key);
-        child_buf.emplace_back(child);
-    }
-    //AEX_ASSERT(key_buf.size() == child_buf.size());
-}
-
-template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::get_childs(dense_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf){
-    for (slot_type i = 0; i < node->size; ++i){
-        key_buf.emplace_back(node->key_ptr[i]);
-        child_buf.emplace_back(node->child_ptr[i]);
-    }
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -353,7 +331,28 @@ inline void aex_tree<_Key, _Val, traits>::clear_childs_recursive(dense_node_ptr 
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::get_childs(inner_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf){
+inline void aex_tree<_Key, _Val, traits>::get_childs(const hash_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf){
+    key_type key;
+    node_ptr child;
+    AEX_ASSERT(check_lock(node));
+    for (slot_type i = 0; i < node->slot_size; i = node->next_item(i + 1)){
+        std::tie(key, child) = hash_table.find(node, i);
+        key_buf.emplace_back(key);
+        child_buf.emplace_back(child);
+    }
+    //AEX_ASSERT(key_buf.size() == child_buf.size());
+}
+
+template<typename _Key, typename _Val, typename traits>
+inline void aex_tree<_Key, _Val, traits>::get_childs(const dense_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf){
+    for (slot_type i = 0; i < node->size; ++i){
+        key_buf.emplace_back(node->key_ptr[i]);
+        child_buf.emplace_back(node->child_ptr[i]);
+    }
+}
+
+template<typename _Key, typename _Val, typename traits>
+inline void aex_tree<_Key, _Val, traits>::get_childs(const inner_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf){
     if (node->type == NodeType::HashNode)
         get_childs(h_n(node), key_buf, child_buf);
     else 
@@ -415,10 +414,6 @@ inline bool aex_tree<_Key, _Val, traits>::check_model(const Model &m, const key_
         #ifdef AEX_DEBUG
         max_gap = std::max(max_gap, pos - prev_pos);
         #endif
-        //if (pos - prev_pos > traits::HASH_NODE_MAX_GAP){
-        //    AEX_WARNING("pos=" << pos << ", prev_pos=" << prev_pos);
-        //    //return false;
-        //}
         if (pos != prev_pos){
             occupied += 1;
             prev_pos = pos;
@@ -468,7 +463,7 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
             ans = 0;
         }
         if (occupied < traits::MIN_HASH_NODE_CNT){
-            AEX_PRINT("occupied=" << occupied << ", ans=" << ans);
+            //AEX_PRINT("occupied=" << occupied << ", ans=" << ans);
             ans = 0;
         }
         //else

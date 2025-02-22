@@ -35,7 +35,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::range_query(const key_type lower_key, const key_type upper_key, std::vector<std::pair<key_type, value_type>>& answer) const {
     if constexpr (traits::AllowConcurrency){
-        range_query_con(lower_key, upper_key, answer);
+        const_cast<self*>(this)->range_query_con(lower_key, upper_key, answer);
         return;
     }
     answer.clear();
@@ -64,7 +64,7 @@ inline void aex_tree<_Key, _Val, traits>::range_query(const key_type lower_key, 
 template<typename _Key, typename _Val, typename traits>
 inline size_t aex_tree<_Key, _Val, traits>::range_query_len(std::pair<key_type, value_type>* results, const key_type lower_key, const size_t key_num) const {
     if constexpr (traits::AllowConcurrency){
-        return range_query_len_con(results, lower_key, key_num);
+        return const_cast<self*>(this)->range_query_len_con(results, lower_key, key_num);
     }
     AEX_ASSERT(!traits::AllowConcurrency);
     data_node_ptr inode = find_leaf(lower_key);
@@ -193,5 +193,20 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     }
 }
 
+template<typename _Key, typename _Val, typename traits>
+inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_tail_leaf(node_ptr node) {
+    AEX_ASSERT(check_lock(node));
+    node_ptr child;
+    node_ptr tail_node = node;
+
+    while (tail_node->type != NodeType::LeafNode){
+        if (tail_node->type == NodeType::DenseNode)
+            child = d_n(tail_node)->child_ptr[tail_node->size - 1];
+        else
+            child = h_n(tail_node)->tail_node;
+        tail_node = child;
+    }
+    return l_n(tail_node);
+}
 
 }

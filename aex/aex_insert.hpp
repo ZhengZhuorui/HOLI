@@ -222,6 +222,7 @@ inline void aex_tree<_Key, _Val, traits>::insert_collision(hash_node_ptr node, c
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::insert_no_collision(hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child){
+    
     AEX_ASSERT(node->type == NodeType::HashNode);
     AEX_ASSERT(pos < node->slot_size);
     if ((pos & (traits::SLOT_PER_SHORTCUT - 1)) == 0)

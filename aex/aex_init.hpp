@@ -4,8 +4,9 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
-    AEX_PRINT("hash node size=" << sizeof(hash_node) << "hash table size=" << sizeof(hash_table));
+inline aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), work_queue(128), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
+//inline aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
+    //AEX_PRINT("hash node size=" << sizeof(hash_node) << "hash table size=" << sizeof(hash_table));
     //AEX_PRINT("table_rand_add_slot_size=" << traits::SIZE_BLOCK_CNT * traits::MIN_ADD_CNT / traits::HASH_TABLE_BLOCK_SIZE * traits::HASH_TABLE_FULL_RATIO);
     //AEX_PRINT("node_rand_add_slot_size=" << traits::SIZE_BLOCK_CNT * traits::MIN_ADD_CNT / traits::HASH_NODE_FULL_RATIO);
     ebr = new EpochBasedMemoryReclamationStrategy(this);
@@ -16,19 +17,22 @@ inline aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr
 
 template<typename _Key, typename _Val, typename traits>
 template<typename _InputIterator>
-inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
+inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), work_queue(128), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
+//inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
     ebr = new EpochBasedMemoryReclamationStrategy(this);
     if constexpr (std::is_same_v<HashTable, aex_hash_table_con<_Key, traits>>)
         hash_table.ebr = ebr;
     std::vector<std::pair<key_type, value_type> > data;
     for (auto it = __first; it != __last; ++it)
         data.emplace_back(*it);
-    std::sort(data.begin(), data.end());
+    if (!std::is_sorted(data.begin(), data.end()))
+        std::sort(data.begin(), data.end());
     this->bulk_load(data.data(), data.size());
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
+inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), work_queue(128), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
+//inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
     ebr = new EpochBasedMemoryReclamationStrategy(this);
     if constexpr (std::is_same_v<HashTable, aex_hash_table_con<_Key, traits>>)
         hash_table.ebr = ebr;
@@ -38,7 +42,8 @@ inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr),
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
+inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), work_queue(128), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
+//inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
     ebr = new EpochBasedMemoryReclamationStrategy(this);
     if constexpr (std::is_same_v<HashTable, aex_hash_table_con<_Key, traits>>)
         hash_table.ebr = ebr;
@@ -55,20 +60,29 @@ template<typename _Key, typename _Val, typename traits>
 inline aex_tree<_Key, _Val, traits>::~aex_tree(){
     AEX_PRINT("hash_table.size=" << hash_table.size);
     this->deconstruct(this->root);
-    AEX_SGL_DEBUG_BLOCK({if (hash_table.size != 0) AEX_ERROR("hash_table.size=" << hash_table.size); AEX_ASSERT(hash_table.size == 0);});
+    //AEX_SGL_DEBUG_BLOCK({if (hash_table.size != 0) AEX_ERROR("hash_table.size=" << hash_table.size); AEX_ASSERT(hash_table.size == 0);});
+    delete this->ebr;
+    AEX_DEBUG_BLOCK({hash_table.print_stats(); });
     this->hash_table.free_hash_table();
 }
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::_clear(){
+    AEX_HINT("_clear");
     if (this->root != nullptr){
         this->deconstruct(this->root);
     }
     this->_size = 0;
+    //if constexpr (traits::AllowConcurrency){
+    //    delete this->ebr;
+    //    this->ebr = new EpochBasedMemoryReclamationStrategy(this);
+    //    this->hash_table.ebr = this->ebr;
+    //}
     this->hash_table.clear();
     this->opt_stats = operation_stats();
     this->root = nullptr;
     this->head_leaf = nullptr;
+    this->node_id = 0;
 }
 
 template<typename _Key, typename _Val, typename traits>

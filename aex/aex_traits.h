@@ -97,7 +97,7 @@ struct aex_default_traits{
     //typedef std::true_type AllowBalance;
     static constexpr bool AllowBalance = ((_AllowBalance & 1) == 1);
 
-    static constexpr bool AllowExtend = true;
+    static constexpr bool AllowExtend = false;
     static constexpr bool AllowRebuild = false;
     static constexpr bool AllowErase = false;
 
@@ -178,6 +178,8 @@ struct aex_default_traits{
     static constexpr int MIN_ADD_CNT = 4;
 
     static constexpr int MEMORY_POOL = 1024;
+
+    static constexpr int THREAD_UNIT_SIZE = 10000;
 
     // ========== old version ==========
     static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type) + sizeof(void*)));

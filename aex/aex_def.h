@@ -58,5 +58,8 @@ template<typename _Key, typename _Val, typename traits> struct aex_data_node_con
 
 template<typename traits> struct aex_default_components;
 
+template<typename traits> struct _GetChildsParams;
+template<typename traits> struct _ConstructSMOParams;
+template<typename traits> struct _HashTableRescaleParams;
 
 }

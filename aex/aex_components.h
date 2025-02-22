@@ -39,7 +39,18 @@ struct no_atomic_type{
     T x;
 };
 
+enum class ConcurrencyType{
+    None,
+    GetChilds,
+    ConstructSMO,
+    HashTableRescale,
+};
 
+struct ConcurrencyParams{
+    explicit ConcurrencyParams(ConcurrencyType _type): finish_flag(false), type(_type) {}
+    std::atomic_bool finish_flag;
+    ConcurrencyType type;
+};
 
 template<typename traits, bool _ = traits::AllowConcurrency>
 struct aex_concurrency_components{
@@ -141,12 +152,19 @@ struct aex_default_components{
     typedef typename concurrency_components::atomic_version_type   atomic_version_type;
     typedef typename concurrency_components::ID_type               ID_type;
     typedef typename concurrency_components::atomic_ID_type        atomic_ID_type;
+    typedef aex_hash_table<key_type, traits>                           HashTableBase;
     typedef gap_array_linear_model_hash_table<key_type, traits>    InnerNodeModel;
     typedef linear_model<key_type, traits> DataNodeModel;
     typedef MemoryReclaimUnit<traits>      MRUnit;
     typedef aex_ThreadSpecificEpochBasedReclamationInformation<traits> ThreadSpecificEpochBasedReclamationInformation;
     typedef aex_EpochBasedMemoryReclamationStrategy<traits>            EpochBasedMemoryReclamationStrategy;
     typedef aex_EpochGuard<traits>                                     EpochGuard;
+    //typedef typename boost::lockfree::stack<std::function<void()>> LockFreeStack;
+    //typedef typename boost::lockfree::queue<std::function<void()>> LockFreeQueue;
+    typedef typename boost::lockfree::queue<ConcurrencyParams*> LockFreeQueue;
+    typedef _GetChildsParams<traits> GetChildsParams;
+    typedef _ConstructSMOParams<traits> ConstructSMOParams;
+    typedef _HashTableRescaleParams<traits> HashTableRescaleParams;
 
     typedef aex_bitmap_impl<traits> bitmap_impl;
 

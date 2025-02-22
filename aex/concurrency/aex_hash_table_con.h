@@ -25,7 +25,7 @@ struct alignas(64) aex_hash_table_block_con{
     int           size;
     self*         next;
 
-    aex_hash_table_block_con():size(0), next(nullptr){}
+    aex_hash_table_block_con():lock(), size(0), next(nullptr){}
 
     self& operator=(self &other){
         for (self* b = this, *ob = &other; ob != nullptr; b = b->next, ob = ob->next){
@@ -94,6 +94,7 @@ struct alignas(64) aex_hash_table_block_con{
                     return;
                 }
         }
+        //AEX_PRINT("id=" << id << ", pos=" << _pos);
         AEX_ASSERT(0 == 1);
     }
 
@@ -110,6 +111,15 @@ struct alignas(64) aex_hash_table_block_con{
     }
 };
 
+template<typename traits>
+struct _HashTableRescaleParams : public ConcurrencyParams{
+    typedef aex_default_components<traits> components;
+    typedef typename components::HashTableBlock HashTableBlock;
+    typedef typename traits::slot_type slot_type;
+    HashTableBlock* new_table; 
+    HashTableBlock* old_table; 
+    slot_type new_slot_size, n, size;
+};
 
 template<typename _Key,
         typename traits>
@@ -131,20 +141,24 @@ public:
     typedef typename components::ID_type           ID_type;
     typedef typename components::version_type      version_type;
     typedef typename components::MRUnit            MRUnit;
+    //typedef typename components::LockFreeStack     LockFreeStack;
+    typedef typename components::LockFreeQueue     LockFreeQueue;
+    typedef typename components::HashTableRescaleParams HashTableRescaleParams;
     typedef typename components::EpochBasedMemoryReclamationStrategy EpochBasedMemoryReclamationStrategy;
+    
 
-    aex_hash_table_con():HashTableBase(){}
+    aex_hash_table_con():HashTableBase(), work_queue(128){}
 
-    explicit aex_hash_table_con(int _slot_size):HashTableBase(_slot_size){
+    explicit aex_hash_table_con(int _slot_size):HashTableBase(_slot_size), work_queue(128){
         AEX_SUCCESS("hash table construct");
         AEX_ASSERT((this->slot_size & (-this->slot_size)) == this->slot_size);
     }
 
-    aex_hash_table_con(self &other_table):HashTableBase(other_table){
+    aex_hash_table_con(self &other_table):HashTableBase(other_table), work_queue(128){
         AEX_SUCCESS("hash table construct");
     }
 
-    aex_hash_table_con(self &&other_table):HashTableBase(std::move(other_table)){
+    aex_hash_table_con(self &&other_table):HashTableBase(std::move(other_table)), work_queue(128){
         AEX_SUCCESS("hash table construct");
     }
 
@@ -181,34 +195,146 @@ public:
         this->free_hash_table();
         this->slot_size = traits::MIN_HASH_TABLE_SIZE;
         this->size = 0;
-        this->table_ = new HashTableBlock[traits::MIN_HASH_TABLE_SIZE]();
         this->real_slot_size = this->get_real_slot_size(traits::MIN_HASH_TABLE_SIZE);
+        this->table_ = new HashTableBlock[this->slot_size]();
+    }
+
+    inline bool work_concurrency(){
+        ConcurrencyParams *params;
+        bool flag = this->work_queue.pop(params);
+        if (flag) rescale(static_cast<HashTableRescaleParams*>(params));
+        return flag;
+    }
+
+    inline void yield(int count) {
+        //bool flag = false;
+        //while (this->work_concurrency()) flag = true;
+        //if (!flag) _yield(count);
+        _yield(count);
+    }
+    
+    //inline void rescale_unit(HashTableBlock* new_table, slot_type new_real_slot_size, HashTableBlock* old_table, const slot_type n){
+    inline void rescale_unit(HashTableRescaleParams *worker){
+        HashTableBlock* new_table = worker->new_table;
+        slot_type new_real_slot_size = worker->new_real_slot_size;
+        HashTableBlock* old_table = worker->old_table;
+        slot_type n = worker->n;
+        for (int i = 0; i < n; ++i){
+            for (HashTableBlock* b = old_table + i; b != nullptr; b = b->next){                
+                this->size += b->size;
+                for (int j = 0; j < b->size; ++j){
+                    ++worker->size;
+                    hash_type new_hash_key = (reinterpret_cast<unsigned long long>(b->unit_array[j].id) * traits::K1 + static_cast<unsigned long long>(b->unit_array[j].pos) * traits::K2) % new_real_slot_size;
+                    HashTableBlock *insert_block = new_table + new_hash_key;
+                    int restart_count = 0;
+    rescale_unit_start:
+                    if (restart_count > 0)
+                        _yield(restart_count);
+                    ++restart_count;
+                    bool need_restart = false;
+                    insert_block->lock.writeLockOrRestart(need_restart);
+                    if (need_restart) goto rescale_unit_start;
+                    insert_block->insert(b->unit_array[j].id, b->unit_array[j].pos, b->unit_array[j].key, b->unit_array[j].child);
+                    insert_block->lock.writeUnlock();
+                }
+            }
+        }
+        worker->finish_flag.store(true);
+        _mm_mfence();
+    }
+
+    inline void rescale_con(const slot_type _slot_size){
+        AEX_ASSERT(this->lock.isLocked());
+        AEX_ASSERT((_slot_size & (-_slot_size)) == _slot_size);
+        AEX_ASSERT(_slot_size >= (slot_type)traits::MIN_HASH_TABLE_SIZE);
+        slot_type new_real_slot_size = this->get_real_slot_size(_slot_size);
+        HashTableBlock* old_hash_table = this->table;
+        slot_type old_slot_size = this->slot_size;
+        HashTableBlock* new_hash_table = new HashTableBlock[_slot_size];
+
+        AEX_WARNING("[hashtable rescale] slot_size=" << this->slot_size << ", _slot_size=" << _slot_size << ", size=" << this->size << ", real_slot_size=" << this->real_slot_size << ", new_real_slot_size=" << new_real_slot_size);
+        this->size = 0;
+
+        const slot_type unit_size = traits::THREAD_UNIT_SIZE;
+        const int worker_num = this->slot_size / worker_num + (this->slot_size % worker_num != 0);
+        std::vector<HashTableRescaleParams> worker(worker_num);
+        for (slot_type i = 0, pos = 0; i < worker_num; ++i, pos += unit_size){
+            //std::function<void()> t = std::bind(new_hash_table, new_real_slot_size, old_hash_table + pos, std::min(unit_size, old_slot_size - pos));
+            worker[i]->new_hash_table = new_hash_table;
+            worker[i]->new_real_slot_size = new_real_slot_size;
+            worker[i]->old_hash_table = old_hash_table + pos;
+            worker[i]->n = std::min(unit_size, old_slot_size - pos);
+            bool flag = this->queue.push_back(static_cast<ConcurrencyParams*>(&worker[i]));
+            while (!flag) {
+                while(this->work_concurrency());
+                flag = this->work_queue.push(&worker[i]);
+            }
+        }
+
+        while (this->work_concurrency()); 
+        for (int i = 0; i < worker_num; ++i){
+            while (this->worker[i].finish_flag.load() == false) _mm_pause(); //join
+            this->size += worker[i].size;
+        }
+
+        AEX_WARNING("real_size=" << this->size);
+        HashTableBase* hash_table_copy = new HashTableBase();
+        hash_table_copy->slot_size = this->slot_size;
+        hash_table_copy->real_slot_size = this->real_slot_size;
+        hash_table_copy->size = this->size;
+        hash_table_copy->table_ = this->table_;
+        this->slot_size = _slot_size;
+        this->real_slot_size = new_real_slot_size;
+        this->table_ = new_hash_table;
+        this->ebr->scheduleForDeletion(MRUnit(MemoryReclaimType::HashTable, hash_table_copy));
     }
     
     inline void rescale(const slot_type _slot_size){
+        AEX_ASSERT(this->lock.isLocked());
         AEX_ASSERT((_slot_size & (-_slot_size)) == _slot_size);
         AEX_ASSERT(_slot_size >= (slot_type)traits::MIN_HASH_TABLE_SIZE);
+        //if (this->slot_size >= traits::THREAD_UNIT_SIZE){
+        //    rescale_con();
+        //    return;
+        //}
+
         slot_type new_real_slot_size = this->get_real_slot_size(_slot_size);
         HashTableBlock* new_hash_table = new HashTableBlock[_slot_size];
 
         AEX_WARNING("[hashtable rescale] slot_size=" << this->slot_size << ", _slot_size=" << _slot_size << ", size=" << this->size << ", real_slot_size=" << this->real_slot_size << ", new_real_slot_size=" << new_real_slot_size);
         this->size = 0;
         for (slot_type i = 0; i < this->slot_size; ++i){
-            for (HashTableBlock* b = this->table_ + i; b != nullptr; b = b->next){
+            for (HashTableBlock* b = this->table_ + i; b != nullptr; b = b->next){                
                 this->size += b->size;
                 for (int j = 0; j < b->size; ++j){
                     hash_type new_hash_key = (reinterpret_cast<unsigned long long>(b->unit_array[j].id) * traits::K1 + static_cast<unsigned long long>(b->unit_array[j].pos) * traits::K2) % new_real_slot_size;
-                    new_hash_table[new_hash_key].insert(b->unit_array[j].id, b->unit_array[j].pos, b->unit_array[j].key, b->unit_array[j].child);
+                    HashTableBlock* insert_block = new_hash_table + new_hash_key;
+                    {
+                        int restart_count = 0;
+                        _rescale_start:
+                        AEX_ASSERT(restart_count < 1000000);
+                        if (restart_count > 0)
+                            _yield(restart_count);
+                        ++restart_count;
+                        bool need_restart = false;
+                        insert_block->lock.writeLockOrRestart(need_restart); 
+                        AEX_SGL_ASSERT(need_restart == false);
+                        if (need_restart) goto _rescale_start;
+                    }
+
+                    insert_block->insert(b->unit_array[j].id, b->unit_array[j].pos, b->unit_array[j].key, b->unit_array[j].child);
+                    insert_block->lock.writeUnlock();
                 }
             }
         }
         AEX_WARNING("real_size=" << this->size);
-        HashTable* hash_table_copy = new HashTable();
-        memcpy(hash_table_copy, this, sizeof(HashTable));
-        this->ebr->scheduleForDeletion(MRUnit(MemoryReclaimType::HashTable, hash_table_copy));
+        HashTableBase* hash_table_copy = new HashTableBase();
+        memcpy(hash_table_copy, this, sizeof(HashTableBase));
+
         this->slot_size = _slot_size;
         this->real_slot_size = new_real_slot_size;
         this->table_ = new_hash_table;
+        this->ebr->scheduleForDeletion(MRUnit(MemoryReclaimType::HashTable, hash_table_copy));
     }
 
     //inline void narrow(){ rescale(this->slot_size >> 1); }
@@ -223,6 +349,7 @@ public:
         HashTableBlock* block;
         int restart_count = 0;
 insert_start:
+        //AEX_ASSERT(restart_count < 100000);
         if (restart_count > 0)
             yield(restart_count);
         restart_count++;
@@ -257,8 +384,9 @@ insert_start:
         int restart_count = 0;
         hash_type hash_key;
 find_start:
+        //AEX_ASSERT(restart_count < 100000);
         if (restart_count > 0)
-            yield(restart_count);
+            const_cast<self*>(this)->yield(restart_count);
         restart_count++;
         bool need_restart = false;
         version_type table_version = lock.readLockOrRestart(need_restart);
@@ -365,6 +493,12 @@ find_start:
 
     inline void print_stats() const {
         this->HashTableBase::print_stats();
+        ULL _size = 0;
+        for (slot_type i = 0; i < this->slot_size; ++i){
+            for (HashTableBlock* b = this->table_ + i; b != nullptr; b = b->next)
+                _size += b->size;
+        }
+        AEX_HINT("[HashTable Stats] real_size=" << _size);
     }
 
     inline void add_size(hash_type hash_key) {
@@ -398,6 +532,7 @@ find_start:
 
     mutable RWLock lock;
     EpochBasedMemoryReclamationStrategy *ebr;
+    LockFreeQueue work_queue;
 
 };
 

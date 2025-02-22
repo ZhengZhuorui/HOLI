@@ -56,11 +56,16 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
             delete[] this->bitmap_ptr;
             this->bitmap_ptr = nullptr;
         }
+        if (this->lock_array != nullptr){
+            delete[] this->lock_array;
+            this->lock_array = nullptr;
+        }
     }
 
     void init(){
         this->size = 0;
         this->bitmap_ptr = new bitmap_base[this->slot_size / traits::SLOT_PER_LOCK + 1]();
+        this->lock_array = new RWLock[this->slot_size / traits::SLOT_PER_LOCK + 1];
     }
 
     inline void set_one(const slot_type x) {
@@ -306,7 +311,7 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     }*/
 
     //atomic_version_type *version_array;
-    //mutable RWLock* lock_array;
+    mutable RWLock* lock_array;
 };
 
 template<typename _Key,

@@ -11,14 +11,15 @@ int main(){
     aex::aex_tree<KEY_TYPE, PAYLOAD_TYPE, aex::aex_default_traits<KEY_TYPE, PAYLOAD_TYPE, false, void, true>> index;
 
     std::pair<KEY_TYPE, PAYLOAD_TYPE> values[3 * num_keys];
-    int query_start[thread_num + 1], insert_start[thread_num + 1], erase_start[thread_num + 1];
+    int query_start[thread_num + 1], insert_start[thread_num + 1];
+    //int erase_start[thread_num + 1];
     for (int i = 0; i < thread_num; ++i){
         query_start[i] = num_keys / thread_num;
-        erase_start[i] = num_keys + num_keys / thread_num;
+        //erase_start[i] = num_keys + num_keys / thread_num;
         insert_start[i] = 2 * num_keys + num_keys / thread_num;
     }
     query_start[thread_num] = num_keys;
-    erase_start[thread_num] = 2 * num_keys;
+    //erase_start[thread_num] = 2 * num_keys;
     insert_start[thread_num] = 3 * num_keys;
     
     
@@ -43,12 +44,12 @@ int main(){
     for (int i = 0; i < thread_num; ++i)
         threads[i].join();
 
-    for (int i = 0; i < thread_num; ++i){
-        threads[i] = std::thread([](auto index, auto *start, auto *end){
-            for (auto j = start; j < end; ++j)
-                index->erase((*j).first);
-        }, &index, values + erase_start[i], values + erase_start[i + 1]);
-    }
+    //for (int i = 0; i < thread_num; ++i){
+    //    threads[i] = std::thread([](auto index, auto *start, auto *end){
+    //        for (auto j = start; j < end; ++j)
+    //            index->erase((*j).first);
+    //    }, &index, values + erase_start[i], values + erase_start[i + 1]);
+    //}
     for (int i = 0; i < thread_num; ++i)
         threads[i].join();
 

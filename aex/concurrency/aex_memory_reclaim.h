@@ -19,16 +19,19 @@ struct MemoryReclaimUnit{
     typedef typename components::node_ptr      node_ptr;
     typedef typename components::hash_node_ptr hash_node_ptr;
     typedef typename components::RWLock        RWLock;
-    typedef typename components::HashTable     HashTable;
+    typedef typename components::HashTableBase HashTableBase;
     typedef typename components::slot_type     slot_type;
 
     //MemoryReclaimUnit(node_ptr node):pointer(node), type(MemoryReclaimType::NodePtr){}
     MemoryReclaimUnit() : type(MemoryReclaimType::Unknown) {}
-    MemoryReclaimUnit(MemoryReclaimType _type, void* mem)    :pointer(mem), type(_type){}
+    //MemoryReclaimUnit(MemoryReclaimType _type, void* mem)    :pointer(mem), type(_type){}
+    MemoryReclaimUnit(MemoryReclaimType _type, node_ptr node) : pointer(node), type(MemoryReclaimType::NodePtr){
+        AEX_ASSERT(_type == MemoryReclaimType::NodePtr);
+    }
     MemoryReclaimUnit(MemoryReclaimType _type, hash_node_ptr node):pointer(node), type(MemoryReclaimType::HashNodeCopy){
         AEX_ASSERT(_type == MemoryReclaimType::HashNodeCopy);
     }
-    MemoryReclaimUnit(MemoryReclaimType _type, HashTable* table_):pointer(table_), type(MemoryReclaimType::HashTable){
+    MemoryReclaimUnit(MemoryReclaimType _type, HashTableBase* table_):pointer(table_), type(MemoryReclaimType::HashTable){
         AEX_ASSERT(_type == MemoryReclaimType::HashTable);
     }
     void* pointer;
@@ -47,7 +50,7 @@ class aex_ThreadSpecificEpochBasedReclamationInformation {
     typedef typename components::MRUnit        MRUnit;
     typedef typename components::Index         Index;
     typedef typename components::HashTable     HashTable;
-    typedef typename components::HashTableBlock HashTableBlock;
+    typedef typename components::HashTableBase     HashTableBase;
     typedef typename components::slot_type     slot_type;
 
     std::array<std::vector<MRUnit>, 3> mFreeLists;
@@ -104,30 +107,31 @@ private:
     void freeForEpoch(uint32_t epoch) {
         std::vector < MRUnit > &previousFreeList =
             mFreeLists[epoch];
-        AEX_WARNING("memory reclaim");
+        //AEX_WARNING("memory reclaim");
 
         for (MRUnit unit: previousFreeList) {
             switch (unit.type){
                 case MemoryReclaimType::Memory:{
-                    AEX_WARNING("memory reclaim");
+                    //AEX_WARNING("memory reclaim");
                     free(unit.pointer); break;
                 }
                 case MemoryReclaimType::NodePtr:{
-                    AEX_WARNING("node reclaim");
+                    //AEX_WARNING("node reclaim");
                     index->free_node(n_n(unit.pointer)); 
                     break;
                 }
                 case MemoryReclaimType::HashNodeCopy:{
-                    AEX_WARNING("HashNodeCopy reclaim");
+                    //AEX_WARNING("HashNodeCopy reclaim");
                     index->clear_copy(h_n(unit.pointer)); break;
                 }
                 case MemoryReclaimType::HashTable:{
-                    AEX_WARNING("HashTable reclaim");
-                    reinterpret_cast<HashTable*>(unit.pointer)->free_hash_table();
-                    delete reinterpret_cast<HashTable*>(unit.pointer);
+                    //AEX_WARNING("HashTable reclaim");
+                    reinterpret_cast<HashTableBase*>(unit.pointer)->free_hash_table();
+                    delete reinterpret_cast<HashTableBase*>(unit.pointer);
                     break;
                 }
                 default:{
+                    AEX_ERROR("Unknown Type");
                     AEX_ASSERT(0 == 1);
                     break;
                 }
@@ -151,7 +155,6 @@ public:
     typedef aex_EpochBasedMemoryReclamationStrategy<traits> self;
     typedef typename components::ThreadSpecificEpochBasedReclamationInformation ThreadSpecificEpochBasedReclamationInformation;
     typedef typename components::HashTable     HashTable;
-    typedef typename components::HashTableBlock HashTableBlock;
     typedef typename components::slot_type     slot_type;
 
     uint32_t NEXT_EPOCH[3] = {1, 2, 0};

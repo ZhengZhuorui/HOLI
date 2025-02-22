@@ -2,7 +2,7 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_con(const hash_node_ptr node, const key_type key, version_type &child_version) const {
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_con(const hash_node_ptr node, const key_type key, version_type &child_version)  {
     int restart_count = 0;
 find_con_start:
     AEX_SGL_ASSERT(restart_count == 0);
@@ -42,14 +42,14 @@ find_con_start:
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_con(const dense_node_ptr node, const key_type key) const {
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_con(const dense_node_ptr node, const key_type key)  {
     int node_size = std::max(0, std::min(traits::DENSE_NODE_SLOT_SIZE, (int)node->size));
     slot_type pos = linear_search_upper_bound_avx512<traits::DENSE_NODE_SLOT_SIZE>(node->key_ptr, node_size, key) - 1;
     return node->child_ptr[pos]; // node->child_ptr[pos] is not lock shared
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert_con(hash_node_ptr node, const key_type key, slot_type &pos, version_type &child_version) const {
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert_con(hash_node_ptr node, const key_type key, slot_type &pos, version_type &child_version)  {
     int restart_count = 0;
 find_insert_con_start:
     AEX_SGL_ASSERT(restart_count == 0);
@@ -96,14 +96,14 @@ find_insert_con_start:
 
 
 template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert_con(dense_node_ptr node, const key_type key, slot_type &pos) const {
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert_con(dense_node_ptr node, const key_type key, slot_type &pos)  {
     int node_size = std::max(0, std::min(traits::DENSE_NODE_SLOT_SIZE, (int)node->size));
     pos = linear_search_upper_bound_avx512<traits::DENSE_NODE_SLOT_SIZE>(node->key_ptr, node_size, key) - 1;
     return node->child_ptr[pos]; // node->child_ptr[pos] is not lock shared
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_leaf_con(const key_type key, version_type &node_version) const {
+inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_leaf_con(const key_type key, version_type &node_version) {
     node_ptr node, child;
     version_type child_version;
     int restart_count = 0;
@@ -216,7 +216,7 @@ find_con_start:
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::range_query_con(const key_type lower_key, const key_type upper_key, std::vector<std::pair<key_type, value_type>>& answer) const {        
+inline void aex_tree<_Key, _Val, traits>::range_query_con(const key_type lower_key, const key_type upper_key, std::vector<std::pair<key_type, value_type>>& answer)  {        
     EpochGuard guard(this);
     int restart_count = 0;
 range_query_con_start:
@@ -261,7 +261,7 @@ range_query_con_start:
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline size_t aex_tree<_Key, _Val, traits>::range_query_len_con(std::pair<key_type, value_type>* results, const key_type lower_key, const size_t key_num) const {
+inline size_t aex_tree<_Key, _Val, traits>::range_query_len_con(std::pair<key_type, value_type>* results, const key_type lower_key, const size_t key_num) {
     EpochGuard guard(this);
     int restart_count = 0;
 range_query_len_con_start:
@@ -381,31 +381,5 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     }
 }
 */
-
-template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_tail_leaf(node_ptr node) {
-    AEX_ASSERT(check_lock(node));
-    node_ptr child;
-    node_ptr tail_node = node;
-    int restart_count = 0;
-find_tail_leaf_start:
-    AEX_SGL_ASSERT(restart_count == 0);
-    if (restart_count > 0)
-        yield(restart_count);
-    restart_count++;
-    bool need_restart = false;
-    while (tail_node->type != NodeType::LeafNode){
-        if (tail_node->type == NodeType::DenseNode)
-            child = d_n(tail_node)->child_ptr[tail_node->size - 1];
-        else
-            child = h_n(tail_node)->tail_node;
-        TXL(child, need_restart);
-        if (need_restart) goto find_tail_leaf_start;        
-        if (tail_node != node)
-            XU(tail_node);
-        tail_node = child;
-    }
-    return l_n(tail_node);
-}
 
 }

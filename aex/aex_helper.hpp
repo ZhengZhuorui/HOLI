@@ -32,13 +32,14 @@ void aex_tree<_Key, _Val, traits>::_get_info_stats(const node_ptr node, const un
             stats.hash_node_memory_used += Allocator::HASH_NODE_MEMORY_USED(h_n(node)->slot_size);
             ++stats.hash_node_cnt;
             stats.hash_node_childs += h_n(node)->size;
+            int cnt = 0;
             for(slot_type i = 0; i < h_n(node)->slot_size; i = h_n(node)->next_item(i + 1)){
-                std::tie(key, child) = hash_table.find(h_n(node), i);
-            }
-            for(slot_type i = 0; i < h_n(node)->slot_size; i = h_n(node)->next_item(i + 1)){
+                ++cnt;
                 std::tie(key, child) = hash_table.find(h_n(node), i);
                 _get_info_stats(child, depth + 1, stats);
             }
+            //if (node == this->root)
+            //    AEX_PRINT("node->slot_size=" << h_n(node)->slot_size << ", node->size=" << cnt);
             break;
         }
     }
