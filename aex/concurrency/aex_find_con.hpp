@@ -2,9 +2,10 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_con(const hash_node_ptr node, const key_type key, version_type &child_version)  {
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_con(const hash_node_ptr node, const HashTable* table, const key_type key, version_type &child_version)  {
     int restart_count = 0;
 find_con_start:
+    AEX_ASSERT(restart_count < 100000000);
     AEX_SGL_ASSERT(restart_count == 0);
     if (restart_count > 0)
         yield(restart_count);
@@ -17,26 +18,16 @@ find_con_start:
     //version_type array_version = 0;
     //array_version = node->version_array[pos2slot(pos)].load(); // SL(node, pos);
     if (node->is_occupied(pos) || (pos & (traits::SLOT_PER_SHORTCUT - 1)) == 0){
+        //std::tie(find_key, child) = hash_table.find(node, pos);
         std::tie(find_key, child) = hash_table.find(node, pos);
-        if (child != nullptr){
-            child_version = child->node_lock.readLockOrRestart(need_restart); //SL(child);
-            if (need_restart) goto find_con_start;
-            //node->arrayCheckOrRestart(pos, array_version, need_restart); // SU(node, pos);
-            //if (need_restart) goto find_con_start;
-        }
     }
 
     if (child == nullptr || find_key > key){
-        //prev_pos = node->prev_item_find_con(pos - 1, array_version); // SL(node, prev_pos, pos - 1);
         prev_pos = node->prev_item_find(pos - 1); 
         std::tie(find_key, child) = hash_table.find(node, prev_pos);
-        if (child != nullptr){
-            child_version = child->node_lock.readLockOrRestart(need_restart); // SL(child);
-            if (need_restart) goto find_con_start;
-        }
-        //node->arrayCheckOrRestart(prev_pos, pos, array_version, need_restart); // SU(node, prev_pos, pos);
-        //if (need_restart) goto find_con_start;
     }
+    child_version = child->node_lock.readLockOrRestart(need_restart); // SL(child);
+    if (need_restart) goto find_con_start;
     AEX_ASSERT(child != nullptr);
     return child; // child is lock shared with child_version
 }
@@ -53,6 +44,8 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     int restart_count = 0;
 find_insert_con_start:
     AEX_SGL_ASSERT(restart_count == 0);
+    AEX_DEBUG_BLOCK({if (restart_count >= 99999999) AEX_PRINT("root=" << this->root << ", node=" << node);});
+    AEX_ASSERT(restart_count < 100000000);
     if (restart_count > 0)
         yield(restart_count);
     ++restart_count;
@@ -68,8 +61,8 @@ find_insert_con_start:
         if (find_key > key)
             child = nullptr;
         else{
-            if (child != nullptr)
-                child_version = child->node_lock.readLockOrRestart(need_restart); // SL(child)
+            child_version = child->node_lock.readLockOrRestart(need_restart); // SL(child)
+            AEX_DEBUG_BLOCK({if (restart_count >= 99999999) AEX_PRINT("child=" << child << ", child->type=" << to_string(child->type) << ", version=" << child->node_lock.typeVersionLockObsolete.load());});
             if (need_restart) goto find_insert_con_start;
         }
         //node->arrayCheckOrRestart(pos, array_version, need_restart); // SU(node, pos)
@@ -80,11 +73,9 @@ find_insert_con_start:
         //slot_type prev_pos = node->prev_item_find_con(pos - 1, array_version); // SL(node, prev_pos, pos)
         slot_type prev_pos = node->prev_item_find(pos - 1); // SL(node, prev_pos, pos)
         std::tie(find_key, child) = hash_table.find(node, prev_pos);
-        if (child != nullptr)
-            child_version = child->node_lock.readLockOrRestart(need_restart); // SL(res)
+        child_version = child->node_lock.readLockOrRestart(need_restart); // SL(res)
+        AEX_DEBUG_BLOCK({if (restart_count >= 99999999) AEX_PRINT("child=" << child << ", child->type=" << to_string(child->type) << ", version=" << child->node_lock.typeVersionLockObsolete.load());});
         if (need_restart) goto find_insert_con_start;
-        //node->arrayCheckOrRestart(prev_pos, pos, array_version, need_restart); // SU(node, prev_pos, pos)
-        //if (need_restart) goto find_insert_con_start;
         pos = prev_pos;
         AEX_ASSERT(find_key <= key);
     }
@@ -105,14 +96,21 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_leaf_con(const key_type key, version_type &node_version) {
     node_ptr node, child;
-    version_type child_version;
+    version_type child_version, table_version;
+    HashTable table;
     int restart_count = 0;
 find_leaf_con_start:
     AEX_SGL_ASSERT(restart_count == 0);
+    AEX_ASSERT(restart_count < 100000000);
     if (restart_count > 0)
         yield(restart_count);
     restart_count++;
     bool need_restart = false;
+    table_version = this->hash_table.lock.readLockOrRestart(need_restart);
+    table = this->hash_table;
+    this->hash_table.lock.checkOrRestart(table_version, need_restart);
+    if (need_restart) goto find_leaf_con_start;
+
     node = root;
     node_version = node->node_lock.readLockOrRestart(need_restart); // SL(node)
     AEX_SGL_ASSERT(need_restart == 0);
@@ -121,22 +119,19 @@ find_leaf_con_start:
         if (node->type == NodeType::HashNode){
             hash_node node_copy = *h_n(node);
             node->node_lock.checkOrRestart(node_version, need_restart);
-            AEX_SGL_ASSERT(need_restart == 0);
             if (need_restart) goto find_leaf_con_start;
-            child = find_con(&node_copy, key, child_version); // SL(child)
+            child = find_con(&node_copy, &table, key, child_version); // SL(child)
         }
         else{
             child = find_con(d_n(node), key); // child is not lock shared
             node->node_lock.checkOrRestart(node_version, need_restart);  // check child exists
-            AEX_SGL_ASSERT(need_restart == 0);
             if (need_restart) goto find_leaf_con_start;
             child_version = child->node_lock.readLockOrRestart(need_restart); // SL(child)
-            AEX_SGL_ASSERT(need_restart == 0);
             if (need_restart) goto find_leaf_con_start;
         }
-        node->node_lock.readUnlockOrRestart(node_version, need_restart);  // SU(node)
-        AEX_SGL_ASSERT(need_restart == 0);
-        if (need_restart) goto find_leaf_con_start;
+        //node->node_lock.readUnlockOrRestart(node_version, need_restart);  // SU(node)
+        //AEX_SGL_ASSERT(need_restart == 0);
+        //if (need_restart) goto find_leaf_con_start;
         node = child;
         node_version = child_version;
     }
@@ -144,16 +139,18 @@ find_leaf_con_start:
     int count = 0;
     while (l_n(node)->key[std::max((int)(node->size - 1), 0)] < key){
         data_node_ptr next_node = l_n(node)->next;
-        if (next_node != nullptr && next_node->min_key < key){
-        //if (next_node != nullptr && next_node->key[0] < key){
-            ++count;
-            child_version = next_node->node_lock.readLockOrRestart(need_restart);
-            node->node_lock.readUnlockOrRestart(node_version, need_restart);
-            if (need_restart) goto find_leaf_con_start;
-            node = next_node;
-            node_version = child_version;
-        }
-        if (count >= 3) goto find_leaf_con_start;
+        if (next_node != nullptr && next_node->min_key < key)
+            goto find_leaf_con_start;
+        //{
+        ////if (next_node != nullptr && next_node->key[0] < key){
+        //    ++count;
+        //    child_version = next_node->node_lock.readLockOrRestart(need_restart);
+        //    node->node_lock.readUnlockOrRestart(node_version, need_restart);
+        //    if (need_restart) goto find_leaf_con_start;
+        //    node = next_node;
+        //    node_version = child_version;
+        //}
+        //if (count >= 3) goto find_leaf_con_start;
     }
     return l_n(node); // node is lock shared with node_version
 }
@@ -165,6 +162,7 @@ inline bool aex_tree<_Key, _Val, traits>::find_con(const key_type key, value_typ
     version_type node_version;
 find_con_start:
     AEX_SGL_ASSERT(restart_count == 0);
+    AEX_ASSERT(restart_count < 100000000);
     if (restart_count > 0)
         yield(restart_count);
     ++restart_count;
@@ -188,6 +186,7 @@ inline bool aex_tree<_Key, _Val, traits>::lower_bound_con(const key_type key, st
     version_type node_version, next_node_version;
 find_con_start:
     AEX_SGL_ASSERT(restart_count == 0);
+    AEX_ASSERT(restart_count < 100000000);
     if (restart_count > 0)
         yield(restart_count);
     ++restart_count;
@@ -221,6 +220,7 @@ inline void aex_tree<_Key, _Val, traits>::range_query_con(const key_type lower_k
     int restart_count = 0;
 range_query_con_start:
     AEX_SGL_ASSERT(restart_count == 0);
+    AEX_ASSERT(restart_count < 100000000);
     if (restart_count > 0)
         yield(restart_count);
     ++restart_count;
@@ -266,6 +266,7 @@ inline size_t aex_tree<_Key, _Val, traits>::range_query_len_con(std::pair<key_ty
     int restart_count = 0;
 range_query_len_con_start:
     AEX_SGL_ASSERT(restart_count == 0);
+    AEX_ASSERT(restart_count < 100000000);
     if (restart_count > 0)
         yield(restart_count);
     ++restart_count;

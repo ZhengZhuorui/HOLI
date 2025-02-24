@@ -24,9 +24,9 @@ bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
     while (slot_size * traits::HASH_TABLE_BLOCK_SIZE * traits::HASH_TABLE_FULL_RATIO < n) slot_size <<= 1;
     std::cout << slot_size;
     //hash_table.rescale(slot_size);
-    hash_table.slot_size = slot_size;
-    hash_table.real_slot_size = hash_table.get_real_slot_size(slot_size);
-    hash_table.table_ = new HashTableBlock[slot_size];
+    //hash_table.slot_size = slot_size;
+    //hash_table.real_slot_size = hash_table.get_real_slot_size(slot_size);
+    //hash_table.table_ = new HashTableBlock[slot_size];
     std::vector<ULL> id(n);
     for (size_t i = 0; i < n; ++i) id[i] = rand() % 64;
     for (size_t i = 1; i < n; ++i) id[i] += id[i - 1];

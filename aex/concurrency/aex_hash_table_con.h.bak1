@@ -170,17 +170,16 @@ public:
     //}
 
     self& operator=(self &other){
-        //AEX_SUCCESS("hash table copy");
-        //*static_cast<HashTableBase*>(this) = static_cast<HashTableBase>(other);
-        memcpy(this, &other, sizeof(HashTableBase));
+        AEX_SUCCESS("hash table copy");
+        *static_cast<HashTableBase*>(this) = static_cast<HashTableBase>(other);
         return *this;
     }
 
-    //self& operator=(self &&other){
-    //    //AEX_SUCCESS("hash table move");
-    //    *static_cast<HashTableBase*>(this) = std::move(static_cast<HashTableBase>(other));
-    //    return *this;
-    //}
+    self& operator=(self &&other){
+        AEX_SUCCESS("hash table move");
+        *static_cast<HashTableBase*>(this) = std::move(static_cast<HashTableBase>(other));
+        return *this;
+    }
 
     inline ULL memory_used() const {
         return this->HashTableBase::memory_used() + this->slot_size * sizeof(RWLock);
@@ -538,7 +537,7 @@ find_start:
     mutable RWLock lock;
     EpochBasedMemoryReclamationStrategy *ebr;
     LockFreeQueue work_queue;
-};
 
+};
 
 }

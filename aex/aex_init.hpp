@@ -78,7 +78,7 @@ inline void aex_tree<_Key, _Val, traits>::_clear(){
     //    this->ebr = new EpochBasedMemoryReclamationStrategy(this);
     //    this->hash_table.ebr = this->ebr;
     //}
-    this->hash_table.clear();
+    //this->hash_table.clear();
     this->opt_stats = operation_stats();
     this->root = nullptr;
     this->head_leaf = nullptr;

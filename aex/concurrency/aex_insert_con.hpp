@@ -15,7 +15,7 @@ inline bool aex_tree<_Key, _Val, traits>::_insert_con(const key_type key, const 
     int restart_count = 0;
 insert_start:
     AEX_SGL_ASSERT(restart_count == 0);
-    AEX_ASSERT(restart_count < 1000000000);
+    AEX_ASSERT(restart_count < 100000000);
     if (restart_count > 0)
         yield(restart_count);
     ++restart_count;
@@ -127,7 +127,7 @@ insert_start:
                     if (need_restart) goto insert_start;
 
                     size_type add_cnt = 0;
-                    data_node_ptr new_node;
+                    data_node_ptr new_node = nullptr;
                     if (split_pos < node_copy.slot_size && !node_copy.is_occupied(split_pos)){
                         node_copy.lock_array[pos2slot(split_pos)].writeLockOrRestart(need_restart); // XL(S, split_pos) | node S, node[split_pos] X, child X,
                         if (need_restart){ XUNH(child); goto insert_start; } // node S
@@ -182,7 +182,7 @@ insert_start:
                         l_n(child)->insert(key, value);
                     else
                         new_node->insert(key, value);
-                    XUNH(node); XUNH(child); XUNH(new_node); // #
+                    XUNH(child); XUNH(new_node); XUNH(node); // #
                 }
             }
             else{
@@ -330,19 +330,26 @@ insert_start:
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::update_meta(hash_node_ptr node, const node_ptr child, const size_type add_cnt, const version_type &node_version, bool &need_restart){
+    int restart_count = 0;
+update_meta_start:
+    bool _need_restart = false;
+    if (restart_count > 0)
+        yield(restart_count);
+    ++restart_count;
+
     AEX_ASSERT(node->type == NodeType::HashNode);
-    //AEX_PRINT(node << ", " << node->meta_lock.typeVersionLockObsolete.load());
-    node->meta_lock.writeLockOrRestart(need_restart);
-    AEX_SGL_ASSERT(need_restart == false);
-    if (need_restart) return;
     node->node_lock.checkOrRestart(node_version, need_restart);
-    AEX_SGL_ASSERT(need_restart == false);
-    if (!need_restart){
-        if (node->tail_node == child)
-            node->tail_node = tail_node(node);
-        if (add_cnt > 0)
-            node->size += add_cnt;
-    }
+    if (need_restart) return;
+
+    node->meta_lock.writeLockOrRestart(_need_restart);
+    if (_need_restart) goto update_meta_start;
+    //node->node_lock.checkOrRestart(node_version, need_restart);
+    //AEX_SGL_ASSERT(need_restart == false);
+    if (node->tail_node == child)
+        node->tail_node = tail_node(node);
+    if (add_cnt > 0)
+        node->size += add_cnt;
+
     node->meta_lock.writeUnlock();
 }
 

@@ -5,7 +5,7 @@ template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::XL(node_ptr node){
     int restart_count = 0;
 XL_start:
-    AEX_ASSERT(restart_count < 1000);
+    AEX_ASSERT(restart_count < 100000000);
     if (restart_count > 0)
         yield(restart_count);
     ++restart_count;
