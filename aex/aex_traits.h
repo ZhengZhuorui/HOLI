@@ -147,7 +147,7 @@ struct aex_default_traits{
     static constexpr hash_type K7 = 576460752303423433;
     static constexpr hash_type MAX_INT = (1LL << 32) - 1;
 
-    static constexpr int HASH_TABLE_BLOCK_SIZE = 16;
+    static constexpr int HASH_TABLE_BLOCK_SIZE = 8;
 
     static constexpr float DATA_NODE_FEW_RATIO       = 0.5;
     static constexpr float DATA_NODE_FULL_RATIO      = 1;

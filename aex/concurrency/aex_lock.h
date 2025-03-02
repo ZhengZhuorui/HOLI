@@ -14,6 +14,7 @@ struct aex_spinlock{
     inline void lock(){}
     inline void unlock(){}
     inline bool is_lock(){return true;}
+    inline bool try_lock(){return true;}
     //inline bool is_lock(){return false;}
 };
 
@@ -32,6 +33,11 @@ struct aex_spinlock<traits, true>{
     }
     inline void unlock() {
         writeLock.store(false);
+    }
+
+    inline bool try_lock(){
+      bool expected = false;
+      return writeLock.compare_exchange_strong(expected, true);
     }
     inline bool is_lock(){return writeLock.load();}
     //inline bool is_lock(){return false;}
@@ -174,6 +180,8 @@ struct OptLock {
 
     bool isLocked() { return false; }
 
+    void writeLock(){}
+
     void writeLockOrRestart(bool &needRestart) {}
 
     void upgradeToWriteLockOrRestart(uint64_t &version, bool &needRestart) {}
@@ -220,6 +228,14 @@ struct OptLock<traits, true> {
 
     bool isLocked() {
       return ((typeVersionLockObsolete.load() & 0b10) == 0b10);
+    }
+
+    void writeLock(){
+      uint64_t version = this->typeVersionLockObsolete.load() & (~0b10);
+      while (!typeVersionLockObsolete.compare_exchange_strong(version, version + 0b10)){
+        version = this->typeVersionLockObsolete.load() & (~0b10);
+        _mm_pause();
+      }
     }
 
     void writeLockOrRestart(bool &needRestart) {

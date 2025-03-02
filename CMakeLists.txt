@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 if (NOT CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
-set(CMAKE_CXX_FLAGS "-Wall -fopenmp -ffast-math -fmax-errors=3 -march=native -mfma -msse -mavx2 -mavx2 -mavx512bw -mavx512vl -mavx512f -mavx512cd -mavx512dq -lpthread")
+set(CMAKE_CXX_FLAGS "-Wall -fopenmp -ffast-math -fmax-errors=3 -march=native -mfma -msse -mavx2 -mavx512bw -mavx512vl -mavx512f -mavx512cd -mavx512dq -lpthread")
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
@@ -45,8 +45,6 @@ include_directories(${TBB_INCLUDE_DIR})
 message(${Boost_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 
-#add_executable(example ${CMAKE_SOURCE_DIR}/examples/aex.cpp)
-#add_executable(example_con ${CMAKE_SOURCE_DIR}/examples/aex_con.cpp)
 
 # add_executable(benchmark_query ${CMAKE_SOURCE_DIR}/benchmark/benchmark_query.cpp)
 
@@ -82,10 +80,10 @@ set(TEST_DIR ${CMAKE_SOURCE_DIR}/test)
 add_executable(unit_test ${TEST_DIR}/test.cpp)
 #target_link_libraries(unit_test PUBLIC ${JemallocLib} ${Tbbpack})
 
-add_executable(demo examples/aex.cpp)
+add_executable(demo examples/example.cpp)
 #target_link_libraries(demo PUBLIC ${JemallocLib} ${Tbbpack})
 
-add_executable(demo_con examples/aex_concurrency.cpp)
+add_executable(demo_con examples/example_concurrency.cpp)
 #target_link_libraries(demo_con PUBLIC ${JemallocLib} ${Tbbpack})
 #target_link_libraries(benchmark PUBLIC  ${Tbbpack})
 #target_link_libraries(generate_dataset PUBLIC ${Tbbpack})

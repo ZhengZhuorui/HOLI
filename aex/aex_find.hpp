@@ -99,8 +99,6 @@ inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val,
 
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert(hash_node_ptr node, const key_type key, slot_type &pos) const {
-    if constexpr (traits::AllowConcurrency)
-        find_insert_con(node, key, pos);
     pos = node->predict(key);
     key_type find_key;
     node_ptr res = nullptr;

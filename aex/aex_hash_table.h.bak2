@@ -45,6 +45,7 @@ struct aex_hash_table_block_unit{
 };
 //#pragma pack(pop)
 
+
 template<typename _Key,
         typename traits>
 struct aex_hash_table_block{
@@ -183,7 +184,6 @@ struct aex_hash_table_block{
         AEX_ASSERT(0 == 1);
     }
 };
-
 template<typename _Key,
         typename traits>
 class aex_hash_table{

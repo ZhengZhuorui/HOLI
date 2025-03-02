@@ -23,7 +23,7 @@
 #include "aex_utils_avx.h"
 #include "aex_def.h"
 #include "aex_traits.h"
-#include "concurrency/aex_concurrency.h"
+#include "concurrency/aex_lock.h"
 #include "concurrency/aex_memory_reclaim.h"
 #include "aex_components.h"
 #include "aex_hash_table.h"
@@ -34,7 +34,6 @@
 #include "aex_iterator.h"
 #include "concurrency/aex_node_con.h"
 #include "concurrency/aex_hash_table_con.h"
-//#include "concurrency/aex_concurrency.h"
 
 // TODO List:
 // concurrent upper bound
@@ -78,6 +77,8 @@ public:
     typedef typename components::MRUnit MRUnit;
     typedef typename components::EpochBasedMemoryReclamationStrategy EpochBasedMemoryReclamationStrategy;
     typedef typename components::EpochGuard         EpochGuard;
+    //typedef typename components::CP ConcurrencyParams;
+    //typedef typename components::LockArrayParams    LockArrayParams;
     typedef typename components::GetChildsParams    GetChildsParams;
     typedef typename components::ConstructSMOParams ConstructSMOParams;
     typedef typename components::HashTableRescaleParams HashTableRescaleParams;
@@ -143,7 +144,6 @@ private:
     mutable operation_stats opt_stats;
     mutable concurrency_stats con_stats;
     atomic_ID_type  node_id;
-    //LockFreeStack   work_queue;
     LockFreeQueue   work_queue;
 
 public:
@@ -318,7 +318,8 @@ public:
             yield(restart_count);
         }
         bool need_restart = 0;
-        node = find_leaf_con(x, node_version);        
+        node = find_leaf_con(x, node_version, need_restart);
+        if (need_restart) goto update_restart;
         node->node_lock.upgradeToWriteLockOrRestart(node_version, need_restart);
         if (need_restart) goto update_restart;
         slot_type pos = node->find(x);
@@ -326,7 +327,7 @@ public:
             node->data[pos] = y;
             ret = true;
         }
-        XUNH(node);
+        XU(node);
         return ret;
     }
 
@@ -564,13 +565,18 @@ public:
     // ========== 0. memory reclaim interface ==========
     // new hash_node  memory size != Allocator.allocate_hash_node memory size. Hash node copy must not use free node!!! allocator allocate node must not use clear copy!!!
     inline void clear_copy(hash_node_ptr node){
-        for (slot_type i = node->prev_item_find(node->slot_size - 1); i >= 0; i = node->prev_item_find(i - 1)){
-            hash_table.erase(node, i);
-            if (i == 0)
-                break;
+        AEX_ASSERT(traits::AllowConcurrency);
+        if constexpr (traits::AllowConcurrency){
+            slot_type cnt = 0;
+            for (slot_type i = node->prev_item_find(node->slot_size - 1); i >= 0; i = node->prev_item_find(i - 1)){
+                this->hash_table.erase(node, i);
+                ++cnt;
+                if (i == 0)
+                    break;
+            }
+            node->clear();
+            delete node;
         }
-        node->clear();
-        delete node;
     }
 
     inline void free_node(node_ptr node){
@@ -629,7 +635,7 @@ private:
      * @details keep shared_lock of returned data node;
      */
     inline data_node_ptr find_leaf(const key_type key) const ;
-    inline data_node_ptr find_leaf_con(const key_type key, version_type &node_version) ;
+    inline data_node_ptr find_leaf_con(const key_type key, version_type &node_version, bool &need_restart) ;
     
     /**
      * @brief 
@@ -644,14 +650,10 @@ private:
     node_ptr find(const inner_node_ptr node, const key_type key) const ;
     node_ptr find(const hash_node_ptr  node, const key_type key) const ;
     node_ptr find(const dense_node_ptr node, const key_type key) const ;
-    node_ptr find_con(const hash_node_ptr node, const key_type key, version_type &child_version) ;
-    node_ptr find_con(const dense_node_ptr node, const key_type key) ;
 
     node_ptr find_insert(inner_node_ptr node, const key_type key, slot_type &pos) const ;
     node_ptr find_insert(hash_node_ptr  node, const key_type key, slot_type &pos) const ;
     node_ptr find_insert(dense_node_ptr node, const key_type key, slot_type &pos) const ;
-    node_ptr find_insert_con(hash_node_ptr  node, const key_type key, slot_type &pos, version_type &child_version) ;    
-    node_ptr find_insert_con(dense_node_ptr node, const key_type key, slot_type &pos) ;
 
     node_ptr find_erase(inner_node_ptr node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
     node_ptr find_erase(hash_node_ptr  node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
@@ -681,8 +683,10 @@ private:
      */
     void construct_tmp_node(dense_node_ptr node, const key_type old_key, const node_ptr old_node, const key_type new_key, const node_ptr new_node);
     void __construct_insert(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type key, const node_ptr child);
-    void insert_collision(hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
+    node_ptr insert_collision(hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
+    void insert_collision_con(hash_node_ptr node, HashTable &table, const slot_type pos, const key_type key, const node_ptr child);
     void insert_no_collision(hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
+    bool insert_no_collision_con(hash_node_ptr node, HashTable &table, const slot_type pos, const key_type key, const node_ptr child);
     void insert(dense_node_ptr node, const key_type key, const node_ptr child);
     void insert_data_node(data_node_ptr node, data_node_ptr new_node, const key_type key, const value_type &value);
     void insert_unlock(inner_node_ptr top_node, inner_node_ptr node) const;
@@ -708,17 +712,7 @@ private:
         return new_node;
     }
 
-    inline void update_meta(hash_node_ptr node, const node_ptr child, const size_type add_cnt, const version_type &node_version, bool &need_restart);
-    inline void complete(data_node_ptr old_node, data_node_ptr new_node){
-        if constexpr (traits::AllowConcurrency){
-            new_node->next = old_node->next;
-            old_node->next = new_node;        
-            old_node->size = new_node->size = traits::DATA_NODE_SLOT_SIZE / 2;
-        }
-    }
-    inline void complete(dense_node_ptr old_node, dense_node_ptr new_node){
-        old_node->size = new_node->size = traits::DENSE_NODE_SLOT_SIZE / 2;
-    }
+    inline void update_meta(hash_node_ptr node, const node_ptr child, const node_ptr new_tail_node, const size_type add_cnt, const version_type &node_version, bool &need_restart);
 
     // ========== 3. erase ==========
     // below function implemention at 'aex_erase.hpp'
@@ -760,10 +754,10 @@ private:
     //inner_node_ptr __construct_SMO(const key_type* keys, const node_ptr* childs, const ULL n);
     slot_type split(hash_node_ptr node, node_ptr &split_node, const slot_type start_pos, const slot_type end_pos);
     void construct_SMO(hash_node_ptr node, const key_type* keys, node_ptr* childs, const ULL n);
-    void get_childs(const hash_node_ptr node,  std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
-    void get_childs(const dense_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
-    void get_childs(const inner_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
-    void get_childs_recursive(dense_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
+    void get_childs(const hash_node_ptr node,  std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf) const;
+    void get_childs(const dense_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf) const;
+    void get_childs(const inner_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf) const;
+    void get_childs_recursive(const dense_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
     void clear_childs_recursive(dense_node_ptr node);
     void extend_head_nodes(std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
     void extend_tail_nodes(std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
@@ -833,8 +827,9 @@ private:
     }
 
     inline void clear(hash_node_ptr node){
+        AEX_ASSERT(traits::AllowConcurrency == false);
         for (slot_type i = node->prev_item_find(node->slot_size - 1); i >= 0; i = node->prev_item_find(i - 1)){
-            hash_table.erase(node, i);
+            this->hash_table.erase(node, i);
             if (i == 0)
                 break;
         }
@@ -872,32 +867,39 @@ private:
     // UL: upgrade_lock(SL->XL) DL: downgrade_lock(XL->SL)
 
     inline void XL(node_ptr node);
-    inline void TXL(hash_node_ptr node, bool &need_restart);
-    inline void TXL(node_ptr node, bool &need_restart);
     inline void TUL(hash_node_ptr node, version_type &node_version, bool &need_restart);
     inline void TUL(node_ptr node, version_type &node_version, bool &need_restart);
-    inline void DL(hash_node_ptr node, version_type &node_version);
-    inline void DL(dense_node_ptr node, version_type &node_version);
-    inline void DL(node_ptr node, version_type &node_version);
     inline void XU(hash_node_ptr node);
     inline void XU(node_ptr node);
-    inline void XUNH(node_ptr node);
 
     inline bool work_concurrency();
 
     inline void yield(int count) const {
-        //bool flag = false;
-        //while (this->work_concurrency()) flag = true;
-        //if (!flag) _yield(count);
-        _yield(count);
+        if (!this->work_queue.empty()){
+            while(const_cast<self*>(this)->work_concurrency());
+        }
+        else
+            _yield(count);
     }
 
-    inline void get_childs_unit(GetChildsParams *worker);
-    inline void get_childs_con(const hash_node_ptr, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
+
+    //template<typename traits>
+    struct LockArrayParams : ConcurrencyParams{
+        typedef aex_default_components<traits> components;
+        typedef typename traits::slot_type slot_type;
+        typedef typename components::hash_node_ptr hash_node_ptr;
+        hash_node_ptr node;
+        slot_type start, end;
+    };
+    inline void lock_array_unit(LockArrayParams *worker);
+    inline void lock_array_con(hash_node_ptr node);
+    inline void lock_array(hash_node_ptr node);
+
+    inline void get_childs_unit(GetChildsParams *worker) const;
+    inline void get_childs_con(const hash_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf) ;
 
     inline void construct_SMO_unit(ConstructSMOParams *worker);
     inline void construct_SMO_con(hash_node_ptr node, const key_type* keys, node_ptr* childs, const ULL n);
-    
 
 
     // ========== 7. test ==========
@@ -907,6 +909,9 @@ private:
     bool check_node(data_node_ptr  node) const ;
     bool check_node(dense_node_ptr node) const ;
     bool check_node(hash_node_ptr  node) const ;
+    bool test_lock_array_con(hash_node_ptr node) const ;
+    bool test_get_childs_con(hash_node_ptr node) ;
+    //bool test_construct_SMO_con(hash_node_ptr node) const ;
 
 
 };
@@ -920,7 +925,7 @@ private:
 #include "aex_helper.hpp"
 #include "aex_test.h"
 
-#include "concurrency/aex_con.hpp"
+#include "concurrency/aex_concurrency.hpp"
 #include "concurrency/aex_find_con.hpp"
 #include "concurrency/aex_insert_con.hpp"
 #include "concurrency/aex_erase_con.hpp"

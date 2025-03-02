@@ -4,6 +4,17 @@
 #include "omp.h"
 #include "benchmark/generate_dataset.h"
 
+struct alignas(64)
+ThreadParam {
+    std::vector<std::pair<uint64_t, uint64_t>> latency;
+    uint64_t success_insert = 0;
+    uint64_t success_read = 0;
+    uint64_t success_update = 0;
+    uint64_t success_remove = 0;
+    uint64_t scan_not_enough = 0;
+    uint64_t sum = 0;
+};
+
 enum OperationType{
     Lookup=0,
     Insert=1,
@@ -37,6 +48,6 @@ void construct_data_node_array(key_type* key, size_t num_keys, typename aex_tree
 
 // muthi thread
 #include "test/test_lock.hpp"
-#include "thread_pool.hpp"
+//#include "thread_pool.hpp"
 #include "test/test_con_unit.hpp"
 #include "test/test_index_con.hpp"

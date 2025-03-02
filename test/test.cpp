@@ -293,6 +293,7 @@ auto dataset = flags["dataset"];
     }
     //else if (unit == "con_index"){
     //    auto func = flags["function"];
+    //    int thread_num = stoi(flags[thread_num]);
     //    if (func == "tot"){
     //        std::vector<std::pair<T, T> > data;
     //        pack_KV_dataset(bin_data, data);
@@ -301,7 +302,7 @@ auto dataset = flags["dataset"];
     //        long long erase_nums = stoll(flags["erase_nums"]);
     //        AEX_ASSERT(write_nums <= num_keys);
     //        AEX_ASSERT(erase_nums <= num_keys - write_nums);
-    //        return test_index_total_con_perf(data.data(), num_keys, read_nums, write_nums, erase_nums);
+    //        return test_index_total_con_perf(data.data(), num_keys, thread_num, read_nums, write_nums, erase_nums);
     //    }
     //}
     return false;

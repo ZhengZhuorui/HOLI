@@ -62,12 +62,13 @@ public:
     typedef typename base_tree::components         components;
     typedef typename components::base_node         base_node;
     typedef typename components::RWLock            RWLock;
-    aex_inner_node(NodeType _type):base_node(_type), meta_lock(){}
+    //aex_inner_node(NodeType _type):base_node(_type), meta_lock(){}
+    aex_inner_node(NodeType _type):base_node(_type){}
     ~aex_inner_node() = default;
     aex_inner_node(self &other) = delete;
     aex_inner_node& operator = (aex_inner_node &other) = delete;
 
-    RWLock meta_lock;
+    //RWLock meta_lock;
 };
 
 
@@ -146,6 +147,14 @@ public:
     //inline bool is_occupied_con(const slot_type x) const {
     //    return bitmap_impl::at(this->bitmap_ptr, x);
     //}
+
+    inline void add_size(){
+        ++this->size;
+    }
+
+    inline void sub_size(){
+        --this->size;
+    }
 
     inline void set_one(const slot_type x) {
         bitmap_impl::set_one(this->bitmap_ptr, x);

@@ -1,25 +1,19 @@
 #pragma once
 
-struct alignas(64)
-ThreadParam {
-    std::vector<std::pair<uint64_t, uint64_t>> latency;
-    uint64_t success_insert = 0;
-    uint64_t success_read = 0;
-    uint64_t success_update = 0;
-    uint64_t success_remove = 0;
-    uint64_t scan_not_enough = 0;
-    uint64_t sum = 0;
-};
-
 template<typename key_type, typename traits>
 bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
     typedef aex_tree<key_type, key_type, traits> Index;
-    Index index;
+    //[[maybe_unused]]typedef typename Index::node_ptr node_ptr;
+    [[maybe_unused]]typedef typename Index::node_ptr node_ptr;
     typedef typename Index::HashTable HashTable;
     typedef typename HashTable::HashTableBlock HashTableBlock;
+    typedef typename Index::EpochGuard EpochGuard;
+    Index index;
+    srand(0);
+    
     std::cout << "sizeof(HashTableBlock)=" << sizeof(HashTableBlock) << std::endl;
+    HashTable &hash_table = index.hash_table;
     auto node = index.allocator.allocate_hash_node(512, 1);
-    HashTable hash_table;
     ULL slot_size = 1;
     while (slot_size * traits::HASH_TABLE_BLOCK_SIZE * traits::HASH_TABLE_FULL_RATIO < n) slot_size <<= 1;
     std::cout << slot_size;
@@ -28,7 +22,7 @@ bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
     //hash_table.real_slot_size = hash_table.get_real_slot_size(slot_size);
     //hash_table.table_ = new HashTableBlock[slot_size];
     std::vector<ULL> id(n);
-    for (size_t i = 0; i < n; ++i) id[i] = rand() % 64;
+    for (size_t i = 0; i < n; ++i) id[i] = 1 + (rand() % 64);
     for (size_t i = 1; i < n; ++i) id[i] += id[i - 1];
     std::random_shuffle(id.data(), id.data() + n);
     ThreadParam *params = new ThreadParam[thread_num];
@@ -37,8 +31,10 @@ bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
     double delta = 0, OPS = 0;
     t1 = std::chrono::high_resolution_clock::now();
     #pragma omp parallel for num_threads(thread_num)
-    for (size_t i = 0; i < n; ++i)
+    for (size_t i = 0; i < n; ++i){
+        EpochGuard guard(&index);
         hash_table.insert(node, id[i], data[i], nullptr);
+    }
     t2 = std::chrono::high_resolution_clock::now();
     delta = duration_cast<microseconds>(t2 - t1).count();
     OPS = 1.0 * 1e6 * n / delta;
@@ -47,6 +43,7 @@ bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
     AEX_SUCCESS("insert use time " << delta << "ms, OPS=" << OPS);
     // test hash table lookup performance
     t1 = std::chrono::high_resolution_clock::now();
+    //if constexpr(traits::AllowConcurrency){
     #pragma omp parallel num_threads(thread_num)
     {
         auto thread_id = omp_get_thread_num();
@@ -56,10 +53,14 @@ bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
         t1 = std::chrono::high_resolution_clock::now();
         #pragma omp for schedule(dynamic, 10000)
         for (size_t i = 0; i < n; ++i){
+            //std::pair<key_type, node_ptr> res;
+            //hash_table.find(node, id[i], res);
             auto res = hash_table.find(node, id[i]);
+
             thread_param.sum += (uint64_t)res.first;
         }
     }
+    //}
     t2 = std::chrono::high_resolution_clock::now();
     delta = duration_cast<microseconds>(t2 - t1).count();
     OPS = 1.0 * 1e6 * n / delta;
@@ -69,5 +70,38 @@ bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
     std::cout << std::scientific;
     std::cout << std::setprecision(3);  
     AEX_SUCCESS("code=" << sum << ", lookup use time " << delta << "ms, OPS=" << OPS);
-    return true;
+
+    //#pragma omp parallel num_threads(thread_num)
+    /*{
+        auto thread_id = omp_get_thread_num();
+        ThreadParam &thread_param = params[thread_id];
+        #pragma omp barrier
+        #pragma omp master
+        t1 = std::chrono::high_resolution_clock::now();
+        #pragma omp for schedule(dynamic, 10000)
+        for (size_t i = 0; i < n; ++i){
+            auto res = hash_table.find(node, id[i]);
+            if (res.first == data[i]) ++thread_param.success_read;
+        }
+    }
+    size_t success_read = 0;
+    for (int i = 0; i < thread_num; ++i)
+        success_read += params[i].success_read;
+    if (success_read != n){
+        AEX_ERROR("test failed. success_read=" << success_read);
+        return false;
+    }*/
+    //size_t success_read = 0;
+    bool flag = true;
+    for (size_t i = 0; i < n; ++i){
+        auto res = hash_table.find(node, id[i]);
+        if (res.first != data[i]){
+            AEX_ERROR("res.first=" << res.first << ", data[i]=" << data[i]);
+            return false;
+            flag = false;
+        }
+    }
+    //if (flag) AEX_SUCCESS("test success.");
+    return flag;
+    
 }

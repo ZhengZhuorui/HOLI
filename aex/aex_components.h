@@ -3,7 +3,7 @@
 #include <atomic>
 
 #include "aex_utils.h"
-#include "concurrency/aex_concurrency.h"
+#include "concurrency/aex_lock.h"
 
 namespace aex{
 
@@ -41,6 +41,7 @@ struct no_atomic_type{
 
 enum class ConcurrencyType{
     None,
+    LockArray,
     GetChilds,
     ConstructSMO,
     HashTableRescale,
@@ -48,7 +49,8 @@ enum class ConcurrencyType{
 
 struct ConcurrencyParams{
     explicit ConcurrencyParams(ConcurrencyType _type): finish_flag(false), type(_type) {}
-    std::atomic_bool finish_flag;
+    //virtual void operator()() = 0;
+    volatile bool finish_flag;
     ConcurrencyType type;
 };
 
@@ -161,7 +163,9 @@ struct aex_default_components{
     typedef aex_EpochGuard<traits>                                     EpochGuard;
     //typedef typename boost::lockfree::stack<std::function<void()>> LockFreeStack;
     //typedef typename boost::lockfree::queue<std::function<void()>> LockFreeQueue;
-    typedef typename boost::lockfree::queue<ConcurrencyParams*> LockFreeQueue;
+    //typedef typename boost::lockfree::queue<ConcurrencyParams*> LockFreeQueue;
+    typedef typename boost::lockfree::queue<ConcurrencyParams*, boost::lockfree::capacity<1024> > LockFreeQueue;
+    //typedef _LockArrayParams<traits> LockArrayParams;
     typedef _GetChildsParams<traits> GetChildsParams;
     typedef _ConstructSMOParams<traits> ConstructSMOParams;
     typedef _HashTableRescaleParams<traits> HashTableRescaleParams;

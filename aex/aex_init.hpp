@@ -4,7 +4,7 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), work_queue(128), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
+inline aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), work_queue(), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
 //inline aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
     //AEX_PRINT("hash node size=" << sizeof(hash_node) << "hash table size=" << sizeof(hash_table));
     //AEX_PRINT("table_rand_add_slot_size=" << traits::SIZE_BLOCK_CNT * traits::MIN_ADD_CNT / traits::HASH_TABLE_BLOCK_SIZE * traits::HASH_TABLE_FULL_RATIO);
@@ -17,7 +17,7 @@ inline aex_tree<_Key, _Val, traits>::aex_tree():root(nullptr), head_leaf(nullptr
 
 template<typename _Key, typename _Val, typename traits>
 template<typename _InputIterator>
-inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), work_queue(128), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
+inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), work_queue(), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
 //inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIterator __last): root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
     ebr = new EpochBasedMemoryReclamationStrategy(this);
     if constexpr (std::is_same_v<HashTable, aex_hash_table_con<_Key, traits>>)
@@ -31,7 +31,7 @@ inline aex_tree<_Key, _Val, traits>::aex_tree(_InputIterator __first, _InputIter
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), work_queue(128), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
+inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), work_queue(), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
 //inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
     ebr = new EpochBasedMemoryReclamationStrategy(this);
     if constexpr (std::is_same_v<HashTable, aex_hash_table_con<_Key, traits>>)
@@ -42,7 +42,7 @@ inline aex_tree<_Key, _Val, traits>::aex_tree(const self& _index):root(nullptr),
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), work_queue(128), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
+inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), work_queue(), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
 //inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head_leaf(nullptr), _size(0), opt_stats(), con_stats(), node_id(0), hash_table(traits::MIN_HASH_TABLE_SIZE), allocator(){
     ebr = new EpochBasedMemoryReclamationStrategy(this);
     if constexpr (std::is_same_v<HashTable, aex_hash_table_con<_Key, traits>>)
@@ -104,7 +104,7 @@ inline void aex_tree<_Key, _Val, traits>::deconstruct(node_ptr node){
         return;
     switch (node->type){
         case NodeType::LeafNode:{
-            XL(node);
+            node->node_lock.writeLock();
             free_node(node);
             break;
         }
@@ -112,12 +112,12 @@ inline void aex_tree<_Key, _Val, traits>::deconstruct(node_ptr node){
             for (slot_type i = 0; i < d_n(node)->size; ++i){
                 deconstruct(d_n(node)->child_ptr[i]);
             }
-            XL(node);
+            node->node_lock.writeLock();
             free_node(node);
             break;
         }
         case NodeType::HashNode:{
-            XL(node);
+            XL(h_n(node));
             for (slot_type i = 0; i < h_n(node)->slot_size; i = h_n(node)->next_item(i + 1)){
                 std::tie(key, child) = hash_table.find(h_n(node), i);
                 AEX_ASSERT(child != nullptr);
@@ -167,7 +167,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
             #endif
             hash_node_ptr new_node = allocator.allocate_hash_node(h_n(node)->slot_size, this->get_node_id());
             new_node->model = h_n(node)->model;
-            XL(new_node);
+            new_node->node_lock.writeLock();
             key_type key;
             node_ptr child, new_child;
             slot_type pos;
@@ -180,7 +180,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
             }
             AEX_ASSERT(new_child != nullptr);
             __construct_insert(new_node, pos, h_n(node)->slot_size, key, new_child);
-            XU(new_node);
+            new_node->node_lock.writeUnlock();
             AEX_ASSERT(node->size == new_node->size);
             AEX_DEBUG_BLOCK({for (slot_type i = 0; i < h_n(node)->slot_size / 64 + 1; ++i) AEX_ASSERT(new_node->bitmap_ptr[i] == h_n(node)->bitmap_ptr[i]);});
             return new_node;
@@ -239,24 +239,24 @@ inline typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val
     slot_size = this->train(keys, n, model);
     if (slot_size == 0){
         dense_node_ptr new_node = allocator.allocate_dense_node(true);
-        XL(new_node);
+        new_node->node_lock.writeLock();
         construct_dense_node(new_node, keys, childs, n);
         #ifdef AEX_DEBUG
         opt_stats.allocate_dense_node_cnt++;
         AEX_ASSERT(check_node(new_node));
         #endif
-        XU(new_node);
+        new_node->node_lock.writeUnlock();
         return new_node;
     }
     else{
         hash_node_ptr new_node = allocator.allocate_hash_node(slot_size, this->get_node_id());
-        XL(new_node);
+        new_node->node_lock.writeLock();
         construct_hash_node(new_node, keys, childs, n);
         #ifdef AEX_DEBUG
         opt_stats.allocate_hash_node_cnt++;
         AEX_ASSERT(check_node(new_node));
         #endif
-        XU(new_node);
+        new_node->node_lock.writeUnlock();
         return new_node;
     }
 }

@@ -119,7 +119,6 @@ public:
         //const hash_node_ptr node = reinterpret_cast<hash_node_ptr>(allocate_inner_node());
         node->type = NodeType::HashNode;
         node->node_lock.init();
-        node->meta_lock.init();
         node->slot_size = slot_size;
         node->id = id;
         node->init();

@@ -32,7 +32,7 @@ struct aex_hash_table_block_unit_V{
 //#pragma pack(1)
 template<typename _Key,
         typename traits>
-struct aex_hash_table_block_unit{
+struct alignas(32) aex_hash_table_block_unit{
     typedef aex_default_components<traits> components;
     typedef typename traits::slot_type slot_type;
     typedef typename traits::key_type key_type;
@@ -40,7 +40,6 @@ struct aex_hash_table_block_unit{
     typedef typename components::ID_type ID_type;
     typedef base_node* node_ptr;
     slot_type pos;
-    //node_ptr id;
     ID_type id;
     key_type key;
     node_ptr child;
@@ -151,6 +150,7 @@ struct aex_hash_table_block{
     }
 };
 
+
 template<typename _Key,
         typename traits>
 class aex_hash_table{
@@ -165,7 +165,7 @@ public:
     typedef typename components::node_ptr         node_ptr;
     typedef typename components::hash_node_ptr    hash_node_ptr;
     typedef typename components::HashTableBlock   HashTableBlock;
-    typedef typename HashTableBlock::Unit         Unit;
+    //typedef typename HashTableBlock::Unit         Unit;
     typedef typename components::HashTable        HashTable;
     typedef typename components::MRUnit           MRUnit;
     typedef typename components::ID_type          ID_type;
@@ -271,8 +271,12 @@ public:
         this->table_ = nullptr;
     }
 
+    inline unsigned long long get_hash_key(const ID_type id, const slot_type pos, const slot_type _slot_size) const {
+        return (reinterpret_cast<unsigned long long>(id) * traits::K1 + static_cast<unsigned long long>(pos) * traits::K2) % _slot_size;
+    }
+
     inline unsigned long long get_hash_key(const ID_type id, const slot_type pos) const {
-        return (reinterpret_cast<unsigned long long>(id) * traits::K1 + static_cast<unsigned long long>(pos) * traits::K2) % real_slot_size;
+        return (reinterpret_cast<unsigned long long>(id) * traits::K1 + static_cast<unsigned long long>(pos) * traits::K2) % slot_size;
     }
 
     inline void clear(){
@@ -300,7 +304,8 @@ public:
         for (slot_type i = 0; i < this->slot_size; ++i){
             for (HashTableBlock* b = table_ + i; b != nullptr; b = b->next){
                 for (int j = 0; j < b->size; ++j){
-                    hash_type new_hash_key = (reinterpret_cast<unsigned long long>(b->unit_array[j].id) * traits::K1 + static_cast<unsigned long long>(b->unit_array[j].pos) * traits::K2) % new_real_slot_size;
+                    //hash_type new_hash_key = (reinterpret_cast<unsigned long long>(b->unit_array[j].id) * traits::K1 + static_cast<unsigned long long>(b->unit_array[j].pos) * traits::K2) % new_real_slot_size;
+                    hash_type new_hash_key = get_hash_key(b->unit_array[j].id, b->unit_array[j].pos, _slot_size);
                     new_hash_table[new_hash_key].insert(b->unit_array[j].id, b->unit_array[j].pos, b->unit_array[j].key, b->unit_array[j].child);
                     //hash_type new_hash_key = (reinterpret_cast<unsigned long long>(b->id[j]) * traits::K1 + static_cast<unsigned long long>(b->pos[j]) * traits::K2) % new_real_slot_size;
                     //new_hash_table[new_hash_key].insert(b->id[j], b->pos[j], b->unit_array_V[j].key, b->unit_array_V[j].child);
@@ -336,6 +341,7 @@ public:
      */
     inline std::pair<key_type, node_ptr> find(const hash_node_ptr node, const slot_type pos) const {
         const hash_type hash_key = get_hash_key(node->id, pos);
+        __builtin_prefetch((char*)(table_ + hash_key) + 64);
         return table_[hash_key].find(node->id, pos);
     }
 

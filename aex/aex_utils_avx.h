@@ -210,7 +210,7 @@ inline int cmp_eq_epi64x16(const double* x, const double y){
 
 template<typename _Tp1, typename _Tp2>
 inline int cmp_eq_epi64x16x2(const _Tp1* x, const _Tp1 tx, const _Tp2* y, const _Tp2 ty){
-    __m512i q = _mm512_set1_epi64(reinterpret_cast<long long>(tx));
+    __m512i q = _mm512_set1_epi64(reinterpret_cast<unsigned long long>(tx));
     __m512i k1 = _mm512_loadu_si512((__m512i*)x);
     __m512i k2 = _mm512_loadu_si512((__m512i*)(x + 8));
     __mmask8 r1 = _mm512_cmpeq_epi64_mask(q, k1);
@@ -227,6 +227,24 @@ inline int cmp_eq_epi64x16x2(const _Tp1* x, const _Tp1 tx, const _Tp2* y, const 
     return __builtin_ctz(mask_1);
 }
 
+template<typename _Tp1, typename _Tp2>
+inline int cmp_eq_epi64x8x2(const _Tp1* x, const _Tp1 tx, const _Tp2* y, const _Tp2 ty){
+    __m512i q = _mm512_set1_epi64(reinterpret_cast<unsigned long long>(tx));
+    __m512i k1 = _mm512_loadu_si512((__m512i*)x);
+    __m512i k2 = _mm512_loadu_si512((__m512i*)(x + 8));
+    __mmask8 r1 = _mm512_cmpeq_epi64_mask(q, k1);
+    __mmask8 r2 = _mm512_cmpeq_epi64_mask(q, k2);
+    //int mask = (_mm512_movemask_epi8(r1) << 8) | ();
+    int mask_1 = ((unsigned int)(r2) << 8) | (unsigned int)r1;
+    q = _mm512_set1_epi64(ty);
+    k1 = _mm512_loadu_si512((__m512i*)y);
+    k2 = _mm512_loadu_si512((__m512i*)(y + 8));
+    r1 = _mm512_cmpeq_epi64_mask(q, k1);
+    r2 = _mm512_cmpeq_epi64_mask(q, k2);
+    int mask_2 = ((unsigned int)(r2) << 8) | (unsigned int)r1;
+    mask_1 &= mask_2;
+    return __builtin_ctz(mask_1);
+}
 
 template<typename _Tp>
 inline _Tp* linear_search_lower_bound(_Tp* first, _Tp* last, const _Tp& key){

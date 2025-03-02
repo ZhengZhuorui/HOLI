@@ -3,67 +3,116 @@
 template<typename key_type,
         typename value_type,
         typename traits=aex_default_traits<key_type, value_type, false, void, true>>
-bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long n, long long read_nums, long long write_nums, long long erase_nums){
-    
+struct OperationUnit{
+    OperationType type;
+    key_type key;
+    value_type value;
+};
+
+template<typename key_type,
+        typename value_type,
+        typename traits=aex_default_traits<key_type, value_type, false, void, true>>
+bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long n, long long thread_num, long long read_nums, long long write_nums, long long erase_nums){
+    // TODO: need to finish erase
+    AEX_ASSERT(erase_nums == 0);
+    typedef OperationUnit<key_type, value_type, traits> Unit;
     AEX_HINT("[test index concurrency with all interface]");
     typedef aex_tree<key_type, value_type, traits> tree;
     [[maybe_unused]]typedef typename tree::node_ptr node_ptr;
     aex_tree<key_type, value_type, traits> index;
     long long init_nums = n - write_nums, tot_nums = read_nums + write_nums + erase_nums;
-    std::vector<std::pair<key_type, value_type>> init_data(init_nums), index_data(init_nums);
-    std::vector<bool> is_delete(n);
-    std::vector<std::pair<key_type, value_type>> insert_data(write_nums);
+    std::vector<std::pair<key_type, value_type>> init_data(init_nums);
     std::random_shuffle(data, data + n);
     std::copy(data, data + init_nums, init_data.data());
-    std::copy(data, data + init_nums, index_data.data());
-    std::copy(data + init_nums, data + n, insert_data.data());
     std::sort(init_data.data(), init_data.data() + init_nums);
     index.bulk_load(init_data.data(), init_nums);
     AEX_PRINT("bulk_load finish...");
-    std::vector<OperationType> opt(read_nums + write_nums + erase_nums);
+    std::vector<Unit> opt(read_nums + write_nums + erase_nums);
+    for (int i = 0; i < read_nums; ++i){
+        size_t pos = rand() % init_data.size();
+        opt[i].type = OperationType::Lookup;
+        opt[i].key = init_data[pos].first;
+        opt[i].value = init_data[pos].second;
+
+    }
+    for (int i = read_nums; i < read_nums + write_nums; ++i){
+        opt[i].type = OperationType::Insert;
+        opt[i].key = data[init_nums + i].first;
+        opt[i].value = data[init_nums + i].second;
+    }
+    //for (int i = read_nums + write_nums; i < tot_nums; ++i){
+    //    size_t pos = rand() % index_data.size();
+    //    while (is_delete[pos] == true) 
+    //        pos = rand() % index_data.size();
+    //}
     std::fill(opt.data(), opt.data() + read_nums, OperationType::Lookup);
     std::fill(opt.data() + read_nums, opt.data() + read_nums + write_nums, OperationType::Insert);
     std::fill(opt.data() + read_nums + write_nums, opt.data() + tot_nums, OperationType::Erase);
     std::random_shuffle(opt.data(), opt.data() + tot_nums);
     size_t insert_cnt = 0;
+    ThreadParam *params = new ThreadParam[thread_num];
     AEX_PRINT("prepare finish...");
-    ThreadPool tp(std::thread::hardware_concurrency());
-    for (long long i = 0; i < tot_nums; ++i){
-        switch (opt[i]){
+
+    #pragma omp parallel num_threads(thread_num)
+    {
+        auto thread_id = omp_get_thread_num();
+        ThreadParam &thread_param = params[thread_id];
+        #pragma omp barrier
+        #pragma omp master
+        #pragma omp for schedule(dynamic, 10000)
+        for (long long i = 0; i < tot_nums; ++i){
+            switch (opt[i].type){
             case OperationType::Lookup:{
-                size_t pos = rand() % index_data.size();
-                std::function<void()> t = std::bind(test_lookup_con_unit<key_type, value_type>, index, index_data[pos], i);
-                //std::function<void()> t = std::bind(test_lookup_con_unit<key_type, value_type>, index, index_data[pos], i);
-                tp.enqueue(t);
+                value_type _val;
+                thread_param.success_read += index.find(opt[i].key, _val);
+                AEX_ASSERT(_val == opt[i].value);
                 break;
             }
             case OperationType::Insert:{
-                index_data.emplace_back(insert_data[insert_cnt]);
-                //std::thread t2(test_insert_con_unit, index, insert_data[insert_cnt]);
-                std::function<void()> t = std::bind(test_insert_con_unit<key_type, value_type>, index, insert_data[insert_cnt], i);
-                tp.enqueue(t);
-                insert_cnt++;
+                thread_param.success_insert += index.insert(opt[i].key, opt[i].value);
                 break;
             }
-            case OperationType::Erase:{                
-                //AEX_PRINT("i=" << i << ", Erase:");
-                size_t pos = rand() % index_data.size();
-                while (is_delete[pos] == true) 
-                    pos = rand() % index_data.size();
-                std::function<void()> t = std::bind(test_erase_con_unit<key_type, value_type>, index, index_data[pos].first, i);
-                tp.enqueue(t);
-                is_delete[pos] = true;
+            default:
+                break;
+            }
+        }
+    }
+
+    for (long long i = 0; i < tot_nums; ++i){
+        switch (opt[i].type){
+            case OperationType::Lookup:{
+                value_type _val;
+                bool _ = index.find(opt[i].key, _val);
+                AEX_ASSERT(_val == opt[i].value);
+                break;
+            }
+            case OperationType::Insert:{
+                value_type _val;
+                bool _ = index.find(opt[i].key, _val);
+                AEX_ASSERT(_ == true);
+                AEX_ASSERT(_val == opt[i].value);
                 break;
             }
             default:
                 break;
         }
-        //tp.synchronize();
-        if (static_cast<long long>(index.size()) != n - erase_nums){
-            AEX_ERROR("CONCURRENCY ERROR!");
-            return false;
-        }
     }
+    
+        
 
+    index.print_stats();
+    ThreadParam tot;
+    for (int i = 0; i < thread_num; ++i){
+        tot.success_read += params[i].success_read;
+        tot.success_insert += params[i].success_insert;
+    }
+    if (tot.success_read != read_nums){
+        AEX_ERROR("test failed. success_read=" << tot.success_read);
+        return false;
+    }
+    if (tot.success_insert != write_nums){
+        AEX_ERROR("test failed. success_insert=" << tot.success_insert);
+        return false;
+    }
     return true;
 }

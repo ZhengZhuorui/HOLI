@@ -455,10 +455,16 @@ inline bool is_prime(LL x){
     return true;
 }
 
+inline double utils_get_hash_key_d(ULL x){
+    double A = 0.6180339887;
+    double product = x * A;
+    return product - static_cast<ULL>(product);
+}
+
 inline ULL utils_get_hash_key(ULL x, ULL M){
     double A = 0.6180339887;
     double product = x * A;
-    double fractional = product - static_cast<int>(product);
+    double fractional = product - static_cast<ULL>(product);
     return static_cast<ULL>(M * fractional);
 }
 
@@ -488,6 +494,7 @@ struct operation_stats{
     ULL cast_to_dense_node_cnt, dense_node_expand_cnt, dense_node_expand_size, dense_node_narrow_cnt, dense_node_narrow_size;
     ULL inner_node_rebuild_cnt, inner_node_rebuild_size;
     ULL inner_node_split_cnt, inner_node_split_size, dense_node_split_cnt; 
+    ULL get_childs_con_cnt, lock_array_con_cnt, construct_SMO_con_cnt;
     //ULL hash_node_construct_cnt, hash_node_construct_size, dense_node_construct_cnt, dense_node_construct_size;
     ULL data_node_split_cnt, data_node_merge_cnt;
     ULL model_train_cnt, model_train_size;
@@ -495,17 +502,18 @@ struct operation_stats{
     ULL free_data_node_cnt, free_dense_node_cnt, free_hash_node_cnt;
     void print_stats() const {
         AEX_SUCCESS("[Operation Stats]: ");
-        AEX_IMPORTANT("cast_to_hash_node_cnt="    << cast_to_hash_node_cnt    << ", cast_to_dense_node_cnt="    << cast_to_dense_node_cnt);
-        AEX_IMPORTANT("hash_node_expand_cnt="     << hash_node_expand_cnt     << ", hash_node_expand_size="     << hash_node_expand_size);
-        AEX_IMPORTANT("hash_node_narrow_cnt="     << hash_node_narrow_cnt     << ", hash_node_narrow_size="     << hash_node_narrow_size);
-        AEX_IMPORTANT("dense_node_expand_cnt="    << dense_node_expand_cnt    << ", dense_node_expand_size="    << dense_node_expand_size);
-        AEX_IMPORTANT("dense_node_narrow_cnt="    << dense_node_narrow_cnt    << ", dense_node_narrow_size="    << dense_node_narrow_size);
-        AEX_IMPORTANT("inner_node_rebuild_cnt="   << inner_node_rebuild_cnt   << ", inner_node_rebuild_size="   << inner_node_rebuild_size);
-        AEX_IMPORTANT("inner_node_spilt_cnt="     << inner_node_split_cnt     << ", inner_node_split_size="     << inner_node_split_size << ", dense_node_split_cnt" << dense_node_split_cnt);
-        AEX_IMPORTANT("data_node_split_cnt="      << data_node_split_cnt      << ", data_node_merge_cnt="       << data_node_merge_cnt);
-        AEX_IMPORTANT("model_train_cnt="          << model_train_cnt          << ", model_train_size="          << model_train_size);
-        AEX_IMPORTANT("allocate_data_node_cnt="   << allocate_data_node_cnt   << ", allocate_dense_node_cnt="   << allocate_dense_node_cnt << ", allocate_hash_node_cnt=" << allocate_hash_node_cnt);
-        AEX_IMPORTANT("free_data_node_cnt="       << free_data_node_cnt       << ", free_dense_node_cnt="       << free_dense_node_cnt  << ", free_hash_node_cnt=" << free_hash_node_cnt);
+        AEX_IMPORTANT("cast_to_hash_node_cnt="    << cast_to_hash_node_cnt  << ", cast_to_dense_node_cnt="    << cast_to_dense_node_cnt);
+        AEX_IMPORTANT("hash_node_expand_cnt="     << hash_node_expand_cnt   << ", hash_node_expand_size="     << hash_node_expand_size);
+        AEX_IMPORTANT("hash_node_narrow_cnt="     << hash_node_narrow_cnt   << ", hash_node_narrow_size="     << hash_node_narrow_size);
+        AEX_IMPORTANT("dense_node_expand_cnt="    << dense_node_expand_cnt  << ", dense_node_expand_size="    << dense_node_expand_size);
+        AEX_IMPORTANT("dense_node_narrow_cnt="    << dense_node_narrow_cnt  << ", dense_node_narrow_size="    << dense_node_narrow_size);
+        AEX_IMPORTANT("inner_node_rebuild_cnt="   << inner_node_rebuild_cnt << ", inner_node_rebuild_size="   << inner_node_rebuild_size);
+        AEX_IMPORTANT("inner_node_spilt_cnt="     << inner_node_split_cnt   << ", inner_node_split_size="     << inner_node_split_size << ", dense_node_split_cnt=" << dense_node_split_cnt);
+        AEX_IMPORTANT("get_childs_con_cnt="       << get_childs_con_cnt     <<  ", lock_array_con_cnt="       << lock_array_con_cnt << ", construct_SMO_con_cnt=" << construct_SMO_con_cnt);
+        AEX_IMPORTANT("data_node_split_cnt="      << data_node_split_cnt    << ", data_node_merge_cnt="       << data_node_merge_cnt);
+        AEX_IMPORTANT("model_train_cnt="          << model_train_cnt        << ", model_train_size="          << model_train_size);
+        AEX_IMPORTANT("allocate_data_node_cnt="   << allocate_data_node_cnt << ", allocate_dense_node_cnt="   << allocate_dense_node_cnt << ", allocate_hash_node_cnt=" << allocate_hash_node_cnt);
+        AEX_IMPORTANT("free_data_node_cnt="       << free_data_node_cnt     << ", free_dense_node_cnt="       << free_dense_node_cnt  << ", free_hash_node_cnt=" << free_hash_node_cnt);
     }
 };
 struct concurrency_stats{
