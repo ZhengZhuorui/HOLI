@@ -49,9 +49,9 @@ insert_start:
         }
         else{
             child = find_insert(d_n(node), key, pos); 
-            node->node_lock.checkOrRestart(node_version, need_restart);
-            if (need_restart) goto insert_start;
         }
+        node->node_lock.checkOrRestart(node_version, need_restart);
+        if (need_restart) goto insert_start;
         child_version = child->node_lock.readLockOrRestart(need_restart);//SL(child); | node S, child S
         if (need_restart) goto insert_start;
         
@@ -114,20 +114,19 @@ insert_start:
                         top_node = nullptr;
                 }
                 AEX_ASSERT(need_restart == false);
+                data_node_ptr new_node;
                 if (node->type == NodeType::HashNode){
                     split_pos = node_copy.predict(split_key);
-
                     child->node_lock.upgradeToWriteLockOrRestart(child_version, need_restart); // UL(child) | node S, child X
                     if (need_restart) goto insert_start;
-                    data_node_ptr new_node = nullptr;
-
+                    AEX_SGL_ASSERT(node_copy.lock_array[pos2slot(split_pos)].is_lock() == false);
                     if (!node_copy.lock_array[pos2slot(split_pos)].try_lock()) { XU(child); goto insert_start; } // XL(S, split_pos) | node S, node[split_pos] X, child X,
-
                     if (split_pos < node_copy.slot_size && !node_copy.is_occupied(split_pos)){
                         new_node = new_and_split(l_n(child)); // node S, node[split_pos] X, child X, new_node X
                         insert_no_collision(&node_copy, split_pos, split_key, new_node);
                         if (h_n(node)->tail_node == child) 
                             h_n(node)->tail_node = new_node;
+                        h_n(node)->add_size();
                     }
                     else{
                         AEX_ASSERT(top_flag == false); // node S, node[split_pos] X, child X
@@ -135,7 +134,8 @@ insert_start:
                         pos = node_copy.prev_item(pos);
                         new_node = new_and_split(l_n(child)); // node S, node[split_pos] X, child X, new_node X
                         new_tail_node = insert_collision(&node_copy, pos, split_key, new_node); 
-                        if (h_n(node)->tail_node == node)
+                        AEX_SGL_ASSERT(!new_tail_node->node_lock.isLocked());
+                        if (h_n(node)->tail_node == child)
                             h_n(node)->tail_node = new_tail_node;
                     }
                     node_copy.lock_array[pos2slot(split_pos)].unlock(); // node S, child X, new_node X
@@ -152,7 +152,7 @@ insert_start:
                     if (need_restart) goto insert_start;
                     child->node_lock.upgradeToWriteLockOrRestart(child_version, need_restart); // UL(child) | node X, child X
                     if (need_restart) { XU(node); goto insert_start; }
-                    data_node_ptr new_node = new_and_split(l_n(child)); // node X, child X, new_node X
+                    new_node = new_and_split(l_n(child)); // node X, child X, new_node X
                     insert(d_n(node), split_key, new_node);
                     if (key < new_node->key[0])
                         l_n(child)->insert(key, value);
@@ -160,6 +160,9 @@ insert_start:
                         new_node->insert(key, value);
                     XU(child); XU(new_node); XU(node); // #
                 }
+                AEX_SGL_ASSERT(check_unlock(child));
+                AEX_SGL_ASSERT(check_unlock(new_node));
+                AEX_SGL_ASSERT(check_unlock(node));
             }
             else{
                 child->node_lock.upgradeToWriteLockOrRestart(child_version, need_restart); // UL(child) | node S, child X
@@ -169,7 +172,7 @@ insert_start:
             }
             return true;
         }
-        
+
         if (isfull(i_n(child))){
             if (child->type == NodeType::HashNode){
                 TUL(h_n(child), child_version, need_restart);  // UL(child) | node S, child X
@@ -209,7 +212,8 @@ insert_start:
                             top_node = nullptr;
                     }
                     AEX_ASSERT(need_restart == false);
-                    if (node->type == NodeType::HashNode){
+                    dense_node_ptr new_node;
+                    if (node->type == NodeType::HashNode){ // node S, child S
                         if (!top_flag){
                             node->node_lock.checkOrRestart(node_version, need_restart); // check_lock_shared(node)
                             if (need_restart) goto insert_start;
@@ -217,14 +221,13 @@ insert_start:
                         }
                         child->node_lock.upgradeToWriteLockOrRestart(child_version, need_restart); // UL(child) | node S, child X
                         if (need_restart) goto insert_start;
-                        dense_node_ptr new_node;
                         if (!node_copy.lock_array[pos2slot(split_pos)].try_lock()){ XU(child); goto insert_start; } // XL(node[split_pos]) | node S, node[split_pos] X, child X
                         if (split_pos < node_copy.slot_size && !node_copy.is_occupied(split_pos)){ // node S, node[split_pos] X, child X
                             new_node = new_and_split(d_n(child)); // node S, node[split_pos] X, child X, new_node X
                             insert_no_collision(&node_copy, split_pos, split_key, new_node);
                             if (h_n(node)->tail_node == child)
-                                h_n(node)->tail_node = new_tail_node;
-                            new_tail_node = new_node;
+                                h_n(node)->tail_node = new_node;
+                            h_n(node)->add_size();
                         }// node S, node[split_pos] X, child X, new_node X
                         else { // node S, node[split_pos] X, child X
                             //AEX_ASSERT(top_flag == false);
@@ -232,12 +235,13 @@ insert_start:
                             pos = node_copy.prev_item(pos);
                             new_node = new_and_split(d_n(child)); // node S, child X, new_node X
                             new_tail_node = insert_collision(&node_copy, pos, split_key, new_node);
+                            AEX_SGL_ASSERT(!new_tail_node->node_lock.isLocked());
                             if (h_n(node)->tail_node == child)
                                 h_n(node)->tail_node = new_tail_node;
                             if (!flag) top_node = nullptr;
                         } // node S, node[split_pos] X, child X, new_node X
                         node_copy.lock_array[pos2slot(split_pos)].unlock(); // node S, child X, new_node X
-                      
+                        
                         AEX_ASSERT(new_node->key_ptr[0] == split_key);
                         if (flag){
                             XU(child); // node S, new_node X
@@ -255,7 +259,7 @@ insert_start:
                         if (need_restart) goto insert_start; // node X
                         child->node_lock.upgradeToWriteLockOrRestart(child_version, need_restart); // UL(child)
                         if (need_restart) { XU(node); goto insert_start;} // node X, child X
-                        dense_node_ptr new_node = new_and_split(d_n(child)); // node X, child X, new_node X
+                        new_node = new_and_split(d_n(child)); // node X, child X, new_node X
                         insert(d_n(node), split_key, new_node);
                         AEX_ASSERT(new_node->key_ptr[0] == split_key);
                         XU(node); // child X, new_node X
@@ -271,6 +275,9 @@ insert_start:
                         }
                     }
                     AEX_ASSERT(d_n(child)->key_ptr[0] <= key);
+                    AEX_SGL_ASSERT(check_unlock(child));
+                    AEX_SGL_ASSERT(check_unlock(new_node));
+                    AEX_SGL_ASSERT(check_unlock(node));
                 }
             }
         }

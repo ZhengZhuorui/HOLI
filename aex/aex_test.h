@@ -2,14 +2,14 @@
 namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
-inline bool aex_tree<_Key, _Val, traits>::check_lock(node_ptr node) const {
+inline bool aex_tree<_Key, _Val, traits>::check_lock(const node_ptr node) const {
     if constexpr (traits::AllowConcurrency)
         return node->node_lock.isLocked();
     else
         return true;
 }
 template<typename _Key, typename _Val, typename traits>
-inline bool aex_tree<_Key, _Val, traits>::check_unlock(node_ptr node) const {
+inline bool aex_tree<_Key, _Val, traits>::check_unlock(const node_ptr node) const {
     if constexpr (traits::AllowConcurrency)
         return !node->node_lock.isLocked();
     else

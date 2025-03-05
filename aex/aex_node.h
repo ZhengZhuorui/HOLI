@@ -44,7 +44,6 @@ public:
     // size: the number of child nodes(inner node); the number of data(data node)
     NodeType               type;
     RWLock                 node_lock;
-    //RWLock                 meta_lock;
     size_type              size;
 };
 

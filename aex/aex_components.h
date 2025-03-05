@@ -165,7 +165,7 @@ struct aex_default_components{
     //typedef typename boost::lockfree::queue<std::function<void()>> LockFreeQueue;
     //typedef typename boost::lockfree::queue<ConcurrencyParams*> LockFreeQueue;
     typedef typename boost::lockfree::queue<ConcurrencyParams*, boost::lockfree::capacity<1024> > LockFreeQueue;
-    //typedef _LockArrayParams<traits> LockArrayParams;
+    typedef _LockArrayParams<traits> LockArrayParams;
     typedef _GetChildsParams<traits> GetChildsParams;
     typedef _ConstructSMOParams<traits> ConstructSMOParams;
     typedef _HashTableRescaleParams<traits> HashTableRescaleParams;

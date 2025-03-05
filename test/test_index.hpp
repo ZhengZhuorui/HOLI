@@ -1,5 +1,6 @@
 #pragma once
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 template<typename K, typename V, typename traits>
 bool test_index(std::pair<K, V>* data, size_t n){
     aex::aex_tree<K , V, traits> mp;
@@ -11,9 +12,9 @@ bool test_index(std::pair<K, V>* data, size_t n){
     
     // find
     int M = std::min(n, (size_t)100);
+    V y;
     for (int i = 0; i < M; ++i){
         size_t x = rand() % n;
-        V y;
         bool res = mp.find(data[x].first, y);
         if (res || y != data[x].second){
             printf("Error!");
@@ -450,9 +451,10 @@ bool test_index_insert_perf(std::pair<key_type, value_type>* data, long long n, 
     double delta = 0;
     for (int T = 0; T < ITER; ++T){
         index = index_bak;
-        //aex_tree<key_type, value_type, traits>::debug_level |= 1;
         t1 = std::chrono::high_resolution_clock::now();
         for (long long i = 0; i < batch; ++i){
+            if (i % 1000000 == 0)
+                AEX_PRINT("i=" << i << ", key=" << insert_data[i].first);
             index.insert(insert_data[i]);
         }
         t2 = std::chrono::high_resolution_clock::now();
@@ -706,3 +708,4 @@ bool test_index_range_query_perf(std::pair<key_type, value_type>* data, long lon
     return true;
 }
 
+#pragma GCC diagnostic pop

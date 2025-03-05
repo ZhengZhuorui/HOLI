@@ -69,16 +69,9 @@ inline aex_tree<_Key, _Val, traits>::~aex_tree(){
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::_clear(){
     AEX_HINT("_clear");
-    if (this->root != nullptr){
+    if (this->root != nullptr)
         this->deconstruct(this->root);
-    }
     this->_size = 0;
-    //if constexpr (traits::AllowConcurrency){
-    //    delete this->ebr;
-    //    this->ebr = new EpochBasedMemoryReclamationStrategy(this);
-    //    this->hash_table.ebr = this->ebr;
-    //}
-    //this->hash_table.clear();
     this->opt_stats = operation_stats();
     this->root = nullptr;
     this->head_leaf = nullptr;
@@ -180,6 +173,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
             }
             AEX_ASSERT(new_child != nullptr);
             __construct_insert(new_node, pos, h_n(node)->slot_size, key, new_child);
+            new_node->tail_node = new_child;
             new_node->node_lock.writeUnlock();
             AEX_ASSERT(node->size == new_node->size);
             AEX_DEBUG_BLOCK({for (slot_type i = 0; i < h_n(node)->slot_size / 64 + 1; ++i) AEX_ASSERT(new_node->bitmap_ptr[i] == h_n(node)->bitmap_ptr[i]);});
@@ -323,16 +317,11 @@ inline void aex_tree<_Key, _Val, traits>::construct_hash_node(hash_node_ptr node
     AEX_ASSERT(n > 1);
     node->model.train(keys, n, node->slot_size);
     slot_type prev_pos = node->predict(keys[0]), pos = 0;
-    //AEX_PRINT("n=" << n);
-    //AEX_PRINT(keys[0]);
-    //AEX_PRINT("prev_pos=" << prev_pos << ", model predict=" << node->model.predict(keys[0]));
     ULL start = 0;
     node_ptr new_node;
     for (ULL i = 1; i < n; ++i){
         pos = node->predict(keys[i]);
         if (pos != prev_pos){
-            //AEX_PRINT("i=" << i << ", pos=" << pos << ", prev_pos=" << prev_pos << ", size=" << i - start << ", keys[start]=" << keys[start]);
-            //AEX_DEBUG_BLOCK({if (prev_pos == 113847) {AEX_ERROR("i=" << i << ", pos=" << pos << ", prev_pos=" << prev_pos << ", size=" << i - start << ", keys[start]=" << keys[start]);exit(0);}});
             if (i - start > 1){
                 new_node = this->construct(keys + start, childs + start, i - start);
                 __construct_insert(node, prev_pos, pos, keys[start], new_node);
@@ -343,7 +332,6 @@ inline void aex_tree<_Key, _Val, traits>::construct_hash_node(hash_node_ptr node
             prev_pos = pos;
         }
     }
-    //AEX_PRINT("pos=" << pos << ", prev_pos=" << prev_pos << ", size=" << n - start << ", keys[start]=" << keys[start]);
     if (n - start > 1){
         new_node = construct(keys + start, childs + start, n - start);
         __construct_insert(node, pos, node->slot_size, keys[start], new_node);
@@ -352,9 +340,6 @@ inline void aex_tree<_Key, _Val, traits>::construct_hash_node(hash_node_ptr node
         __construct_insert(node, pos, node->slot_size, keys[start], childs[start]);
     node->tail_node = tail_node(node);
     AEX_ASSERT(node->size >= traits::MIN_HASH_NODE_CNT);
-    //if constexpr(traits::AllowConcurrency)
-    //    AEX_PRINT("node=" << node << "node->lock_array[0]=" << node->lock_array[0].lockCount.load());
-    _mm_mfence();
 }
 
 

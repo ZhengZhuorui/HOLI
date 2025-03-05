@@ -13,7 +13,7 @@ if (NOT CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 set(CMAKE_CXX_FLAGS "-Wall -fopenmp -ffast-math -fmax-errors=3 -march=native -mfma -msse -mavx2 -mavx512bw -mavx512vl -mavx512f -mavx512cd -mavx512dq -lpthread")
-set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-O3 -g -DDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 #set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} "/home/zzr/lib/lib")

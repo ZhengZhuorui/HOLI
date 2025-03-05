@@ -179,7 +179,7 @@ struct aex_default_traits{
 
     static constexpr int MEMORY_POOL = 1024;
 
-    static constexpr int THREAD_UNIT_SIZE = 10000;
+    static constexpr int THREAD_UNIT_SIZE = 8192;
 
     // ========== old version ==========
     static constexpr slot_type MIN_INNER_NODE_SLOT_SIZE = AEX_MAX(8, 256 / (sizeof(key_type) + sizeof(void*)));

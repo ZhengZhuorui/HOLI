@@ -78,7 +78,7 @@ public:
     typedef typename components::EpochBasedMemoryReclamationStrategy EpochBasedMemoryReclamationStrategy;
     typedef typename components::EpochGuard         EpochGuard;
     //typedef typename components::CP ConcurrencyParams;
-    //typedef typename components::LockArrayParams    LockArrayParams;
+    typedef typename components::LockArrayParams    LockArrayParams;
     typedef typename components::GetChildsParams    GetChildsParams;
     typedef typename components::ConstructSMOParams ConstructSMOParams;
     typedef typename components::HashTableRescaleParams HashTableRescaleParams;
@@ -107,16 +107,6 @@ public:
     typedef typename traits::bitmap_base bitmap_base;
 
     // function:
-
-    //struct aex_stats{
-    //    aex_stats() = default;
-    //    ~aex_stats() = default;
-    //    aex_stats& operator = (aex_stats& stats){
-    //        size = stats.size;
-    //        return *this;
-    //    }
-    //    size_type size;
-    //};
 
     operation_stats& get_opt_stats() const {return const_cast<operation_stats&>(opt_stats);}
     void _get_info_stats(const node_ptr node, const unsigned int depth, info_stats& stats) const ;
@@ -651,9 +641,9 @@ private:
     node_ptr find(const hash_node_ptr  node, const key_type key) const ;
     node_ptr find(const dense_node_ptr node, const key_type key) const ;
 
-    node_ptr find_insert(inner_node_ptr node, const key_type key, slot_type &pos) const ;
-    node_ptr find_insert(hash_node_ptr  node, const key_type key, slot_type &pos) const ;
-    node_ptr find_insert(dense_node_ptr node, const key_type key, slot_type &pos) const ;
+    node_ptr find_insert(const inner_node_ptr node, const key_type key, slot_type &pos) const ;
+    node_ptr find_insert(const hash_node_ptr  node, const key_type key, slot_type &pos) const ;
+    node_ptr find_insert(const dense_node_ptr node, const key_type key, slot_type &pos) const ;
 
     node_ptr find_erase(inner_node_ptr node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
     node_ptr find_erase(hash_node_ptr  node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
@@ -683,10 +673,9 @@ private:
      */
     void construct_tmp_node(dense_node_ptr node, const key_type old_key, const node_ptr old_node, const key_type new_key, const node_ptr new_node);
     void __construct_insert(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type key, const node_ptr child);
+    void __construct_insert_con(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type key, const node_ptr child);
     node_ptr insert_collision(hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
-    void insert_collision_con(hash_node_ptr node, HashTable &table, const slot_type pos, const key_type key, const node_ptr child);
     void insert_no_collision(hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
-    bool insert_no_collision_con(hash_node_ptr node, HashTable &table, const slot_type pos, const key_type key, const node_ptr child);
     void insert(dense_node_ptr node, const key_type key, const node_ptr child);
     void insert_data_node(data_node_ptr node, data_node_ptr new_node, const key_type key, const value_type &value);
     void insert_unlock(inner_node_ptr top_node, inner_node_ptr node) const;
@@ -827,7 +816,6 @@ private:
     }
 
     inline void clear(hash_node_ptr node){
-        AEX_ASSERT(traits::AllowConcurrency == false);
         for (slot_type i = node->prev_item_find(node->slot_size - 1); i >= 0; i = node->prev_item_find(i - 1)){
             this->hash_table.erase(node, i);
             if (i == 0)
@@ -869,28 +857,18 @@ private:
     inline void XL(node_ptr node);
     inline void TUL(hash_node_ptr node, version_type &node_version, bool &need_restart);
     inline void TUL(node_ptr node, version_type &node_version, bool &need_restart);
-    inline void XU(hash_node_ptr node);
     inline void XU(node_ptr node);
 
     inline bool work_concurrency();
 
     inline void yield(int count) const {
-        if (!this->work_queue.empty()){
-            while(const_cast<self*>(this)->work_concurrency());
-        }
-        else
+        //if (!this->work_queue.empty()){
+        //    while(const_cast<self*>(this)->work_concurrency());
+        //}
+        //else
             _yield(count);
     }
 
-
-    //template<typename traits>
-    struct LockArrayParams : ConcurrencyParams{
-        typedef aex_default_components<traits> components;
-        typedef typename traits::slot_type slot_type;
-        typedef typename components::hash_node_ptr hash_node_ptr;
-        hash_node_ptr node;
-        slot_type start, end;
-    };
     inline void lock_array_unit(LockArrayParams *worker);
     inline void lock_array_con(hash_node_ptr node);
     inline void lock_array(hash_node_ptr node);
@@ -898,13 +876,15 @@ private:
     inline void get_childs_unit(GetChildsParams *worker) const;
     inline void get_childs_con(const hash_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf) ;
 
+
+    slot_type split_con(hash_node_ptr node, node_ptr &split_node, const slot_type start_pos, const slot_type end_pos, slot_type &worker_size);
     inline void construct_SMO_unit(ConstructSMOParams *worker);
     inline void construct_SMO_con(hash_node_ptr node, const key_type* keys, node_ptr* childs, const ULL n);
 
 
     // ========== 7. test ==========
-    bool check_lock(node_ptr node) const;
-    bool check_unlock(node_ptr node) const;
+    bool check_lock(const node_ptr node) const;
+    bool check_unlock(const node_ptr node) const;
     bool check_node(node_ptr       node) const ;
     bool check_node(data_node_ptr  node) const ;
     bool check_node(dense_node_ptr node) const ;

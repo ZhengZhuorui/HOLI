@@ -212,20 +212,18 @@ public:
     }
 
     inline void yield(const int count) {
-        //bool flag = false;
-        //while (this->work_concurrency()) flag = true;
-        //if (!flag) _yield(count);
-        //_yield(count);
-        //while (this->work_concurrency());
-        //this->work_concurrency();
-        //ConcurrencyParams *params;
-        if (!this->work_queue.empty()){
+        if (!this->work_queue.empty())
             while (this->work_concurrency());
-            //while(this->work_queue.pop(params)) rescale_unit()
-        }
         else
             _yield(count);
-        
+        //if (count <= 3){
+        //    _mm_pause();
+        //}
+        //else{
+        //    if (!this->work_queue.empty())
+        //        while (this->work_concurrency());
+        //}
+            
     }
 
     inline void check_expand(){
@@ -235,7 +233,7 @@ public:
             //lock.upgradeToWriteLockOrRestart(table_version, need_restart);
             lock.writeLockOrRestart(need_restart);
             if (need_restart){
-                yield(5);
+                yield(0);
                 goto check_expand_start;
             }
             if (this->isfull()) 
@@ -250,6 +248,7 @@ public:
         const slot_type new_slot_size   = worker->new_slot_size;
         HashTableBlock* old_table = worker->old_table;
         const slot_type n = worker->n;
+        worker->size = 0;
         for (int i = 0; i < n; ++i){
             old_table[i].lock.writeLock();
             for (HashTableBlock* b = old_table + i; b != nullptr; b = b->next){                
@@ -275,7 +274,7 @@ public:
         slot_type old_slot_size = this->slot_size;
         HashTableBlock* new_hash_table = new HashTableBlock[_slot_size];
 
-        AEX_WARNING("[hashtable rescale] slot_size=" << this->slot_size << ", _slot_size=" << _slot_size << ", size=" << this->size << ", real_slot_size=" << this->real_slot_size << ", new_real_slot_size=" << new_real_slot_size);
+        AEX_WARNING("[hashtable rescale con] slot_size=" << this->slot_size << ", _slot_size=" << _slot_size << ", size=" << this->size << ", real_slot_size=" << this->real_slot_size << ", new_real_slot_size=" << new_real_slot_size);
         this->size = 0;
 
         const slot_type unit_size = traits::THREAD_UNIT_SIZE / traits::HASH_TABLE_BLOCK_SIZE * 2;
@@ -297,10 +296,10 @@ public:
         }
 
         while (this->work_concurrency());
+        this->size = 0;
         for (int i = 0; i < worker_num; ++i){
             while (worker[i].finish_flag == false) {
-                while (this->work_concurrency());
-                _mm_pause(); 
+                this->work_concurrency();
             }//join
             this->size += worker[i].size;
         }
@@ -315,6 +314,7 @@ public:
         this->real_slot_size = new_real_slot_size;
         this->table_ = new_hash_table;
         this->ebr->scheduleForDeletion(MRUnit(MemoryReclaimType::HashTable, hash_table_copy));
+        AEX_WARNING("[hashtable rescale con] finish");
     }
     
     inline void rescale(const slot_type _slot_size){
@@ -350,6 +350,7 @@ public:
         this->real_slot_size = new_real_slot_size;
         this->table_ = new_hash_table;
         this->ebr->scheduleForDeletion(MRUnit(MemoryReclaimType::HashTable, hash_table_copy));
+        AEX_WARNING("rescale finish...");
     }
 
     //inline void narrow(){ rescale(this->slot_size >> 1); }
@@ -375,6 +376,7 @@ insert_start:
         restart_count++;
         bool need_restart = false;
         version_type table_version = this->lock.readLockOrRestart(need_restart);
+        if (need_restart) goto insert_start;
         hash_key = this->get_hash_key(parent->id, pos);
         block = this->table_ + hash_key;
         this->lock.readUnlockOrRestart(table_version, need_restart);
@@ -384,37 +386,36 @@ insert_start:
         block->insert(parent->id, pos, key, child);
         bool add_size_flag = add_size();
         block->lock.writeUnlock();
-        if (add_size_flag)
-            this->check_expand();
+        if (add_size_flag) this->check_expand();
     }
 
     /**
      * @brief return the (node->key[pos], node->child[pos])
      */
     inline std::pair<key_type, node_ptr> find(const hash_node_ptr node, const slot_type pos) const {
-        int restart_count = 0;
-//        hash_type hash_key;
+        //int restart_count = 0;
 find_start:
-        restart_count++;
-        //const_cast<self*>(this)->yield();
-        if (restart_count > 0)
-            const_cast<self*>(this)->yield(restart_count);
+        //if (restart_count > 0)
+        //    const_cast<self*>(this)->yield(restart_count);
+        //restart_count++;
+        //_mm_pause();
         bool need_restart = false;
-        version_type table_version = this->lock.readLockOrRestart(need_restart);
-        const hash_type hash_key = this->get_hash_key(node->id, pos);
-        HashTableBlock* block = this->table_ + hash_key;
-        this->lock.readUnlockOrRestart(table_version, need_restart);
-        if (need_restart) goto find_start;
+        HashTableBlock* block = get_block(node, pos);
+        //version_type table_version = this->lock.readLockOrRestart(need_restart);
+        //if (need_restart) goto find_start;
+        //const hash_type hash_key = this->get_hash_key(node->id, pos);
+        //HashTableBlock* block = this->table_ + hash_key;
+        //this->lock.readUnlockOrRestart(table_version, need_restart);
+        //if (need_restart) goto find_start;
+        
         __builtin_prefetch((char*)(block) + 64);
         version_type block_version = block->lock.readLockOrRestart(need_restart);
-        //auto ret = block->find(node->id, pos);
+        if (need_restart) goto find_start;
         std::pair<key_type, node_ptr> ret = block->find(node->id, pos);
-        //return this->table_[hash_key].find(node->id, pos);
         block->lock.readUnlockOrRestart(block_version, need_restart);
         if (need_restart) goto find_start;
         return ret;
     }
-
 
     /**
      * @brief erase node->child[pos]
@@ -429,6 +430,7 @@ find_start:
         restart_count++;
         bool need_restart = false;
         version_type table_version = this->lock.readLockOrRestart(need_restart);
+        if (need_restart) goto erase_start;
         hash_key = this->get_hash_key(node->id, pos);
         block = this->table_ + hash_key;
         this->lock.readUnlockOrRestart(table_version, need_restart);
@@ -449,6 +451,7 @@ find_start:
         restart_count++;
         bool need_restart = false;
         version_type table_version = this->lock.readLockOrRestart(need_restart);
+        if (need_restart) goto update_start;
         hash_type hash_key = this->get_hash_key(parent->id, pos);
         block = this->table_ + hash_key;
         this->lock.readUnlockOrRestart(table_version, need_restart);
@@ -530,6 +533,39 @@ find_start:
         }
     }
 
+    /*inline HashTableBlock* get_block(const hash_node_ptr node, const slot_type pos) const {
+        bool need_restart = false;
+get_block_start:
+        if (need_restart){
+            if (!work_queue.empty())
+                while (const_cast<self*>(this)->work_concurrency());
+            need_restart = false;
+        }
+        version_type table_version = this->lock.readLockOrRestart(need_restart);
+        if (need_restart) goto get_block_start;
+        const hash_type hash_key = this->get_hash_key(node->id, pos);
+        HashTableBlock* block = this->table_ + hash_key;
+        this->lock.readUnlockOrRestart(table_version, need_restart);
+        if (need_restart) goto get_block_start;
+        return block;
+    }*/
+
+    inline HashTableBlock* get_block(const hash_node_ptr node, const slot_type pos) const {
+get_block_start:
+        bool need_restart = false;
+        version_type& _local_version = this->get_local_version();
+        const hash_type hash_key = this->get_hash_key(node->id, pos);
+        HashTableBlock* block = this->table_ + hash_key;
+        this->lock.readUnlockOrRestart(_local_version, need_restart);
+        if (need_restart){
+            if (!work_queue.empty())
+                while (const_cast<self*>(this)->work_concurrency());
+            _local_version = this->lock.readLockOrRestart(need_restart);
+            goto get_block_start;
+        }
+        return block;
+    }
+
     /*
     inline self& getInstance(version_type& _table_version){
     getInstance_start:
@@ -561,8 +597,23 @@ find_start:
     mutable RWLock lock;
     //Index *index;
     EpochBasedMemoryReclamationStrategy *ebr;
-
     LockFreeQueue work_queue;
+
+
+    //static inline HashTableBlock*& get_local_table(){
+    //    static thread_local HashTableBlock* local_table = nullptr;
+    //    return local_table;
+    //}
+
+    //static inline slot_type& get_local_slot_size(){
+    //    static thread_local slot_type local_slot_size = traits::MIN_HASH_TABLE_SIZE;
+    //    return local_slot_size;
+    //}
+
+    static inline version_type& get_local_version(){
+        static thread_local version_type local_version = 1;
+        return local_version;
+    }
     //std::queue<ConcurrencyParams*> work_queue;
     //static thread_local self _instance;
     //static thread_local HashTableBlock* table_copy_;
@@ -571,5 +622,7 @@ find_start:
     //LockFreeQueue work_queue;
 };
 
+//template<typename _Key, typename traits>
+//thread_local typename aex_hash_table_con<_Key, traits>::version_type aex_hash_table_con<_Key, traits>::local_version = 1;
 
 }

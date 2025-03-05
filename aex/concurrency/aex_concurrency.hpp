@@ -4,15 +4,15 @@ namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::lock_array(hash_node_ptr node){
-    if (node->slot_size >= traits::THREAD_UNIT_SIZE * traits::SLOT_PER_LOCK * 2){
-        #ifdef AEX_DEBUG
-        ++const_cast<self*>(this)->opt_stats.lock_array_con_cnt;
-        #endif
-        lock_array_con(node);
-        AEX_ASSERT(test_lock_array_con(node));
-        return;
-    }
-    slot_type max_slot = node->slot_size;
+    //if (node->slot_size >= traits::THREAD_UNIT_SIZE * traits::SLOT_PER_LOCK * 2){
+    //    #ifdef AEX_DEBUG
+    //    ++const_cast<self*>(this)->opt_stats.lock_array_con_cnt;
+    //    #endif
+    //    lock_array_con(node);
+    //    AEX_ASSERT(test_lock_array_con(node));
+    //    return;
+    //}
+    const slot_type max_slot = node->slot_size / traits::SLOT_PER_LOCK;
     for (slot_type i = 0; i < max_slot; ++i){
         node->lock_array[i].lock();
     }
@@ -40,13 +40,6 @@ inline void aex_tree<_Key, _Val, traits>::TUL(node_ptr node, version_type &node_
     if constexpr (traits::AllowConcurrency){
         if (node->type == NodeType::HashNode) TUL(h_n(node), node_version, need_restart);
         else node->node_lock.upgradeToWriteLockOrRestart(node_version, need_restart);
-    }
-}
-
-template<typename _Key, typename _Val, typename traits>
-inline void aex_tree<_Key, _Val, traits>::XU(hash_node_ptr node){
-    if constexpr (traits::AllowConcurrency){
-        node->node_lock.writeUnlock();
     }
 }
 
@@ -80,6 +73,7 @@ inline bool aex_tree<_Key, _Val, traits>::work_concurrency(){
         switch(params->type){
             case ConcurrencyType::LockArray:{
                 lock_array_unit(static_cast<LockArrayParams*>(params));
+                break;
             }
             case ConcurrencyType::GetChilds :{
                 get_childs_unit(static_cast<GetChildsParams*>(params));
@@ -89,17 +83,12 @@ inline bool aex_tree<_Key, _Val, traits>::work_concurrency(){
                 construct_SMO_unit(static_cast<ConstructSMOParams*>(params));
                 break;
             }
-            //case ConcurrencyType::HashTableRescale :{
-            //    this->hash_table.rescale_unit(static_cast<HashTableRescaleParams*>(params));
-            //    break;
-            //}
             default:{
                 AEX_ASSERT(0 == 1);
             }
         }
-        
     }
-    return false;
+    return flag;
 }
 
 template<typename traits>
@@ -115,33 +104,34 @@ struct alignas(64) _LockArrayParams : ConcurrencyParams{
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::lock_array_unit(LockArrayParams *params){
     const hash_node_ptr node = params->node;
-    for (slot_type i = params->start; i < params->end; ++i)
+    for (slot_type i = params->start; i < params->end; ++i){
         node->lock_array[i].lock();
+    }
     params->finish_flag = true;
 }
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::lock_array_con(const hash_node_ptr node){
+    AEX_PRINT("lock_array_con");
     const slot_type unit_size = traits::THREAD_UNIT_SIZE;
     const slot_type max_slot = node->slot_size / traits::SLOT_PER_LOCK;
-    const size_t worker_num = max_slot / unit_size + (max_slot % unit_size == 0);
-    int cnt = 0;
-    std::vector<GetChildsParams> worker(worker_num + 1);
-    for (int i = 0; i < node->slot_size; i += unit_size, ++cnt){
+    const int worker_num = max_slot / unit_size + (max_slot % unit_size != 0);
+    std::vector<LockArrayParams> worker(worker_num);
+    for (slot_type i = 0, pos = 0; i < worker_num; ++i, pos += unit_size){
         worker[i].node = node;
-        worker[i].start = i;
-        worker[i].end = std::min(i + unit_size, max_slot);
+        worker[i].start = pos;
+        worker[i].end = std::min(pos + unit_size, max_slot);
         bool flag = this->work_queue.bounded_push(static_cast<ConcurrencyParams*>(&worker[i]));
         while (!flag) {
             this->work_concurrency();
             flag = this->work_queue.bounded_push(&worker[i]);
         }
     }
-    while (work_concurrency() == true); 
-    for (size_t i = 0; i < worker_num; ++i){
-        while (worker[i].finish_flag == false)
-            _mm_pause();
+    while (this->work_concurrency()); 
+    for (int i = 0; i < worker_num; ++i){
+        while (worker[i].finish_flag == false) _mm_pause();
     }
+    AEX_PRINT("lock_array_con finish");
 }
 
 template<typename traits>
@@ -161,7 +151,7 @@ struct alignas(64) _GetChildsParams : ConcurrencyParams{
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::get_childs_unit(GetChildsParams *worker) const {
     const hash_node_ptr node = worker->node;
-    for (int i = node->next_item(worker->start); i < worker->end; i = node->next_item(i)){
+    for (int i = node->next_item(worker->start); i < worker->end; i = node->next_item(i + 1)){
         key_type key;
         node_ptr child;
         std::tie(key, child) = this->hash_table.find(node, i);
@@ -173,37 +163,37 @@ inline void aex_tree<_Key, _Val, traits>::get_childs_unit(GetChildsParams *worke
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::get_childs_con(const hash_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf) {
-    //slot_type unit_slot_size = std::max(node->slot_size / this->thread_num, traits::THREAD_UNIT_SIZE * traits::SLOT_PER_LOCK);
+    AEX_WARNING("get_childs_con, node->slot_size=" << node->slot_size);
     slot_type unit_slot_size = traits::THREAD_UNIT_SIZE * traits::SLOT_PER_LOCK;
-    const size_t worker_num = node->slot_size / unit_slot_size + (node->slot_size % unit_slot_size == 0);
-    int cnt = 0;
+    const int worker_num = node->slot_size / unit_slot_size + (node->slot_size % unit_slot_size == 0);
     std::vector<GetChildsParams> worker(worker_num + 1);
-    std::vector<int> pre_sum(worker_num);
-    for (int i = 0; i < node->slot_size; i += unit_slot_size, ++cnt){
-        //std::function<void()> t = std::bind(self::get_childs_unit, this, node, worker_key[i], worker_childs[i], i, std::min(i + unit_slot_size, node->slot_size));
+    std::vector<int> pre_sum(worker_num + 1);
+    for (int i = 0, pos = 0; i < worker_num; ++i, pos += unit_slot_size){
         worker[i].node = node;
-        worker[i].start = i;
-        worker[i].end = std::min(i + unit_slot_size, node->slot_size);
+        worker[i].start = pos;
+        worker[i].end = std::min(pos + unit_slot_size, node->slot_size);
         bool flag = this->work_queue.bounded_push(&worker[i]);
         while (!flag) {
             this->work_concurrency();
             flag = this->work_queue.bounded_push(&worker[i]);
         }
     }
-    while (work_concurrency() == true); 
-    for (size_t i = 0; i < worker_num; ++i){
+    while (this->work_concurrency() == true); 
+    for (int i = 0; i < worker_num; ++i){
         while (worker[i].finish_flag == false) _mm_pause();
     }
     // join
     pre_sum[0] = 0;
-    for (size_t i = 1; i < worker_num; ++i)
-        pre_sum[i] = pre_sum[i - 1] + worker[i].key_buf.size();
-    key_buf.resize(pre_sum[worker_num - 1]);
-    child_buf.resize(pre_sum[worker_num - 1]);
-    for (size_t i = 0; i < worker_num; ++i){
-        std::copy(worker[i].key_buf.data(), worker[i].key_buf.data() + worker[i].key_buf.size(), key_buf.data() + pre_sum[i]);
+    for (int i = 1; i < worker_num + 1; ++i){
+        pre_sum[i] = pre_sum[i - 1] + worker[i - 1].key_buf.size();
+    }
+    key_buf.resize(pre_sum[worker_num]);
+    child_buf.resize(pre_sum[worker_num]);
+    for (int i = 0; i < worker_num; ++i){
+        std::copy(worker[i].key_buf.data(),   worker[i].key_buf.data()   + worker[i].key_buf.size(),   key_buf.data() +   pre_sum[i]);
         std::copy(worker[i].child_buf.data(), worker[i].child_buf.data() + worker[i].child_buf.size(), child_buf.data() + pre_sum[i]);
     }
+    AEX_WARNING("get_childs_con finish");
 }
 
 template<typename traits>
@@ -213,15 +203,112 @@ struct alignas(64) _ConstructSMOParams : public ConcurrencyParams{
     typedef typename components::hash_node_ptr hash_node_ptr;
     typedef typename components::node_ptr node_ptr;
     typedef typename traits::slot_type slot_type;
-    _ConstructSMOParams():ConcurrencyParams(ConcurrencyType::GetChilds){}
+    _ConstructSMOParams():ConcurrencyParams(ConcurrencyType::ConstructSMO){}
     hash_node_ptr node;
     key_type* keys;
     node_ptr* childs;
     ULL n;
-    slot_type start_pos, end_pos;
+    slot_type start_pos, end_pos, size;
     key_type tail_key;
     node_ptr tail_node;
 };
+
+template<typename _Key, typename _Val, typename traits>
+inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, traits>::split_con(hash_node_ptr node, node_ptr &split_node, const slot_type start_pos, const slot_type end_pos, slot_type &worker_size){
+    AEX_ASSERT(node->type == NodeType::HashNode);
+    AEX_ASSERT(node->type != NodeType::LeafNode);
+    AEX_ASSERT(split_node->type != NodeType::LeafNode);
+    AEX_ASSERT(check_lock(node));
+    key_type key;
+    node_ptr child;
+    bool is_deleted = false;
+    std::vector<key_type> key_buf(0);
+    std::vector<node_ptr> child_buf(0);
+    slot_type prev_pos, pos, start = 0, ret = end_pos;
+
+    if (split_node->size == 1){
+        return end_pos;
+    }
+
+    XL(split_node);
+    if constexpr (traits::AllowConcurrency){
+        if (split_node->type == NodeType::HashNode)
+            for (slot_type i = 0; i < h_n(split_node)->slot_size / traits::SLOT_PER_LOCK; ++i)
+                h_n(split_node)->lock_array[i].unlock();
+    }
+
+    if (split_node->type == NodeType::HashNode){
+        std::tie(key, child) = this->hash_table.find(h_n(split_node), h_n(split_node)->prev_item_find(h_n(split_node)->slot_size - 1));
+        if (node->predict(key) == start_pos){
+            XU(h_n(split_node));return end_pos;
+        }
+    }
+    else{
+        if (node->predict(d_n(split_node)->key_ptr[split_node->size - 1]) == start_pos){
+            XU(split_node); return end_pos;
+        }
+    }
+
+    get_childs(i_n(split_node), key_buf, child_buf);
+    #ifdef AEX_DEBUG
+    ++opt_stats.inner_node_split_cnt;
+    opt_stats.inner_node_split_size += key_buf.size();
+    #endif
+    prev_pos = node->predict(key_buf[0]);
+    AEX_ASSERT(prev_pos == start_pos);
+    AEX_ASSERT(prev_pos < end_pos);
+    const ULL size = key_buf.size();
+    for (ULL i = 1; i < size; ++i){
+        pos = node->predict(key_buf[i]);
+        AEX_ASSERT(prev_pos < end_pos);
+        if (pos != prev_pos){
+            if (pos >= end_pos)
+                break;
+            if (start == 0){
+                ret = pos;
+                AEX_ASSERT(prev_pos == start_pos);
+                if (i == 1){
+                    // means all childs insert to the node dependly without the split_node, delete it.
+                    is_deleted = true;
+                    free_node_helper(split_node);
+                    split_node = child_buf[0];
+                }
+                else{
+                    construct(i_n(split_node), key_buf.data(), child_buf.data(), i);
+                }
+            }
+            else{
+                AEX_ASSERT(node->is_occupied(prev_pos) == false);
+                ++worker_size;
+                if (i - start > 1){
+                    const inner_node_ptr new_node = construct(key_buf.data() + start, child_buf.data() + start, i - start);
+                    __construct_insert_con(node, prev_pos, pos, key_buf[start], new_node);
+                }
+                else
+                    __construct_insert_con(node, prev_pos, pos, key_buf[start], child_buf[start]);
+            }
+            start = i;
+            prev_pos = pos;
+        }
+    }
+    if (start == 0)
+        ret = end_pos;
+    else{
+        AEX_ASSERT(prev_pos < end_pos);
+        AEX_ASSERT(node->is_occupied(prev_pos) == false);
+        ++worker_size;
+        if (size - start > 1){
+            const inner_node_ptr new_node = construct(key_buf.data() + start, child_buf.data() + start, size - start);
+            __construct_insert_con(node, prev_pos, end_pos, key_buf[start], new_node);
+        }
+        else
+            __construct_insert_con(node, prev_pos, end_pos, key_buf[start], child_buf[start]);
+    }
+    if (!is_deleted)
+        XU(split_node);
+    AEX_ASSERT(check_unlock(split_node));
+    return ret;
+}
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::construct_SMO_unit(ConstructSMOParams* worker){
@@ -231,22 +318,24 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO_unit(ConstructSMOParams*
     ULL n = worker->n;
     slot_type pos, prev_pos = node->predict(keys[0]), start = 0, next_pos;
     worker->start_pos = prev_pos;
+    worker->size = 0;
     for (ULL i = 0; i < n; ++i){
         pos = node->predict(keys[i]);
         if (prev_pos != pos){
             next_pos = pos;
             if (pos - prev_pos > 1 && childs[i - 1]->type != NodeType::LeafNode){
                 if (childs[i - 1]->size > 1)
-                    next_pos = split(node, childs[i - 1], prev_pos, pos);
+                    next_pos = split_con(node, childs[i - 1], prev_pos, pos, worker->size);
             }
             AEX_ASSERT(prev_pos < next_pos);
             AEX_ASSERT(node->is_occupied(prev_pos) == false);
             if (i - start > 1){
                 const inner_node_ptr new_node = construct(keys + start, childs + start, i - start);
-                __construct_insert(node, prev_pos, next_pos, keys[start], new_node);
+                __construct_insert_con(node, prev_pos, next_pos, keys[start], new_node);
             }
             else
-                __construct_insert(node, prev_pos, next_pos, keys[start], childs[start]);
+                __construct_insert_con(node, prev_pos, next_pos, keys[start], childs[start]);
+            ++worker->size;
             prev_pos = pos;
             start = i;
         }
@@ -255,6 +344,7 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO_unit(ConstructSMOParams*
     AEX_ASSERT(node->is_occupied(pos) == false);
     worker->end_pos = pos;
     worker->tail_key = keys[start];
+    ++worker->size;
     if (n - start > 1){
         const inner_node_ptr new_node = construct(keys + start, childs + start, n - start);
         worker->tail_node = new_node;
@@ -267,53 +357,62 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO_unit(ConstructSMOParams*
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::construct_SMO_con(hash_node_ptr node, const key_type* keys, node_ptr* childs, const ULL n){
-    slot_type unit_size = std::min(n / this->thread_num, traits::THREAD_UNIT_SIZE);
-    ULL worker_num = n / unit_size + (node->slot_size % unit_size != 0);
-    int cnt = 0;
+    const slot_type unit_size = traits::THREAD_UNIT_SIZE;
+    int worker_num = n / unit_size + (n % unit_size != 0);
     std::vector<slot_type> block_start(worker_num + 1);
     std::vector<ConstructSMOParams> worker(worker_num + 1);
-    worker[worker_num].start_pos = node->slot_size;
+    AEX_PRINT("construct_SMO_con, n=" << n << ", worker_num=" << worker_num << ", node->slot_size=" << node->slot_size);
+    AEX_ASSERT(node->predict(keys[0]) == 0);
 
     for (slot_type pos = 0, i = 0; i < worker_num; ++i, pos += unit_size) block_start[i] = pos;
     block_start[worker_num] = n;
     for (int i = 1; i < worker_num; ++i){
         block_start[i] = std::max(block_start[i], block_start[i - 1]);
-        while (block_start[i] < n && node->predict(block_start[i] - 1) == node->predict(block_start[i])) ++block_start[i];
+        while (block_start[i] < (slot_type)n && node->predict(keys[block_start[i - 1]]) == node->predict(keys[block_start[i]])) ++block_start[i];
     }
     for (int i = worker_num; i > 0; --i)
     if (block_start[i] == block_start[i - 1]){
         for (int j = i; j < worker_num; ++j)
             block_start[j] = block_start[j + 1];
-        std::move(block_start + i + 1, block_start + i + worker_num, block_start + i + worker_num);
+        std::move(block_start.data() + i + 1, block_start.data() + worker_num + 1, block_start.data() + i);
         --worker_num;
     }
-    
-    for (slot_type i = 0; i < worker_num; ++i){
+    worker[worker_num].start_pos = node->slot_size;
+    AEX_PRINT("worker_num=" << worker_num);
+    for (int i = 0; i < worker_num; ++i){
         worker[i].node = node;
-        worker[i].keys = keys + block_start[i];
-        worker[i].childs = childs + block_start[i];
+        worker[i].keys =   const_cast<key_type*>(keys + block_start[i]);
+        worker[i].childs = const_cast<node_ptr*>(childs + block_start[i]);
         worker[i].n = block_start[i + 1] - block_start[i];
         AEX_ASSERT(block_start[i] < block_start[i + 1]);
-        bool flag = this->work_queue.bouned_push(&worker[i]);
+        bool flag = this->work_queue.bounded_push(&worker[i]);
         while (!flag) {
             this->work_concurrency();
             flag = this->work_queue.bounded_push(&worker[i]);
         }
     }
     while (this->work_concurrency()); 
+
     for (int i = 0; i < worker_num; ++i){
         while (worker[i].finish_flag == false) {
-            while (this->work_concurrency()); 
-            _mm_pause(); 
+            this->work_concurrency(); 
         }//join
-        this->size += worker[i].size;
+        node->size += worker[i].size;
     }
-    
-    for (int i = 0; i < worker_num; ++i)
-        __construct_insert(node, worker[i].end_pos, worker[i + 1].start_pos, worker[i].tail_key, worker[i].tail_node);
+    for (int i = 0; i < worker_num; ++i){
+        __construct_insert_con(node, worker[i].end_pos, worker[i + 1].start_pos, worker[i].tail_key, worker[i].tail_node);
+    }
     //this->tail_node = tail_node(node);
-    this->tail_node = worker[worker_num - 1].tail_node;
-    AEX_ASSERT(this->tail_node == tail_node(node));    
+    node->tail_node = worker[worker_num - 1].tail_node;
+    AEX_ASSERT(node->tail_node == tail_node(node));
+    AEX_DEBUG_BLOCK({slot_type cnt = 0; 
+        for (slot_type i = 0; i < node->slot_size; i = node->next_item(i + 1)) ++cnt; 
+        AEX_ASSERT(cnt == node->size);
+        for (slot_type i = 0; i < node->slot_size; i += traits::SLOT_PER_SHORTCUT){
+            AEX_ASSERT(hash_table.find(node, i).second != nullptr);
+        }
+    });
+    AEX_WARNING("construct_SMO_con finish");
 }
 
 

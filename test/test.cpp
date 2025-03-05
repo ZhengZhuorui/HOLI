@@ -4,10 +4,6 @@
 #define AEX_DEBUG
 #endif
 
-#ifndef AEX_DEBUG_THREAD
-#define AEX_DEBUG_THREAD
-#endif
-
 #ifndef AEX_DEBUG_ASSERT
 #define AEX_DEBUG_ASSERT
 #endif
@@ -63,6 +59,11 @@ auto dataset = flags["dataset"];
     long long unique_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
     //bool multikey_flag = (num_keys != unique_keys);
     std::cout << "Is unique? " << (num_keys == unique_keys ? "Yes" : "No") << ", unique_keys=" << unique_keys << std::endl;
+
+#ifndef AEX_DEBUG_THREAD
+#define AEX_DEBUG_THREAD
+#endif
+
     if (unit == "sort"){
         std::string output_file = flags["output_file"];
         AEX_HINT("sort file: " << file_name << " to file:" << output_file);
@@ -291,20 +292,22 @@ auto dataset = flags["dataset"];
         long long thread_num = stoll(flags["thread_num"]);
         return test_hash_table_perf<T, default_traits>(bin_data.data(), num_keys, thread_num);
     }
-    //else if (unit == "con_index"){
-    //    auto func = flags["function"];
-    //    int thread_num = stoi(flags[thread_num]);
-    //    if (func == "tot"){
-    //        std::vector<std::pair<T, T> > data;
-    //        pack_KV_dataset(bin_data, data);
-    //        long long read_nums = stoll(flags["read_nums"]);
-    //        long long write_nums = stoll(flags["write_nums"]);
-    //        long long erase_nums = stoll(flags["erase_nums"]);
-    //        AEX_ASSERT(write_nums <= num_keys);
-    //        AEX_ASSERT(erase_nums <= num_keys - write_nums);
-    //        return test_index_total_con_perf(data.data(), num_keys, thread_num, read_nums, write_nums, erase_nums);
-    //    }
-    //}
+#undef AEX_DEBUG_THREAD
+    else if (unit == "index_con"){
+        auto func = flags["function"];
+        int thread_num = std::stoi(flags["thread_num"]);
+        if (func == "tot"){
+            std::vector<std::pair<T, T> > data;
+            pack_KV_dataset(bin_data, data);
+            long long read_nums = stoll(flags["read_nums"]);
+            long long write_nums = stoll(flags["write_nums"]);
+            //long long erase_nums = stoll(flags["erase_nums"]);
+            long long erase_nums = 0;
+            AEX_ASSERT(write_nums <= num_keys);
+            AEX_ASSERT(erase_nums <= num_keys - write_nums);
+            return test_index_total_con_perf(data.data(), num_keys, thread_num, read_nums, write_nums, erase_nums);
+        }
+    }
     return false;
 }
 

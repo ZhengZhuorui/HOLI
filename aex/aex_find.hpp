@@ -98,7 +98,7 @@ inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val,
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert(hash_node_ptr node, const key_type key, slot_type &pos) const {
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert(const hash_node_ptr node, const key_type key, slot_type &pos) const {
     pos = node->predict(key);
     key_type find_key;
     node_ptr res = nullptr;
@@ -121,7 +121,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert(dense_node_ptr node, const key_type key, slot_type &pos) const {
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert(const dense_node_ptr node, const key_type key, slot_type &pos) const {
     //pos = aex::linear_search_upper_bound_avx512x8(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
     //pos = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1;
     pos = linear_search_upper_bound_avx512<traits::DENSE_NODE_SLOT_SIZE>(node->key_ptr, node->size, key) - 1;
@@ -129,7 +129,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 }
 
 template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert(inner_node_ptr node, const key_type key, slot_type &pos) const {
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert(const inner_node_ptr node, const key_type key, slot_type &pos) const {
     switch (node->type){
         case NodeType::HashNode  : { return find_insert(h_n(node), key, pos); }
         case NodeType::DenseNode : { return find_insert(d_n(node), key, pos); }

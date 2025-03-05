@@ -82,7 +82,7 @@ inline bool aex_tree<_Key, _Val, traits>::lower_bound_con(const key_type key, st
     EpochGuard guard(this);
     int restart_count = 0;
     version_type node_version, next_node_version;
-find_con_start:
+lower_bound_con_start:
     AEX_SGL_ASSERT(restart_count == 0);
     AEX_ASSERT(restart_count < 100000000);
     if (restart_count > 0)
@@ -91,15 +91,18 @@ find_con_start:
     bool need_restart = false;
     data_node_ptr node, next_node;
     node = find_leaf_con(key, node_version, need_restart);
-    if (need_restart) goto find_con_start;
+    if (need_restart) goto lower_bound_con_start;
     slot_type pos = node->find_lower_pos(key);
     node->node_lock.checkOrRestart(node_version, need_restart);
-    if (need_restart) goto find_con_start;
+    if (need_restart) goto lower_bound_con_start;
     if (pos > node->size){
         next_node = node->next;
-        if (next_node != nullptr)            
+        if (next_node != nullptr){
             next_node_version = next_node->node_lock.readLockOrRestart(need_restart);
+            if (need_restart) goto lower_bound_con_start;
+        }
         node->node_lock.readUnlockOrRestart(node_version, need_restart);
+        if (need_restart) goto lower_bound_con_start;
         if (next_node == nullptr)            
             return false;
         node = next_node;

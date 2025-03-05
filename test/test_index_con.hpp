@@ -40,16 +40,7 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
         opt[i].key = data[init_nums + i].first;
         opt[i].value = data[init_nums + i].second;
     }
-    //for (int i = read_nums + write_nums; i < tot_nums; ++i){
-    //    size_t pos = rand() % index_data.size();
-    //    while (is_delete[pos] == true) 
-    //        pos = rand() % index_data.size();
-    //}
-    std::fill(opt.data(), opt.data() + read_nums, OperationType::Lookup);
-    std::fill(opt.data() + read_nums, opt.data() + read_nums + write_nums, OperationType::Insert);
-    std::fill(opt.data() + read_nums + write_nums, opt.data() + tot_nums, OperationType::Erase);
     std::random_shuffle(opt.data(), opt.data() + tot_nums);
-    size_t insert_cnt = 0;
     ThreadParam *params = new ThreadParam[thread_num];
     AEX_PRINT("prepare finish...");
 
@@ -57,8 +48,9 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
     {
         auto thread_id = omp_get_thread_num();
         ThreadParam &thread_param = params[thread_id];
-        #pragma omp barrier
-        #pragma omp master
+        //#pragma omp barrier
+        //#pragma omp master
+
         #pragma omp for schedule(dynamic, 10000)
         for (long long i = 0; i < tot_nums; ++i){
             switch (opt[i].type){
@@ -82,13 +74,14 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
         switch (opt[i].type){
             case OperationType::Lookup:{
                 value_type _val;
-                bool _ = index.find(opt[i].key, _val);
+                [[maybe_unused]]bool _ = index.find(opt[i].key, _val);
+                AEX_ASSERT(_ == true);
                 AEX_ASSERT(_val == opt[i].value);
                 break;
             }
             case OperationType::Insert:{
                 value_type _val;
-                bool _ = index.find(opt[i].key, _val);
+                [[maybe_unused]]bool _ = index.find(opt[i].key, _val);
                 AEX_ASSERT(_ == true);
                 AEX_ASSERT(_val == opt[i].value);
                 break;
@@ -97,8 +90,6 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
                 break;
         }
     }
-    
-        
 
     index.print_stats();
     ThreadParam tot;
@@ -106,11 +97,11 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
         tot.success_read += params[i].success_read;
         tot.success_insert += params[i].success_insert;
     }
-    if (tot.success_read != read_nums){
+    if ((long long)tot.success_read != read_nums){
         AEX_ERROR("test failed. success_read=" << tot.success_read);
         return false;
     }
-    if (tot.success_insert != write_nums){
+    if ((long long)tot.success_insert != write_nums){
         AEX_ERROR("test failed. success_insert=" << tot.success_insert);
         return false;
     }

@@ -70,28 +70,24 @@ struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
         __sync_fetch_and_and(this->bitmap_ptr + pos2slot(x), ~(1ULL << (x & 63)));
     }
 
-    inline size_type add_size(){
+    inline void add_size(){
         if (this->slot_size * traits::HASH_NODE_FULL_RATIO >= traits::SIZE_BLOCK_CNT * traits::MIN_ADD_CNT){
             size_type min_add_cnt = this->slot_size * traits::HASH_NODE_FULL_RATIO / traits::SIZE_BLOCK_CNT;
             if (get_randint(min_add_cnt) == 1)
-                return min_add_cnt;
-            else
-                return 0;
+                __sync_fetch_and_add(&this->size, min_add_cnt);
         }
         else{
-            return 1;
+            __sync_fetch_and_add(&this->size, 1);
         }
     }
-    inline size_type sub_size(){
+    inline void sub_size(){
         if (this->slot_size * traits::HASH_NODE_FULL_RATIO >= traits::SIZE_BLOCK_CNT * traits::MIN_ADD_CNT){
             size_type min_add_cnt = this->slot_size * traits::HASH_NODE_FULL_RATIO / traits::SIZE_BLOCK_CNT;
             if (get_randint(min_add_cnt) == 1)
-                return min_add_cnt;
-            else
-                return 0;
+                __sync_fetch_and_sub(&this->size, min_add_cnt);
         }
         else{
-            return 1;
+            __sync_fetch_and_sub(&this->size, 1);
         }
     }
     //atomic_version_type *version_array;
