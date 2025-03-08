@@ -214,7 +214,7 @@ public:
     inline void yield(const int count) {
         if (!this->work_queue.empty())
             while (this->work_concurrency());
-        else
+        //else
             _yield(count);
         //if (count <= 3){
         //    _mm_pause();
@@ -375,12 +375,14 @@ insert_start:
             yield(restart_count);
         restart_count++;
         bool need_restart = false;
+
         version_type table_version = this->lock.readLockOrRestart(need_restart);
         if (need_restart) goto insert_start;
         hash_key = this->get_hash_key(parent->id, pos);
         block = this->table_ + hash_key;
         this->lock.readUnlockOrRestart(table_version, need_restart);
         if (need_restart) goto insert_start;
+        
         block->lock.writeLockOrRestart(need_restart);
         if (need_restart) goto insert_start;
         block->insert(parent->id, pos, key, child);
@@ -393,27 +395,61 @@ insert_start:
      * @brief return the (node->key[pos], node->child[pos])
      */
     inline std::pair<key_type, node_ptr> find(const hash_node_ptr node, const slot_type pos) const {
-        //int restart_count = 0;
+        int restart_count = 0;
 find_start:
-        //if (restart_count > 0)
-        //    const_cast<self*>(this)->yield(restart_count);
-        //restart_count++;
-        //_mm_pause();
+        if (restart_count > 0)
+            const_cast<self*>(this)->yield(restart_count);
+        restart_count++;
         bool need_restart = false;
-        HashTableBlock* block = get_block(node, pos);
+
         //version_type table_version = this->lock.readLockOrRestart(need_restart);
         //if (need_restart) goto find_start;
         //const hash_type hash_key = this->get_hash_key(node->id, pos);
         //HashTableBlock* block = this->table_ + hash_key;
         //this->lock.readUnlockOrRestart(table_version, need_restart);
         //if (need_restart) goto find_start;
-        
+
+        version_type& _local_version = this->get_local_version();
+        const hash_type hash_key = this->get_hash_key(node->id, pos);
+        HashTableBlock* block = this->table_ + hash_key;
+        this->lock.readUnlockOrRestart(_local_version, need_restart);
+        if (need_restart){
+            _local_version = this->lock.readLockOrRestart(need_restart);
+            goto find_start;
+        }
+
         __builtin_prefetch((char*)(block) + 64);
         version_type block_version = block->lock.readLockOrRestart(need_restart);
         if (need_restart) goto find_start;
         std::pair<key_type, node_ptr> ret = block->find(node->id, pos);
         block->lock.readUnlockOrRestart(block_version, need_restart);
         if (need_restart) goto find_start;
+        return ret;
+    }
+
+    inline std::pair<key_type, node_ptr> find(const hash_node_ptr node, const slot_type pos, bool &need_restart) const {
+        std::pair<key_type, node_ptr> ret;
+
+        version_type table_version = this->lock.readLockOrRestart(need_restart);
+        if (need_restart) return ret;
+        const hash_type hash_key = this->get_hash_key(node->id, pos);
+        HashTableBlock* block = this->table_ + hash_key;
+        this->lock.readUnlockOrRestart(table_version, need_restart);
+        
+        //version_type& _local_version = this->get_local_version();
+        //const hash_type hash_key = this->get_hash_key(node->id, pos);
+        //HashTableBlock* block = this->table_ + hash_key;
+        //this->lock.readUnlockOrRestart(_local_version, need_restart);
+        //if (need_restart){
+        //    _local_version = this->lock.readLockOrRestart(need_restart);
+        //    return ret;
+        //}
+
+        __builtin_prefetch((char*)(block) + 64);
+        version_type block_version = block->lock.readLockOrRestart(need_restart);
+        if (need_restart) return ret;
+        ret = block->find(node->id, pos);
+        block->lock.readUnlockOrRestart(block_version, need_restart);
         return ret;
     }
 
@@ -562,6 +598,17 @@ get_block_start:
                 while (const_cast<self*>(this)->work_concurrency());
             _local_version = this->lock.readLockOrRestart(need_restart);
             goto get_block_start;
+        }
+        return block;
+    }
+
+    inline HashTableBlock* get_block(const hash_node_ptr node, const slot_type pos, bool &need_restart) const {
+        version_type& _local_version = this->get_local_version();
+        const hash_type hash_key = this->get_hash_key(node->id, pos);
+        HashTableBlock* block = this->table_ + hash_key;
+        this->lock.readUnlockOrRestart(_local_version, need_restart);
+        if (need_restart){
+            _local_version = this->lock.readLockOrRestart(need_restart);
         }
         return block;
     }

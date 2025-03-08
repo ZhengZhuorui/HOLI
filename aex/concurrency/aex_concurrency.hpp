@@ -4,14 +4,13 @@ namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::lock_array(hash_node_ptr node){
-    //if (node->slot_size >= traits::THREAD_UNIT_SIZE * traits::SLOT_PER_LOCK * 2){
-    //    #ifdef AEX_DEBUG
-    //    ++const_cast<self*>(this)->opt_stats.lock_array_con_cnt;
-    //    #endif
-    //    lock_array_con(node);
-    //    AEX_ASSERT(test_lock_array_con(node));
-    //    return;
-    //}
+    if (node->slot_size >= traits::THREAD_UNIT_SIZE * traits::SLOT_PER_LOCK * 2){
+        #ifdef AEX_DEBUG
+        ++const_cast<self*>(this)->opt_stats.lock_array_con_cnt;
+        #endif
+        lock_array_con(node);
+        return;
+    }
     const slot_type max_slot = node->slot_size / traits::SLOT_PER_LOCK;
     for (slot_type i = 0; i < max_slot; ++i){
         node->lock_array[i].lock();
@@ -343,6 +342,7 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO_unit(ConstructSMOParams*
     AEX_ASSERT(pos < node->slot_size);
     AEX_ASSERT(node->is_occupied(pos) == false);
     worker->end_pos = pos;
+    AEX_ASSERT(worker->end_pos == node->predict(keys[n - 1]));
     worker->tail_key = keys[start];
     ++worker->size;
     if (n - start > 1){
@@ -368,7 +368,7 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO_con(hash_node_ptr node, 
     block_start[worker_num] = n;
     for (int i = 1; i < worker_num; ++i){
         block_start[i] = std::max(block_start[i], block_start[i - 1]);
-        while (block_start[i] < (slot_type)n && node->predict(keys[block_start[i - 1]]) == node->predict(keys[block_start[i]])) ++block_start[i];
+        while (block_start[i] < (slot_type)n && node->predict(keys[block_start[i] - 1]) == node->predict(keys[block_start[i]])) ++block_start[i];
     }
     for (int i = worker_num; i > 0; --i)
     if (block_start[i] == block_start[i - 1]){
@@ -385,6 +385,7 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO_con(hash_node_ptr node, 
         worker[i].childs = const_cast<node_ptr*>(childs + block_start[i]);
         worker[i].n = block_start[i + 1] - block_start[i];
         AEX_ASSERT(block_start[i] < block_start[i + 1]);
+        AEX_DEBUG_BLOCK({if (i > 0) AEX_ASSERT(node->predict(keys[block_start[i] - 1]) != node->predict(keys[block_start[i]]));});
         bool flag = this->work_queue.bounded_push(&worker[i]);
         while (!flag) {
             this->work_concurrency();
@@ -400,6 +401,12 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO_con(hash_node_ptr node, 
         node->size += worker[i].size;
     }
     for (int i = 0; i < worker_num; ++i){
+        AEX_DEBUG_BLOCK({
+        if (worker[i].end_pos >= worker[i + 1].start_pos){
+            AEX_PRINT("i=" << i << ", " << worker[i].end_pos << ", next=" << worker[i + 1].start_pos);
+        }
+        });
+        AEX_ASSERT(worker[i].end_pos < worker[i + 1].start_pos);
         __construct_insert_con(node, worker[i].end_pos, worker[i + 1].start_pos, worker[i].tail_key, worker[i].tail_node);
     }
     //this->tail_node = tail_node(node);

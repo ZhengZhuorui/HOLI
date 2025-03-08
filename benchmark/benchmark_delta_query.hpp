@@ -24,7 +24,7 @@ void aex_delta_query_bench(vector<pair<key_type, value_type> > &data, vector<key
 
     for (size_t T = 0; T < times; ++T){
         for (auto &x : query){
-            value_type y;
+            value_type y = 0;
             index.find(x, y);
             sum += y;
         }

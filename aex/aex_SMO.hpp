@@ -263,16 +263,16 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::construct_SMO(hash_node_ptr node, const key_type* keys, node_ptr* childs, const ULL n){
-    //if constexpr (traits::AllowConcurrency){
-    //    if (n > traits::THREAD_UNIT_SIZE * 2){
-    //        #ifdef AEX_DEBUG
-    //        ++const_cast<self*>(this)->opt_stats.construct_SMO_con_cnt;
-    //        #endif
-    //        construct_SMO_con(node, keys, childs, n);
-    //        check_node(node);
-    //        return;
-    //    }
-    //}
+    if constexpr (traits::AllowConcurrency){
+        if (n > traits::THREAD_UNIT_SIZE * 2){
+            #ifdef AEX_DEBUG
+            ++const_cast<self*>(this)->opt_stats.construct_SMO_con_cnt;
+            #endif
+            construct_SMO_con(node, keys, childs, n);
+            check_node(node);
+            return;
+        }
+    }
 
     AEX_ASSERT(check_lock(node));
     AEX_DEBUG_BLOCK({if constexpr(!traits::AllowMultiKey) for (ULL i = 0; i < n - 1; ++i) AEX_ASSERT(keys[i] < keys[i + 1]);});
@@ -353,16 +353,16 @@ inline void aex_tree<_Key, _Val, traits>::clear_childs_recursive(dense_node_ptr 
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::get_childs(const hash_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf) const {
-    //if constexpr (traits::AllowConcurrency){
-    //    if (node->slot_size > traits::THREAD_UNIT_SIZE * traits::SLOT_PER_LOCK * 2){
-    //        #ifdef AEX_DEBUG
-    //        ++const_cast<self*>(this)->opt_stats.get_childs_con_cnt;
-    //        #endif
-    //        const_cast<self*>(this)->get_childs_con(node, key_buf, child_buf);
-    //        //AEX_ASSERT(const_cast<self*>(this)->test_get_childs_con(node) == true);
-    //        return;
-    //    }
-    //}
+    if constexpr (traits::AllowConcurrency){
+        if (node->slot_size > traits::THREAD_UNIT_SIZE * traits::SLOT_PER_LOCK * 2){
+            #ifdef AEX_DEBUG
+            ++const_cast<self*>(this)->opt_stats.get_childs_con_cnt;
+            #endif
+            const_cast<self*>(this)->get_childs_con(node, key_buf, child_buf);
+            //AEX_ASSERT(const_cast<self*>(this)->test_get_childs_con(node) == true);
+            return;
+        }
+    }
     key_type key;
     node_ptr child;
     AEX_ASSERT(check_lock(node));

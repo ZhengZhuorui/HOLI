@@ -308,8 +308,7 @@ public:
             yield(restart_count);
         }
         bool need_restart = 0;
-        node = find_leaf_con(x, node_version, need_restart);
-        if (need_restart) goto update_restart;
+        node = find_leaf_con(x, node_version);
         node->node_lock.upgradeToWriteLockOrRestart(node_version, need_restart);
         if (need_restart) goto update_restart;
         slot_type pos = node->find(x);
@@ -625,7 +624,8 @@ private:
      * @details keep shared_lock of returned data node;
      */
     inline data_node_ptr find_leaf(const key_type key) const ;
-    inline data_node_ptr find_leaf_con(const key_type key, version_type &node_version, bool &need_restart) ;
+    inline data_node_ptr find_leaf_con(const key_type key, version_type &node_version) ;
+    inline data_node_ptr find_leaf_con(const key_type key, version_type &node_version, bool &need_restart) const;
     
     /**
      * @brief 
@@ -639,11 +639,13 @@ private:
      */
     node_ptr find(const inner_node_ptr node, const key_type key) const ;
     node_ptr find(const hash_node_ptr  node, const key_type key) const ;
+    node_ptr find(const hash_node_ptr  node, const key_type key, bool &need_restart) const;
     node_ptr find(const dense_node_ptr node, const key_type key) const ;
 
     node_ptr find_insert(const inner_node_ptr node, const key_type key, slot_type &pos) const ;
     node_ptr find_insert(const hash_node_ptr  node, const key_type key, slot_type &pos) const ;
     node_ptr find_insert(const dense_node_ptr node, const key_type key, slot_type &pos) const ;
+    node_ptr find_insert(const hash_node_ptr  node, const key_type key, slot_type &pos, bool &need_restart) const ;
 
     node_ptr find_erase(inner_node_ptr node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
     node_ptr find_erase(hash_node_ptr  node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
@@ -861,10 +863,16 @@ private:
 
     inline bool work_concurrency();
 
-    inline void yield(int count) const {
-        //if (!this->work_queue.empty()){
-        //    while(const_cast<self*>(this)->work_concurrency());
-        //}
+    inline void yield(int count) {
+        if (!this->hash_table.work_queue.empty()){
+            //while(const_cast<self*>(this)->work_concurrency());
+            while(this->hash_table.work_concurrency());
+        }
+        //else 
+        if (!this->work_queue.empty()){
+            //while(const_cast<self*>(this)->work_concurrency());
+            while(this->work_concurrency());
+        }
         //else
             _yield(count);
     }

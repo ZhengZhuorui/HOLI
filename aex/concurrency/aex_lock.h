@@ -272,7 +272,8 @@ struct OptLock<traits, true> {
     uint64_t readLockOrRestart(bool &needRestart) {
       uint64_t version;
       version = typeVersionLockObsolete.load();
-      if (isLocked(version) || isObsolete(version)) {
+      //if (isLocked(version) || isObsolete(version)) {
+      if (isLocked(version)) {
         _mm_pause();
         needRestart = true;
       }

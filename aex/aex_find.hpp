@@ -110,7 +110,6 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     }
 
     if (res == nullptr){
-        //pos = node->prev_item_con(pos - 1);
         pos = node->prev_item_find(pos - 1);
         std::tie(find_key, res) = hash_table.find(node, pos);
         AEX_ASSERT(find_key <= key);

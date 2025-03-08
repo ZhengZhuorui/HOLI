@@ -13,10 +13,11 @@ template<typename key_type,
         typename value_type,
         typename traits=aex_default_traits<key_type, value_type, false, void, true>>
 bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long n, long long thread_num, long long read_nums, long long write_nums, long long erase_nums){
+    AEX_HINT("[test index concurrency with all interface]");
     // TODO: need to finish erase
     AEX_ASSERT(erase_nums == 0);
+    AEX_ASSERT(n >= write_nums);
     typedef OperationUnit<key_type, value_type, traits> Unit;
-    AEX_HINT("[test index concurrency with all interface]");
     typedef aex_tree<key_type, value_type, traits> tree;
     [[maybe_unused]]typedef typename tree::node_ptr node_ptr;
     aex_tree<key_type, value_type, traits> index;
@@ -37,8 +38,8 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
     }
     for (int i = read_nums; i < read_nums + write_nums; ++i){
         opt[i].type = OperationType::Insert;
-        opt[i].key = data[init_nums + i].first;
-        opt[i].value = data[init_nums + i].second;
+        opt[i].key = data[i].first;
+        opt[i].value = data[i].second;
     }
     std::random_shuffle(opt.data(), opt.data() + tot_nums);
     ThreadParam *params = new ThreadParam[thread_num];
@@ -53,6 +54,8 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
 
         #pragma omp for schedule(dynamic, 10000)
         for (long long i = 0; i < tot_nums; ++i){
+            if (i % 1000000 == 0) 
+                AEX_PRINT("i=" << i);
             switch (opt[i].type){
             case OperationType::Lookup:{
                 value_type _val;
@@ -62,6 +65,14 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
             }
             case OperationType::Insert:{
                 thread_param.success_insert += index.insert(opt[i].key, opt[i].value);
+
+                value_type _val;
+                [[maybe_unused]]bool _ = index.find(opt[i].key, _val);
+                AEX_ASSERT(_ == true);
+                if (_val != opt[i].value)
+                    AEX_PRINT(_val << ", " << opt[i].value);
+                AEX_ASSERT(_val == opt[i].value);
+
                 break;
             }
             default:
@@ -83,6 +94,8 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
                 value_type _val;
                 [[maybe_unused]]bool _ = index.find(opt[i].key, _val);
                 AEX_ASSERT(_ == true);
+                if (_val != opt[i].value)
+                    AEX_PRINT(_val << ", " << opt[i].value);
                 AEX_ASSERT(_val == opt[i].value);
                 break;
             }

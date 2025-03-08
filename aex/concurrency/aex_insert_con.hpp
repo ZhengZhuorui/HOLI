@@ -45,13 +45,15 @@ insert_start:
             node_copy = *h_n(node);
             node->node_lock.checkOrRestart(node_version, need_restart); // node S
             if (need_restart) goto insert_start;
-            child = find_insert(&node_copy, key, pos); // node S
+            //child = find_insert(&node_copy, key, pos); // node S
+            child = find_insert(&node_copy, key, pos, need_restart);
+            if (need_restart) goto insert_start;
         }
         else{
             child = find_insert(d_n(node), key, pos); 
+            node->node_lock.checkOrRestart(node_version, need_restart);
+            if (need_restart) goto insert_start;
         }
-        node->node_lock.checkOrRestart(node_version, need_restart);
-        if (need_restart) goto insert_start;
         child_version = child->node_lock.readLockOrRestart(need_restart);//SL(child); | node S, child S
         if (need_restart) goto insert_start;
         
