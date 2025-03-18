@@ -214,7 +214,7 @@ public:
     inline void yield(const int count) {
         if (!this->work_queue.empty())
             while (this->work_concurrency());
-        //else
+        else
             _yield(count);
         //if (count <= 3){
         //    _mm_pause();
@@ -354,7 +354,8 @@ public:
     }
 
     //inline void narrow(){ rescale(this->slot_size >> 1); }
-    inline void expand(){ rescale(this->slot_size << 1); }
+    //inline void expand(){ rescale(this->slot_size << 1); }
+    inline void expand(){ rescale(this->slot_size << 2); }
 
     inline unsigned long long get_hash_key(const ID_type id, const slot_type pos, const slot_type _slot_size) const {
         return (reinterpret_cast<unsigned long long>(id) * traits::K1 + static_cast<unsigned long long>(pos) * traits::K2) % _slot_size;

@@ -8,7 +8,10 @@ void aex_tree<_Key, _Val, traits>::split_to_static_data_node(const key_type* con
     AEX_ASSERT(traits::AllowDynamicDataNode == false);
     new_key.clear();
     new_child.clear();
-    const int data_node_size = traits::DATA_NODE_SLOT_SIZE * traits::INIT_DATA_NODE_DENSITY;
+    int data_node_size = traits::DATA_NODE_SLOT_SIZE * traits::INIT_DATA_NODE_DENSITY;
+    if constexpr (traits::AllowConcurrency){
+        data_node_size = traits::DATA_NODE_SLOT_SIZE * traits::INIT_DATA_NODE_DENSITY_CON;
+    }
     //for (ULL i = 0; i < n; i += traits::DATA_NODE_SLOT_SIZE){
     for (ULL i = 0; i < n; i += data_node_size){
         #ifdef AEX_DEBUG
@@ -114,7 +117,10 @@ inline void aex_tree<_Key, _Val, traits>::expand(hash_node_ptr node){
     //construct(i_n(node), key_buf.data(), child_buf.data(), key_buf.size());
     clear_helper(node);
     node->id = this->get_node_id();
-    node->slot_size *= 4;
+    if constexpr (traits::AllowConcurrency)
+        node->slot_size *= 8;
+    else
+        node->slot_size *= 4;
     const ULL child_size = child_buf.size();
     node->init();
     node->model.train(key_buf.data(), child_size, node->slot_size);

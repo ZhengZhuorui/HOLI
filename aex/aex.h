@@ -868,12 +868,11 @@ private:
             //while(const_cast<self*>(this)->work_concurrency());
             while(this->hash_table.work_concurrency());
         }
-        //else 
-        if (!this->work_queue.empty()){
+        else if (!this->work_queue.empty()){
             //while(const_cast<self*>(this)->work_concurrency());
             while(this->work_concurrency());
         }
-        //else
+        else
             _yield(count);
     }
 

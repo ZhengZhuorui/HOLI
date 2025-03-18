@@ -125,6 +125,8 @@ struct aex_default_traits{
 
     static constexpr int MAX_DENSE_NODE_SLOT_SIZE = 32;
     static constexpr int MIN_DENSE_NODE_SLOT_SIZE = 16;
+    //static constexpr int MAX_DENSE_NODE_SLOT_SIZE = 16;
+    //static constexpr int MIN_DENSE_NODE_SLOT_SIZE = 8;
     static constexpr int DENSE_NODE_SLOT_SIZE = MIN_DENSE_NODE_SLOT_SIZE;
 
     static constexpr slot_type SLOT_PER_LOCK = 64;
@@ -158,15 +160,18 @@ struct aex_default_traits{
     static constexpr int   LARGE_HASH_NODE_SLOT_SIZE = 65536;
     static constexpr int   SIZE_ARRAY_SIZE           = 32;
     static constexpr float INIT_DATA_NODE_DENSITY    = 1.0;
+    static constexpr float INIT_DATA_NODE_DENSITY_CON= 0.8;
 
     static constexpr float HASH_NODE_FULL_RATIO      = 1.0 / 8;
-    static constexpr float HASH_NODE_FEW_RATIO       = 1.0 / 32;
+    static constexpr float HASH_NODE_FEW_RATIO       = (AllowConcurrency) ? 1.0 / 32 : 1.0 / 64;
+    //static constexpr float HASH_NODE_FEW_RATIO       = 1.0 / 16;
     static constexpr int   LOG_HASH_NODE_FULL_RATIO  = 4;
     static constexpr int   LOG_HASH_NODE_FEW_RATIO   = 6;
     static constexpr float DENSE_NODE_FULL_RATIO     = DATA_NODE_FULL_RATIO;
     static constexpr float DENSE_NODE_FEW_RATIO      = DATA_NODE_FEW_RATIO;
 
-    static constexpr float HASH_TABLE_FEW_RATIO             = 0.375;
+    //static constexpr float HASH_TABLE_FEW_RATIO             = 0.375;
+    static constexpr float HASH_TABLE_FEW_RATIO             = 0.1875;
     static constexpr float HASH_TABLE_FULL_RATIO            = 0.75;
     static constexpr unsigned long long MIN_HASH_TABLE_SIZE = 16;
 

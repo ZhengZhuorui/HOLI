@@ -30,6 +30,8 @@ void aex_tree<_Key, _Val, traits>::_get_info_stats(const node_ptr node, const un
             node_ptr child;
             //AEX_PRINT(Allocator::HASH_NODE_MEMORY_USED(h_n(node)->slot_size));
             stats.hash_node_memory_used += Allocator::HASH_NODE_MEMORY_USED(h_n(node)->slot_size);
+            if constexpr (traits::AllowConcurrency)
+                stats.hash_node_memory_used += sizeof(Lock) * (h_n(node)->slot_size / 64);
             ++stats.hash_node_cnt;
             stats.hash_node_childs += h_n(node)->size;
             int cnt = 0;

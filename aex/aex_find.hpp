@@ -20,6 +20,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find(const dense_node_ptr node, const key_type key) const {
     slot_type pos = linear_search_upper_bound_avx512<traits::DENSE_NODE_SLOT_SIZE>(node->key_ptr, node->size, key) - 1;
+    //slot_type pos = std::upper_bound(node->key_ptr, node->key_ptr + node->size, key) - node->key_ptr - 1;
     return node->child_ptr[pos];
 }
 
@@ -42,13 +43,13 @@ inline void aex_tree<_Key, _Val, traits>::range_query(const key_type lower_key, 
     data_node_ptr inode = find_leaf(lower_key);
     int pos = inode->find_lower_pos(lower_key);
     while (inode != nullptr){
-        if constexpr(sizeof(key_type) == 8 && sizeof(value_type) == 8){
-            for (; pos + 8 <= inode->size && inode->key[pos + 7] <= upper_key; pos += 8){
-                ULL _size = answer.size();
-                answer.resize(_size + 8);
-                pack_pair_avxx8(inode->key + pos, inode->data + pos, answer.data() + _size);
-            }
-        }
+        //if constexpr(sizeof(key_type) == 8 && sizeof(value_type) == 8){
+        //    for (; pos + 8 <= inode->size && inode->key[pos + 7] <= upper_key; pos += 8){
+        //        ULL _size = answer.size();
+        //        answer.resize(_size + 8);
+        //        pack_pair_avxx8(inode->key + pos, inode->data + pos, answer.data() + _size);
+        //    }
+        //}
         for (; pos < inode->size && inode->key[pos] <= upper_key; ++pos){
             AEX_ASSERT(inode->key[pos] >= lower_key);
             answer.emplace_back(inode->key[pos], inode->data[pos]);
@@ -71,11 +72,11 @@ inline size_t aex_tree<_Key, _Val, traits>::range_query_len(std::pair<key_type, 
     int pos = inode->find_lower_pos(lower_key);
     size_t cnt = 0;
     while (inode != nullptr){
-        if constexpr(sizeof(key_type) == 8 && sizeof(value_type) == 8){
-            for (; cnt + 8 <= key_num && pos + 8 <= traits::DATA_NODE_SLOT_SIZE && pos <= inode->size; cnt += std::min((size_type)8, inode->size - pos), pos += 8){
-                pack_pair_avxx8(inode->key + pos, inode->data + pos, results + cnt);
-            }
-        }
+        //if constexpr(sizeof(key_type) == 8 && sizeof(value_type) == 8){
+        //    for (; cnt + 8 <= key_num && pos + 8 <= traits::DATA_NODE_SLOT_SIZE && pos <= inode->size; cnt += std::min((size_type)8, inode->size - pos), pos += 8){
+        //        pack_pair_avxx8(inode->key + pos, inode->data + pos, results + cnt);
+        //    }
+        //}
         for (; cnt < key_num && pos < inode->size; ++pos, ++cnt){
             AEX_ASSERT(inode->key[pos] >= lower_key);
             results[cnt++] = std::make_pair(inode->key[pos], inode->data[pos]);
