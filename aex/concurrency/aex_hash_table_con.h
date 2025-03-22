@@ -7,8 +7,8 @@ namespace aex{
 
 template<typename _Key,
         typename traits>
-//struct alignas(64) aex_hash_table_block_con{
-struct aex_hash_table_block_con{
+struct alignas(64) aex_hash_table_block_con{
+//struct aex_hash_table_block_con{
     typedef aex_default_components<traits> components;
     typedef typename components::base_node base_node;
     typedef base_node* node_ptr;

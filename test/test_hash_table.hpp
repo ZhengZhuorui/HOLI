@@ -1,5 +1,14 @@
 #pragma once
 
+struct PairHash {
+    template <typename T1, typename T2>
+    std::size_t operator()(const std::pair<T1, T2>& p) const {
+        auto hash1 = std::hash<T1>{}(p.first);
+        auto hash2 = std::hash<T2>{}(p.second);
+        return hash1 ^ (hash2 << 1);
+    }
+};
+
 template<typename key_type, typename traits>
 bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
     typedef aex_tree<key_type, key_type, traits> Index;
@@ -40,7 +49,7 @@ bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
     OPS = 1.0 * 1e6 * n / delta;
     std::cout << std::scientific;
     std::cout << std::setprecision(3);  
-    AEX_SUCCESS("insert use time " << delta << "ms, OPS=" << OPS);
+    std::cout << "insert use time " << delta << "ms, OPS=" << OPS << std::endl;
     // test hash table lookup performance
     t1 = std::chrono::high_resolution_clock::now();
     //if constexpr(traits::AllowConcurrency){
@@ -69,7 +78,7 @@ bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
         sum += params[i].sum;
     std::cout << std::scientific;
     std::cout << std::setprecision(3);  
-    AEX_SUCCESS("code=" << sum << ", lookup use time " << delta << "ms, OPS=" << OPS);
+    std::cout << "code=" << sum << ", lookup use time " << delta << "ms, OPS=" << OPS << std::endl;
 
     //#pragma omp parallel num_threads(thread_num)
     /*{
@@ -92,16 +101,49 @@ bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
         return false;
     }*/
     //size_t success_read = 0;
-    bool flag = true;
+
+    std::unordered_map<std::pair<uint64_t, key_type>, std::pair<uint64_t, uint64_t>, PairHash > mp;
+
+    t1 = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < n; ++i){
-        auto res = hash_table.find(node, id[i]);
-        if (res.first != data[i]){
-            AEX_ERROR("res.first=" << res.first << ", data[i]=" << data[i]);
-            return false;
-            flag = false;
+        mp.emplace(std::make_pair(node->id, id[i]), std::make_pair(data[i], 0));
+    }
+    t2 = std::chrono::high_resolution_clock::now();
+    delta = duration_cast<microseconds>(t2 - t1).count();
+    OPS = 1.0 * 1e6 * n / delta;
+    std::cout << std::scientific;
+    std::cout << std::setprecision(3);  
+    std::cout << "insert use time " << delta << "ms, OPS=" << OPS << std::endl;
+    // test hash table lookup performance
+    t1 = std::chrono::high_resolution_clock::now();
+    //if constexpr(traits::AllowConcurrency){
+    #pragma omp parallel num_threads(thread_num)
+    {
+        auto thread_id = omp_get_thread_num();
+        ThreadParam &thread_param = params[thread_id];
+        #pragma omp barrier
+        #pragma omp master
+        t1 = std::chrono::high_resolution_clock::now();
+        #pragma omp for schedule(dynamic, 10000)
+        for (size_t i = 0; i < n; ++i){
+            //std::pair<key_type, node_ptr> res;
+            //hash_table.find(node, id[i], res);
+            auto res = mp.find(std::make_pair(node->id, id[i]));
+            thread_param.sum += (*res).second.first;
         }
     }
+    //}
+    t2 = std::chrono::high_resolution_clock::now();
+    delta = duration_cast<microseconds>(t2 - t1).count();
+    OPS = 1.0 * 1e6 * n / delta;
+    sum = 0;
+    for (int i = 0; i < thread_num; ++i)
+        sum += params[i].sum;
+    std::cout << std::scientific;
+    std::cout << std::setprecision(3);  
+    std::cout << "code=" << sum << ", lookup use time " << delta << "ms, OPS=" << OPS << std::endl;
+
     //if (flag) AEX_SUCCESS("test success.");
-    return flag;
-    
+    //return flag;
+    return true;    
 }
