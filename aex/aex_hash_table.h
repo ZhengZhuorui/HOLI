@@ -320,6 +320,7 @@ public:
 
     //inline void narrow(){ rescale(this->slot_size >> 1); }
     inline void expand(){ rescale(this->slot_size << 1); }
+    //inline void expand(){ rescale(this->slot_size << 2); }
 
     /**
      * @brief insert <node, pos>: <node->key[pos], node->child[pos]> in hash table

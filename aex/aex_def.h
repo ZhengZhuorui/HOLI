@@ -55,6 +55,7 @@ template<typename _Key, typename _Val, typename traits> class aex_const_reverse_
 
 template<typename _Key, typename _Val, typename traits> struct aex_hash_node_con;
 template<typename _Key, typename _Val, typename traits> struct aex_data_node_con;
+template<typename _Key, typename _Val, typename traits> struct aex_hash_node_copy;
 
 template<typename traits> struct aex_default_components;
 

@@ -111,15 +111,14 @@ inline bool aex_tree<_Key, _Val, traits>::_insert(const key_type key, const valu
             else{
                 AEX_ASSERT(child->type == NodeType::DenseNode);
                 flag = false;
-                if (d_n(child)->is_parent){
-                    if (!expand(d_n(child)))
-                        d_n(child)->is_parent = false;
-                    else
-                        flag = true;
-                }
+                //if (d_n(child)->is_parent){
+                //    if (!expand(d_n(child)))
+                //        d_n(child)->is_parent = false;
+                //    else
+                //        flag = true;
+                //}
                 if (!flag){
                     split_key = d_n(child)->key_ptr[traits::DENSE_NODE_SLOT_SIZE / 2];
-                    flag = (key >= split_key);
                     top_flag = false;
                     if (top_node != nullptr && top_node != node){
                         split_pos = top_node->predict(split_key);
@@ -132,33 +131,52 @@ inline bool aex_tree<_Key, _Val, traits>::_insert(const key_type key, const valu
                         }
                     }
                     dense_node_ptr new_node;
-                    if (node->type == NodeType::HashNode){
-                        if (!top_flag) split_pos = h_n(node)->predict(split_key);  
-                        new_node = allocator.allocate_dense_node();
-                        split(d_n(child), new_node);
-                        if (top_flag || (split_pos < h_n(node)->slot_size && !h_n(node)->is_occupied(split_pos))){
-                            insert_no_collision(h_n(node), split_pos, split_key, new_node);
+
+                    if (d_n(child)->is_parent){
+                        flag = true;
+                        if (top_flag) flag = false;
+                        else if (node->type == NodeType::HashNode){
+                            split_pos = h_n(node)->predict(split_key);  
+                            if (split_pos < h_n(node)->slot_size && !h_n(node)->is_occupied(split_pos)) flag = false;
+                        }
+                        if (flag){
+                            if (!expand(d_n(child))){
+                                d_n(child)->is_parent = false;
+                                flag = false;
+                            }
+                        }
+                    }
+                    
+                    if (!flag){
+                        flag = (key >= split_key);
+                        if (node->type == NodeType::HashNode){
+                            if (!top_flag) split_pos = h_n(node)->predict(split_key);  
+                            new_node = allocator.allocate_dense_node();
+                            split(d_n(child), new_node);
+                            if (top_flag || (split_pos < h_n(node)->slot_size && !h_n(node)->is_occupied(split_pos))){
+                                insert_no_collision(h_n(node), split_pos, split_key, new_node);
+                            }
+                            else{
+                                pos = h_n(node)->prev_item(pos);
+                                insert_collision(h_n(node), pos, split_key, new_node);
+                                if (!flag) top_node = nullptr;
+                            }
+                            if (h_n(node)->tail_node == child)
+                                h_n(node)->tail_node = tail_node(h_n(node));
+                            AEX_ASSERT(new_node->key_ptr[0] == split_key);
+                            if (flag) child = new_node; 
                         }
                         else{
-                            pos = h_n(node)->prev_item(pos);
-                            insert_collision(h_n(node), pos, split_key, new_node);
-                            if (!flag) top_node = nullptr;
+                            AEX_ASSERT(node->type == NodeType::DenseNode);
+                            new_node = allocator.allocate_dense_node();
+                            split(d_n(child), new_node);
+                            insert(d_n(node), split_key, new_node);
+                            AEX_ASSERT(new_node->key_ptr[0] == split_key);
+                            if (flag) child = new_node; 
+                            else top_node = nullptr;
                         }
-                        if (h_n(node)->tail_node == child)
-                            h_n(node)->tail_node = tail_node(h_n(node));
-                        AEX_ASSERT(new_node->key_ptr[0] == split_key);
-                        if (flag) child = new_node; 
+                        AEX_ASSERT(d_n(child)->key_ptr[0] <= key);
                     }
-                    else{
-                        AEX_ASSERT(node->type == NodeType::DenseNode);
-                        new_node = allocator.allocate_dense_node();
-                        split(d_n(child), new_node);
-                        insert(d_n(node), split_key, new_node);
-                        AEX_ASSERT(new_node->key_ptr[0] == split_key);
-                        if (flag) child = new_node; 
-                        else top_node = nullptr;
-                    }
-                    AEX_ASSERT(d_n(child)->key_ptr[0] <= key);
                 }
             }
         }

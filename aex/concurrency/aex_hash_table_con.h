@@ -436,6 +436,7 @@ find_start:
         const hash_type hash_key = this->get_hash_key(node->id, pos);
         HashTableBlock* block = this->table_ + hash_key;
         this->lock.readUnlockOrRestart(table_version, need_restart);
+        if (need_restart) return ret;
         
         //version_type& _local_version = this->get_local_version();
         //const hash_type hash_key = this->get_hash_key(node->id, pos);

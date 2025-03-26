@@ -173,36 +173,24 @@ struct OptLock {
     OptLock() = default;
     OptLock(const OptLock& other) {}
 
-    void init(){}
-    uint64_t get_version_number(){return 0;}
-
-    bool isLocked(uint64_t version) {return false;}
-
-    bool isLocked() { return false; }
-
-    void writeLock(){}
-
-    void writeLockOrRestart(bool &needRestart) {}
-
-    void upgradeToWriteLockOrRestart(uint64_t &version, bool &needRestart) {}
-
-    void writeUnlock() {}
-
-    uint64_t downgradeLock(){ return 0; }
-
-    void checkOrRestart(uint64_t startRead, bool &needRestart) const { }
-
-    uint64_t readLockOrRestart(bool &needRestart) { return 0; }
-
-    void readUnlockOrRestart(uint64_t startRead, bool &needRestart) const { }
-
-    void writeUnlockObsolete() { }
-
-    void labelObsolete() {  }
-
-    bool isObsolete(uint64_t version) { return false; }
-
-    bool isObsolete() { return false; }
+    inline void init(){}
+    inline uint64_t get_version_number(){return 0;}
+    inline bool isLocked(uint64_t version) {return false;}
+    inline bool isLocked() { return false; }
+    inline void writeLock(){}
+    inline void writeLockOrRestart(bool &needRestart) {}
+    inline void upgradeToWriteLockOrRestart(uint64_t &version, bool &needRestart) {}
+    inline void writeUnlock() {}
+    inline uint64_t downgradeLock(){ return 0; }
+    inline void checkOrRestart(uint64_t startRead, bool &needRestart) const { }
+    inline bool checkOrRestart(uint64_t startRead) const { }
+    inline uint64_t readLockOrRestart(bool &needRestart) { return 0; }
+    inline void readUnlockOrRestart(uint64_t startRead, bool &needRestart) const { }
+    inline bool readUnlockOrRestart(uint64_t startRead) const { }
+    inline void writeUnlockObsolete() { }
+    inline void labelObsolete() {  }
+    inline bool isObsolete(uint64_t version) { return false; }
+    inline bool isObsolete() { return false; }
 
 };
 
@@ -215,22 +203,22 @@ struct OptLock<traits, true> {
     OptLock(const OptLock& other) {
       typeVersionLockObsolete = 0b100;
     }
-    void init(){typeVersionLockObsolete = 0b100;}
+    inline void init(){typeVersionLockObsolete = 0b100;}
 
-    uint64_t get_version_number()
+    inline uint64_t get_version_number()
     {
       return typeVersionLockObsolete.load();
     }
 
-    bool isLocked(uint64_t version) {
+    inline bool isLocked(uint64_t version) {
       return ((version & 0b10) == 0b10);
     }
 
-    bool isLocked() {
+    inline bool isLocked() {
       return ((typeVersionLockObsolete.load() & 0b10) == 0b10);
     }
 
-    void writeLock(){
+    inline void writeLock(){
       uint64_t version = this->typeVersionLockObsolete.load() & (~0b10);
       while (!typeVersionLockObsolete.compare_exchange_strong(version, version + 0b10)){
         version = this->typeVersionLockObsolete.load() & (~0b10);
@@ -238,7 +226,7 @@ struct OptLock<traits, true> {
       }
     }
 
-    void writeLockOrRestart(bool &needRestart) {
+    inline void writeLockOrRestart(bool &needRestart) {
       uint64_t version;
       version = readLockOrRestart(needRestart);
       if (needRestart) return;
@@ -246,7 +234,7 @@ struct OptLock<traits, true> {
       upgradeToWriteLockOrRestart(version, needRestart);
     }
 
-    void upgradeToWriteLockOrRestart(uint64_t &version, bool &needRestart) {
+    inline void upgradeToWriteLockOrRestart(uint64_t &version, bool &needRestart) {
       if (typeVersionLockObsolete.compare_exchange_strong(version, version + 0b10)) {
         version = version + 0b10;
       } else {
@@ -255,21 +243,24 @@ struct OptLock<traits, true> {
       }
     }
 
-    void writeUnlock() {
+    inline void writeUnlock() {
       typeVersionLockObsolete.fetch_add(0b10);
     }
 
-    uint64_t downgradeLock(){
+    inline uint64_t downgradeLock(){
       uint64_t version = typeVersionLockObsolete.load() + 0b10;
       writeUnlock();
       return version;
     }
 
-    void checkOrRestart(uint64_t startRead, bool &needRestart) const {
+    inline void checkOrRestart(uint64_t startRead, bool &needRestart) const {
       readUnlockOrRestart(startRead, needRestart);
     }
+    inline bool checkOrRestart(uint64_t startRead) const{
+      return readUnlockOrRestart(startRead);
+    }
 
-    uint64_t readLockOrRestart(bool &needRestart) {
+    inline uint64_t readLockOrRestart(bool &needRestart) {
       uint64_t version;
       version = typeVersionLockObsolete.load();
       //if (isLocked(version) || isObsolete(version)) {
@@ -280,23 +271,27 @@ struct OptLock<traits, true> {
       return version;
     }
 
-    void readUnlockOrRestart(uint64_t startRead, bool &needRestart) const {
+    inline void readUnlockOrRestart(uint64_t startRead, bool &needRestart) const {
       needRestart = (startRead != typeVersionLockObsolete.load());
     }
 
-    void writeUnlockObsolete() {
+    inline bool readUnlockOrRestart(uint64_t startRead) const {
+      return startRead != typeVersionLockObsolete.load();
+    }
+
+    inline void writeUnlockObsolete() {
       typeVersionLockObsolete.fetch_add(0b11);
     }
 
-    void labelObsolete() {
+    inline void labelObsolete() {
       typeVersionLockObsolete.store((typeVersionLockObsolete.load() | 1));
     }
 
-    bool isObsolete(uint64_t version) {
+    inline bool isObsolete(uint64_t version) {
       return (version & 1) == 1;
     }
 
-    bool isObsolete() {
+    inline bool isObsolete() {
       return (typeVersionLockObsolete.load() & 1) == 1;
     }
 
