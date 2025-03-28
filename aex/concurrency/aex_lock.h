@@ -183,10 +183,10 @@ struct OptLock {
     inline void writeUnlock() {}
     inline uint64_t downgradeLock(){ return 0; }
     inline void checkOrRestart(uint64_t startRead, bool &needRestart) const { }
-    inline bool checkOrRestart(uint64_t startRead) const { }
+    inline bool checkOrRestart(uint64_t startRead) const { return false; }
     inline uint64_t readLockOrRestart(bool &needRestart) { return 0; }
     inline void readUnlockOrRestart(uint64_t startRead, bool &needRestart) const { }
-    inline bool readUnlockOrRestart(uint64_t startRead) const { }
+    inline bool readUnlockOrRestart(uint64_t startRead) const { return false; }
     inline void writeUnlockObsolete() { }
     inline void labelObsolete() {  }
     inline bool isObsolete(uint64_t version) { return false; }

@@ -174,6 +174,8 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
             AEX_ASSERT(new_child != nullptr);
             __construct_insert(new_node, pos, h_n(node)->slot_size, key, new_child);
             new_node->tail_node = new_child;
+            AEX_MUL_ASSERT(h_n(node)->copy == nullptr);
+            copy_node(h_n(new_node));
             new_node->node_lock.writeUnlock();
             AEX_ASSERT(node->size == new_node->size);
             AEX_DEBUG_BLOCK({for (slot_type i = 0; i < h_n(node)->slot_size / 64 + 1; ++i) AEX_ASSERT(new_node->bitmap_ptr[i] == h_n(node)->bitmap_ptr[i]);});
@@ -250,6 +252,8 @@ inline typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val
         opt_stats.allocate_hash_node_cnt++;
         AEX_ASSERT(check_node(new_node));
         #endif
+        AEX_MUL_ASSERT(h_n(new_node)->copy == nullptr);
+        copy_node(h_n(new_node));
         new_node->node_lock.writeUnlock();
         return new_node;
     }
@@ -278,6 +282,8 @@ inline void aex_tree<_Key, _Val, traits>::construct(inner_node_ptr node, const k
         AEX_ASSERT(node->size == 0);
         h_n(node)->model = model;
         construct_SMO(h_n(node), keys, childs, n);
+        AEX_MUL_ASSERT(h_n(node)->copy == nullptr);
+        copy_node(h_n(node));
     }
     #ifdef AEX_DEBUG
     AEX_ASSERT(check_node(node));

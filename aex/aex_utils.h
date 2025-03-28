@@ -133,14 +133,16 @@ static std::mutex log_mutex;
 
 #ifdef AEX_DEBUG_THREAD
 #define AEX_SGL_ASSERT(x)        AEX_ASSERT(x)
-#define AEX_MUL_DEBUG_BLOCK(x)   AEX_DEBUG_BLOCK({ if constexpr (traits::AllowConcurrency) do { x } while(0);})
+#define AEX_MUL_ASSERT(x)        AEX_DEBUG_BLOCK({ if constexpr (traits::AllowConcurrency) do { AEX_ASSERT(x); } while(0);})
 #define AEX_SGL_DEBUG_BLOCK(x)   AEX_DEBUG_BLOCK({ if constexpr (!traits::AllowConcurrency) do { x } while(0);})
+#define AEX_MUL_DEBUG_BLOCK(x)   AEX_DEBUG_BLOCK({ if constexpr (traits::AllowConcurrency) do { x } while(0);})
 #define DEBUG_CHECK_LOCK(node)   AEX_ASSERT(check_lock(node));
 #define DEBUG_CHECK_UNLOCK(node) AEX_ASSERT(check_unlock(node));
 #else
 #define AEX_SGL_ASSERT(x)
-#define AEX_MUL_DEBUG_BLOCK(x)
+#define AEX_MUL_ASSERT(x)
 #define AEX_SGL_DEBUG_BLOCK(x)
+#define AEX_MUL_DEBUG_BLOCK(x)
 #define DEBUG_CHECK_LOCK(node)
 #define DEBUG_CHECK_UNLOCK(node)
 #endif

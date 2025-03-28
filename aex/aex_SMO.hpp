@@ -41,6 +41,9 @@ inline void aex_tree<_Key, _Val, traits>::cast_to_hash_node(inner_node_ptr node,
     cast_node->bitmap_ptr = nullptr;
     cast_node->id = this->get_node_id();
     cast_node->init();
+    if constexpr (traits::AllowConcurrency){
+        cast_node->copy = nullptr;
+    }
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -95,6 +98,7 @@ inline bool aex_tree<_Key, _Val, traits>::expand(dense_node_ptr node){
         cast_to_hash_node(node, slot_size);
         reinterpret_cast<hash_node_ptr>(node)->model = m;
         construct_SMO(reinterpret_cast<hash_node_ptr>(node), key_buf.data(), child_buf.data(), child_buf.size());
+        copy_node(reinterpret_cast<hash_node_ptr>(node));
     }
     AEX_ASSERT(check_node(i_n(node)));
     return true;
@@ -129,6 +133,8 @@ inline void aex_tree<_Key, _Val, traits>::expand(hash_node_ptr node){
     ++opt_stats.hash_node_expand_cnt;
     opt_stats.hash_node_expand_size += child_buf.size();
     #endif
+    AEX_MUL_ASSERT(node->copy == nullptr);
+    copy_node(node);
     AEX_ASSERT(check_node(i_n(node)));
 }
 
@@ -169,6 +175,8 @@ inline void aex_tree<_Key, _Val, traits>::narrow(hash_node_ptr node){
         node->init();
         node->model.train(key_buf.data(), key_buf.size(), node->slot_size);
         construct_SMO(node, key_buf.data(), child_buf.data(), child_size);
+        AEX_MUL_ASSERT(node->copy == nullptr);
+        copy_node(node);
     }
     AEX_ASSERT(check_node(i_n(node)));
 }

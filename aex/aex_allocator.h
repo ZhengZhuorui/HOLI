@@ -122,6 +122,8 @@ public:
         node->slot_size = slot_size;
         node->id = id;
         node->init();
+        if constexpr (traits::AllowConcurrency)
+            node->copy = nullptr;
         return node;
     }
 

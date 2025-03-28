@@ -636,6 +636,8 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 # test index concurrency
 ./unit_test --unit=index_con --con --key_type=float64 --function=tot --num_keys=20000000 --thread_num=16 --batch=2000000 --read_nums=2000000 --write_nums=1000000 --input_file=/home/zzr/data/learned_index/covid_200M_uint64
 
+./unit_test --unit=index_con --con --key_type=uint64 --function=tot --num_keys=200000000 --thread_num=16 --batch=200000000 --read_nums=100000000 --write_nums=0 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+
 ./unit_test --unit=index_con --con --key_type=uint64 --function=tot --num_keys=200000000 --thread_num=16 --batch=200000000 --read_nums=100000000 --write_nums=100000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
 
 ./unit_test --unit=index_con --con --key_type=uint64 --function=tot --num_keys=200000000 --thread_num=16 --batch=200000000 --read_nums=100000000 --write_nums=100000000 --input_file=/home/zzr/data/learned_index/covid_200M_uint64

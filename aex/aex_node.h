@@ -124,7 +124,7 @@ public:
         }
     }
 
-    void init(){
+    inline void init(){
         this->size = 0;
         if (this->slot_size / 64 + 3 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(hash_node)) / 8))
             this->bitmap_ptr = new bitmap_base[this->slot_size / 64 + 1]();

@@ -308,7 +308,8 @@ public:
             yield(restart_count);
         }
         bool need_restart = 0;
-        node = find_leaf_con(x, node_version);
+        node = find_leaf_con(x, node_version, need_restart);
+        if (need_restart) goto update_restart;
         node->node_lock.upgradeToWriteLockOrRestart(node_version, need_restart);
         if (need_restart) goto update_restart;
         slot_type pos = node->find(x);
@@ -590,6 +591,9 @@ public:
                 opt_stats.free_hash_node_cnt++;
                 #endif
                 clear(h_n(node));
+                if constexpr (traits::AllowConcurrency){
+                    delete h_n(node)->copy;
+                }
                 free(node);
                 break;
             }
@@ -641,11 +645,13 @@ private:
     node_ptr find(const hash_node_ptr  node, const key_type key) const ;
     node_ptr find(const hash_node_ptr  node, const key_type key, bool &need_restart) const;
     node_ptr find(const dense_node_ptr node, const key_type key) const ;
+    node_ptr find_con(const dense_node_ptr node, const key_type key) const;
 
     node_ptr find_insert(const inner_node_ptr node, const key_type key, slot_type &pos) const ;
     node_ptr find_insert(const hash_node_ptr  node, const key_type key, slot_type &pos) const ;
     node_ptr find_insert(const dense_node_ptr node, const key_type key, slot_type &pos) const ;
     node_ptr find_insert(const hash_node_ptr  node, const key_type key, slot_type &pos, bool &need_restart) const ;
+    node_ptr find_insert_con(const dense_node_ptr node, const key_type key, slot_type &pos) const ;
 
     node_ptr find_erase(inner_node_ptr node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
     node_ptr find_erase(hash_node_ptr  node, const key_type key, slot_type &pos, slot_type &next_pos) const ;
@@ -850,6 +856,26 @@ private:
             return expected;
         }
     }
+
+    inline void copy_node(hash_node_ptr node){
+        //if constexpr (traits::AllowConcurrency){
+        //    hash_node_ptr new_node = new hash_node();
+        //    memcpy(new_node, node, sizeof(hash_node));
+        //    AEX_ASSERT(check_lock(node));
+        //    hash_node_ptr ori_node_copy = node->copy, ori_node_copy_bak = node->copy;
+        //    __atomic_store_n(&node->copy, new_node, __ATOMIC_RELEASE);
+        //    //while (!node->copy.compare_exchange_weak(ori_node_copy_bak, new_node)) {
+        //    //    ori_node_copy_bak = ori_node_copy;
+        //    //}
+        //    ebr->scheduleForDeletion(MRUnit(MemoryReclaimType::HashNodeCopy, ori_node_copy));
+        //}
+        if constexpr (traits::AllowConcurrency){
+            hash_node_ptr new_node = new hash_node();
+            memcpy(new_node, node, sizeof(hash_node));
+            node->copy = new_node;
+        }
+    }
+
 
     // ========== 6. concurrency ==========
     // SL: shared_lock          SU: shared_unlock

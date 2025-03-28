@@ -3,6 +3,7 @@ namespace aex{
 
 template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find(const hash_node_ptr node, const key_type key, bool &need_restart) const {
+    AEX_ASSERT(node != nullptr);
     AEX_ASSERT(node->is_occupied(0));
     slot_type pos = node->predict(key), pos1;
     key_type find_key;
@@ -10,6 +11,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     if (node->is_occupied(pos) || (pos & (traits::SLOT_PER_SHORTCUT - 1)) == 0)
         std::tie(find_key, res) = hash_table.find(node, pos, need_restart);
     if (need_restart) return res;
+    
     if (res == nullptr || find_key > key){
         pos1 = node->prev_item_find(pos - 1);
         std::tie(find_key, res) = hash_table.find(node, pos1, need_restart);
@@ -18,7 +20,18 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 }
 
 template<typename _Key, typename _Val, typename traits>
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_con(const dense_node_ptr node, const key_type key) const {
+    //slot_type pos = linear_search_upper_bound_avx512<traits::DENSE_NODE_SLOT_SIZE>(node->key_ptr, node->size, key) - 1;
+    //slot_type pos = std::upper_bound(node->key_ptr, node->key_ptr + node->size, key) - node->key_ptr - 1;
+    slot_type pos;
+    for (pos = 0; pos < node->size && node->key_ptr[pos] <= key; ++pos);
+    --pos;
+    return node->child_ptr[pos];
+}
+
+template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert(const hash_node_ptr node, const key_type key, slot_type &pos, bool &need_restart) const {
+    AEX_ASSERT(node != nullptr);
     pos = node->predict(key);
     key_type find_key;
     node_ptr res = nullptr;
@@ -38,6 +51,16 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 }
 
 template<typename _Key, typename _Val, typename traits>
+inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_insert_con(const dense_node_ptr node, const key_type key, slot_type &pos) const {
+    //pos = aex::linear_search_upper_bound_avx512x8(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
+    //pos = linear_search_upper_bound_avx512x8(node->key_ptr, node->size, key) - 1;
+    //pos = linear_search_upper_bound_avx512<traits::DENSE_NODE_SLOT_SIZE>(node->key_ptr, node->size, key) - 1;
+    for (pos = 0; pos < node->size && node->key_ptr[pos] <= key; ++pos);
+    --pos;
+    return node->child_ptr[pos];
+}
+
+template<typename _Key, typename _Val, typename traits>
 inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val, traits>::find_leaf_con(const key_type key, version_type &node_version) {
     int restart_count = 0;
 find_leaf_con_start:
@@ -51,11 +74,12 @@ find_leaf_con_start:
         if (need_restart) goto find_leaf_con_start;
 
         if (node->type == NodeType::HashNode){
-            hash_node node_copy = *h_n(node);
+            hash_node_ptr node_copy = node->copy;
             node->node_lock.checkOrRestart(node_version, need_restart);
             if (need_restart) goto find_leaf_con_start;
             //child = find(&node_copy, key);
-            child = find(&node_copy, key, need_restart);
+            child = find(node_copy, key, need_restart);
+            if (need_restart) goto find_leaf_con_start;
         }
         else{
             child = find(d_n(node), key); // child is not lock shared
@@ -82,17 +106,14 @@ inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val,
     while(node->type != NodeType::LeafNode){
         node_version = node->node_lock.readLockOrRestart(need_restart); // SL(child)
         if (need_restart) return nullptr;
-
         if (node->type == NodeType::HashNode){
-            hash_node node_copy = *h_n(node);
+            hash_node_ptr node_copy = h_n(node)->copy;
             node->node_lock.checkOrRestart(node_version, need_restart);
             if (need_restart) return nullptr;
-            //child = find(&node_copy, key);
-            child = find(&node_copy, key, need_restart);
-            //if (need_restart) return nullptr;
+            child = find(node_copy, key, need_restart);
         }
         else{
-            child = find(d_n(node), key); // child is not lock shared
+            child = find_con(d_n(node), key); // child is not lock shared
             node->node_lock.checkOrRestart(node_version, need_restart);  // check child exists
         }
         if (need_restart) return nullptr;
