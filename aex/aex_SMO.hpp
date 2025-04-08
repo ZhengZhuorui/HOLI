@@ -21,6 +21,9 @@ void aex_tree<_Key, _Val, traits>::split_to_static_data_node(const key_type* con
         //ULL size = std::min(static_cast<ULL>(traits::DATA_NODE_SLOT_SIZE), n - i);
         ULL size = std::min(static_cast<ULL>(data_node_size), n - i);
         new_node->construct(key + i, data + i, size);
+        if constexpr (traits::AllowConcurrency){
+            new_node->next_min_key = (i + data_node_size >= n) ? std::numeric_limits<key_type>::max() : key[i + size];
+        }
         new_key.emplace_back(key[i]);
         new_child.emplace_back(new_node);        
     }

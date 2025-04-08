@@ -85,10 +85,8 @@ insert_start:
             }
         }
         if (child->type == NodeType::LeafNode){
-            if (l_n(child)->key[(int)std::min(0, (int)child->size - 1)] < key){
-                data_node_ptr next_node = l_n(child)->next;
-                if (next_node != nullptr && next_node->min_key <= key)                    
-                    goto insert_start;
+            if (l_n(child)->next_min_key < key){
+                goto insert_start;
             }
             
             if constexpr (!traits::AllowMultiKey){

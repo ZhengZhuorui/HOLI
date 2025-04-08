@@ -342,7 +342,7 @@ public:
      */
     inline std::pair<key_type, node_ptr> find(const hash_node_ptr node, const slot_type pos) const {
         const hash_type hash_key = get_hash_key(node->id, pos);
-        __builtin_prefetch((char*)(table_ + hash_key) + 64);
+        //__builtin_prefetch((char*)(table_ + hash_key) + 64);
         return table_[hash_key].find(node->id, pos);
     }
 

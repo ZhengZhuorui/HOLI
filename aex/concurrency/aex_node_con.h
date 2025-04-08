@@ -7,7 +7,7 @@ namespace aex{
 template<typename _Key,
         typename _Val,
         typename traits>
-struct aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
+struct alignas(64) aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     typedef _Key                                   key_type;
     typedef _Val                                   value_type;
     typedef aex_hash_node<_Key, _Val, traits>      parent;
@@ -115,34 +115,34 @@ public:
     aex_data_node_con() : base_data_node(){}
     
     aex_data_node_con(aex_data_node_con &other_node) : base_data_node(other_node){
-        this->min_key = other_node.min_key;
+        this->next_min_key = other_node.next_min_key;
     }
 
     aex_data_node_con(aex_data_node_con &&other_node) :base_data_node(other_node){
-        this->min_key = other_node.min_key;
+        this->next_min_key = other_node.next_min_key;
     }
 
     aex_data_node_con& operator = (aex_data_node_con &other_node) {
         *static_cast<base_data_node*>(this) = static_cast<base_data_node>(other_node);
-        this->min_key = other_node.min_key;
+        this->next_min_key = other_node.next_min_key;
         return *this;
     }
 
     aex_data_node_con& operator = (aex_data_node_con &&other_node) {
         *static_cast<base_data_node*>(this) = static_cast<base_data_node>(other_node);
-        this->min_key = other_node.min_key;
+        this->next_min_key = other_node.next_min_key;
         return *this;
     }
 
-    inline void construct(const key_type *_key, const value_type *_data, int nums){
-        this->base_data_node::construct(_key, _data, nums);
-        this->min_key = _key[0];
-    }
+    //inline void construct(const key_type *_key, const value_type *_data, int nums){
+    //    this->base_data_node::construct(_key, _data, nums);
+    //    this->next_min_key = _key[0];
+    //}
 
-    inline void construct(const std::pair<key_type, value_type> *_data, int nums){
-        this->base_data_node::construct(_data, nums);
-        this->min_key = _data[0].first;
-    }
+    //inline void construct(const std::pair<key_type, value_type> *_data, int nums){
+    //    this->base_data_node::construct(_data, nums);
+    //    this->next_min_key = _data[0].first;
+    //}
 
     inline int find(const key_type x) const {
         int pos;
@@ -152,7 +152,8 @@ public:
         //else{
             //pos = find_lower_pos(x);
             //int _size = std::min((int)this->size, traits::DATA_NODE_SLOT_SIZE);
-            pos = std::lower_bound(this->key, this->key + this->size, x) - this->key;
+            //pos = std::lower_bound(this->key, this->key + this->size, x) - this->key;
+            pos = linear_search_lower_bound<const key_type>(this->key, this->key + this->size, x) - this->key;
         //}
         if (pos >= this->size || this->key[pos] != x)
             return this->size;
@@ -167,17 +168,20 @@ public:
             //return std::lower_bound(this->key, this->key + this->size, x) - this->key;
         //else
         //return aex::linear_search_lower_bound_avx512<traits::DATA_NODE_SLOT_SIZE, key_type>(this->key, (int)this->size, x);
-        return std::lower_bound(this->key, this->key + this->size, x) - this->key;
+        return linear_search_lower_bound<const key_type>(this->key, this->key + this->size, x) - this->key;
+        //return std::lower_bound(this->key, this->key + this->size, x) - this->key;
+        
     }
 
     inline int find_upper_pos(const key_type x) const {
         if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
             return traits::SearchClass::upper_bound(this->key, this->key + this->size, x, this->key) - this->key;
-        return std::upper_bound(this->key, this->key + this->size, x) - this->key;
+        return linear_search_upper_bound<const key_type>(this->key, this->key + this->size, x) - this->key;
+        //return std::upper_bound(this->key, this->key + this->size, x) - this->key;
         //return aex::linear_search_upper_bound_avx512<traits::DATA_NODE_SLOT_SIZE, key_type>(this->key, (int)this->size, x);
     }
 
-    key_type min_key;
+    key_type next_min_key;
 };
 
 }

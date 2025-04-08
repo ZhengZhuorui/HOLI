@@ -328,8 +328,11 @@ inline void aex_tree<_Key, _Val, traits>::split(data_node_ptr old_node, data_nod
     new_node->next = old_node->next;
     old_node->next = new_node;        
     old_node->size = new_node->size = traits::DATA_NODE_SLOT_SIZE / 2;
-    if constexpr (traits::AllowConcurrency)
-        new_node->min_key = new_node->key[0];
+    if constexpr (traits::AllowConcurrency){
+        new_node->next_min_key = old_node->next_min_key;
+        //new_node->min_key = new_node->key[0];
+        old_node->next_min_key = new_node->key[0];
+    }
 }
 
 template<typename _Key, typename _Val, typename traits>

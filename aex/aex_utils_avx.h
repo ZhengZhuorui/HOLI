@@ -4,6 +4,7 @@
 #include <emmintrin.h>
 #include <pmmintrin.h>
 #include <immintrin.h>
+
 namespace aex{
 
 __m256i static forceinline _mm256_cmpge_epu32(__m256i a, __m256i b) {
@@ -167,7 +168,33 @@ inline int* lower_bound_with_error_bound<int, 8>(int* first, int* last, int x){
     return first + res;
 }
 
-inline int cmp_eq_epi8(const unsigned char* x, const char y){
+template<int K>
+inline int cmp_eq_epi8(const unsigned char* x, const unsigned char y){
+    int mask = 0;
+    for (int i = 0; i < K; ++i) mask |= (1 << i);
+    return mask;
+}
+
+inline int cmp_eq_epi8(const unsigned char* x, int size, const unsigned char y){
+    int mask = 0;
+    for (int i = 0; i < size; ++i)
+        if (x[i] == y) mask |= (1 << i);
+    return mask;
+}
+
+//template<>
+//inline int cmp_eq_epi8<8>(const unsigned char* x, const char y){
+//    //__m128i q = _mm_set1_epi8(y);
+//    //__m128i k = _mm_loadu_si128((__m128i*)x);
+//    __m64 q = _mm_set1_epi8(y);
+//    //__mm64 k = _mm_
+//    __m128i r = _mm_cmpeq_pi8(y, (_mm64)x);
+//    int mask = _mm_movemask_pi8(r);
+//    return mask;
+//}
+
+template<>
+inline int cmp_eq_epi8<16>(const unsigned char* x, const unsigned char y){
     __m128i q = _mm_set1_epi8(y);
     __m128i k = _mm_loadu_si128((__m128i*)x);
     __m128i r = _mm_cmpeq_epi8(q, k);
@@ -175,7 +202,8 @@ inline int cmp_eq_epi8(const unsigned char* x, const char y){
     return mask;
 }
 
-inline int cmp_eq_epi8_32(const unsigned char* x, const char y){
+template<>
+inline int cmp_eq_epi8<32>(const unsigned char* x, const unsigned char y){
     __m256i q = _mm256_set1_epi8(y);
     __m256i k = _mm256_loadu_si256((__m256i*)x);
     __m256i r = _mm256_cmpeq_epi8(q, k);
@@ -353,8 +381,9 @@ inline int linear_search_lower_bound_avx512x32(const double* first, const int si
 
 template<typename _Tp>
 inline int linear_search_lower_bound_avx512x8(const _Tp* first, const int size, const _Tp x){
-    return linear_search_lower_bound(first, first + size, x) - first;
+    return linear_search_lower_bound<const _Tp>(first, first + size, x) - first;
 }
+
 
 template<>
 inline int linear_search_lower_bound_avx512x8(const unsigned long long* first, const int size, const unsigned long long x){
@@ -385,15 +414,15 @@ inline int linear_search_lower_bound_avx512x8(const double* first, const int siz
 
 template<int K, typename _Tp>
 inline int linear_search_lower_bound_avx512(const _Tp* first, const int size, const _Tp x){
-    if constexpr (K == 8)
+    if constexpr (K != 8 || sizeof(_Tp) != 8){
+        return linear_search_lower_bound<const _Tp>(first, first + size, x) - first;
+    }
+    else if constexpr (K == 8)
         return linear_search_lower_bound_avx512x8(first, size, x);
     else if constexpr (K == 16)
         return linear_search_lower_bound_avx512x16(first, size, x);
     else if constexpr (K == 32)
         return linear_search_lower_bound_avx512x32(first, size, x);
-    else{
-        AEX_ASSERT(0 == 1);
-    }
 }
 
 

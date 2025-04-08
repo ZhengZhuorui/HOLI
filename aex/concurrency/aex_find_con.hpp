@@ -6,6 +6,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     AEX_ASSERT(node != nullptr);
     AEX_ASSERT(node->is_occupied(0));
     slot_type pos = node->predict(key), pos1;
+    //__builtin_prefetch((char*)(node->bitmap_ptr) + ((pos >> 3) & (~63)));
     key_type find_key;
     node_ptr res = nullptr;
     if (node->is_occupied(pos) || (pos & (traits::SLOT_PER_SHORTCUT - 1)) == 0)
@@ -74,7 +75,7 @@ find_leaf_con_start:
         if (need_restart) goto find_leaf_con_start;
 
         if (node->type == NodeType::HashNode){
-            hash_node_ptr node_copy = node->copy;
+            hash_node_ptr node_copy = h_n(node)->copy;
             node->node_lock.checkOrRestart(node_version, need_restart);
             if (need_restart) goto find_leaf_con_start;
             //child = find(&node_copy, key);
@@ -91,12 +92,11 @@ find_leaf_con_start:
     node_version = node->node_lock.readLockOrRestart(need_restart);
     if (need_restart) goto find_leaf_con_start;
 
-    if (l_n(node)->key[node->size - 1] < key){
-        data_node_ptr next_node = l_n(node)->next;
-        if (next_node != nullptr && next_node->min_key < key){
-            goto find_leaf_con_start;
-        }
+    if (l_n(node)->next_min_key < key){
+        need_restart = true;
+        goto find_leaf_con_start;
     }
+
     return l_n(node); // node is lock shared with node_version
 }
 
@@ -120,33 +120,10 @@ inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val,
         node = child;
     }
     node_version = node->node_lock.readLockOrRestart(need_restart);
-    if (need_restart) return nullptr;
-
-    if (l_n(node)->key[node->size - 1] < key){
-        data_node_ptr next_node = l_n(node)->next;
-        if (next_node != nullptr && next_node->min_key < key){
-            need_restart = true;
-            return nullptr;
-        }
+    if (need_restart || l_n(node)->next_min_key < key){
+        need_restart = true;
+        return nullptr;
     }
-    /*
-    int count = 0;
-    while (l_n(node)->key[node->size - 1] < key){
-        data_node_ptr next_node = l_n(node)->next;
-        if (next_node != nullptr && next_node->min_key < key)
-            goto find_leaf_con_start;
-        {
-        //if (next_node != nullptr && next_node->key[0] < key){
-            ++count;
-            child_version = next_node->node_lock.readLockOrRestart(need_restart);
-            node->node_lock.readUnlockOrRestart(node_version, need_restart);
-            if (need_restart) goto find_leaf_con_start;
-            node = next_node;
-            node_version = child_version;
-        }
-        if (count >= 3) goto find_leaf_con_start;
-    }
-    */
     return l_n(node); // node is lock shared with node_version
 }
 

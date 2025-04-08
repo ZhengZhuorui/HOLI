@@ -180,14 +180,15 @@ public:
     //}
 
     inline slot_type prev_item_find(slot_type x) const {
-        const slot_type y = x - (x & (traits::SLOT_PER_SHORTCUT - 1));
+        const slot_type y = x & (~511);
         if (x <= 0)
             return x;
         bitmap text = bitmap_ptr + (x >> 6);
         const bitmap_base base = (*text) << (63 - (x & 63));
         if (base != 0)
-            return x - __builtin_clzll(base);
-        x -= (x & 63) + 1;
+            //return x - __builtin_clzll(base);
+            return x - _lzcnt_u64(base);
+        x = (x & (~63)) - 1;
         if (x < y)
             return y;
         --text;
@@ -195,7 +196,8 @@ public:
             --text;
             x -= 64;
         }
-        x -= __builtin_clzll(*text) - ((*text) == 0);
+        //x -= __builtin_clzll(*text) - ((*text) == 0);
+        x -= (*text == 0) ? 63 : _lzcnt_u64(*text);
         return x;
     }
 

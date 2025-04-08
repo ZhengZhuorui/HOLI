@@ -82,8 +82,9 @@ template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::init(){
     this->root = allocator.allocate_dense_node(0);
     this->head_leaf = new data_node();
-    if constexpr (traits::AllowConcurrency)
-        this->head_leaf->min_key = std::numeric_limits<key_type>::lowest(); 
+    if constexpr (traits::AllowConcurrency){
+        this->head_leaf->next_min_key = std::numeric_limits<key_type>::max();
+    }
     d_n(this->root)->key_ptr[0] = std::numeric_limits<key_type>::lowest();
     d_n(this->root)->child_ptr[0] = this->head_leaf;
     this->root->size = 1;

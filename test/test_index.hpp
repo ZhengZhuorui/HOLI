@@ -153,6 +153,8 @@ bool test_index_lookup_perf(std::pair<key_type, value_type>* data, long long n, 
 
     for (int i = 0; i < batch; ++i){
         //AEX_PRINT("key=" << query[i]);
+        if (i % 1000000 == 0)
+            AEX_PRINT("i=" << i);
         value_type res;
         //auto iter = index.find(query[i]);
         bool find_flag = index.find(query[i], res);
