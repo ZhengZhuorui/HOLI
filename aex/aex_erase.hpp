@@ -15,10 +15,12 @@ inline bool aex_tree<_Key, _Val, traits>::_erase(const key_type key){
         child = find_erase(i_n(node), key, pos, next_pos);
         AEX_PRINT("child=" << child << ", pos=" << pos << ", next_pos=" << next_pos);
         if (child->type == NodeType::LeafNode){
-            if (!isfew(l_n(child)) || pos == 0){
-                ret = l_n(child)->erase(key);
-            }
-            else{
+            ret = l_n(child)->erase(key);
+            //if (!isfew(l_n(child)) || pos == 0){
+            //    ret = l_n(child)->erase(key);
+            //}
+            //else{
+            if (isfew(l_n(child)) && pos > 0){
                 key_type prev_key;
                 node_ptr prev_node;
                 data_node_ptr prev_child;
@@ -32,7 +34,7 @@ inline bool aex_tree<_Key, _Val, traits>::_erase(const key_type key){
                 }
 
                 AEX_ASSERT(prev_child->next == child);
-                if (prev_child->size + child->size - l_n(child)->find(key) <= traits::DATA_NODE_SLOT_SIZE){
+                if (prev_child->size + child->size <= traits::DATA_NODE_SLOT_SIZE){
                     ret = l_n(child)->erase(key);
                     if (node->type == NodeType::HashNode){
                         erase(h_n(node), pos, next_pos, child);
@@ -42,9 +44,9 @@ inline bool aex_tree<_Key, _Val, traits>::_erase(const key_type key){
                         erase(d_n(node), pos);
                     merge(prev_child, l_n(child));
                 }
-                else{
-                    ret = l_n(child)->erase(key);
-                }
+                //else{
+                //    ret = l_n(child)->erase(key);
+                //}
             }
             return ret;
         }

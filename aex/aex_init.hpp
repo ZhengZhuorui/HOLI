@@ -61,9 +61,9 @@ inline aex_tree<_Key, _Val, traits>::~aex_tree(){
     AEX_PRINT("hash_table.size=" << hash_table.size);
     this->deconstruct(this->root);
     //AEX_SGL_DEBUG_BLOCK({if (hash_table.size != 0) AEX_ERROR("hash_table.size=" << hash_table.size); AEX_ASSERT(hash_table.size == 0);});
-    delete this->ebr;
     AEX_DEBUG_BLOCK({hash_table.print_stats(); });
     this->hash_table.free_hash_table();
+    delete this->ebr;
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -117,7 +117,9 @@ inline void aex_tree<_Key, _Val, traits>::deconstruct(node_ptr node){
                 AEX_ASSERT(child != nullptr);
                 deconstruct(child);
             }
-            free_node(node);
+            h_n(node)->clear();
+            free(node);
+            //free_node(node);
             break;
         }
         default:

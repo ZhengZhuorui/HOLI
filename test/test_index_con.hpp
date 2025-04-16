@@ -82,6 +82,8 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
     }
 
     for (long long i = 0; i < tot_nums; ++i){
+        if (i % 1000000 == 0) 
+            AEX_PRINT("i=" << i);
         switch (opt[i].type){
             case OperationType::Lookup:{
                 value_type _val;

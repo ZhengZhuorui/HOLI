@@ -1,11 +1,10 @@
 # HOLI (Updating)
 
-HOLI, a height optimized index framework base on B+ tree, reduce tree average height by height optimization strategies and hash table, aiming to achieve high lookup and range query performance in single thread, and has competive performance in concurrent scenarios.
-
+HOLI, a height optimized learned range index framework base on B+ tree, reduce tree average height by height optimization strategies and hash table, aiming to achieve high lookup and range query performance in single thread, and has competive performance in concurrent scenarios.
 
 ## Running benchmark
 
-HOLI's performance can be assess using the GRE benchmarking toool and TLI benchmarking tool. We have integrated HOLI into GRE as "[GRE_HOLI](https://github.com/)", which a fork of GRE_SALI and "[TLI_HOLI](https://github.com/)". IN GRE_HOLI, you can assess the performance of HOLI comprehensively. 
+HOLI's performance can be assess using the GRE benchmarking toool and TLI benchmarking tool. We have integrated HOLI into GRE as "[GRE_HOLI](https://github.com/ZhengZhuorui/GRE_HOLI)", which a fork of GRE_SALI. IN GRE_HOLI, you can assess the performance of HOLI comprehensively. 
 
 ## Compile & Run
 
@@ -38,7 +37,7 @@ bash run.sh run_debug ./unit_test --unit=index --key_type=uint64 --con --functio
 
 ### Micro benchmark
 
-This differs significantly from the actual benchmark results. Please refer to ​GRE_HOLI and ​TLI_HOLI for precise measurements. It use to test relative performance pre-benchmark to update 
+This differs significantly from the actual benchmark results. Please refer to ​GRE and ​TLI for precise measurements. It use to test relative performance pre-benchmark to update 
 
 
 ```
