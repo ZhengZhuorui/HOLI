@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/",
+                "${workspaceFolder}/aex",
+                "${workspaceFolder}/benchmark",
+                "${workspaceFolder}/test",
+                "${workspaceFolder}/thirdparty/stx-btree-0.9/include",
+                "${workspaceFolder}/thirdparty/PGM-index-master/include/pgm",
+                "${workspaceFolder}/thirdparty/ALEX/src/core"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "clang-x64",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
+}
