@@ -247,13 +247,16 @@ template<typename T,
 bool test_model(T* data, size_t size, int batch=1000){
     typedef typename traits::slot_type slot_type;
     typedef typename aex_tree<T, T, traits>::Model Model;
-    AEX_HINT("[test " << Model::name() << "] n=" << size);
     aex_tree<T, T, traits> tree;
     Model m;
     slot_type slot_size = traits::MIN_HASH_NODE_SLOT_SIZE, ans = 0;
-
-    while (slot_size < traits::MAX_HASH_NODE_SLOT_SIZE && m.train(data, size, slot_size) == true){
-        if (tree.check_model(m, data, size, slot_size)){
+    std::vector<T> split_keys;
+    for (size_t i = 0; i < size; i += traits::DATA_NODE_SLOT_SIZE)
+        split_keys.push_back(data[i]);
+    AEX_PRINT("data[size/2]=" << data[size/2] << ", data[size / 3 * 2]=" << data[size / 3 * 2] << ", data[-1]=" << data[size - 1]);
+    AEX_HINT("[test " << Model::name() << "] size=" << split_keys.size());
+    while (slot_size < traits::MAX_HASH_NODE_SLOT_SIZE && m.train(split_keys.data(), split_keys.size(), slot_size) == true){
+        if (tree.check_model(m, split_keys.data(), split_keys.size(), slot_size)){
             AEX_PRINT("slot size=" << slot_size);
             ans = slot_size;
             slot_size <<= 1;
@@ -262,26 +265,49 @@ bool test_model(T* data, size_t size, int batch=1000){
             break;
     }
     slot_size = ans;
-    m.train(data, size, slot_size);
+    m.train(split_keys.data(), split_keys.size(), slot_size);
 
     if (slot_size < traits::MIN_INNER_NODE_SLOT_SIZE){
         AEX_ERROR("TRAIN ERROR!");
         return false;
     }
-    /*
-    slot_type max_error = m.max_collision(data, size, slot_size);
-    AEX_PRINT("size=" << size << ", slot_size=" << slot_size << ", RMSE=" << m.RMSE(data, n) << ", max_error=" << max_error);
-    if (max_error > traits::ERROR_BOUND){
-        AEX_ERROR("max error larger than ERROR_BOUND, max_error=" << max_error << ", ERROR_BOUND=" << traits::ERROR_BOUND);
-        return false;
+
+    {
+        AEX_PRINT("slot_size=" << slot_size << ", predict[1]=" << m.predict(split_keys[1]) << ", predict[-1]=" << m.predict(split_keys[split_keys.size() - 1]));
+        slot_type pos = 0, collision = 0, max_collision = 0, continue_collision = 0, cnt = 0;
+        for (size_t i = 0; i < split_keys.size(); ++i){
+            slot_type x = std::min(slot_size - 1, std::max(0LL, (slot_type)m.predict(split_keys[i])));
+            //AEX_PRINT("x=" << x << ", pos=" << pos);
+            if (x < pos){
+                AEX_PRINT("i=" << i << ", pos=" << pos << ", x=" << x);
+            }
+            AEX_ASSERT(x >= pos);
+            if (x == pos){
+                ++collision;
+                ++continue_collision;
+                max_collision = std::max(max_collision, continue_collision);
+            }
+            else
+                continue_collision = 0;
+            if ((slot_type)i > cnt){
+                cnt += split_keys.size() / traits::MAX_MODEL_ARGS;
+                AEX_PRINT("i=" << i << ", collision=" << collision);
+            }
+            pos = x;
+        }
+        AEX_HINT("collision=" << collision << ", max_collision=" << max_collision);
     }
-    AEX_SUCCESS("slot size=" << slot_size << ", max error=" << max_error << ", seg_nums=" << m.args.seg_nums);
-    */
+
+    
+    //slot_type max_error = m.max_collision(data, size, slot_size);
+    //AEX_PRINT("size=" << size << ", slot_size=" << slot_size << ", RMSE=" << m.RMSE(data, n) << ", max_error=" << max_error);
+    //AEX_SUCCESS("slot size=" << slot_size << ", max error=" << max_error << ", seg_nums=" << m.args.seg_nums);
+    
     system_clock::time_point t1, t2;
     const int ITER = 10;
     t1 = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < ITER; ++i)
-        m.train(data, size, slot_size);
+        m.train(split_keys.data(), split_keys.size(), slot_size);
     t2 = std::chrono::high_resolution_clock::now();
     double delta2 = duration_cast<microseconds>(t2 - t1).count();
     double OPS = 1.0 * 1e6 * ITER / delta2;
@@ -289,8 +315,8 @@ bool test_model(T* data, size_t size, int batch=1000){
     double _ = 0;
     std::vector<long long> query_pos(batch);
     std::vector<T> query(batch);
-    generate_data<long long, std::uniform_int_distribution<long long>, long long>(query_pos, batch, 0, size - 1);
-    for (long long i = 0; i < batch; ++i) query[i] = data[query_pos[i]];
+    generate_data<long long, std::uniform_int_distribution<long long>, long long>(query_pos, batch, 0, split_keys.size() - 1);
+    for (long long i = 0; i < batch; ++i) query[i] = split_keys[query_pos[i]];
     t1 = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < ITER; ++i)
         for (long long j = 0; j < batch; ++j)

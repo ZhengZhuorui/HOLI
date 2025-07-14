@@ -56,6 +56,14 @@ auto dataset = flags["dataset"];
     std::cout << "Data Example: " << bin_data[0] << ", " << bin_data[num_keys / 2] << ", " << bin_data[num_keys - 1] << std::endl;
     bool is_sorted_flag = is_sorted(bin_data.data(), num_keys);
     AEX_PRINT("Is sorted?: " << is_sorted_flag);
+    for (int i = 0; i < num_keys; ++i)
+    if (bin_data[i] == 9223372036654760430ULL){
+        AEX_PRINT("i=" << i);
+        for (int j = i; j < num_keys; ++j)
+            std::cout << bin_data[j] << ", ";
+        std::cout << std::endl;
+        break;
+    }
     long long unique_keys = std::unique(bin_data.data(), bin_data.data() + num_keys) - bin_data.data();
     //bool multikey_flag = (num_keys != unique_keys);
     std::cout << "Is unique? " << (num_keys == unique_keys ? "Yes" : "No") << ", unique_keys=" << unique_keys << std::endl;

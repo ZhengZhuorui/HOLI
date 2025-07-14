@@ -31,7 +31,7 @@ int main(){
     }
 
     for (int i = num_keys ; i < 2 * num_keys; ++i){
-        assert(index[random_values[i]] == i);
+        assert(index[random_values[i]] == (PAYLOAD_TYPE)i);
     }
     
     //assert(index.find(3*num_keys) == index.end());

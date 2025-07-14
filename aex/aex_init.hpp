@@ -59,7 +59,9 @@ inline aex_tree<_Key, _Val, traits>::aex_tree(self&& _index):root(nullptr), head
 template<typename _Key, typename _Val, typename traits>
 inline aex_tree<_Key, _Val, traits>::~aex_tree(){
     AEX_PRINT("hash_table.size=" << hash_table.size);
+    AEX_PRINT("root=" << this->root);
     this->deconstruct(this->root);
+    AEX_PRINT("???");
     //AEX_SGL_DEBUG_BLOCK({if (hash_table.size != 0) AEX_ERROR("hash_table.size=" << hash_table.size); AEX_ASSERT(hash_table.size == 0);});
     AEX_DEBUG_BLOCK({hash_table.print_stats(); });
     this->hash_table.free_hash_table();

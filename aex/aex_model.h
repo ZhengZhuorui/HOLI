@@ -458,11 +458,10 @@ public:
         return sum;
     }
 
-    #ifdef AEX_DEBUG
+
     inline static std::string name(){
         return "gap array linear model";
     }
-    #endif
 
     struct linear_arguments{
         long double slope, start;
@@ -1444,22 +1443,17 @@ public:
 
     ~PDM_hash_table(){}
 
-
     static long double S[traits::MAX_SEGMENT_NUM][traits::MAX_MODEL_DP_SEGMENT_SIZE], segment_slope[traits::MAX_MODEL_DP_SEGMENT_SIZE];
     static int ans[traits::MAX_SEGMENT_NUM][traits::MAX_MODEL_DP_SEGMENT_SIZE];
     static key_type segment_start[traits::MAX_MODEL_DP_SEGMENT_SIZE];
 
     // return the predict position. value range from 0 to +inf.
-    forceinline int predict(const key_type &key) const {
+    forceinline slot_type predict(const key_type &key) const {
         long double ret = this->args.slot_size;
         for (unsigned int i = 0; i < args.seg_nums; ++i){
-            //ret += (key < args.end[i]) * ((key - args.end[i]) * args.slope[i]);
-            //ret += std::min(args.delta_pos[i], (key < args.end[i]) * (key - args.end[i]) * args.slope[i]);
             ret += (key < args.end[i]) * (key - args.end[i]) * args.slope[i];
-            //AEX_PRINT((key > args.start[i]) * (key < args.end[i]) * ((key - args.end[i]) * args.slope[i]));
         }
-        //AEX_PRINT("key=" << key << ", ret=" << ret);
-        return (int)ret;
+        return static_cast<slot_type>(ret);
     }
 
     bool train(const key_type* const key, const slot_type n){
@@ -1467,11 +1461,6 @@ public:
     }
 
     bool train(const key_type* const key, const slot_type n, const slot_type slot_size){
-        //AEX_PRINT("n=" << n);
-        //AEX_ASSERT(n >= traits::MIN_ML_INNER_NODE_SIZE);
-        
-        //const long double max_density = 2.0 / (1.0 + 1.0 / density); //harmonic mean
-        //const long double min_gap = 1.0 / slot_size;
         this->args.slot_size = slot_size - 1;
         if (ceil(sqrt(n)) > traits::MAX_MODEL_DP_SEGMENT_SIZE)
             return false;
@@ -1762,34 +1751,50 @@ public:
 
     // return the predict position. value range from -inf to +inf.
     inline long double predict(const key_type &key) const {
-        //return static_cast<slot_type>(std::max(0, static_cast<int>(args.slope * key + args.inter)));
-        //return this->args.slot_size + std::min(0, static_cast<slot_type>(args.slope * (key - args.end)));
-        //return this->args.slot_size + (key < args.end) * args.slope * (key - args.end);
         return (key - this->args.start) * this->args.slope + 1;
     }
 
-    inline bool train(const key_type* const keys, const slot_type n, const slot_type slot_size){
-        AEX_ASSERT(n > 2);
-        AEX_ASSERT(slot_size >= traits::MIN_HASH_NODE_SLOT_SIZE);
-        slot_type H = 1, T = n - 1;
-        slot_type S = n / 8, E = n / 8 * 7;
-        while (S < E && keys[S] == keys[0])
-            ++S;
-        if (S >= E || keys[S] == keys[E])
-            return false;
-        while (H < S && 1.0 * (S - H) / (keys[S] - keys[H]) < 0.5 * (E - S) / (keys[E] - keys[S]))
-            ++H;
-        while (T > E && 1.0 * (T - E) / (keys[T] - keys[E]) < 0.5 * (E - S) / (keys[E] - keys[S]))
-            --T;
-        args.start = keys[H];
-        args.slope = 1.0 * (slot_size - 2) / (keys[T] - keys[H]);
-        //AEX_PRINT("keys[0]=" << keys[0] << ", pos[0]=" << this->predict(keys[0]));
-        //if (this->predict(keys[0]) > 0){
-            //AEX_PRINT("n=" << n << ", keys[n-1]=" << keys[n - 1] << ", slot_size=" << slot_size << ", slope=" << this->args.slope << "start=" << start << ", key[0]=" << keys[0] << ", key[start]" << keys[start] << ", " << this->predict(keys[0]) << ", " << this->predict(keys[start]) << ", " << (keys[0] - this->args.start) * this->args.slope + 1);
-        //}
-        //offset = (8 * traits::SLOT_PER_LOCK * this->args.slope < (this->args.start - keys[0])) ? (HASH_NODE_MAX_GAP_SLOT * traits::SLOT_PER_LOCK) : -((keys[0] - this->args.start) * this->args.slope);
-        AEX_ASSERT(static_cast<slot_type>(this->predict(keys[0])) <= 0);
+    inline bool train(const key_type* const keys, const slot_type size, const slot_type L){
+        /*
+        int i = 0;
+        int D = 1;
+        AEX_ASSERT(D <= size-1-D);
+        double Ut = (static_cast<long double>(keys[size - 1 - D]) - static_cast<long double>(keys[D])) /
+                    (static_cast<double>(L - 2)) + 1e-6;
+        while (i < size - 1 - D) {
+            while (i + D < size && keys[i + D] - keys[i] >= Ut) {
+                i ++;
+            }
+            if (i + D >= size) {
+                break;
+            }
+            D = D + 1;
+            if (D * 3 > size) break;
+            Ut = (static_cast<long double>(keys[size - 1 - D]) - static_cast<long double>(keys[D])) /
+                    (static_cast<double>(L - 2)) + 1e-6;
+        }
+        if (D * 3 <= size) {
+            this->args.slope = 1.0 / Ut;
+            this->args.start = keys[D];
+        } else {
+            int mid1_pos = (size - 1) / 3;
+            int mid2_pos = (size - 1) * 2 / 3;
+            AEX_ASSERT(0 <= mid1_pos);
+            AEX_ASSERT(mid1_pos < mid2_pos);
+            AEX_ASSERT(mid2_pos < size - 1);
+            const long double mid1_key = (static_cast<long double>(keys[mid1_pos]) +
+                                            static_cast<long double>(keys[mid1_pos + 1])) / 2;
+            const long double mid2_key = (static_cast<long double>(keys[mid2_pos]) +
+                                            static_cast<long double>(keys[mid2_pos + 1])) / 2;
+            //const double mid1_target = mid1_pos * static_cast<int>(BUILD_GAP_CNT + 1) + static_cast<int>(BUILD_GAP_CNT + 1) / 2;
+            //const double mid2_target = mid2_pos * static_cast<int>(BUILD_GAP_CNT + 1) + static_cast<int>(BUILD_GAP_CNT + 1) / 2;
+            this->args.slope = 1.0 * L / (mid2_key - mid1_key);
+            this->args.start = mid1_key;
+        }
         return true;
+
+        */
+        return false;
     }
 
     // train model with an key array, array size n and slot size
@@ -1830,11 +1835,116 @@ public:
 
     struct linear_arguments{
         long double slope, start;
-        //int offset;
     }args;
 
 };
 
+template<typename _Tp,
+        typename traits>
+class piecewise_linear_model_5{
+public:
+    typedef _Tp key_type;
+
+    typedef piecewise_linear_model_5<key_type, traits> self;
+
+    typedef typename traits::slot_type slot_type;
+
+    piecewise_linear_model_5(){
+        std::fill(this->args.slope, this->args.slope + traits::MAX_MODEL_ARGS, 0);
+        std::fill(this->args.start, this->args.start + traits::MAX_MODEL_ARGS, 0);
+    }
+
+    ~piecewise_linear_model_5(){}
+
+    // return the predict position. value range from 0 to +inf.
+    forceinline long double predict(const key_type &key) const {
+        long double ret = 1;
+        for (unsigned int i = 0; i < traits::MAX_MODEL_ARGS; ++i){
+            ret += (key >= args.start[i]) * (key - args.start[i]) * args.slope[i];
+        }
+        return ret;
+    }
+
+    bool train(const key_type* const keys, const slot_type n){
+        return false;
+    }
+
+    bool train(const key_type* const keys, const slot_type n, const slot_type slot_size){
+        slot_type segment_size = n / traits::MAX_MODEL_ARGS, segment_slot_size = slot_size / traits::MAX_MODEL_ARGS;
+        
+        for (int i = 0; i < traits::MAX_MODEL_ARGS; ++i){
+            key_type start = (i == 0) ? keys[1] : keys[segment_size * i], end = (i == traits::MAX_MODEL_ARGS - 1) ? keys[n - 1] : keys[segment_size * (i + 1)];
+            args.slope[i] = 1.0 * segment_slot_size / (end - start);
+            args.start[i] = start;
+        }
+
+        for (int i = 1; i < segment_size / 3; ++i){
+            double slope1 = (1.0 * (segment_size - i) / segment_size * segment_slot_size) / (keys[segment_size] - keys[i]);
+            if (slope1 > args.slope[0]){
+                bool flag = false;
+                for (int j = 1; j + i < segment_size; j += i){
+                    if ((keys[j + i] - keys[i]) * slope1 < 1){
+                        flag = true;
+                        break;
+                    }
+                }
+                if (flag == false){
+                    args.slope[0] = slope1;
+                    args.start[0] = keys[i];
+                    break;
+                }
+            }
+        }        
+        slot_type start_size = segment_size * (traits::MAX_MODEL_ARGS - 1);
+        for (int i = 1; i < segment_size / 3; ++i){
+            double slope1 = 1.0 * segment_slot_size / (keys[n - i] - keys[start_size]);
+            if (slope1 > args.slope[traits::MAX_MODEL_ARGS - 1]){
+                bool flag = false;
+                for (int j = segment_size * (traits::MAX_MODEL_ARGS - 1); j + i < n; j += i){
+                    if ((keys[j + i] - keys[i]) * slope1 < 1){
+                        flag = true;
+                        break;
+                    }
+                }
+                if (flag == false){
+                    args.slope[traits::MAX_MODEL_ARGS - 1] = slope1;
+                    break;
+                }
+            }
+        }
+
+        for (int i = traits::MAX_MODEL_ARGS - 1; i >= 1; --i)
+            args.slope[i] -= args.slope[i - 1];
+        
+        return true;
+    }
+
+    inline long double RMSE(const key_type* const key, const slot_type n){
+        return -1;
+    }
+
+    inline slot_type max_error(const key_type* const key, const slot_type n, const slot_type slot_size){
+        slot_type error = 0, m_error = 0, start = -1;
+        for (slot_type i = 0; i < n; ++i){
+            slot_type pos = std::max(0, this->predict(key[i]));
+            if (pos == start) ++error;
+            else error = 0;
+            m_error = std::max(m_error, error);
+            start = pos;
+        }
+        return m_error;
+    }
+
+    #ifdef AEX_DEBUG
+    inline static std::string name(){
+        return "piecewise linear model 5";
+    }
+    #endif
+
+    struct piecewise_linear_model_arguments{
+        long double start[traits::MAX_MODEL_ARGS], slope[traits::MAX_MODEL_ARGS];
+    }args;
+};
 
 }
 

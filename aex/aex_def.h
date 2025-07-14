@@ -47,6 +47,8 @@ template<typename _Tp, typename traits> class PDM;
 template<typename _Tp, typename traits> class PDM_hash_table;
 template<typename _Tp, typename Model, typename traits> class PDM_AVX;
 template<typename _Tp, typename Model, typename traits> class PDM_hash_table_AVX;
+template<typename _Tp, typename traits> class FMCD;
+template<typename _Tp, typename traits> class piecewise_linear_model_5;
 
 template<typename _Key, typename _Val, typename traits> class aex_iterator;
 template<typename _Key, typename _Val, typename traits> class aex_const_iterator;

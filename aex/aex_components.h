@@ -154,8 +154,9 @@ struct aex_default_components{
     typedef typename concurrency_components::atomic_version_type   atomic_version_type;
     typedef typename concurrency_components::ID_type               ID_type;
     typedef typename concurrency_components::atomic_ID_type        atomic_ID_type;
-    typedef aex_hash_table<key_type, traits>                           HashTableBase;
+    typedef aex_hash_table<key_type, traits>                       HashTableBase;
     typedef gap_array_linear_model_hash_table<key_type, traits>    InnerNodeModel;
+    //typedef piecewise_linear_model_5<key_type, traits> InnerNodeModel;
     typedef linear_model<key_type, traits> DataNodeModel;
     typedef MemoryReclaimUnit<traits>      MRUnit;
     typedef aex_ThreadSpecificEpochBasedReclamationInformation<traits> ThreadSpecificEpochBasedReclamationInformation;

@@ -47,13 +47,13 @@ if [ $mode == "run_debug" ]; then
     DIR=build_debug
     if [ ! -d $DIR ]; then
         echo "build_debug directory does not exist"
-        exit
+        exit 1
     fi
     cd build_debug
     make -j 5
     if [[ $? -ne 0 ]]; then
         color_echo $RED_FONT "compile error"
-        exit
+        exit 1
     fi
     shift
     arg=$@
@@ -66,6 +66,7 @@ if [ $mode == "run_debug" ]; then
             color_echo $GREEN_FONT "run success"
         else
             color_echo $RED_FONT "run error"
+            exit 1
         fi
       else
         echo "bineary no exists: $arg"

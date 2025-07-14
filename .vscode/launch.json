@@ -1,31 +1,58 @@
 {
-    "configurations": [
+    
+    "version": "2.0.0",
+    "inputs":[
         {
-            "name": "C/C++: g++ 生成和调试活动文件",
+            "id": "splitArgs",
+            "type": "command",
+            "command": "extension.commandvariable.transform",
+            "args": {
+              "text": "${input:rawArgs}",  // 原始输入
+              "find": "\\s+(?=(?:[^\\\"]*\\\"[^\\\"]*\\\")*[^\\\"]*$)",  // 正则分割（忽略引号内的空格）
+              "replace": "\", \"",         // 替换为列表格式
+              "flags": "g"
+            }
+          },
+          {
+            "id": "rawArgs",
+            "type": "promptString",
+            "description": "Enter program arguments (e.g. --key=100 --type=int)",
+            "default": "--key=100 --type=int"
+          }
+    ],
+    "configurations": [      
+        
+        {
+            "name": "unit_test",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${fileDirname}/${fileBasenameNoExtension}",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "program": "${workspaceFolder}/build_debug/unit_test",
+            //"args":["--keys_file=./data/zipf_200M_uint64", "--keys_file_type=binary", "--table_size=-1", "--thread_num=1", "--output_path=./results/single_thread_throughput_debug.csv", "--index=alex", "--operations_num=125000000", "--init_table_ratio=0.5", "--read=0.19", "--insert=0.8", "--scan=0.01"],
+            //"args":["--unit=model", "--key_type=uint64", "--num_keys=1000000", "--input_file=/home/zzr/data/learned_index/fb_200M_uint64"],
+            "args":["--unit=model", "--key_type=uint64", "--num_keys=20000000", "--input_file=/home/zzr/data/learned_index/zipf_200M_uint64"],
+            "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "为 gdb 启用整齐打印",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "将反汇编风格设置为 Intel",
-                    "text": "-gdb-set disassembly-flavor intel",
-                    "ignoreFailures": true
-                }
-            ],
-            "preLaunchTask": "C/C++: g++ 生成活动文件",
-            "miDebuggerPath": "/usr/bin/gdb"
+            //"preLaunchTask": "CMake: 生成"
+            "preLaunchTask": "build"
+        },
+        /*
+        {
+            "name": "benchmark",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build_debug/benchmark",
+            //"args":["--keys_file=./data/zipf_200M_uint64", "--keys_file_type=binary", "--table_size=-1", "--thread_num=1", "--output_path=./results/single_thread_throughput_debug.csv", "--index=alex", "--operations_num=125000000", "--init_table_ratio=0.5", "--read=0.19", "--insert=0.8", "--scan=0.01"],
+            //"args":["--unit=model", "--key_type=uint64", "--num_keys=20000000", "--input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64"],
+            "args":["--unit=model", "--key_type=uint64", "--num_keys=200000000", "--input_file=/home/zzr/data/learned_index/zipf_200M_uint64"],
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            //"preLaunchTask": "CMake: 生成"
+            "preLaunchTask": "build"
         }
-    ],
-    "version": "2.0.0"
+        */
+    ]
 }
