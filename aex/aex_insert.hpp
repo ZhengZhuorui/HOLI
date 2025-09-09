@@ -51,7 +51,7 @@ inline bool aex_tree<_Key, _Val, traits>::_insert(const key_type key, const valu
                     AEX_PRINT("pos1=" << h_n(node)->predict(key) << ", pos2=" << h_n(node)->predict(l_n(child)->key[0]) << ", pos3=" << h_n(node)->predict(l_n(child)->next->key[0]) << ", is_occupied=" << is_occ);
                     if (is_occ){
                         key_type find_key; node_ptr _;
-                        std::tie(find_key, _) = hash_table.find(h_n(node), h_n(node)->predict(key));
+                        std::tie(find_key, _) = h_n(node)->hash_table.find(h_n(node)->predict(key));
                         AEX_PRINT(find_key << ", " << _ << ", " << l_n(child)->next);
                     }
                 }
@@ -209,9 +209,9 @@ inline void aex_tree<_Key, _Val, traits>::__construct_insert(hash_node_ptr node,
     AEX_ASSERT(pos < next_pos);
     AEX_ASSERT(node->is_occupied(pos) == false);
     //AEX_ASSERT(hash_table.find(node, pos).second == nullptr);
-    hash_table.insert(node, pos, key, child);
+    node->hash_table.insert(pos, key, child);
     for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORTCUT)
-        hash_table.insert(node, i, key, child);
+        node->hash_table.insert(i, key, child);
     bitmap_impl::set_one(node->bitmap_ptr, pos);
     ++node->size;
 }
@@ -223,10 +223,10 @@ inline void aex_tree<_Key, _Val, traits>::__construct_insert_con(hash_node_ptr n
     AEX_ASSERT(pos < node->slot_size);
     AEX_ASSERT(pos < next_pos);
     AEX_ASSERT(node->is_occupied(pos) == false);
-    AEX_ASSERT(hash_table.find(node, pos).second == nullptr);
-    hash_table.insert(node, pos, key, child);
+    AEX_ASSERT(node->hash_table.find(pos).second == nullptr);
+    node->hash_table.insert(pos, key, child);
     for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORTCUT)
-        hash_table.insert(node, i, key, child);
+        node->hash_table.insert(i, key, child);
     bitmap_impl::set_one(node->bitmap_ptr, pos);
 }
 
@@ -241,14 +241,14 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     dense_node_ptr new_node = allocator.allocate_dense_node();
     key_type prev_key;
     node_ptr prev_child;
-    std::tie(prev_key, prev_child) = hash_table.find(node, pos);
+    std::tie(prev_key, prev_child) = node->hash_table.find(pos);
     AEX_ASSERT(prev_child != nullptr);
     construct_tmp_node(new_node, prev_key, prev_child, key, child);
     AEX_ASSERT(prev_child->type == child->type);
-    hash_table.update(node, pos, new_node->key_ptr[0], new_node);
+    node->hash_table.update(pos, new_node->key_ptr[0], new_node);
     slot_type next_pos = node->next_item(pos + 1);
     for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORTCUT)
-        hash_table.update(node, i, new_node->key_ptr[0], new_node);
+        node->hash_table.update(i, new_node->key_ptr[0], new_node);
     return new_node;
 }
 
@@ -259,13 +259,13 @@ inline void aex_tree<_Key, _Val, traits>::insert_no_collision(hash_node_ptr node
     AEX_ASSERT(node->type == NodeType::HashNode);
     AEX_ASSERT(pos < node->slot_size);
     if ((pos & (traits::SLOT_PER_SHORTCUT - 1)) == 0)
-        hash_table.update(node, pos, key, child);
+        node->hash_table.update(pos, key, child);
     else
-        hash_table.insert(node, pos, key, child);
+        node->hash_table.insert(pos, key, child);
     slot_type next_pos = node->next_item(pos + 1);
     AEX_ASSERT(pos < next_pos);
     for (slot_type i = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); i < next_pos; i += traits::SLOT_PER_SHORTCUT)
-        hash_table.update(node, i, key, child);
+        node->hash_table.update(i, key, child);
     node->set_one(pos);
     if constexpr (!traits::AllowConcurrency)
         ++node->size;

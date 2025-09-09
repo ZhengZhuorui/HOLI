@@ -153,7 +153,7 @@ inline void aex_tree<_Key, _Val, traits>::get_childs_unit(GetChildsParams *worke
     for (int i = node->next_item(worker->start); i < worker->end; i = node->next_item(i + 1)){
         key_type key;
         node_ptr child;
-        std::tie(key, child) = this->hash_table.find(node, i);
+        std::tie(key, child) = node->hash_table.find(i);
         worker->key_buf.emplace_back(key);
         worker->child_buf.emplace_back(child);
     }
@@ -237,7 +237,7 @@ inline typename aex_tree<_Key, _Val, traits>::slot_type aex_tree<_Key, _Val, tra
     }
 
     if (split_node->type == NodeType::HashNode){
-        std::tie(key, child) = this->hash_table.find(h_n(split_node), h_n(split_node)->prev_item_find(h_n(split_node)->slot_size - 1));
+        std::tie(key, child) = h_n(split_node)->hash_table.find(h_n(split_node)->prev_item_find(h_n(split_node)->slot_size - 1));
         if (node->predict(key) == start_pos){
             XU(h_n(split_node));return end_pos;
         }
@@ -416,7 +416,7 @@ inline void aex_tree<_Key, _Val, traits>::construct_SMO_con(hash_node_ptr node, 
         for (slot_type i = 0; i < node->slot_size; i = node->next_item(i + 1)) ++cnt; 
         AEX_ASSERT(cnt == node->size);
         for (slot_type i = 0; i < node->slot_size; i += traits::SLOT_PER_SHORTCUT){
-            AEX_ASSERT(hash_table.find(node, i).second != nullptr);
+            AEX_ASSERT(node->hash_table.find(i).second != nullptr);
         }
     });
     AEX_WARNING("construct_SMO_con finish");

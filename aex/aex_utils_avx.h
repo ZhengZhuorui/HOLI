@@ -275,6 +275,14 @@ inline int cmp_eq_epi64x8x2(const _Tp1* x, const _Tp1 tx, const _Tp2* y, const _
 }
 
 template<typename _Tp>
+inline int cmp_eq_epi64x8(const _Tp* x, const _Tp tx){
+    __m512i q = _mm512_set1_epi64(reinterpret_cast<unsigned long long>(tx));
+    __m512i k1 = _mm512_loadu_si512((__m512i*)x);
+    __mmask8 mask = _mm512_cmpeq_epi64_mask(q, k1);
+    return __builtin_ctz(mask);
+}
+
+template<typename _Tp>
 inline _Tp* linear_search_lower_bound(_Tp* first, _Tp* last, const _Tp& key){
     for (; first < last && key > *first; ++first);
     return first;

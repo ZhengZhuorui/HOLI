@@ -25,7 +25,7 @@ inline bool aex_tree<_Key, _Val, traits>::_erase(const key_type key){
                 node_ptr prev_node;
                 data_node_ptr prev_child;
                 if (node->type == NodeType::HashNode){
-                    std::tie(prev_key, prev_node) = hash_table.find(h_n(node), h_n(node)->prev_item_find(pos - 1));
+                    std::tie(prev_key, prev_node) = h_n(node)->hash_table.find(h_n(node)->prev_item_find(pos - 1));
                     prev_child = find_tail_leaf(prev_node);
                 }
                 else{
@@ -56,7 +56,7 @@ inline bool aex_tree<_Key, _Val, traits>::_erase(const key_type key){
             if (node->type == NodeType::HashNode){
                 key_type child_key;
                 node_ptr _;
-                std::tie(child_key, _) = hash_table.find(h_n(node), pos);
+                std::tie(child_key, _) = h_n(node)->hash_table.find(pos);
                 AEX_ASSERT(_ == child);
                 update(h_n(node), pos, next_pos, child, child_key, d_n(child)->child_ptr[0]);
                 if (h_n(node)->tail_node == child) h_n(node)->tail_node = tail_node(h_n(node));
@@ -78,17 +78,14 @@ inline void aex_tree<_Key, _Val, traits>::erase(hash_node_ptr node, const slot_t
     AEX_ASSERT(check_unlock(node));
     key_type prev_key;
     node_ptr prev_node;
-    std::tie(prev_key, prev_node) = hash_table.find(node, node->prev_item_find(pos - 1));
+    std::tie(prev_key, prev_node) = node->hash_table.find(node->prev_item_find(pos - 1));
     bitmap_impl::set_zero(node->bitmap_ptr, pos);
     if ((pos & (traits::SLOT_PER_SHORTCUT - 1)) == 0)
-        //hash_table.compare_and_swap(node, pos, old_node, prev_key, prev_node);
-        hash_table.update(node, pos, prev_key, prev_node);
+        node->hash_table.update(pos, prev_key, prev_node);
     else
-        hash_table.erase(node, pos);
+        node->hash_table.erase(pos);
     for (slot_type j = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); j < next_pos; j += traits::SLOT_PER_SHORTCUT){
-        hash_table.update(node, j, prev_key, prev_node);
-        //if (!hash_table.update(node, j, prev_key, prev_node))
-        //    break;
+        node->hash_table.update(j, prev_key, prev_node);
     }
     --node->size;
 }

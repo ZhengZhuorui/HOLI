@@ -97,6 +97,8 @@ public:
     typedef typename components::Lock              Lock;
     typedef typename components::ID_type           ID_type;
     typedef typename components::version_type      version_type;
+    typedef typename components::HashTable         HashTable;
+    typedef typename components::HashTableBlock    HashTableBlock;
 
     //aex_hash_node(slot_type slot_size):inner_node(slot_size, NodeType::HashNode), bitmap_ptr(nullptr){
     //    init();
@@ -118,25 +120,25 @@ public:
 
     inline void clear(){
         if (this->bitmap_ptr != nullptr){
-            if (this->slot_size / 64 + 3 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(hash_node)) / 8))
-                delete[] this->bitmap_ptr;
+            delete[] this->bitmap_ptr;
             this->bitmap_ptr = nullptr;
         }
+        this->hash_table.clear();
     }
 
     inline void init(){
         this->size = 0;
-        if (this->slot_size / 64 + 3 > (slot_type)((Allocator::MAX_INNER_NODE_SIZE() - sizeof(hash_node)) / 8))
-            this->bitmap_ptr = new bitmap_base[this->slot_size / 64 + 1]();
-        else{
-            this->bitmap_ptr = reinterpret_cast<bitmap>(reinterpret_cast<char*>(this) + sizeof(hash_node));
-            memset(this->bitmap_ptr, 0, (this->slot_size / 64 + 1) * sizeof(bitmap_base));
-        }
+        this->bitmap_ptr = new bitmap_base[this->slot_size / 64 + 1]();
+        this->hash_table.set(this->slot_size);
     }
 
     inline slot_type predict(const key_type key) const {
         //return std::min(std::max(static_cast<slot_type>(0), model.predict(key)), this->slot_size - 1);
-        return std::max(0LL, static_cast<slot_type>(std::min(model.predict(key), static_cast<long double>(this->slot_size - 1))));
+        //return std::max(0LL, static_cast<slot_type>(std::min(model.predict(key), static_cast<long double>(this->slot_size - 1))));
+        if constexpr (std::is_same_v<Model, gap_array_linear_model_hash_table<_Key, traits>>)
+            return std::max(0LL, static_cast<slot_type>(std::min(model.predict(key), static_cast<long double>(this->slot_size - 1))));
+        else
+            return std::min(model.predict(key), static_cast<long double>(this->slot_size - 1));
     }
 
     inline bool is_occupied(const slot_type x) const {
@@ -257,8 +259,8 @@ public:
     bitmap       bitmap_ptr;
     Model        model;
     slot_type    slot_size;
-    ID_type      id;
     node_ptr     tail_node;
+    HashTable    hash_table;
 };
 
 template<typename _Key,

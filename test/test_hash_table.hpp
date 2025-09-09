@@ -21,15 +21,12 @@ bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
     srand(0);
     
     std::cout << "sizeof(HashTableBlock)=" << sizeof(HashTableBlock) << std::endl;
-    HashTable &hash_table = index.hash_table;
-    auto node = index.allocator.allocate_hash_node(512, 1);
+    //HashTable &hash_table = index.hash_table;
+    auto node = index.allocator.allocate_hash_node(512);
+    //HashTable &hash_table = node->hash_table;
     ULL slot_size = 1;
     while (slot_size * traits::HASH_TABLE_BLOCK_SIZE * traits::HASH_TABLE_FULL_RATIO < n) slot_size <<= 1;
     std::cout << slot_size;
-    //hash_table.rescale(slot_size);
-    //hash_table.slot_size = slot_size;
-    //hash_table.real_slot_size = hash_table.get_real_slot_size(slot_size);
-    //hash_table.table_ = new HashTableBlock[slot_size];
     std::vector<ULL> id(n);
     for (size_t i = 0; i < n; ++i) id[i] = 1 + (rand() % 64);
     for (size_t i = 1; i < n; ++i) id[i] += id[i - 1];
@@ -42,7 +39,7 @@ bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
     #pragma omp parallel for num_threads(thread_num)
     for (size_t i = 0; i < n; ++i){
         EpochGuard guard(&index);
-        hash_table.insert(node, id[i], data[i], nullptr);
+        node->hash_table.insert(id[i], data[i], nullptr);
     }
     t2 = std::chrono::high_resolution_clock::now();
     delta = duration_cast<microseconds>(t2 - t1).count();
@@ -62,9 +59,7 @@ bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
         t1 = std::chrono::high_resolution_clock::now();
         #pragma omp for schedule(dynamic, 10000)
         for (size_t i = 0; i < n; ++i){
-            //std::pair<key_type, node_ptr> res;
-            //hash_table.find(node, id[i], res);
-            auto res = hash_table.find(node, id[i]);
+            auto res = node->hash_table.find(id[i]);
 
             thread_param.sum += (uint64_t)res.first;
         }
@@ -102,11 +97,11 @@ bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
     }*/
     //size_t success_read = 0;
 
-    std::unordered_map<std::pair<uint64_t, key_type>, std::pair<uint64_t, uint64_t>, PairHash > mp;
+    std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>> mp;
 
     t1 = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < n; ++i){
-        mp.emplace(std::make_pair(node->id, id[i]), std::make_pair(data[i], 0));
+        mp.emplace(id[i], std::make_pair(data[i], 0));
     }
     t2 = std::chrono::high_resolution_clock::now();
     delta = duration_cast<microseconds>(t2 - t1).count();
@@ -128,7 +123,7 @@ bool test_hash_table_perf(key_type *data, size_t n, int thread_num){
         for (size_t i = 0; i < n; ++i){
             //std::pair<key_type, node_ptr> res;
             //hash_table.find(node, id[i], res);
-            auto res = mp.find(std::make_pair(node->id, id[i]));
+            auto res = mp.find(id[i]);
             thread_param.sum += (*res).second.first;
         }
     }

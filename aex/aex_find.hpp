@@ -7,11 +7,24 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     key_type find_key;
     node_ptr res = nullptr;
     if (node->is_occupied(pos) || (pos & (traits::SLOT_PER_SHORTCUT - 1)) == 0)
-        std::tie(find_key, res) = hash_table.find(node, pos);
+        std::tie(find_key, res) = node->hash_table.find(pos);
     if (res == nullptr || find_key > key){
         pos1 = node->prev_item_find(pos - 1);
-        std::tie(find_key, res) = hash_table.find(node, pos1);
+        std::tie(find_key, res) = node->hash_table.find(pos1);
     }
+    
+    /*if (find_key > key) {
+        AEX_PRINT("key=" << key << ", find_key=" << find_key);
+        AEX_PRINT("slot_size=" << node->slot_size << ", key predict=" << node->predict(key) << ", find_key predict=" << node->predict(find_key));
+        long double ret0 = 0, ret1 = 0;
+        std::cout << std::fixed << std::setprecision(15);
+        for (unsigned int i = 0; i < traits::MAX_MODEL_ARGS; ++i){
+            ret0 += (key >= node->model.args.start[i]) * (key - node->model.args.start[i]) * node->model.args.slope[i];
+            ret1 += (find_key >= node->model.args.start[i]) * (find_key - node->model.args.start[i]) * node->model.args.slope[i];
+            AEX_PRINT("start=" << node->model.args.start[i] << ", ret0=" << ret0 << ", ret1=" << ret1);
+        }
+    }*/
+
     AEX_ASSERT(find_key <= key);
     AEX_ASSERT(res != nullptr);
     return res;
@@ -104,7 +117,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     key_type find_key;
     node_ptr res = nullptr;
     if (node->is_occupied(pos)){
-        std::tie(find_key, res) = hash_table.find(node, pos);
+        std::tie(find_key, res) = node->hash_table.find(pos);
         AEX_ASSERT(res != nullptr);
         if (find_key > key)
             res = nullptr;
@@ -112,7 +125,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 
     if (res == nullptr){
         pos = node->prev_item_find(pos - 1);
-        std::tie(find_key, res) = hash_table.find(node, pos);
+        std::tie(find_key, res) = node->hash_table.find(pos);
         AEX_ASSERT(find_key <= key);
     }
     AEX_ASSERT(res != nullptr);
@@ -144,7 +157,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     node_ptr res = nullptr;
 
     if (node->is_occupied(pos)){
-        std::tie(find_key, res) = hash_table.find(node, pos);
+        std::tie(find_key, res) = node->hash_table.find(pos);
         AEX_ASSERT(res != nullptr);
         if (find_key > key){
             next_pos = pos;
@@ -159,14 +172,14 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     if (res == nullptr){
         slot_type prev_pos = node->prev_item(pos - 1);
         pos = prev_pos;
-        std::tie(find_key, res) = hash_table.find(node, pos);
+        std::tie(find_key, res) = node->hash_table.find(pos);
         AEX_ASSERT(find_key <= key);
     }
     AEX_ASSERT(res != nullptr);
     AEX_DEBUG_BLOCK({if (res->type != NodeType::LeafNode) AEX_ASSERT(find_key <= node_zero_key(i_n(res)));});
     AEX_DEBUG_BLOCK({if (next_pos < node->slot_size){
         key_type next_key; node_ptr next_child;
-        std::tie(next_key, next_child) = hash_table.find(node, next_pos);
+        std::tie(next_key, next_child) = node->hash_table.find(next_pos);
         AEX_ASSERT(next_child != nullptr);
         AEX_ASSERT(key < next_key);}});
     return res;

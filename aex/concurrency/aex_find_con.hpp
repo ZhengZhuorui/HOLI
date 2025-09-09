@@ -10,12 +10,12 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     key_type find_key;
     node_ptr res = nullptr;
     if (node->is_occupied(pos) || (pos & (traits::SLOT_PER_SHORTCUT - 1)) == 0)
-        std::tie(find_key, res) = hash_table.find(node, pos, need_restart);
+        std::tie(find_key, res) = node->hash_table.find(pos, need_restart);
     if (need_restart) return res;
     
     if (res == nullptr || find_key > key){
         pos1 = node->prev_item_find(pos - 1);
-        std::tie(find_key, res) = hash_table.find(node, pos1, need_restart);
+        std::tie(find_key, res) = node->hash_table.find(pos1, need_restart);
     }
     return res;
 }
@@ -37,7 +37,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
     key_type find_key;
     node_ptr res = nullptr;
     if (node->is_occupied(pos)){
-        std::tie(find_key, res) = hash_table.find(node, pos, need_restart);
+        std::tie(find_key, res) = node->hash_table.find(pos, need_restart);
         if (need_restart) return res;
         AEX_ASSERT(res != nullptr);
         if (find_key > key)
@@ -46,7 +46,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
 
     if (res == nullptr){
         pos = node->prev_item_find(pos - 1);
-        std::tie(find_key, res) = hash_table.find(node, pos, need_restart);
+        std::tie(find_key, res) = node->hash_table.find(pos, need_restart);
     }
     return res;
 }
@@ -286,81 +286,5 @@ range_query_len_con_start:
     return cnt;
 }
 
-/*
-template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_erase_con(hash_node_ptr node, const key_type key, slot_type &pos, slot_type &next_pos) const {
-    int restart_count = 0;
-find_erase_start:
-    if (restart_count > 0)
-        yield(restart_count);
-    restart_count++;
-    bool restart = false;
-    pos = node->predict(key);
-    key_type find_key;
-    node_ptr res = nullptr;
-    node->array_lock_shared(pos - 1, pos);
-
-    if (node->is_occupied(pos)){
-        std::tie(find_key, res) = hash_table.find(node, pos);
-        AEX_ASSERT(res != nullptr);
-        if (find_key > key){
-            next_pos = pos;
-            res = nullptr;
-        }
-        else
-            next_pos = node->array_lock_shared_until_next_item(pos, pos + 1);  
-    }
-    else
-        next_pos = node->array_lock_shared_until_next_item(pos, pos + 1);
-
-    if (res == nullptr){
-        slot_type prev_pos = node->try_array_lock_shared_until_prev_item(pos - 1, restart);
-        if (restart){
-            node->array_unlock_shared(pos - 1, next_pos);
-            goto find_erase_start;
-        }
-        pos = prev_pos;
-        std::tie(find_key, res) = hash_table.find(node, pos);
-        AEX_ASSERT(find_key <= key);
-    }
-    AEX_ASSERT(res != nullptr);
-    AEX_DEBUG_BLOCK({if (res->type != NodeType::LeafNode) AEX_ASSERT(find_key <= node_zero_key(i_n(res)));});
-    AEX_DEBUG_BLOCK({if (next_pos < node->slot_size){
-        key_type next_key;
-        node_ptr next_child;
-        std::tie(next_key, next_child) = hash_table.find(node, next_pos);
-        if (key >= next_key){
-            AEX_PRINT("key=" << key << ", start=" << node->model.args.start << ", find_key=" << find_key << ", next_key=" << next_key << ", pos=" << pos << ", next_pos=" << next_pos << ", next_child=" << next_child);
-            AEX_PRINT("predict=" << node->predict(key) << ", slope=" << node->model.args.slope << ", predict - 1 =" << (key - node->model.args.start) * node->model.args.slope << ", predict=" << (key - node->model.args.start) * node->model.args.slope + 1);
-        }
-        AEX_ASSERT(next_child != nullptr);
-        AEX_ASSERT(key < next_key);}});
-    AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (pos - 1 >= 0) if (!node->lock_array[pos2slot(pos - 1)].is_lock_shared()) {
-        AEX_ERROR("node=" << node << ", pos=" << pos);AEX_ASSERT(node->lock_array[pos2slot(pos - 1)].is_lock_shared());}});
-    AEX_DEBUG_BLOCK({if constexpr(traits::AllowConcurrency) if (next_pos < node->slot_size) AEX_ASSERT(node->lock_array[pos2slot(next_pos)].is_lock_shared());});
-    SL(res);
-    return res;
-}
-
-
-template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_erase(const dense_node_ptr node, const key_type key, slot_type &pos, slot_type &next_pos) const {
-    //pos = aex::linear_search_upper_bound_avx512x8(node->key_ptr + 1, node->key_ptr + node->size, key) - node->key_ptr - 1;
-    pos = linear_search_upper_bound_avx512<traits::DENSE_NODE_SLOT_SIZE>(node->key_ptr, node->size, key) - 1;
-    node_ptr res = node->child_ptr[pos];
-    next_pos = pos + 1;
-    SL(res);
-    return res;
-}
-
-template<typename _Key, typename _Val, typename traits>
-inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, traits>::find_erase_con(inner_node_ptr node, const key_type key, slot_type &pos, slot_type &next_pos, bool &need_restart) const {
-    switch (node->type){
-        case NodeType::HashNode  : { return find_erase(h_n(node), key, pos, next_pos, node_version, need_restart); }
-        case NodeType::DenseNode : { return find_erase(d_n(node), key, pos, next_pos, node_version, need_restart); }
-        default : { AEX_ASSERT(0 == 1); return nullptr; }
-    }
-}
-*/
 
 }

@@ -82,7 +82,7 @@ inline bool aex_tree<_Key, _Val, traits>::check_node(hash_node_ptr node) const {
     for(slot_type i = 0; i < node->slot_size; i = node->next_item(i + 1)){
         key_type key;
         node_ptr child;
-        std::tie(key, child) = hash_table.find(node, i);
+        std::tie(key, child) = node->hash_table.find(i);
         if (child == nullptr){
             AEX_ERROR("child == nullptr. slot=" << i << ", slot & 63=" << (i & 63));
             flag = false;
@@ -122,7 +122,7 @@ inline bool aex_tree<_Key, _Val, traits>::test_get_childs_con(hash_node_ptr node
     key_type key;
     node_ptr child;
     for (slot_type i = 0; i < node->slot_size; i = node->next_item(i + 1)){
-        std::tie(key, child) = this->hash_table.find(node, i);
+        std::tie(key, child) = node->hash_table.find(i);
         key_buf.emplace_back(key);
         child_buf.emplace_back(child);
     }

@@ -30,6 +30,7 @@ public:
     typedef typename components::InnerNodeModel InnerNodeModel;
     typedef typename components::bitmap_impl    bitmap_impl;
     typedef typename components::HashTable      HashTable;
+    typedef typename components::HashTableBlock      HashTableBlock;
     typedef typename components::RWLock         RWLock;
     typedef typename components::Lock           Lock;
     typedef typename components::version_type   version_type;
@@ -110,7 +111,7 @@ public:
         return MAX_INNER_NODE_SIZE();
     }
 
-    inline hash_node_ptr allocate_hash_node(const slot_type slot_size, const ID_type id){
+    inline hash_node_ptr allocate_hash_node(const slot_type slot_size){
         AEX_ASSERT((slot_size & (-slot_size)) == slot_size);
         //AEX_WARNING(sizeof(aex_hash_node<key_type, value_type, traits>) << ", " << sizeof(aex_hash_node_con<key_type, value_type, traits>) << ", " << MAX_INNER_NODE_SIZE() << ", " << sizeof(base_node) << ", " << sizeof(InnerNodeModel) << ", " << sizeof(bitmap) << ", " << sizeof(slot_type) << ", " << sizeof(Lock));
         //exit(0);
@@ -120,8 +121,10 @@ public:
         node->type = NodeType::HashNode;
         node->node_lock.init();
         node->slot_size = slot_size;
-        node->id = id;
         node->init();
+        node->hash_table.set(slot_size);
+        //node->hash_table.slot_size = get_real_slot_size(static_cast<slot_type>(1.0 * slot_size * traits::HASH_NODE_FULL_RATIO / traits::HASH_TABLE_FULL_RATIO));
+        //node->hash_table.table_ = new HashTableBlock[node->hash_table.slot_size]();
         if constexpr (traits::AllowConcurrency)
             node->copy = nullptr;
         return node;

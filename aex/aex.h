@@ -114,11 +114,13 @@ public:
 
     void print_stats() const {
         AEX_HINT("size=" << _size);
+        AEX_HINT("sizeof(hash_node)=" << sizeof(hash_node) << ", sizeof(dense_node)=" << sizeof(dense_node) << ", sizeof(data_node)=" << sizeof(data_node));
         auto if_stats = get_info_stats();
         if_stats.print_stats();
         opt_stats.print_stats();
         con_stats.print_stats();
-        hash_table.print_stats();
+        if (root != nullptr && root->type == NodeType::HashNode)
+            h_n(root)->hash_table.print_stats();
     }
 
     //size_t memory_used() const;
@@ -133,11 +135,9 @@ private:
     size_type       _size;
     mutable operation_stats opt_stats;
     mutable concurrency_stats con_stats;
-    atomic_ID_type  node_id;
     LockFreeQueue   work_queue;
 
 public:
-    HashTable       hash_table;
     Allocator       allocator;
     EpochBasedMemoryReclamationStrategy *ebr;
 
@@ -156,7 +156,7 @@ public:
         data_node_ptr _tail_leaf;
         this->root = i_n(this->construct(_index, _index.root, _tail_leaf));
         this->_size = _index._size;
-        AEX_PRINT(this->_size << ", node_id=" << this->node_id.load() << ", this->root->size=" << this->root->size << ", this->hash_table->size=" << this->hash_table.size);
+        AEX_PRINT("this->size=" << this->_size << ", this->root->size=" << this->root->size);
         return *this;
     }
 
@@ -169,7 +169,6 @@ public:
         this->_size = _index.size;
         this->node_id = _index.node_id;
         this->allocator = _index.allocator;
-        this->hash_table = std::move(_index.hash_table);
         return *this;
     }
 
@@ -557,13 +556,6 @@ public:
     inline void clear_copy(hash_node_ptr node){
         AEX_ASSERT(traits::AllowConcurrency);
         if constexpr (traits::AllowConcurrency){
-            slot_type cnt = 0;
-            for (slot_type i = node->prev_item_find(node->slot_size - 1); i >= 0; i = node->prev_item_find(i - 1)){
-                this->hash_table.erase(node, i);
-                ++cnt;
-                if (i == 0)
-                    break;
-            }
             node->clear();
             delete node;
         }
@@ -659,18 +651,18 @@ private:
 
     data_node_ptr find_tail_leaf(node_ptr node) ;
     inline key_type node_zero_key(const inner_node_ptr node) const {
-        return (node->type == NodeType::DenseNode) ? (d_n(node)->key_ptr[0]) : (hash_table.find(h_n(node), 0).first);
+        return (node->type == NodeType::DenseNode) ? (d_n(node)->key_ptr[0]) : (h_n(node)->hash_table.find(0).first);
     }
     inline key_type node_first_key(const inner_node_ptr node) const {
-        return (node->type == NodeType::DenseNode) ? (d_n(node)->key_ptr[1]) : (hash_table.find(h_n(node), h_n(node)->next_item(1)).first);
+        return (node->type == NodeType::DenseNode) ? (d_n(node)->key_ptr[1]) : (h_n(node)->hash_table.find(h_n(node)->next_item(1)).first);
     }
     inline key_type node_last_key(const inner_node_ptr node) const {
-        return (node->type == NodeType::DenseNode) ? (d_n(node)->key_ptr[node->size - 1]) : (hash_table.find(h_n(node), h_n(node)->next_item(h_n(node)->slot_size - 1)).first);
+        return (node->type == NodeType::DenseNode) ? (d_n(node)->key_ptr[node->size - 1]) : (h_n(node)->hash_table.find(h_n(node)->next_item(h_n(node)->slot_size - 1)).first);
     }
     inline node_ptr tail_node(const hash_node_ptr node) {
         key_type last_key;
         node_ptr last_node;
-        std::tie(last_key, last_node) = hash_table.find(node, node->prev_item_find(node->slot_size - 1));
+        std::tie(last_key, last_node) = node->hash_table.find(node->prev_item_find(node->slot_size - 1));
         return last_node;
     }
 
@@ -758,8 +750,8 @@ private:
     void clear_childs_recursive(dense_node_ptr node);
     void extend_head_nodes(std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
     void extend_tail_nodes(std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
-    bool check_model(const Model &m, const key_type* const keys, const ULL n, const slot_type slot_size) const ;
-    slot_type train(const key_type* const keys, const ULL n, Model &m);
+    bool check_model(const Model &m, const key_type* const keys, const ULL n, const slot_type slot_size, const double few_ratio = traits::HASH_NODE_FEW_RATIO) const ;
+    slot_type train(const key_type* const keys, const ULL n, Model &m, const double few_ratio = traits::HASH_NODE_FEW_RATIO);
     void rebuild(inner_node_ptr node);
     bool check_extend_head(const key_type fk, const key_type lk, const slot_type node_size, const node_ptr child) const ;
     bool check_extend_tail(const key_type fk, const key_type lk, const slot_type node_size, const node_ptr child) const ;
@@ -824,11 +816,6 @@ private:
     }
 
     inline void clear(hash_node_ptr node){
-        for (slot_type i = node->prev_item_find(node->slot_size - 1); i >= 0; i = node->prev_item_find(i - 1)){
-            this->hash_table.erase(node, i);
-            if (i == 0)
-                break;
-        }
         node->clear();
     }
 
@@ -840,35 +827,7 @@ private:
             free_node(node);
     }
 
-    inline ID_type get_node_id(){
-        if constexpr (traits::AllowConcurrency){
-            ID_type expected = this->node_id.load();
-            ID_type desired = expected + 1;
-            while (!this->node_id.compare_exchange_weak(expected, desired)) {
-                expected = this->node_id.load();
-                desired   = expected + 1;
-            }
-            return expected;
-        }
-        else{
-            ID_type expected = this->node_id.load();
-            ++this->node_id;
-            return expected;
-        }
-    }
-
     inline void copy_node(hash_node_ptr node){
-        //if constexpr (traits::AllowConcurrency){
-        //    hash_node_ptr new_node = new hash_node();
-        //    memcpy(new_node, node, sizeof(hash_node));
-        //    AEX_ASSERT(check_lock(node));
-        //    hash_node_ptr ori_node_copy = node->copy, ori_node_copy_bak = node->copy;
-        //    __atomic_store_n(&node->copy, new_node, __ATOMIC_RELEASE);
-        //    //while (!node->copy.compare_exchange_weak(ori_node_copy_bak, new_node)) {
-        //    //    ori_node_copy_bak = ori_node_copy;
-        //    //}
-        //    ebr->scheduleForDeletion(MRUnit(MemoryReclaimType::HashNodeCopy, ori_node_copy));
-        //}
         if constexpr (traits::AllowConcurrency){
             hash_node_ptr new_node = new hash_node();
             memcpy(new_node, node, sizeof(hash_node));
@@ -890,11 +849,7 @@ private:
     inline bool work_concurrency();
 
     inline void yield(int count) {
-        if (!this->hash_table.work_queue.empty()){
-            //while(const_cast<self*>(this)->work_concurrency());
-            while(this->hash_table.work_concurrency());
-        }
-        else if (!this->work_queue.empty()){
+        if (!this->work_queue.empty()){
             //while(const_cast<self*>(this)->work_concurrency());
             while(this->work_concurrency());
         }

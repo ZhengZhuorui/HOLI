@@ -459,6 +459,16 @@ inline bool is_prime(LL x){
     return true;
 }
 
+template<typename _Tp>
+inline _Tp get_real_slot_size(const _Tp _slot_size) {
+    for (_Tp i = _slot_size; i >= 0; --i)
+        if (is_prime(i)){
+            return i;
+            break;
+        }
+    return 0;
+}
+
 inline double utils_get_hash_key_d(ULL x){
     double A = 0.6180339887;
     double product = x * A;

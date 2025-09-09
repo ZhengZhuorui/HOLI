@@ -55,13 +55,14 @@ struct alignas(64) aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
             delete[] this->lock_array;
             this->lock_array = nullptr;
         }
+        this->hash_table.clear();
     }
 
     inline void init(){
         this->size = 0;
         this->bitmap_ptr = new bitmap_base[this->slot_size / traits::SLOT_PER_LOCK + 1]();
-        //this->lock_array = new RWLock[this->slot_size / traits::SLOT_PER_LOCK + 1];
         this->lock_array = new Lock[this->slot_size / traits::SLOT_PER_LOCK + 1];
+        this->hash_table.set(this->slot_size);
     }
 
     inline void set_one(const slot_type x) {

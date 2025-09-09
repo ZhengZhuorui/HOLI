@@ -1839,13 +1839,12 @@ public:
 
 };
 
+
 template<typename _Tp,
         typename traits>
 class piecewise_linear_model_5{
 public:
     typedef _Tp key_type;
-
-    typedef piecewise_linear_model_5<key_type, traits> self;
 
     typedef typename traits::slot_type slot_type;
 
@@ -1857,12 +1856,14 @@ public:
     ~piecewise_linear_model_5(){}
 
     // return the predict position. value range from 0 to +inf.
-    forceinline long double predict(const key_type &key) const {
-        long double ret = 1;
-        for (unsigned int i = 0; i < traits::MAX_MODEL_ARGS; ++i){
-            ret += (key >= args.start[i]) * (key - args.start[i]) * args.slope[i];
+    inline long double predict(const key_type &key) const {
+        long double ret = 0;
+        for (unsigned int i = 0; i < traits::MAX_MODEL_ARGS; ++i)
+        if (key >= args.start[i]){
+            ret = (key - args.start[i]) * args.slope[i] + i * args.segment_slot_size;
         }
         return ret;
+        //return 0;
     }
 
     bool train(const key_type* const keys, const slot_type n){
@@ -1870,7 +1871,9 @@ public:
     }
 
     bool train(const key_type* const keys, const slot_type n, const slot_type slot_size){
-        slot_type segment_size = n / traits::MAX_MODEL_ARGS, segment_slot_size = slot_size / traits::MAX_MODEL_ARGS;
+        
+        slot_type segment_size = n / traits::MAX_MODEL_ARGS, segment_slot_size = (slot_size - 1) / traits::MAX_MODEL_ARGS;
+        args.segment_slot_size = segment_slot_size;
         
         for (int i = 0; i < traits::MAX_MODEL_ARGS; ++i){
             key_type start = (i == 0) ? keys[1] : keys[segment_size * i], end = (i == traits::MAX_MODEL_ARGS - 1) ? keys[n - 1] : keys[segment_size * (i + 1)];
@@ -1913,9 +1916,11 @@ public:
             }
         }
 
-        for (int i = traits::MAX_MODEL_ARGS - 1; i >= 1; --i)
-            args.slope[i] -= args.slope[i - 1];
-        
+        //for (int i = traits::MAX_MODEL_ARGS - 1; i >= 1; --i){
+        //    AEX_ASSERT(args.slope[i] > 0);
+        //    args.slope[i] -= args.slope[i - 1];
+        //}
+        args.start[0] -= 1.0 / args.slope[0];
         return true;
     }
 
@@ -1935,16 +1940,18 @@ public:
         return m_error;
     }
 
-    #ifdef AEX_DEBUG
     inline static std::string name(){
         return "piecewise linear model 5";
     }
-    #endif
 
     struct piecewise_linear_model_arguments{
-        long double start[traits::MAX_MODEL_ARGS], slope[traits::MAX_MODEL_ARGS];
+        long double start[traits::MAX_MODEL_ARGS];
+        long double slope[traits::MAX_MODEL_ARGS];
+        slot_type segment_slot_size;
+        //double start[8], slope[8];
     }args;
 };
+
 
 }
 

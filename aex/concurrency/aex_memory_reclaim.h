@@ -131,16 +131,16 @@ private:
                     //AEX_WARNING("HashNodeCopy reclaim");
                     index->clear_copy(h_n(unit.pointer)); break;
                 }
-                case MemoryReclaimType::HashTable:{
-                    //AEX_WARNING("HashTable reclaim");
-                    reinterpret_cast<HashTableBase*>(unit.pointer)->free_hash_table();
-                    delete reinterpret_cast<HashTableBase*>(unit.pointer);
-                    break;
-                }
-                case MemoryReclaimType::HashTableBlock:{
-                    delete reinterpret_cast<HashTableBlock*>(unit.pointer);
-                    break;
-                }
+                //case MemoryReclaimType::HashTable:{
+                //    //AEX_WARNING("HashTable reclaim");
+                //    reinterpret_cast<HashTableBase*>(unit.pointer)->free_hash_table();
+                //    delete reinterpret_cast<HashTableBase*>(unit.pointer);
+                //    break;
+                //}
+                //case MemoryReclaimType::HashTableBlock:{
+                //    delete reinterpret_cast<HashTableBlock*>(unit.pointer);
+                //    break;
+                //}
                 default:{
                     AEX_ERROR("Unknown Type");
                     AEX_ASSERT(0 == 1);

@@ -34,10 +34,11 @@ void aex_tree<_Key, _Val, traits>::_get_info_stats(const node_ptr node, const un
                 stats.hash_node_memory_used += sizeof(Lock) * (h_n(node)->slot_size / 64);
             ++stats.hash_node_cnt;
             stats.hash_node_childs += h_n(node)->size;
+            stats.hash_table_memory_used += h_n(node)->hash_table.memory_used();
             int cnt = 0;
             for(slot_type i = 0; i < h_n(node)->slot_size; i = h_n(node)->next_item(i + 1)){
                 ++cnt;
-                std::tie(key, child) = hash_table.find(h_n(node), i);
+                std::tie(key, child) = h_n(node)->hash_table.find(i);
                 _get_info_stats(child, depth + 1, stats);
             }
             //if (node == this->root)
@@ -53,7 +54,9 @@ info_stats aex_tree<_Key, _Val, traits>::get_info_stats() const {
     if (this->root == nullptr){
         return stats;
     }
-    stats.hash_table_memory_used = hash_table.memory_used();
+    if (this->root->type == NodeType::HashNode)
+    AEX_WARNING("root->slot_size=" << h_n(root)->slot_size << ", hash_table.slot_size=" << h_n(root)->hash_table.slot_size);
+    //stats.hash_table_memory_used = hash_table.memory_used();
     [[maybe_unused]]key_type prev_key = std::numeric_limits<key_type>::lowest();
     long long cnt = 0;
     for (auto it = this->begin(); it != this->end(); ++it){
@@ -69,10 +72,7 @@ info_stats aex_tree<_Key, _Val, traits>::get_info_stats() const {
     if (cnt != (long long)stats.data_node_cnt){
         AEX_ERROR("Error! node data node error. cnt=" << cnt << ", stats.data_node_cnt=" << stats.data_node_cnt);
     }
-    //AEX_DEBUG_BLOCK({if ((LL)stats.hash_node_childs != hash_table.size.load()) AEX_PRINT((LL)stats.hash_node_childs << ", " << hash_table.size.load());});
-    //AEX_ASSERT((LL)stats.hash_node_childs == hash_table.size.load());
     stats.memory_used = stats.hash_table_memory_used + stats.data_node_memory_used + stats.hash_node_memory_used + stats.dense_node_memory_used;
-
     return stats;
 }
 
