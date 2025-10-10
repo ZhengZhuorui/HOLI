@@ -429,6 +429,7 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 
 ./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/zipf_tmp1_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/books_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/covid_200M_uint64
 ./unit_test --unit=index --key_type=uint64 --function=lookup --num_keys=200000000 --batch=20000000 --input_file=/home/zzr/data/learned_index/planet_200M_uint64

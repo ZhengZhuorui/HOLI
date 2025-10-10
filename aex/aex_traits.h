@@ -166,10 +166,10 @@ struct aex_default_traits{
 
     //static constexpr float HASH_NODE_FULL_RATIO      = 1.0 / 8;
     
-    //static constexpr float HASH_NODE_FULL_RATIO      = (!AllowConcurrency) ? 1.0 / 32 : 1.0 / 8;
-    //static constexpr float HASH_NODE_FEW_RATIO       = (!AllowConcurrency) ? 1.0 / 128 : 1.0 / 32;
-    static constexpr float HASH_NODE_FULL_RATIO      = 1.0 / 32;
-    static constexpr float HASH_NODE_FEW_RATIO       = 1.0 / 64;
+    static constexpr float HASH_NODE_FULL_RATIO      = (!AllowConcurrency) ? 1.0 / 32 : 1.0 / 16;
+    static constexpr float HASH_NODE_FEW_RATIO       = (!AllowConcurrency) ? 1.0 / 128 : 1.0 / 64;
+    //static constexpr float HASH_NODE_FULL_RATIO      = 1.0 / 32;
+    //static constexpr float HASH_NODE_FEW_RATIO       = 1.0 / 64;
     //static constexpr float HASH_NODE_FEW_RATIO       = (!AllowConcurrency) ? 1.0 / 32 : 1.0 / 64;
     //static constexpr float HASH_NODE_FEW_RATIO       = 1.0 / 64;
     //static constexpr float HASH_NODE_FEW_RATIO       = 1.0 / 16;

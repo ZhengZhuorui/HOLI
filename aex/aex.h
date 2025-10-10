@@ -348,15 +348,16 @@ public:
             return lower_bound_con(x, res);
         data_node_ptr node = this->find_leaf(x);
         slot_type pos = node->find_lower_pos(x);
-        if (pos >= node->size && node->next == nullptr){
-            return false;
-        }
-        else{
-            data_node_ptr next_node = node->next;
-            node = next_node;
-            AEX_ASSERT(node->key[0] >= x);
-            //pos = node->find_lower_pos(x);
-            pos = 0;
+        if (pos >= node->size){
+            if (node->next == nullptr)
+                return false;
+            else{
+                data_node_ptr next_node = node->next;
+                node = next_node;
+                AEX_ASSERT(node->key[0] >= x);
+                //pos = node->find_lower_pos(x);
+                pos = 0;
+            }
         }
         res = std::make_pair(node->key[pos], node->data[pos]);
         return true;
@@ -807,9 +808,9 @@ private:
     inline void clear_helper(hash_node_ptr node){
         AEX_ASSERT(check_lock(node));
         if constexpr (traits::AllowConcurrency){
-            hash_node_ptr node_copy = new hash_node();
-            memcpy(node_copy, node, sizeof(hash_node));
-            ebr->scheduleForDeletion(MRUnit(MemoryReclaimType::HashNodeCopy, node_copy));
+            //hash_node_ptr node_copy = new hash_node();
+            //memcpy(node_copy, node, sizeof(hash_node));
+            ebr->scheduleForDeletion(MRUnit(MemoryReclaimType::HashNodeCopy, node->copy));
         }
         else
             clear(node);
