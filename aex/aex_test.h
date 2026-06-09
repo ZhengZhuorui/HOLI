@@ -75,9 +75,7 @@ inline bool aex_tree<_Key, _Val, traits>::check_node(hash_node_ptr node) const {
     key_type his_key = std::numeric_limits<key_type>::lowest();
     slot_type cnt = 0;
     if constexpr (traits::AllowConcurrency){
-        for (slot_type i = 0; i < node->slot_size / traits::SLOT_PER_LOCK; ++i){
-            AEX_ASSERT(node->lock_array[i].is_lock() == false);
-        }
+        for (slot_type i = 0; i < node->slot_size / traits::SLOT_PER_LOCK; ++i) AEX_ASSERT(node->lock_array[i].load() == 0);
     }
     for(slot_type i = 0; i < node->slot_size; i = node->next_item(i + 1)){
         key_type key;
@@ -101,42 +99,6 @@ inline bool aex_tree<_Key, _Val, traits>::check_node(hash_node_ptr node) const {
     });
 
     return flag;
-}
-
-template<typename _Key, typename _Val, typename traits>
-inline bool aex_tree<_Key, _Val, traits>::test_lock_array_con(hash_node_ptr node) const {
-    if constexpr(traits::AllowConcurrency)
-    for (slot_type i = 0; i < pos2slot(node->slot_size); ++i)
-    if (!node->lock_array[i].is_lock()){
-        AEX_ERROR("i=" << i);
-        return false;
-    }
-    return true;
-}
-
-template<typename _Key, typename _Val, typename traits>
-inline bool aex_tree<_Key, _Val, traits>::test_get_childs_con(hash_node_ptr node) {
-    std::vector<key_type> key_buf, key_buf1;
-    std::vector<node_ptr> child_buf, child_buf1;
-    get_childs_con(node, key_buf1, child_buf1);
-    key_type key;
-    node_ptr child;
-    for (slot_type i = 0; i < node->slot_size; i = node->next_item(i + 1)){
-        std::tie(key, child) = node->hash_table.find(i);
-        key_buf.emplace_back(key);
-        child_buf.emplace_back(child);
-    }
-    if (key_buf.size() != key_buf1.size()){
-        AEX_ERROR("key_buf.size()=" << key_buf.size() << ", key_buf1.size()=" << key_buf1.size());
-        return false;
-    }
-    for (size_t i = 0; i < key_buf.size(); ++i){
-        if (key_buf[i] != key_buf1[i] || child_buf[i] != child_buf1[i]){
-            AEX_ERROR("i=" << i << ", key_buf=" << key_buf[i] << ", child_buf=" << child_buf[i] << ", key_buf1=" << key_buf1[i] << ", child_buf1=" << child_buf1[i] << ", pos=" << node->predict(key_buf[i]));
-            return false;
-        }
-    }
-    return true;
 }
 
 

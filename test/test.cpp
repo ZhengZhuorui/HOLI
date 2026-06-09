@@ -378,7 +378,6 @@ int main(int argc, char** argv){
     if (flags.find("general") != flags.end()){
         AEX_HINT("<ULL, ULL> unconcurrency data node size=" << sizeof(aex::aex_static_data_node<ULL, ULL, aex_default_traits<ULL, ULL, false, void, false>>));
         AEX_HINT("<ULL, ULL> concurrency data node size=" << sizeof(aex::aex_static_data_node<ULL, ULL, aex_default_traits<ULL, ULL, false, void, true>>));
-        AEX_HINT("<ULL, ULL> hash table block size=" << sizeof(aex::aex_hash_table_block<ULL, aex_default_traits<ULL, ULL, false, void, false>>));
         return 0;
     }
     else if (flags.find("rw_lock") != flags.end()){

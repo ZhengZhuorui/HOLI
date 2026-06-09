@@ -304,7 +304,7 @@ public:
     update_restart:
         AEX_SGL_ASSERT(restart_count == 0);
         if (restart_count > 0){
-            yield(restart_count);
+            _yield(restart_count);
         }
         bool need_restart = 0;
         node = find_leaf_con(x, node_version, need_restart);
@@ -583,7 +583,7 @@ public:
                 #ifdef AEX_DEBUG
                 opt_stats.free_hash_node_cnt++;
                 #endif
-                clear(h_n(node));
+                h_n(node)->clear();
                 if constexpr (traits::AllowConcurrency){
                     delete h_n(node)->copy;
                 }
@@ -675,8 +675,8 @@ private:
     void construct_tmp_node(dense_node_ptr node, const key_type old_key, const node_ptr old_node, const key_type new_key, const node_ptr new_node);
     void __construct_insert(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type key, const node_ptr child);
     void __construct_insert_con(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type key, const node_ptr child);
-    node_ptr insert_collision(hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
-    void insert_no_collision(hash_node_ptr node, const slot_type pos, const key_type key, const node_ptr child);
+    void insert_collision(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type key, const node_ptr child);
+    void insert_no_collision(hash_node_ptr node, const slot_type pos, const slot_type next_pos, const key_type key, const node_ptr child);
     void insert(dense_node_ptr node, const key_type key, const node_ptr child);
     void insert_data_node(data_node_ptr node, data_node_ptr new_node, const key_type key, const value_type &value);
     void insert_unlock(inner_node_ptr top_node, inner_node_ptr node) const;
@@ -694,15 +694,13 @@ private:
     }
 
     inline dense_node_ptr new_and_split(dense_node_ptr old_node){
-        dense_node_ptr new_node = allocator.allocate_dense_node();
+        dense_node_ptr new_node = allocator.allocate_dense_node(false, old_node->level + 1);
         bool need_restart = false;
         new_node->node_lock.writeLockOrRestart(need_restart);
         AEX_ASSERT(need_restart == false);
         split(old_node, new_node);
         return new_node;
     }
-
-    inline void update_meta(hash_node_ptr node, const node_ptr child, const node_ptr new_tail_node, const size_type add_cnt, const version_type &node_version, bool &need_restart);
 
     // ========== 3. erase ==========
     // below function implemention at 'aex_erase.hpp'
@@ -741,9 +739,6 @@ private:
     /**
      * @brief place split key of node into corresponding slot of hash node.
      */
-    //inner_node_ptr __construct_SMO(const key_type* keys, const node_ptr* childs, const ULL n);
-    slot_type split(hash_node_ptr node, node_ptr &split_node, const slot_type start_pos, const slot_type end_pos);
-    void construct_SMO(hash_node_ptr node, const key_type* keys, node_ptr* childs, const ULL n);
     void get_childs(const hash_node_ptr node,  std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf) const;
     void get_childs(const dense_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf) const;
     void get_childs(const inner_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf) const;
@@ -751,8 +746,8 @@ private:
     void clear_childs_recursive(dense_node_ptr node);
     void extend_head_nodes(std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
     void extend_tail_nodes(std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf);
-    bool check_model(const Model &m, const key_type* const keys, const ULL n, const slot_type slot_size, const double few_ratio = traits::HASH_NODE_FEW_RATIO) const ;
-    slot_type train(const key_type* const keys, const ULL n, Model &m, const double few_ratio = traits::HASH_NODE_FEW_RATIO);
+    bool check_model(const Model &m, const key_type* const keys, const ULL n, const slot_type slot_size, const double few_ratio = traits::HASH_NODE_FULL_RATIO) const ;
+    slot_type train(const key_type* const keys, const ULL n, Model &m, const double few_ratio = traits::HASH_NODE_FULL_RATIO / 2);
     void rebuild(inner_node_ptr node);
     bool check_extend_head(const key_type fk, const key_type lk, const slot_type node_size, const node_ptr child) const ;
     bool check_extend_tail(const key_type fk, const key_type lk, const slot_type node_size, const node_ptr child) const ;
@@ -770,7 +765,7 @@ private:
     }
     
     inline bool isfull(const hash_node_ptr node) const {
-        return 1.0 * node->size / node->slot_size >= traits::HASH_NODE_FULL_RATIO && node->slot_size < traits::MAX_HASH_NODE_SLOT_SIZE;
+        return 1.0 * node->size / node->slot_size >= traits::HASH_NODE_FULL_RATIO && node->slot_size < traits::MAX_HASH_NODE_REBUILD_SLOT_SIZE;
     }
 
     inline bool isfull(const dense_node_ptr node) const {
@@ -787,7 +782,7 @@ private:
             return isfew(d_n(node));
     }
     inline bool isfew(const hash_node_ptr node) const {
-        return 1.0 * node->size < node->slot_size * traits::HASH_NODE_FEW_RATIO / 2 || node->size < traits::MAX_DENSE_NODE_SLOT_SIZE / 2;
+        return 1.0 * node->size < node->slot_size * traits::HASH_NODE_FEW_RATIO / 2 || node->size < traits::MIN_DENSE_NODE_SLOT_SIZE;
     }
     inline bool isfew(const dense_node_ptr node) const {
         if (node->slot_size == traits::DATA_NODE_SLOT_SIZE)
@@ -813,11 +808,7 @@ private:
             ebr->scheduleForDeletion(MRUnit(MemoryReclaimType::HashNodeCopy, node->copy));
         }
         else
-            clear(node);
-    }
-
-    inline void clear(hash_node_ptr node){
-        node->clear();
+            h_n(node)->clear();
     }
 
     inline void free_node_helper(node_ptr node){
@@ -847,28 +838,12 @@ private:
     inline void TUL(node_ptr node, version_type &node_version, bool &need_restart);
     inline void XU(node_ptr node);
 
-    inline bool work_concurrency();
-
-    inline void yield(int count) {
-        if (!this->work_queue.empty()){
-            //while(const_cast<self*>(this)->work_concurrency());
-            while(this->work_concurrency());
-        }
-        else
-            _yield(count);
-    }
-
     inline void lock_array_unit(LockArrayParams *worker);
     inline void lock_array_con(hash_node_ptr node);
     inline void lock_array(hash_node_ptr node);
 
     inline void get_childs_unit(GetChildsParams *worker) const;
     inline void get_childs_con(const hash_node_ptr node, std::vector<key_type> &key_buf, std::vector<node_ptr> &child_buf) ;
-
-
-    slot_type split_con(hash_node_ptr node, node_ptr &split_node, const slot_type start_pos, const slot_type end_pos, slot_type &worker_size);
-    inline void construct_SMO_unit(ConstructSMOParams *worker);
-    inline void construct_SMO_con(hash_node_ptr node, const key_type* keys, node_ptr* childs, const ULL n);
 
 
     // ========== 7. test ==========
@@ -878,9 +853,6 @@ private:
     bool check_node(data_node_ptr  node) const ;
     bool check_node(dense_node_ptr node) const ;
     bool check_node(hash_node_ptr  node) const ;
-    bool test_lock_array_con(hash_node_ptr node) const ;
-    bool test_get_childs_con(hash_node_ptr node) ;
-    //bool test_construct_SMO_con(hash_node_ptr node) const ;
 
 
 };

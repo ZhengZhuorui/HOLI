@@ -23,13 +23,15 @@ struct alignas(64) aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     typedef typename parent::bitmap_impl           bitmap_impl;
     typedef typename parent::node_ptr              node_ptr;
     typedef typename parent::inner_node            inner_node;
-    typedef typename components::RWLock            RWLock;
-    typedef typename components::Lock              Lock;
     typedef typename components::version_type      version_type;
     typedef typename components::hash_node         hash_node;
     typedef typename components::hash_node_ptr     hash_node_ptr;
     typedef typename components::atomic_version_type      atomic_version_type;
     typedef typename components::size_type         size_type;
+    using parent::bitmap_ptr;
+    using parent::slot_size;
+    using parent::hash_table;
+    using parent::calc_slot_size;
 
     //typedef components::pos2slot pos2slot;
     //using components::pos2slot;
@@ -61,8 +63,11 @@ struct alignas(64) aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
     inline void init(){
         this->size = 0;
         this->bitmap_ptr = new bitmap_base[this->slot_size / traits::SLOT_PER_LOCK + 1]();
-        this->lock_array = new Lock[this->slot_size / traits::SLOT_PER_LOCK + 1];
-        this->hash_table.set(this->slot_size);
+        this->lock_array = new std::atomic<uint64_t>[this->slot_size / traits::SLOT_PER_LOCK + 1];
+        for (slot_type i = 0; i < this->slot_size / traits::SLOT_PER_LOCK + 1; ++i)
+            this->lock_array[i].store(0);
+        AEX_PRINT("lock_array[0]=" << lock_array[0].load());
+        this->hash_table.set(calc_slot_size(1.0 * slot_size * traits::HASH_NODE_FULL_RATIO / traits::HASH_TABLE_BLOCK_SIZE / traits::HASH_TABLE_FULL_RATIO));
     }
 
     inline void set_one(const slot_type x) {
@@ -93,10 +98,110 @@ struct alignas(64) aex_hash_node_con : public aex_hash_node<_Key, _Val, traits>{
             __sync_fetch_and_sub(&this->size, 1);
         }
     }
-    //atomic_version_type *version_array;
-    //mutable RWLock* lock_array;
-    mutable Lock* lock_array;
-    //aex_hash_node_copy copy_node;
+
+    inline bool try_lock(const slot_type pos) {
+        AEX_ASSERT(traits::AllowConcurrency);
+        slot_type lock_pos = pos2slot(pos);
+        uint64_t expected = lock_array[lock_pos].load() & (~(1 << (pos & 63)));
+        uint64_t result   = expected | (1 << (pos & 63));
+        if (!lock_array[lock_pos].compare_exchange_strong(expected, result)) {
+            _mm_pause();
+            return false;
+        }
+        return true;
+    }
+
+    inline void unlock(const slot_type pos) {
+        AEX_ASSERT(traits::AllowConcurrency);
+        slot_type lock_pos = pos2slot(pos);
+        uint64_t expected = lock_array[lock_pos].load() | (1 << (pos & 63));
+        uint64_t result   = expected & (~(1 << (pos & 63)));
+        if (!lock_array[lock_pos].compare_exchange_weak(expected, result)) {
+            expected = lock_array[lock_pos].load() | (1 << (pos & 63));
+        }
+    }
+
+    inline uint64_t get_mask(const slot_type pos, const slot_type next_pos){
+        slot_type v_pos = pos & 63, v_next_pos = next_pos & 63;
+        AEX_ASSERT(v_pos <= v_next_pos);
+        uint64_t mask = ((1ULL << (v_next_pos)) - 1) << v_pos;
+        return mask;
+    }
+
+    inline bool try_lock_item(const slot_type pos, const slot_type next_pos){
+        AEX_ASSERT(pos2slot(pos) == pos2slot(next_pos));
+        slot_type lock_pos = pos2slot(pos);
+        uint64_t mask = get_mask(pos, next_pos);
+        uint64_t expected = lock_array[lock_pos].load() & (~mask);
+        uint64_t result   = expected | mask;
+        if (!lock_array[lock_pos].compare_exchange_strong(expected, result)) {
+            _mm_pause();
+            return false;
+        }
+        return true;
+    }
+
+    inline void unlock_item(const slot_type pos, const slot_type next_pos){
+        AEX_ASSERT(pos2slot(pos) == pos2slot(next_pos));
+        slot_type lock_slot = pos2slot(pos);
+        uint64_t mask = get_mask(pos, next_pos);
+        uint64_t expected = lock_array[lock_slot].load() | mask;
+        uint64_t result   = expected & (~mask);
+        while (!lock_array[lock_slot].compare_exchange_weak(expected, result)) {
+            _mm_pause();
+            expected = lock_array[lock_slot].load() | mask;
+            result   = expected & (~mask);
+        }
+    }
+
+    inline bool try_lock(const slot_type pos, const slot_type next_pos) {
+        AEX_ASSERT(traits::AllowConcurrency);
+        slot_type p=pos, q=((pos2slot(p) + 1) << 6) - 1;
+        for (slot_type i = pos2slot(pos); i <= pos2slot(next_pos); ++i){
+            if (q > next_pos) q = next_pos;
+            bool res = try_lock_item(p, q);
+            if (!res) {
+                if (pos < p - 1) this->unlock(pos, p - 1);
+                return false;
+            }
+            p = q + 1;
+            q += 64;
+        }
+        return true;
+    }
+
+    inline void unlock(const slot_type pos, const slot_type next_pos) {
+        slot_type p=pos, q=((pos2slot(p) + 1) << 6) - 1;
+        for (slot_type i = pos2slot(pos); i <= pos2slot(next_pos); ++i){
+            if (q > next_pos) q = next_pos;
+            this->unlock_item(p, q);
+            p = q + 1;
+            q += 64;
+        }
+    }
+
+    inline slot_type prev_item_find(slot_type x) const {
+        const slot_type y = x & (~511);
+        if (x <= 0)
+            return x;
+        bitmap text = bitmap_ptr + (x >> 6);
+        const bitmap_base base = (*text) << (63 - (x & 63));
+        if (base != 0)
+            return x - _lzcnt_u64(base);
+        x = (x & (~63)) - 1;
+        if (x < y)
+            return y;
+        --text;
+        while (x - 64 > y && (*text) == 0){
+            --text;
+            x -= 64;
+        }
+        x -= (*text == 0) ? 63 : _lzcnt_u64(*text);
+        return x;
+    }
+
+
+    mutable std::atomic<uint64_t>* lock_array;
     hash_node_ptr copy;
 };
 
@@ -135,51 +240,22 @@ public:
         return *this;
     }
 
-    //inline void construct(const key_type *_key, const value_type *_data, int nums){
-    //    this->base_data_node::construct(_key, _data, nums);
-    //    this->next_min_key = _key[0];
-    //}
-
-    //inline void construct(const std::pair<key_type, value_type> *_data, int nums){
-    //    this->base_data_node::construct(_data, nums);
-    //    this->next_min_key = _data[0].first;
-    //}
 
     inline int find(const key_type x) const {
         int pos;
-        //if constexpr (sizeof(key_type) == 8 && traits::DATA_NODE_SLOT_SIZE == 16){
-        //    pos = cmp_eq_epi64x16(this->key, x);
-        //}
-        //else{
-            //pos = find_lower_pos(x);
-            //int _size = std::min((int)this->size, traits::DATA_NODE_SLOT_SIZE);
-            //pos = std::lower_bound(this->key, this->key + this->size, x) - this->key;
             pos = linear_search_lower_bound<const key_type>(this->key, this->key + this->size, x) - this->key;
-        //}
         if (pos >= this->size || this->key[pos] != x)
             return this->size;
         return pos;
     }
 
     inline int find_lower_pos(const key_type x) const {
-        if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
-            return traits::SearchClass::lower_bound(this->key, this->key + this->size, x, this->key) - this->key;
-        //return aex::linear_search_lower_bound(this->key, this->key + this->size, x) - this->key;
-        //if constexpr (std::is_same_v<key_type, ULL>)
-            //return std::lower_bound(this->key, this->key + this->size, x) - this->key;
-        //else
-        //return aex::linear_search_lower_bound_avx512<traits::DATA_NODE_SLOT_SIZE, key_type>(this->key, (int)this->size, x);
         return linear_search_lower_bound<const key_type>(this->key, this->key + this->size, x) - this->key;
-        //return std::lower_bound(this->key, this->key + this->size, x) - this->key;
         
     }
 
     inline int find_upper_pos(const key_type x) const {
-        if constexpr (std::is_same_v<typename traits::SearchClass, void> == false)
-            return traits::SearchClass::upper_bound(this->key, this->key + this->size, x, this->key) - this->key;
         return linear_search_upper_bound<const key_type>(this->key, this->key + this->size, x) - this->key;
-        //return std::upper_bound(this->key, this->key + this->size, x) - this->key;
-        //return aex::linear_search_upper_bound_avx512<traits::DATA_NODE_SLOT_SIZE, key_type>(this->key, (int)this->size, x);
     }
 
     key_type next_min_key;

@@ -98,7 +98,6 @@ public:
     typedef typename components::ID_type           ID_type;
     typedef typename components::version_type      version_type;
     typedef typename components::HashTable         HashTable;
-    typedef typename components::HashTableBlock    HashTableBlock;
 
     //aex_hash_node(slot_type slot_size):inner_node(slot_size, NodeType::HashNode), bitmap_ptr(nullptr){
     //    init();
@@ -126,10 +125,16 @@ public:
         this->hash_table.clear();
     }
 
+    static slot_type calc_slot_size(slot_type slot_size){
+        slot_type ret = 1;
+        while (ret < slot_size) ret <<= 1;
+        return ret;
+    }
+
     inline void init(){
         this->size = 0;
         this->bitmap_ptr = new bitmap_base[this->slot_size / 64 + 1]();
-        this->hash_table.set(this->slot_size);
+        this->hash_table.set(calc_slot_size(1.0 * slot_size * traits::HASH_NODE_FULL_RATIO / traits::HASH_TABLE_BLOCK_SIZE / traits::HASH_TABLE_FULL_RATIO));
     }
 
     inline slot_type predict(const key_type key) const {
@@ -285,12 +290,13 @@ public:
 
     void init(){
         this->size = 0;
-        this->is_parent = false;
+        this->is_train = false;
     }
 
     key_type key_ptr[traits::DENSE_NODE_SLOT_SIZE];
     node_ptr child_ptr[traits::DENSE_NODE_SLOT_SIZE];
-    bool is_parent;
+    bool is_train;
+    unsigned char level;
 };
 
 template<typename _Key,

@@ -29,8 +29,6 @@ public:
     typedef typename components::data_node_ptr  data_node_ptr;
     typedef typename components::InnerNodeModel InnerNodeModel;
     typedef typename components::bitmap_impl    bitmap_impl;
-    typedef typename components::HashTable      HashTable;
-    typedef typename components::HashTableBlock      HashTableBlock;
     typedef typename components::RWLock         RWLock;
     typedef typename components::Lock           Lock;
     typedef typename components::version_type   version_type;
@@ -116,26 +114,23 @@ public:
         //AEX_WARNING(sizeof(aex_hash_node<key_type, value_type, traits>) << ", " << sizeof(aex_hash_node_con<key_type, value_type, traits>) << ", " << MAX_INNER_NODE_SIZE() << ", " << sizeof(base_node) << ", " << sizeof(InnerNodeModel) << ", " << sizeof(bitmap) << ", " << sizeof(slot_type) << ", " << sizeof(Lock));
         //exit(0);
         const hash_node_ptr node = h_n(malloc(MAX_INNER_NODE_SIZE()));
-        //const hash_node_ptr node = h_n(allocate_inner_node());
-        //const hash_node_ptr node = reinterpret_cast<hash_node_ptr>(allocate_inner_node());
         node->type = NodeType::HashNode;
         node->node_lock.init();
         node->slot_size = slot_size;
         node->init();
-        node->hash_table.set(slot_size);
-        //node->hash_table.slot_size = get_real_slot_size(static_cast<slot_type>(1.0 * slot_size * traits::HASH_NODE_FULL_RATIO / traits::HASH_TABLE_FULL_RATIO));
-        //node->hash_table.table_ = new HashTableBlock[node->hash_table.slot_size]();
+        node->hash_table.set(hash_node::calc_slot_size(1.0 * slot_size * traits::HASH_NODE_FULL_RATIO / traits::HASH_TABLE_BLOCK_SIZE / traits::HASH_TABLE_FULL_RATIO));
         if constexpr (traits::AllowConcurrency)
             node->copy = nullptr;
         return node;
     }
 
-    inline dense_node_ptr allocate_dense_node(bool is_parent=false){
+    inline dense_node_ptr allocate_dense_node(bool is_train, unsigned char level=0){
         const dense_node_ptr node = d_n(malloc(MAX_INNER_NODE_SIZE()));
-        //const dense_node_ptr node = reinterpret_cast<dense_node_ptr>(allocate_inner_node());
         node->type = NodeType::DenseNode;
         node->node_lock.init();
         node->init();
+        node->level = level;
+        node->is_train = is_train;
         return node;
     }
 private:

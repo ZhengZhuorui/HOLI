@@ -20,10 +20,10 @@ template<typename traits> class  aex_EpochBasedMemoryReclamationStrategy;
 template<typename traits> class  aex_EpochGuard;
 template<typename traits> struct MemoryReclaimUnit;
 
-template<typename _Key, typename traits> struct aex_hash_table_block;
-template<typename _Key, typename traits> class aex_hash_table;
-template<typename _Key, typename traits> struct aex_hash_table_block_con;
-template<typename _Key, typename traits> class aex_hash_table_con;
+template<typename _Key, typename _Val, typename traits> struct aex_hash_table_con_bucket;
+template<typename _Key, typename _Val, typename traits> struct aex_hash_table_bucket;
+template<typename _Key, typename _Val, typename traits> class aex_hash_table;
+template<typename _Key, typename _Val, typename traits> class aex_hash_table_con;
 
 template<typename _Tp, bool _> struct aex_node_spinlock;
 

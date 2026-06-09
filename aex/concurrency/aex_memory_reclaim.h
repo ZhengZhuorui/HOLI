@@ -9,8 +9,6 @@ enum class MemoryReclaimType{
     Memory,
     AtomicArray,
     HashNodeCopy,
-    HashTable,
-    HashTableBlock,
     Unknown
 };
 
@@ -20,9 +18,7 @@ struct MemoryReclaimUnit{
     typedef typename components::node_ptr      node_ptr;
     typedef typename components::hash_node_ptr hash_node_ptr;
     typedef typename components::RWLock        RWLock;
-    typedef typename components::HashTableBase HashTableBase;
     typedef typename components::slot_type     slot_type;
-    typedef typename components::HashTableBlock HashTableBlock;
 
     //MemoryReclaimUnit(node_ptr node):pointer(node), type(MemoryReclaimType::NodePtr){}
     MemoryReclaimUnit() : type(MemoryReclaimType::Unknown) {}
@@ -33,12 +29,7 @@ struct MemoryReclaimUnit{
     MemoryReclaimUnit(MemoryReclaimType _type, hash_node_ptr node):pointer(node), type(MemoryReclaimType::HashNodeCopy){
         AEX_ASSERT(_type == MemoryReclaimType::HashNodeCopy);
     }
-    MemoryReclaimUnit(MemoryReclaimType _type, HashTableBase* table_):pointer(table_), type(MemoryReclaimType::HashTable){
-        AEX_ASSERT(_type == MemoryReclaimType::HashTable);
-    }
-    MemoryReclaimUnit(MemoryReclaimType _type, HashTableBlock* block):pointer(block), type(MemoryReclaimType::HashTableBlock){
-        AEX_ASSERT(_type == MemoryReclaimType::HashTableBlock);
-    }
+    
 
     void* pointer;
     MemoryReclaimType type;
@@ -55,9 +46,6 @@ class aex_ThreadSpecificEpochBasedReclamationInformation {
     typedef typename components::RWLock        RWLock;
     typedef typename components::MRUnit        MRUnit;
     typedef typename components::Index         Index;
-    typedef typename components::HashTable     HashTable;
-    typedef typename components::HashTableBase     HashTableBase;
-    typedef typename components::HashTableBlock HashTableBlock;
     typedef typename components::slot_type     slot_type;
 
     std::array<std::vector<MRUnit>, 3> mFreeLists;
@@ -131,16 +119,6 @@ private:
                     //AEX_WARNING("HashNodeCopy reclaim");
                     index->clear_copy(h_n(unit.pointer)); break;
                 }
-                //case MemoryReclaimType::HashTable:{
-                //    //AEX_WARNING("HashTable reclaim");
-                //    reinterpret_cast<HashTableBase*>(unit.pointer)->free_hash_table();
-                //    delete reinterpret_cast<HashTableBase*>(unit.pointer);
-                //    break;
-                //}
-                //case MemoryReclaimType::HashTableBlock:{
-                //    delete reinterpret_cast<HashTableBlock*>(unit.pointer);
-                //    break;
-                //}
                 default:{
                     AEX_ERROR("Unknown Type");
                     AEX_ASSERT(0 == 1);
@@ -165,7 +143,6 @@ public:
     typedef typename components::Index         Index;
     typedef aex_EpochBasedMemoryReclamationStrategy<traits> self;
     typedef typename components::ThreadSpecificEpochBasedReclamationInformation ThreadSpecificEpochBasedReclamationInformation;
-    typedef typename components::HashTable     HashTable;
     typedef typename components::slot_type     slot_type;
 
     uint32_t NEXT_EPOCH[3] = {1, 2, 0};

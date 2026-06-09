@@ -81,11 +81,11 @@ inline void aex_tree<_Key, _Val, traits>::erase(hash_node_ptr node, const slot_t
     std::tie(prev_key, prev_node) = node->hash_table.find(node->prev_item_find(pos - 1));
     bitmap_impl::set_zero(node->bitmap_ptr, pos);
     if ((pos & (traits::SLOT_PER_SHORTCUT - 1)) == 0)
-        node->hash_table.update(pos, prev_key, prev_node);
+        node->hash_table.update(pos, std::make_pair(prev_key, prev_node));
     else
         node->hash_table.erase(pos);
     for (slot_type j = highbit<slot_type, traits::SLOT_PER_SHORTCUT>(pos + 1); j < next_pos; j += traits::SLOT_PER_SHORTCUT){
-        node->hash_table.update(j, prev_key, prev_node);
+        node->hash_table.update(j, std::make_pair(prev_key, prev_node));
     }
     --node->size;
 }

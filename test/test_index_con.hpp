@@ -65,7 +65,6 @@ bool test_index_total_con_perf(std::pair<key_type, value_type>* data, long long 
             }
             case OperationType::Insert:{
                 thread_param.success_insert += index.insert(opt[i].key, opt[i].value);
-
                 value_type _val;
                 [[maybe_unused]]bool _ = index.find(opt[i].key, _val);
                 AEX_ASSERT(_ == true);

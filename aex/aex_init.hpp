@@ -57,7 +57,6 @@ inline aex_tree<_Key, _Val, traits>::~aex_tree(){
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::_clear(){
-    AEX_HINT("_clear");
     if (this->root != nullptr)
         this->deconstruct(this->root);
     this->_size = 0;
@@ -68,7 +67,7 @@ inline void aex_tree<_Key, _Val, traits>::_clear(){
 
 template<typename _Key, typename _Val, typename traits>
 inline void aex_tree<_Key, _Val, traits>::init(){
-    this->root = allocator.allocate_dense_node(0);
+    this->root = allocator.allocate_dense_node(false, 0);
     this->head_leaf = new data_node();
     if constexpr (traits::AllowConcurrency){
         this->head_leaf->next_min_key = std::numeric_limits<key_type>::max();
@@ -106,8 +105,7 @@ inline void aex_tree<_Key, _Val, traits>::deconstruct(node_ptr node){
                 deconstruct(child);
             }
             h_n(node)->clear();
-            free(node);
-            //free_node(node);
+            free_node(node);
             break;
         }
         default:
@@ -138,7 +136,7 @@ inline typename aex_tree<_Key, _Val, traits>::node_ptr aex_tree<_Key, _Val, trai
             #ifdef AEX_DEBUG
             opt_stats.allocate_dense_node_cnt++;
             #endif
-            dense_node_ptr new_node = allocator.allocate_dense_node(d_n(node)->is_parent);
+            dense_node_ptr new_node = allocator.allocate_dense_node(d_n(node)->is_train, d_n(node)->level);
             std::copy(d_n(node)->key_ptr, d_n(node)->key_ptr + d_n(node)->size, new_node->key_ptr);
             d_n(new_node)->size = d_n(node)->size;
             for (slot_type i = 0; i < d_n(node)->size; ++i)
@@ -211,6 +209,7 @@ inline void aex_tree<_Key, _Val, traits>::bulk_load(const std::pair<key_type, va
     this->head_leaf = new_child_buf[0];
     new_key_buf[0] = std::numeric_limits<key_type>::lowest();
     this->root = this->construct(new_key_buf.data(), reinterpret_cast<node_ptr*>(new_child_buf.data()), new_child_buf.size());
+    AEX_PRINT("finish...");
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -219,7 +218,7 @@ inline typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val
     slot_type slot_size = 0;
     AEX_DEBUG_BLOCK({if (!traits::AllowMultiKey) for (ULL i = 0; i < n - 1; ++i) AEX_ASSERT(keys[i] < keys[i + 1]);});
     if (n <= traits::DENSE_NODE_SLOT_SIZE){
-        dense_node_ptr new_node = allocator.allocate_dense_node(0);
+        dense_node_ptr new_node = allocator.allocate_dense_node(false, 0);
         std::copy(keys,   keys + n,   new_node->key_ptr);
         std::copy(childs, childs + n, new_node->child_ptr);
         new_node->size = n;
@@ -232,8 +231,9 @@ inline typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val
     Model model;
     //slot_size = this->train(keys, n, model, 0.5 * traits::HASH_NODE_FULL_RATIO);
     slot_size = this->train(keys, n, model);
+    //AEX_PRINT("slot_size=" << slot_size);
     if (slot_size == 0){
-        dense_node_ptr new_node = allocator.allocate_dense_node(true);
+        dense_node_ptr new_node = allocator.allocate_dense_node(true, 0);
         new_node->node_lock.writeLock();
         construct_dense_node(new_node, keys, childs, n);
         #ifdef AEX_DEBUG
@@ -246,6 +246,7 @@ inline typename aex_tree<_Key, _Val, traits>::inner_node_ptr aex_tree<_Key, _Val
     else{
         hash_node_ptr new_node = allocator.allocate_hash_node(slot_size);
         new_node->node_lock.writeLock();
+        AEX_PRINT("hash table slot size=" << h_n(new_node)->hash_table.slot_size << ", node slot size=" << h_n(new_node)->slot_size);
         construct_hash_node(new_node, keys, childs, n);
         #ifdef AEX_DEBUG
         opt_stats.allocate_hash_node_cnt++;
@@ -273,14 +274,14 @@ inline void aex_tree<_Key, _Val, traits>::construct(inner_node_ptr node, const k
     slot_size = train(keys, n, model);
     if (slot_size == 0){
         cast_to_dense_node(node);
-        d_n(node)->is_parent = true;
+        d_n(node)->is_train = true;
         construct_dense_node(d_n(node), keys, childs, n);
     }
     else{
         cast_to_hash_node(node, slot_size);
         AEX_ASSERT(node->size == 0);
         h_n(node)->model = model;
-        construct_SMO(h_n(node), keys, childs, n);
+        construct_hash_node(h_n(node), keys, childs, n);
         AEX_MUL_ASSERT(h_n(node)->copy == nullptr);
         copy_node(h_n(node));
     }
@@ -313,6 +314,9 @@ inline void aex_tree<_Key, _Val, traits>::construct_dense_node(dense_node_ptr no
     AEX_ASSERT(n - start > 1);
     node->key_ptr[node->size - 1]   = keys[start];
     node->child_ptr[node->size - 1] = construct(keys + start, childs + start, n - start);
+    node->level = d_n(node->child_ptr[0])->level + 1;
+    for (slot_type i = 1; i < node->size; ++i)
+        node->level = std::min(node->level, (unsigned char)(d_n(node->child_ptr[i])->level + 1));
 }
 
 template<typename _Key, typename _Val, typename traits>
@@ -324,25 +328,21 @@ inline void aex_tree<_Key, _Val, traits>::construct_hash_node(hash_node_ptr node
     slot_type prev_pos = node->predict(keys[0]), pos = 0;
     AEX_ASSERT(prev_pos == 0);
     ULL start = 0;
-    node_ptr new_node;
+    AEX_PRINT("n=" << n);
     for (ULL i = 1; i < n; ++i){
         pos = node->predict(keys[i]);
         AEX_ASSERT(pos >= prev_pos);
         if (pos != prev_pos){
-            if (i - start > 1){
-                new_node = this->construct(keys + start, childs + start, i - start);
-                __construct_insert(node, prev_pos, pos, keys[start], new_node);
-            }
+            if (i - start > 1)
+                __construct_insert(node, prev_pos, pos, keys[start], this->construct(keys + start, childs + start, i - start));
             else
                 __construct_insert(node, prev_pos, pos, keys[start], childs[start]);
             start = i;
             prev_pos = pos;
         }
     }
-    if (n - start > 1){
-        new_node = construct(keys + start, childs + start, n - start);
-        __construct_insert(node, pos, node->slot_size, keys[start], new_node);
-    }
+    if (n - start > 1)
+        __construct_insert(node, pos, node->slot_size, keys[start], construct(keys + start, childs + start, n - start));
     else
         __construct_insert(node, pos, node->slot_size, keys[start], childs[start]);
     node->tail_node = tail_node(node);

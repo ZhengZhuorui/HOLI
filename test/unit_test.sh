@@ -350,6 +350,8 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 
 # =================================================================================================
 # test hash table performance
+
+
 ./unit_test --unit=hash_table --key_type=uint64 --con --thread_num=16 --num_keys=10000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 
 ./unit_test --unit=hash_table --key_type=uint64 --thread_num=1 --num_keys=10000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
@@ -595,6 +597,8 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 ./unit_test --unit=index --key_type=float64 --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=2000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 ./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=2000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 
+gdb --args build_debug/unit_test --unit=index --key_type=uint64 --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=2000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
 ./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=2000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 
 ./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=2000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/books_800M_uint64
@@ -607,10 +611,28 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 
 ./unit_test --unit=index --key_type=float64 --function=tot --num_keys=200000000 --read_nums=2000000 --write_nums=200000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 
-./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=200000000 --read_nums=0 --write_nums=200000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+# all write:
+./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=200000000 --read_nums=200000000 --write_nums=200000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
+
+gdb --args build_debug/unit_test --unit=index --key_type=uint64 --function=tot --num_keys=200000000 --read_nums=200000000 --write_nums=200000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+
+./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=200000000 --read_nums=200000000 --write_nums=200000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+
 # half write:
+./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=200000000 --read_nums=0 --write_nums=100000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
+
 ./unit_test --unit=index --key_type=float64 --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=1000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
+
+./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=200000000 --read_nums=0 --write_nums=100000000 --erase_nums=0 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+
 # all read:
+./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=200000000 --read_nums=2000000 --write_nums=0 --erase_nums=0 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+
+./unit_test --unit=index --key_type=uint64 --function=tot --num_keys=200000000 --read_nums=20000000 --write_nums=0 --erase_nums=0 --input_file=/home/zzr/data/learned_index/lognormal_200M_uint64
+
+
 ./unit_test --unit=index --key_type=float64 --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=0 --erase_nums=0 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
 # all erase:
 ./unit_test --unit=index --key_type=float64 --function=tot --num_keys=2000000 --read_nums=2000000 --write_nums=0 --erase_nums=2000000 --input_file=/home/zzr/data/learned_index/longitudes-200M.bin.data
@@ -651,9 +673,27 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 # test index concurrency
 ./unit_test --unit=index_con --con --key_type=float64 --function=tot --num_keys=20000000 --thread_num=16 --batch=2000000 --read_nums=2000000 --write_nums=1000000 --input_file=/home/zzr/data/learned_index/covid_200M_uint64
 
-./unit_test --unit=index_con --con --key_type=uint64 --function=tot --num_keys=200000000 --thread_num=16 --batch=200000000 --read_nums=100000000 --write_nums=0 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+
+
+gdb --args build_debug/unit_test --unit=index_con --con --key_type=uint64 --function=tot --num_keys=20000000 --thread_num=1 --batch=20000000 --read_nums=10000000 --write_nums=10000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+gdb --args build_debug/unit_test --unit=index_con --con --key_type=uint64 --function=tot --num_keys=20000000 --thread_num=16 --batch=20000000 --read_nums=10000000 --write_nums=10000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+
+./unit_test --unit=index_con --con --key_type=uint64 --function=tot --num_keys=20000000 --thread_num=16 --batch=20000000 --read_nums=10000000 --write_nums=10000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
 
 ./unit_test --unit=index_con --con --key_type=uint64 --function=tot --num_keys=200000000 --thread_num=16 --batch=200000000 --read_nums=100000000 --write_nums=100000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+
+
+./unit_test --unit=index_con --con --key_type=uint64 --function=tot --num_keys=20000000 --thread_num=16 --batch=20000000 --read_nums=10000000 --write_nums=10000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+
+./unit_test --unit=index_con --con --key_type=uint64 --function=tot --num_keys=200000000 --thread_num=16 --batch=200000000 --read_nums=100000000 --write_nums=100000000 --input_file=/home/zzr/data/learned_index/osm_cellids_200M_uint64
+
+
+gdb --args build_debug/unit_test --unit=index_con --con --key_type=uint64 --function=tot --num_keys=200000000 --thread_num=16 --batch=200000000 --read_nums=100000000 --write_nums=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
+gdb --args build_debug/unit_test --unit=index_con --con --key_type=uint64 --function=tot --num_keys=20000000 --thread_num=16 --batch=20000000 --read_nums=10000000 --write_nums=10000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
+./unit_test --unit=index_con --con --key_type=uint64 --function=tot --num_keys=20000000 --thread_num=1 --batch=20000000 --read_nums=100000000 --write_nums=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
+
 
 ./unit_test --unit=index_con --con --key_type=uint64 --function=tot --num_keys=200000000 --thread_num=16 --batch=200000000 --read_nums=100000000 --write_nums=100000000 --input_file=/home/zzr/data/learned_index/fb_200M_uint64
 

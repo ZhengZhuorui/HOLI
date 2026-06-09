@@ -66,7 +66,7 @@ inline typename aex_tree<_Key, _Val, traits>::data_node_ptr aex_tree<_Key, _Val,
     int restart_count = 0;
 find_leaf_con_start:
     if (restart_count > 0)
-        yield(restart_count);
+        _yield(restart_count);
     ++restart_count;
     bool need_restart = false;
     node_ptr node = root, child;
@@ -135,7 +135,7 @@ inline bool aex_tree<_Key, _Val, traits>::find_con(const key_type key, value_typ
 find_con_start:
     AEX_SGL_ASSERT(restart_count == 0);
     if (restart_count > 0)
-        yield(restart_count);
+        _yield(restart_count);
     ++restart_count;
     bool ret = true;
     bool need_restart = false;
@@ -162,7 +162,7 @@ lower_bound_con_start:
     AEX_SGL_ASSERT(restart_count == 0);
     AEX_ASSERT(restart_count < 100000000);
     if (restart_count > 0)
-        yield(restart_count);
+        _yield(restart_count);
     ++restart_count;
     bool need_restart = false;
     data_node_ptr node, next_node;
@@ -200,7 +200,7 @@ range_query_con_start:
     AEX_SGL_ASSERT(restart_count == 0);
     AEX_ASSERT(restart_count < 100000000);
     if (restart_count > 0)
-        yield(restart_count);
+        _yield(restart_count);
     ++restart_count;
     bool need_restart = false;
     answer.clear();
@@ -247,7 +247,7 @@ range_query_len_con_start:
     AEX_SGL_ASSERT(restart_count == 0);
     AEX_ASSERT(restart_count < 100000000);
     if (restart_count > 0)
-        yield(restart_count);
+        _yield(restart_count);
     ++restart_count;
     bool need_restart = false;
     size_t cnt = 0;

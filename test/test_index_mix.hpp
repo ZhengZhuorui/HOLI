@@ -77,6 +77,8 @@ bool test_index_mix_perf(std::pair<key_type, value_type>* data, long long n, lon
         index.bulk_load(bulk_load_data.data(), bulk_load_data.size());
         t1 = std::chrono::high_resolution_clock::now();
         for (long long i = 0, qn = 0; i < batch; ++i){
+            if (i % 1000000 == 0)
+                AEX_PRINT("i=" << i << ", Operation=" << (operation_list[i] == OperationType::Lookup ? "Lookup" : "Insert"));
             switch (operation_list[i]){
                 case OperationType::Lookup:{
                     value_type y;
@@ -137,6 +139,8 @@ bool test_index_total_perf(std::pair<key_type, value_type>* data, long long n, l
     index.print_stats();
     
     for (long long i = 0; i < tot_nums; ++i){
+        if (i % 1000000 == 0)
+            AEX_PRINT("i=" << i << ", Operation=" << (opt[i] == OperationType::Lookup ? "Lookup" : "Insert"));
         switch (opt[i]){
             case OperationType::Lookup:{
                 //AEX_PRINT("i=" << i << "Lookup:");
